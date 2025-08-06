@@ -101,7 +101,7 @@ body {
     min-height: 100vh;
     background: 
         linear-gradient(135deg, rgba(26, 26, 46, 0.85) 0%, rgba(22, 33, 62, 0.85) 50%, rgba(15, 52, 96, 0.85) 100%),
-        url('hero-background.jpg') center center / cover no-repeat;
+        url('./hero-background.jpg') center center / cover no-repeat;
     display: flex;
     align-items: center;
     padding: 100px 20px 50px;
