@@ -156,13 +156,7 @@ export default function CalendarFieldMapping({ integrationId, provider, onMappin
   const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    if (integrationId) {
-      loadMappings();
-    } else {
-      loadDefaultMappings();
-    }
-  }, [integrationId, selectedProvider]);
+  
 
   const loadDefaultMappings = useCallback(() => {
     const defaultMappings = DEFAULT_MAPPINGS[selectedProvider].map((mapping, index) => ({
@@ -195,6 +189,14 @@ export default function CalendarFieldMapping({ integrationId, provider, onMappin
       setLoading(false);
     }
   }, [integrationId, loadDefaultMappings]);
+
+  useEffect(() => {
+    if (integrationId) {
+      loadMappings();
+    } else {
+      loadDefaultMappings();
+    }
+  }, [integrationId, selectedProvider, loadMappings, loadDefaultMappings]);
 
   const saveMappings = async () => {
     if (!integrationId) {

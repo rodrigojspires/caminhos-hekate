@@ -1,4 +1,4 @@
-import { Metadata } from 'next'
+"use client"
 import AccountSettings from '@/components/dashboard/settings/AccountSettings'
 import NotificationSettings from '@/components/dashboard/settings/NotificationSettings'
 import PrivacySettings from '@/components/dashboard/settings/PrivacySettings'
@@ -6,10 +6,7 @@ import PreferenceSettings from '@/components/dashboard/settings/PreferenceSettin
 import SecuritySettings from '@/components/dashboard/settings/SecuritySettings'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export const metadata: Metadata = {
-  title: 'Configurações | Dashboard | Caminhos de Hekate',
-  description: 'Gerencie suas configurações e preferências'
-}
+// Metadata moved to parent layout or removed for client component compliance
 
 export default function SettingsPage() {
   return (

@@ -175,7 +175,7 @@ export function CourseTable({
 
   // Renderizar status
   const renderStatus = (status: CourseStatus) => {
-    const statusConfig = {
+    const statusConfig: Record<CourseStatus, { label: string; className: string }> = {
       PUBLISHED: { label: 'Publicado', className: 'bg-green-100 text-green-800' },
       DRAFT: { label: 'Rascunho', className: 'bg-yellow-100 text-yellow-800' },
       ARCHIVED: { label: 'Arquivado', className: 'bg-gray-100 text-gray-800' }
@@ -191,7 +191,7 @@ export function CourseTable({
 
   // Renderizar nível
   const renderLevel = (level: CourseLevel) => {
-    const levelLabels = {
+    const levelLabels: Record<CourseLevel, string> = {
       BEGINNER: 'Iniciante',
       INTERMEDIATE: 'Intermediário',
       ADVANCED: 'Avançado',

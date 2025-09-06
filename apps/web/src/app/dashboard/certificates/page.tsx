@@ -1,4 +1,7 @@
 import { Metadata } from 'next'
+
+// Disable static generation to prevent build timeouts
+export const dynamic = 'force-dynamic'
 import CertificateGallery from '@/components/dashboard/certificates/CertificateGallery'
 import CertificateFilters from '@/components/dashboard/certificates/CertificateFilters'
 import CertificateStats from '@/components/dashboard/certificates/CertificateStats'

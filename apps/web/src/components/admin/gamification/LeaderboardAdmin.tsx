@@ -14,20 +14,25 @@ export function LeaderboardAdmin() {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
-  const fetchRows = async () => {
-    setLoading(true)
-    const params = new URLSearchParams({ category, period, limit: '50' })
-    if (period === 'CUSTOM') {
-      if (start) params.set('start', start)
-      if (end) params.set('end', end)
+  useEffect(() => {
+    let cancelled = false
+    const fetchRows = async () => {
+      setLoading(true)
+      const params = new URLSearchParams({ category, period, limit: '50' })
+      if (period === 'CUSTOM') {
+        if (start) params.set('start', start)
+        if (end) params.set('end', end)
+      }
+      const res = await fetch(`/api/gamification/leaderboard?${params}`)
+      const data = await res.json()
+      if (!cancelled) {
+        setRows(data.leaderboard || [])
+        setLoading(false)
+      }
     }
-    const res = await fetch(`/api/gamification/leaderboard?${params}`)
-    const data = await res.json()
-    setRows(data.leaderboard || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchRows() }, [category, period, start, end])
+    fetchRows()
+    return () => { cancelled = true }
+  }, [category, period, start, end])
 
   const exportCsv = async () => {
     const params = new URLSearchParams({ category, period, limit: '100', format: 'csv' })

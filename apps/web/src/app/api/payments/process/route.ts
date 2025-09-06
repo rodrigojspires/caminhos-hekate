@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@hekate/database';
-import { mercadoPagoService, asaasService, validatePaymentData } from '@/lib/payments';
+// Import dinâmico dos provedores para evitar carregar SDKs no build
 
 interface ProcessPaymentRequest {
   planId: string;
@@ -99,12 +99,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    let paymentResult;
+    let paymentResult: any;
 
     // Processa o pagamento baseado no provedor
     switch (provider) {
-      case 'MERCADOPAGO':
-        paymentResult = await mercadoPagoService.createSubscriptionPayment({
+      case 'MERCADOPAGO': {
+        const { MercadoPagoService } = await import('@/lib/payments/mercadopago')
+        const mpService = new MercadoPagoService()
+        paymentResult = await mpService.createSubscriptionPayment({
           amount: Number(plan.monthlyPrice),
           description: `Assinatura ${plan.name}`,
           userId: session.user.id,
@@ -113,10 +115,11 @@ export async function POST(request: NextRequest) {
             subscription_id: subscription.id,
             payment_method: paymentMethod,
           },
-        });
+        })
         break;
+      }
 
-      case 'ASAAS':
+      case 'ASAAS': {
         if (!customerData) {
           return NextResponse.json(
             {
@@ -141,12 +144,15 @@ export async function POST(request: NextRequest) {
           postalCode: customerData.address?.zipCode,
         };
 
-        paymentResult = await asaasService.createSubscriptionPayment(
+        const { AsaasService } = await import('@/lib/payments/asaas')
+        const asService = new AsaasService()
+        paymentResult = await asService.createSubscriptionPayment(
           session.user.id,
           plan.id,
           asaasCustomerData
         );
         break;
+      }
 
       default:
         return NextResponse.json(

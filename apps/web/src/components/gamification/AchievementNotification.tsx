@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trophy, Award, Star, Zap, Crown, Sparkles } from 'lucide-react'
 import { NotificationType, BadgeRarity, AchievementRarity } from '@prisma/client'
@@ -149,6 +149,11 @@ export const AchievementNotification: React.FC<AchievementNotificationProps> = (
   
   const IconComponent = typeConf?.icon || config.icon
 
+  const handleClose = useCallback(() => {
+    setIsVisible(false)
+    setTimeout(onClose, 300)
+  }, [onClose])
+
   useEffect(() => {
     if (autoClose) {
       const timer = setTimeout(() => {
@@ -167,7 +172,7 @@ export const AchievementNotification: React.FC<AchievementNotificationProps> = (
         clearInterval(progressTimer)
       }
     }
-  }, [autoClose, duration, onClose])
+  }, [autoClose, duration, handleClose])
 
   useEffect(() => {
     // Tocar som da notificação
@@ -180,10 +185,7 @@ export const AchievementNotification: React.FC<AchievementNotificationProps> = (
     }
   }, [typeConf?.sound])
 
-  function handleClose() {
-    setIsVisible(false)
-    setTimeout(onClose, 300)
-  }
+  
 
   const particles = Array.from({ length: config.particles }, (_, i) => (
     <Particle key={i} delay={i * 0.1} rarity={rarity} />

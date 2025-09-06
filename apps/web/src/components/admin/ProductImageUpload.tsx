@@ -83,6 +83,8 @@ function SortableImageItem({ id, image, index, onRemove }: SortableImageItemProp
                   className="cursor-move"
                   {...attributes}
                   {...listeners}
+                  aria-label={`Reordenar imagem ${index + 1}`}
+                  title={`Reordenar imagem ${index + 1}`}
                 >
                   <Move className="h-4 w-4" />
                 </Button>
@@ -90,6 +92,8 @@ function SortableImageItem({ id, image, index, onRemove }: SortableImageItemProp
                   size="sm"
                   variant="destructive"
                   onClick={() => onRemove(index)}
+                  aria-label={`Remover imagem ${index + 1}`}
+                  title={`Remover imagem ${index + 1}`}
                 >
                   <X className="h-4 w-4" />
                 </Button>

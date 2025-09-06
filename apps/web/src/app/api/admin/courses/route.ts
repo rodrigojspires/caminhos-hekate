@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 import { CourseStatus, CourseLevel } from '@hekate/database'
@@ -7,7 +7,7 @@ import { CourseStatus, CourseLevel } from '@hekate/database'
 // Schema de validação para criação de curso
 const createCourseSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
-  slug: z.string().min(1, 'Slug é obrigatório'),
+  slug: z.string().min(1, 'Slug é obrigatório').optional(),
   description: z.string().min(1, 'Descrição é obrigatória'),
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
@@ -148,25 +148,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createCourseSchema.parse(body)
 
-    // Gerar slug único se não fornecido
+    const titleStr = typeof validatedData.title === 'string' ? validatedData.title : String(validatedData.title)
+
+    let finalSlug: string
     if (!validatedData.slug) {
-      validatedData.slug = await generateUniqueSlug(validatedData.title)
+      finalSlug = await generateUniqueSlug(titleStr)
     } else {
+      const providedSlug = typeof validatedData.slug === 'string' ? validatedData.slug : String(validatedData.slug)
       // Verificar se slug já existe
       const existingCourse = await prisma.course.findUnique({
-        where: { slug: validatedData.slug }
+        where: { slug: providedSlug }
       })
-
       if (existingCourse) {
         return NextResponse.json(
           { error: 'Slug já existe' },
           { status: 400 }
         )
       }
+      finalSlug = providedSlug
     }
 
+    const createData: Prisma.CourseCreateInput = { ...(validatedData as any), slug: finalSlug }
+
     const course = await prisma.course.create({
-      data: validatedData,
+      data: createData,
       include: {
         _count: {
           select: {

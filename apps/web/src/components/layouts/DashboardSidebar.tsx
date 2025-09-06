@@ -102,6 +102,8 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
             size="icon"
             onClick={onClose}
             className="lg:hidden"
+            aria-label="Fechar menu lateral"
+            title="Fechar menu lateral"
           >
             <X className="h-5 w-5" />
           </Button>

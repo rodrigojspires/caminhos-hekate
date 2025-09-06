@@ -234,6 +234,8 @@ export function SearchFilters({
                       size="sm"
                       className="h-4 w-4 p-0 hover:bg-transparent"
                       onClick={() => removeFilter('entityType', type)}
+                      aria-label={`Remover filtro ${entityType?.label || type}`}
+                      title={`Remover filtro ${entityType?.label || type}`}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -248,6 +250,8 @@ export function SearchFilters({
                     size="sm"
                     className="h-4 w-4 p-0 hover:bg-transparent"
                     onClick={() => removeFilter('category', category)}
+                    aria-label={`Remover categoria ${category}`}
+                    title={`Remover categoria ${category}`}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -261,6 +265,8 @@ export function SearchFilters({
                     size="sm"
                     className="h-4 w-4 p-0 hover:bg-transparent"
                     onClick={() => removeFilter('tag', tag)}
+                    aria-label={`Remover tag ${tag}`}
+                    title={`Remover tag ${tag}`}
                   >
                     <X className="h-3 w-3" />
                   </Button>

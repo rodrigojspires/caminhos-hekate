@@ -1,14 +1,11 @@
-import { Metadata } from 'next'
+"use client"
 import ProgressCharts from '@/components/dashboard/progress/ProgressCharts'
 import ProgressTimeline from '@/components/dashboard/progress/ProgressTimeline'
 import ProgressGoals from '@/components/dashboard/progress/ProgressGoals'
 import ProgressInsights from '@/components/dashboard/progress/ProgressInsights'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export const metadata: Metadata = {
-  title: 'Progresso | Dashboard | Caminhos de Hekate',
-  description: 'Acompanhe seu progresso detalhado de aprendizado'
-}
+// Metadata moved to parent layout or removed for client component compliance
 
 export default function ProgressPage() {
   return (

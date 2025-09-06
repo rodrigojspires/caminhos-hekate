@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Image, Video, FileText, X, Plus, Tag, Eye, EyeOff, Save, AlertCircle } from 'lucide-react'
+import { Send, Image as ImageIcon, Video, FileText, X, Plus, Tag, Eye, EyeOff, Save, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -454,7 +454,13 @@ export function PostEditor({
                   }}
                   className="flex-1"
                 />
-                <Button onClick={addTag} size="sm" variant="outline">
+                <Button
+                  onClick={addTag}
+                  size="sm"
+                  variant="outline"
+                  aria-label="Adicionar tag"
+                  title="Adicionar tag"
+                >
                   <Tag className="w-4 h-4" />
                 </Button>
               </div>
@@ -467,6 +473,15 @@ export function PostEditor({
                       variant="secondary"
                       className="cursor-pointer"
                       onClick={() => removeTag(tag)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Remover tag ${tag}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          removeTag(tag)
+                        }
+                      }}
                     >
                       #{tag} ×
                     </Badge>
@@ -495,7 +510,7 @@ export function PostEditor({
                 
                 <div className="space-y-2">
                   <div className="flex justify-center space-x-2">
-                    <Image className="w-8 h-8 text-muted-foreground" />
+                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
                     <Video className="w-8 h-8 text-muted-foreground" />
                     <FileText className="w-8 h-8 text-muted-foreground" />
                   </div>
@@ -546,6 +561,8 @@ export function PostEditor({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeAttachment(attachment.id)}
+                        aria-label={`Remover anexo ${attachment.name}`}
+                        title={`Remover anexo ${attachment.name}`}
                         className="h-8 w-8 p-0"
                       >
                         <X className="w-4 h-4" />

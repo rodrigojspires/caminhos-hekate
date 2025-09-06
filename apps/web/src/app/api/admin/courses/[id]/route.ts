@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 import { CourseStatus, CourseLevel } from '@hekate/database'
@@ -167,12 +167,15 @@ export async function PUT(
 
     // Se título foi alterado mas slug não, gerar novo slug
     if (validatedData.title && !validatedData.slug && validatedData.title !== existingCourse.title) {
-      validatedData.slug = await generateUniqueSlug(validatedData.title, params.id)
+      const newTitle = typeof validatedData.title === 'string' ? validatedData.title : String(validatedData.title)
+      validatedData.slug = await generateUniqueSlug(newTitle, params.id)
     }
+
+    const updateData: Prisma.CourseUpdateInput = { ...(validatedData as any) }
 
     const updatedCourse = await prisma.course.update({
       where: { id: params.id },
-      data: validatedData,
+      data: updateData,
       include: {
         _count: {
           select: {

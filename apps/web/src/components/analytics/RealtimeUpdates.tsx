@@ -70,6 +70,35 @@ export function RealtimeUpdates({
   const reconnectDelay = 3000
 
   // Conectar ao WebSocket
+  const connectRef = useRef<() => void>(() => {})
+
+  const startPing = useCallback((): void => {
+    stopPing()
+    pingIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, 30000)
+  }, [])
+
+  // Agendar reconexão (antes de connect para evitar ordem de declaração)
+  const scheduleReconnect = useCallback((): void => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+    }
+    
+    reconnectAttempts.current++
+    setConnectionStatus(prev => ({ ...prev, reconnecting: true }))
+    
+    const delay = reconnectDelay * Math.pow(2, reconnectAttempts.current - 1) // Backoff exponencial
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (isEnabled) {
+        connectRef.current?.()
+      }
+    }, delay)
+  }, [isEnabled])
+
   const connect: () => void = useCallback(async (): Promise<void> => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return
@@ -189,7 +218,7 @@ export function RealtimeUpdates({
         error: 'Falha ao conectar'
       }))
     }
-  }, [isEnabled, onDataUpdate])
+  }, [isEnabled, onDataUpdate, startPing, scheduleReconnect])
 
   // Desconectar WebSocket
   const disconnect = useCallback((): void => {
@@ -211,33 +240,10 @@ export function RealtimeUpdates({
     })
   }, [])
 
-  // Agendar reconexão
-  const scheduleReconnect = useCallback((): void => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-    }
-    
-    reconnectAttempts.current++
-    setConnectionStatus(prev => ({ ...prev, reconnecting: true }))
-    
-    const delay = reconnectDelay * Math.pow(2, reconnectAttempts.current - 1) // Backoff exponencial
-    
-    reconnectTimeoutRef.current = setTimeout(() => {
-      if (isEnabled) {
-        connect()
-      }
-    }, delay)
-  }, [connect, isEnabled])
-
   // Iniciar ping
-  const startPing = useCallback((): void => {
-    stopPing()
-    pingIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'ping' }))
-      }
-    }, 30000) // Ping a cada 30 segundos
-  }, [])
+  useEffect(() => {
+    connectRef.current = connect
+  }, [connect])
 
   // Parar ping
   const stopPing = (): void => {

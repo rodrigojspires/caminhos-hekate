@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -90,11 +90,7 @@ function CalendarSyncDashboard({ onSettingsClick }: CalendarSyncDashboardProps) 
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setRefreshing(true);
       
@@ -125,7 +121,11 @@ function CalendarSyncDashboard({ onSettingsClick }: CalendarSyncDashboardProps) 
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const calculateStats = (integrations: any[]) => {
     const totalIntegrations = integrations.length;

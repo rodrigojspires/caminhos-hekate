@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -15,7 +15,7 @@ export function NotificationsAdmin() {
   const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all')
   const [days, setDays] = useState('30')
 
-  const fetchRows = async () => {
+  const reload = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
     if (filter === 'read') params.set('isRead', 'true')
@@ -24,9 +24,16 @@ export function NotificationsAdmin() {
     const data = await res.json()
     setRows(data.data || [])
     setLoading(false)
-  }
+  }, [filter])
 
-  useEffect(() => { fetchRows() }, [filter])
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      await reload()
+    }
+    run()
+    return () => { cancelled = true }
+  }, [reload])
 
   const cleanup = async () => {
     try {
@@ -38,7 +45,7 @@ export function NotificationsAdmin() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Falha ao limpar')
       toast.success(`Removidas ${data.removed} notificações antigas`)
-      fetchRows()
+      await reload()
     } catch (e) {
       console.error(e)
       toast.error('Erro ao limpar notificações')

@@ -1,14 +1,12 @@
-import { Metadata } from 'next'
+"use client"
+
 import ProfileForm from '@/components/dashboard/profile/ProfileForm'
 import ProfileStats from '@/components/dashboard/profile/ProfileStats'
 import ProfileActivity from '@/components/dashboard/profile/ProfileActivity'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export const metadata: Metadata = {
-  title: 'Perfil | Dashboard | Caminhos de Hekate',
-  description: 'Gerencie seu perfil e informações pessoais'
-}
+// Metadata moved to parent layout or removed for client component compliance
 
 export default function ProfilePage() {
   return (

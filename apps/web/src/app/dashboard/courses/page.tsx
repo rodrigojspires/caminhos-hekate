@@ -1,4 +1,6 @@
 import { Metadata } from 'next'
+
+export const dynamic = 'force-dynamic'
 import MyCourses from '@/components/dashboard/courses/MyCourses'
 import CourseFilters from '@/components/dashboard/courses/CourseFilters'
 import CourseProgress from '@/components/dashboard/courses/CourseProgress'

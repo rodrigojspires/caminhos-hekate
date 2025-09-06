@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -94,7 +94,7 @@ export default function CalendarSyncNotifications({ integrationId }: CalendarSyn
   const [filter, setFilter] = useState<'all' | 'unread' | 'success' | 'error' | 'warning'>('all');
   const [hasChanges, setHasChanges] = useState(false);
 
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (integrationId) params.append('integrationId', integrationId);
@@ -111,9 +111,9 @@ export default function CalendarSyncNotifications({ integrationId }: CalendarSyn
     } finally {
       setLoading(false);
     }
-  }
+  }, [integrationId])
 
-  async function fetchSettings() {
+  const fetchSettings = useCallback(async () => {
     try {
       const response = await fetch('/api/calendar/notification-settings');
       if (response.ok) {
@@ -123,12 +123,12 @@ export default function CalendarSyncNotifications({ integrationId }: CalendarSyn
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchNotifications();
     fetchSettings();
-  }, [integrationId]);
+  }, [fetchNotifications, fetchSettings]);
 
   const saveSettings = async () => {
     try {

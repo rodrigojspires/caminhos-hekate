@@ -58,8 +58,31 @@ export function AchievementsAdmin() {
       setLoading(false)
     }
   }
-
-  useEffect(() => { fetchRows() }, [])
+  
+  // Carregamento inicial sem dependência de funções para evitar avisos de hooks
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/admin/gamification/achievements')
+        const data = await res.json()
+        if (!cancelled) {
+          if (!res.ok) throw new Error(data?.error || 'Erro ao listar conquistas')
+          setRows(data.data || [])
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error(e)
+          toast.error('Falha ao carregar conquistas')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
 
   // Categories for form
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([])
@@ -72,7 +95,20 @@ export function AchievementsAdmin() {
       console.warn('Falha ao carregar categorias', e)
     }
   }
-  useEffect(() => { fetchCategories() }, [])
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const res = await fetch('/api/admin/gamification/categories')
+        const data = await res.json()
+        if (!cancelled && res.ok) setCategories(data.data || [])
+      } catch (e) {
+        if (!cancelled) console.warn('Falha ao carregar categorias', e)
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
 
   const toggleActive = async (row: AchievementRow) => {
     try {
