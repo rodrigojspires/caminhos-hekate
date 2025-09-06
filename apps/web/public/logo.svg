@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Caminhos de Hekate</title>
+  <desc id="desc">Logo simples com triângulo e círculo</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="16" fill="#0f0f1a"/>
+  <circle cx="64" cy="64" r="36" fill="none" stroke="url(#g)" stroke-width="6"/>
+  <path d="M64 28 L92 92 H36 Z" fill="url(#g)" opacity="0.85"/>
+</svg>
