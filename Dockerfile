@@ -14,7 +14,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages ./packages
 RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
-RUN pnpm install --frozen-lockfile
+# Install including devDependencies so turbo is available during build
+RUN pnpm install --frozen-lockfile --prod=false
 
 # --- Build layer ---
 FROM deps AS build
