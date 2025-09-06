@@ -1,0 +1,409 @@
+src/app/api/calendar/sync/route.ts(82,11): error TS2322: Type '"SUCCESS" | "ERROR"' is not assignable to type 'SyncStatus | EnumSyncStatusFieldUpdateOperationsInput | undefined'.
+  Type '"SUCCESS"' is not assignable to type 'SyncStatus | EnumSyncStatusFieldUpdateOperationsInput | undefined'.
+src/app/api/events/[id]/reminders/[reminderId]/route.ts(255,9): error TS2698: Spread types may only be created from object types.
+src/app/api/events/[id]/reminders/route.ts(322,9): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type 'Without<EventReminderCreateInput, EventReminderUncheckedCreateInput> & EventReminderUncheckedCreateInput'.
+src/app/api/events/[id]/route.ts(68,9): error TS2561: Object literal may only specify known properties, but 'recurringEvent' does not exist in type 'EventInclude<DefaultArgs>'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/instances/route.ts(94,11): error TS2561: Object literal may only specify known properties, but 'recurringEventId' does not exist in type 'EventWhereInput'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/instances/route.ts(160,43): error TS2339: Property 'isException' does not exist on type '{ _count: { reminders: number; registrations: number; }; creator: { id: string; email: string; name: string | null; image: string | null; }; } & { title: string; description: string | null; type: EventType; ... 16 more ...; canceledAt: Date | null; }'.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(161,65): error TS2551: Property 'CANCELLED' does not exist on type '{ DRAFT: "DRAFT"; PUBLISHED: "PUBLISHED"; CANCELED: "CANCELED"; COMPLETED: "COMPLETED"; }'. Did you mean 'CANCELED'?
+src/app/api/events/recurring/[seriesId]/instances/route.ts(232,9): error TS2561: Object literal may only specify known properties, but 'recurringEvent' does not exist in type 'EventInclude<DefaultArgs>'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/instances/route.ts(248,26): error TS2339: Property 'recurringEventId' does not exist on type '{ title: string; description: string | null; type: EventType; startDate: Date; endDate: Date; timezone: string; location: string | null; virtualLink: string | null; ... 11 more ...; canceledAt: Date | null; }'.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(264,26): error TS2339: Property 'isException' does not exist on type '{ title: string; description: string | null; type: EventType; startDate: Date; endDate: Date; timezone: string; location: string | null; virtualLink: string | null; ... 11 more ...; canceledAt: Date | null; }'.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(277,33): error TS2551: Property 'CANCELLED' does not exist on type '{ DRAFT: "DRAFT"; PUBLISHED: "PUBLISHED"; CANCELED: "CANCELED"; COMPLETED: "COMPLETED"; }'. Did you mean 'CANCELED'?
+src/app/api/events/recurring/[seriesId]/instances/route.ts(278,13): error TS2353: Object literal may only specify known properties, and 'isException' does not exist in type '(Without<EventUpdateInput, EventUncheckedUpdateInput> & EventUncheckedUpdateInput) | (Without<...> & EventUpdateInput)'.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(280,15): error TS2698: Spread types may only be created from object types.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(306,13): error TS2353: Object literal may only specify known properties, and 'isException' does not exist in type '(Without<EventUpdateInput, EventUncheckedUpdateInput> & EventUncheckedUpdateInput) | (Without<...> & EventUpdateInput)'.
+src/app/api/events/recurring/[seriesId]/instances/route.ts(308,15): error TS2698: Spread types may only be created from object types.
+src/app/api/events/recurring/[seriesId]/route.ts(75,9): error TS2353: Object literal may only specify known properties, and 'instances' does not exist in type 'RecurringEventInclude<DefaultArgs>'.
+src/app/api/events/recurring/[seriesId]/route.ts(104,25): error TS2551: Property 'parentEvent' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'. Did you mean 'parentEventId'?
+src/app/api/events/recurring/[seriesId]/route.ts(113,39): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(114,42): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(114,59): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(115,38): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(115,55): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(116,35): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(116,52): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(117,43): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(117,61): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(117,66): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(164,9): error TS2353: Object literal may only specify known properties, and 'instances' does not exist in type 'RecurringEventInclude<DefaultArgs>'.
+src/app/api/events/recurring/[seriesId]/route.ts(182,24): error TS2551: Property 'parentEvent' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'. Did you mean 'parentEventId'?
+src/app/api/events/recurring/[seriesId]/route.ts(222,26): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(222,43): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/api/events/recurring/[seriesId]/route.ts(223,26): error TS2339: Property 'instances' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'.
+src/app/api/events/recurring/[seriesId]/route.ts(250,13): error TS2561: Object literal may only specify known properties, but 'recurringEventId' does not exist in type 'EventWhereInput'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/route.ts(259,11): error TS2345: Argument of type '{ interval: number; freq: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"; count?: number | undefined; until?: string | undefined; byweekday?: number[] | undefined; bymonthday?: number[] | undefined; bymonth?: number[] | undefined; }' is not assignable to parameter of type 'RecurrenceRule'.
+  Property 'frequency' is missing in type '{ interval: number; freq: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"; count?: number | undefined; until?: string | undefined; byweekday?: number[] | undefined; bymonthday?: number[] | undefined; bymonth?: number[] | undefined; }' but required in type 'RecurrenceRule'.
+src/app/api/events/recurring/[seriesId]/route.ts(273,31): error TS2339: Property 'start' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/recurring/[seriesId]/route.ts(274,29): error TS2339: Property 'end' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/recurring/[seriesId]/route.ts(283,13): error TS2698: Spread types may only be created from object types.
+src/app/api/events/recurring/[seriesId]/route.ts(286,41): error TS2339: Property 'start' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/recurring/[seriesId]/route.ts(356,9): error TS2353: Object literal may only specify known properties, and 'instances' does not exist in type 'RecurringEventInclude<DefaultArgs>'.
+src/app/api/events/recurring/[seriesId]/route.ts(368,24): error TS2551: Property 'parentEvent' does not exist on type '{ endDate: Date | null; id: string; createdAt: Date; updatedAt: Date; isActive: boolean; parentEventId: string; recurrenceRule: JsonValue; exceptions: Date[]; maxOccurrences: number | null; }'. Did you mean 'parentEventId'?
+src/app/api/events/recurring/[seriesId]/route.ts(380,13): error TS2561: Object literal may only specify known properties, but 'recurringEventId' does not exist in type 'EventWhereInput'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/route.ts(388,13): error TS2561: Object literal may only specify known properties, but 'recurringEventId' does not exist in type 'EventWhereInput'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/[seriesId]/route.ts(403,13): error TS2561: Object literal may only specify known properties, but 'recurringEventId' does not exist in type 'EventWhereInput'. Did you mean to write 'recurringEvents'?
+src/app/api/events/recurring/route.ts(153,11): error TS2353: Object literal may only specify known properties, and 'instances' does not exist in type 'RecurringEventInclude<DefaultArgs>'.
+src/app/api/events/recurring/route.ts(280,9): error TS2345: Argument of type '{ interval: number; freq: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"; count?: number | undefined; until?: string | undefined; byweekday?: number[] | undefined; bymonthday?: number[] | undefined; bymonth?: number[] | undefined; }' is not assignable to parameter of type 'RecurrenceRule'.
+  Property 'frequency' is missing in type '{ interval: number; freq: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY"; count?: number | undefined; until?: string | undefined; byweekday?: number[] | undefined; bymonthday?: number[] | undefined; bymonth?: number[] | undefined; }' but required in type 'RecurrenceRule'.
+src/app/api/events/recurring/route.ts(295,29): error TS2339: Property 'start' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/recurring/route.ts(296,27): error TS2339: Property 'end' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/recurring/route.ts(307,39): error TS2339: Property 'start' does not exist on type 'RecurringEventInstance'.
+src/app/api/events/sync/route.ts(62,29): error TS2551: Property 'creatorId' does not exist on type '{ creator: { calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; ... 8 more ...; calendarNotificationSettings: string | null; }; registrations: ({ ...; } & { ...; })[]; } & { ...; }'. Did you mean 'creator'?
+src/app/api/events/sync/route.ts(64,48): error TS2367: This comparison appears to be unintentional because the types 'EventRegistrationStatus' and '"confirmed"' have no overlap.
+src/app/api/events/sync/route.ts(91,26): error TS2551: Property 'creatorId' does not exist on type '{ creator: { calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; ... 8 more ...; calendarNotificationSettings: string | null; }; registrations: ({ ...; } & { ...; })[]; } & { ...; }'. Did you mean 'creator'?
+src/app/api/events/sync/route.ts(92,33): error TS2339: Property 'recurringEventId' does not exist on type '{ creator: { calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; ... 8 more ...; calendarNotificationSettings: string | null; }; registrations: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/app/api/events/sync/route.ts(93,31): error TS2339: Property 'recurrenceRule' does not exist on type '{ creator: { calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; ... 8 more ...; calendarNotificationSettings: string | null; }; registrations: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/app/api/events/sync/route.ts(101,87): error TS2345: Argument of type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is not assignable to parameter of type 'CalendarEvent'.
+  Type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is missing the following properties from type 'CalendarEvent': start, end, status, attendeeCount
+src/app/api/events/sync/route.ts(103,88): error TS2345: Argument of type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is not assignable to parameter of type 'CalendarEvent'.
+  Type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is missing the following properties from type 'CalendarEvent': start, end, status, attendeeCount
+src/app/api/events/sync/route.ts(111,15): error TS2345: Argument of type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is not assignable to parameter of type 'CalendarEvent'.
+  Type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is missing the following properties from type 'CalendarEvent': start, end, status, attendeeCount
+src/app/api/events/sync/route.ts(127,13): error TS2561: Object literal may only specify known properties, but 'eventId_provider_userId' does not exist in type 'EventSyncWhereUniqueInput'. Did you mean to write 'eventId_provider'?
+src/app/api/events/sync/route.ts(136,13): error TS2820: Type '"synced"' is not assignable to type 'SyncStatus | EnumSyncStatusFieldUpdateOperationsInput | undefined'. Did you mean '"SYNCED"'?
+src/app/api/events/sync/route.ts(140,13): error TS2322: Type '"google" | "outlook"' is not assignable to type 'CalendarProvider'.
+  Type '"google"' is not assignable to type 'CalendarProvider'. Did you mean '"GOOGLE"'?
+src/app/api/events/sync/route.ts(144,13): error TS2820: Type '"synced"' is not assignable to type 'SyncStatus | undefined'. Did you mean '"SYNCED"'?
+src/app/api/events/sync/route.ts(155,11): error TS2561: Object literal may only specify known properties, but 'eventId_provider_userId' does not exist in type 'EventSyncWhereUniqueInput'. Did you mean to write 'eventId_provider'?
+src/app/api/events/sync/route.ts(162,11): error TS2820: Type '"failed"' is not assignable to type 'SyncStatus | EnumSyncStatusFieldUpdateOperationsInput | undefined'. Did you mean '"FAILED"'?
+src/app/api/events/sync/route.ts(167,11): error TS2322: Type '"google" | "outlook"' is not assignable to type 'CalendarProvider'.
+  Type '"google"' is not assignable to type 'CalendarProvider'. Did you mean '"GOOGLE"'?
+src/app/api/events/sync/route.ts(169,11): error TS2820: Type '"failed"' is not assignable to type 'SyncStatus | undefined'. Did you mean '"FAILED"'?
+src/app/api/events/sync/route.ts(224,13): error TS2561: Object literal may only specify known properties, but 'creatorId' does not exist in type 'EventWhereInput'. Did you mean to write 'creator'?
+src/app/api/events/sync/route.ts(229,17): error TS2820: Type '"confirmed"' is not assignable to type 'EventRegistrationStatus | EnumEventRegistrationStatusFilter<"EventRegistration"> | undefined'. Did you mean '"CONFIRMED"'?
+src/app/api/events/sync/route.ts(262,28): error TS2339: Property 'creatorId' does not exist on type '{ title: string; description: string | null; type: EventType; startDate: Date; endDate: Date; timezone: string; location: string | null; virtualLink: string | null; ... 11 more ...; canceledAt: Date | null; }'.
+src/app/api/events/sync/route.ts(263,35): error TS2339: Property 'recurringEventId' does not exist on type '{ title: string; description: string | null; type: EventType; startDate: Date; endDate: Date; timezone: string; location: string | null; virtualLink: string | null; ... 11 more ...; canceledAt: Date | null; }'.
+src/app/api/events/sync/route.ts(264,33): error TS2339: Property 'recurrenceRule' does not exist on type '{ title: string; description: string | null; type: EventType; startDate: Date; endDate: Date; timezone: string; location: string | null; virtualLink: string | null; ... 11 more ...; canceledAt: Date | null; }'.
+src/app/api/events/sync/route.ts(273,76): error TS2345: Argument of type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is not assignable to parameter of type 'CalendarEvent'.
+  Type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is missing the following properties from type 'CalendarEvent': start, end, status, attendeeCount
+src/app/api/events/sync/route.ts(275,77): error TS2345: Argument of type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is not assignable to parameter of type 'CalendarEvent'.
+  Type '{ id: string; title: string; description: string | null; startDate: Date; endDate: Date; location: string | null; virtualLink: string | null; type: any; maxAttendees: number | null; ... 7 more ...; updatedAt: Date; }' is missing the following properties from type 'CalendarEvent': start, end, status, attendeeCount
+src/app/api/events/sync/route.ts(283,15): error TS2561: Object literal may only specify known properties, but 'eventId_provider_userId' does not exist in type 'EventSyncWhereUniqueInput'. Did you mean to write 'eventId_provider'?
+src/app/api/events/sync/route.ts(291,15): error TS2820: Type '"synced"' is not assignable to type 'SyncStatus | EnumSyncStatusFieldUpdateOperationsInput | undefined'. Did you mean '"SYNCED"'?
+src/app/api/events/sync/route.ts(295,15): error TS2322: Type '"google" | "outlook"' is not assignable to type 'CalendarProvider'.
+  Type '"google"' is not assignable to type 'CalendarProvider'. Did you mean '"GOOGLE"'?
+src/app/api/events/sync/route.ts(298,15): error TS2820: Type '"synced"' is not assignable to type 'SyncStatus | undefined'. Did you mean '"SYNCED"'?
+src/app/api/events/sync/route.ts(402,39): error TS2367: This comparison appears to be unintentional because the types 'SyncStatus' and '"synced"' have no overlap.
+src/app/api/events/sync/route.ts(403,39): error TS2367: This comparison appears to be unintentional because the types 'SyncStatus' and '"failed"' have no overlap.
+src/app/api/events/sync/route.ts(404,40): error TS2367: This comparison appears to be unintentional because the types 'SyncStatus' and '"pending"' have no overlap.
+src/app/api/events/sync/route.ts(406,41): error TS2367: This comparison appears to be unintentional because the types 'CalendarProvider' and '"google"' have no overlap.
+src/app/api/events/sync/route.ts(407,42): error TS2367: This comparison appears to be unintentional because the types 'CalendarProvider' and '"outlook"' have no overlap.
+src/app/api/events/sync/route.ts(416,33): error TS2551: Property 'externalEventId' does not exist on type '{ event: { title: string; type: EventType; startDate: Date; endDate: Date; id: string; }; } & { metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 5 more ...; lastSyncAt: Date | null; }'. Did you mean 'externalId'?
+src/app/api/events/sync/route.ts(467,9): error TS2561: Object literal may only specify known properties, but 'eventId_provider_userId' does not exist in type 'EventSyncWhereUniqueInput'. Did you mean to write 'eventId_provider'?
+src/app/api/events/sync/route.ts(483,20): error TS2551: Property 'externalEventId' does not exist on type '{ metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; eventId: string; externalId: string; provider: CalendarProvider; syncStatus: SyncStatus; syncError: string | null; lastSyncAt: Date | null; }'. Did you mean 'externalId'?
+src/app/api/events/sync/route.ts(486,81): error TS2551: Property 'externalEventId' does not exist on type '{ metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; eventId: string; externalId: string; provider: CalendarProvider; syncStatus: SyncStatus; syncError: string | null; lastSyncAt: Date | null; }'. Did you mean 'externalId'?
+src/app/api/gamification/notifications/route.ts(26,9): error TS2353: Object literal may only specify known properties, and 'page' does not exist in type '{ limit?: number | undefined; offset?: number | undefined; unreadOnly?: boolean | undefined; types?: NotificationType[] | undefined; }'.
+src/app/api/gamification/notifications/route.ts(68,7): error TS2353: Object literal may only specify known properties, and 'sendPush' does not exist in type 'CreateNotificationParams'.
+src/app/api/gamification/rewards/[id]/claim/route.ts(30,37): error TS2339: Property 'userReward' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/gamification/streaks/route.ts(42,11): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'UserStreakOrderByWithRelationInput'.
+src/app/api/groups/[id]/invites/route.ts(207,13): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupMemberWhereInput'.
+src/app/api/groups/[id]/public/route.ts(18,9): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupWhereUniqueInput'.
+src/app/api/groups/[id]/public/route.ts(96,15): error TS2339: Property 'isPrivate' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(110,11): error TS2353: Object literal may only specify known properties, and 'userId_groupId' does not exist in type 'GroupMemberWhereUniqueInput'.
+src/app/api/groups/[id]/public/route.ts(136,11): error TS2353: Object literal may only specify known properties, and 'userId_groupId' does not exist in type 'GroupMemberWhereUniqueInput'.
+src/app/api/groups/[id]/public/route.ts(150,35): error TS2339: Property '_count' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(155,15): error TS2339: Property 'isPrivate' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(163,23): error TS2339: Property 'imageUrl' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(164,24): error TS2339: Property 'isPrivate' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(165,23): error TS2339: Property 'category' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(169,22): error TS2339: Property 'creator' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(170,21): error TS2339: Property '_count' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(171,22): error TS2339: Property 'members' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/public/route.ts(172,27): error TS2339: Property 'events' does not exist on type '{ description: string | null; type: GroupType; requiresApproval: boolean; tags: string[]; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; ... 7 more ...; archivedAt: Date | null; }'.
+src/app/api/groups/[id]/route.ts(32,7): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupMemberWhereInput'.
+src/app/api/groups/[id]/route.ts(44,49): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/[id]/route.ts(75,32): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/[id]/route.ts(172,39): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/[id]/route.ts(266,17): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type '(Without<GroupMemberUpdateManyMutationInput, GroupMemberUncheckedUpdateManyInput> & GroupMemberUncheckedUpdateManyInput) | (Without<...> & GroupMemberUpdateManyMutationInput)'.
+src/app/api/groups/[id]/route.ts(269,14): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/invites/[token]/route.ts(19,33): error TS2339: Property 'groupInvite' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/invites/[token]/route.ts(127,33): error TS2339: Property 'groupInvite' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/invites/[token]/route.ts(183,9): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupMemberWhereInput'.
+src/app/api/groups/invites/[token]/route.ts(217,11): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupMemberWhereInput'.
+src/app/api/groups/invites/[token]/route.ts(228,13): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type '(Without<GroupMemberUpdateInput, GroupMemberUncheckedUpdateInput> & GroupMemberUncheckedUpdateInput) | (Without<...> & GroupMemberUpdateInput)'.
+src/app/api/groups/invites/[token]/route.ts(258,13): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'Without<GroupMemberCreateInput, GroupMemberUncheckedCreateInput> & GroupMemberUncheckedCreateInput'.
+src/app/api/groups/invites/[token]/route.ts(281,16): error TS2339: Property 'groupInvite' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">'.
+src/app/api/groups/invites/[token]/route.ts(295,11): error TS2353: Object literal may only specify known properties, and 'memberCount' does not exist in type '(Without<GroupUpdateInput, GroupUncheckedUpdateInput> & GroupUncheckedUpdateInput) | (Without<...> & GroupUpdateInput)'.
+src/app/api/groups/invites/[token]/route.ts(311,48): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(54,13): error TS2353: Object literal may only specify known properties, and 'settings' does not exist in type 'GroupSelect<DefaultArgs>'.
+src/app/api/groups/invites/route.ts(74,61): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(75,58): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(83,54): error TS2367: This comparison appears to be unintentional because the types '"ADMIN" | "MEMBER" | "MODERATOR"' and '"OWNER"' have no overlap.
+src/app/api/groups/invites/route.ts(91,16): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(91,43): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(91,74): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(124,13): error TS2561: Object literal may only specify known properties, but 'groupMembers' does not exist in type 'UserInclude<DefaultArgs>'. Did you mean to write 'groupMemberships'?
+src/app/api/groups/invites/route.ts(133,27): error TS2339: Property 'groupMembers' does not exist on type '{ calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; name: string | null; ... 7 more ...; calendarNotificationSettings: string | null; }'.
+src/app/api/groups/invites/route.ts(138,45): error TS2339: Property 'groupInvite' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/invites/route.ts(156,37): error TS2339: Property 'groupInvite' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/invites/route.ts(190,53): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(193,33): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(194,40): error TS2551: Property 'group' does not exist on type '{ metadata: JsonValue; status: GroupMemberStatus; id: string; createdAt: Date; updatedAt: Date; userId: string; role: GroupMemberRole; ... 4 more ...; permissions: JsonValue; }'. Did you mean 'groupId'?
+src/app/api/groups/invites/route.ts(216,35): error TS2339: Property 'groupInvite' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/public-stats/route.ts(14,11): error TS2353: Object literal may only specify known properties, and 'isPrivate' does not exist in type 'GroupWhereInput'.
+src/app/api/groups/public-stats/route.ts(22,11): error TS2353: Object literal may only specify known properties, and 'isPrivate' does not exist in type 'GroupWhereInput'.
+src/app/api/groups/public-stats/route.ts(32,13): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type '(Without<GroupRelationFilter, GroupWhereInput> & GroupWhereInput) | (Without<GroupWhereInput, GroupRelationFilter> & GroupRelationFilter)'.
+src/app/api/groups/public-stats/route.ts(40,11): error TS2353: Object literal may only specify known properties, and 'isActive' does not exist in type 'GroupWhereInput'.
+src/app/api/groups/route.ts(59,14): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/route.ts(97,14): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/route.ts(103,28): error TS7006: Parameter 'group' implicitly has an 'any' type.
+src/app/api/groups/route.ts(107,40): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/app/api/groups/route.ts(142,42): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/route.ts(153,32): error TS2339: Property 'privateGroup' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/groups/ws/route.ts(42,48): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/api/groups/ws/route.ts(70,58): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/app/api/themes/[id]/route.ts(9,3): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/[id]/route.ts(10,3): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/[id]/route.ts(11,3): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/[id]/route.ts(12,3): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/[id]/route.ts(255,9): error TS2353: Object literal may only specify known properties, and 'description' does not exist in type '{ name: string; colors: { error: string; primary: string; text: string; secondary: string; background: string; surface: string; textSecondary: string; border: string; success: string; warning: string; }; isPublic?: boolean | undefined; typography?: { ...; } | undefined; spacing?: { ...; } | undefined; }'.
+src/app/api/themes/[id]/route.ts(255,36): error TS2339: Property 'description' does not exist on type '{ id: string; userId: string | null; name: string; colors: { error: string; primary: string; text: string; secondary: string; background: string; surface: string; textSecondary: string; border: string; success: string; warning: string; }; ... 4 more ...; updatedAt: Date; }'.
+src/app/api/themes/route.ts(8,52): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/route.ts(8,62): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/route.ts(8,76): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/route.ts(8,93): error TS2322: Type 'true' is not assignable to type 'never'.
+src/app/api/themes/route.ts(26,51): error TS2554: Expected 0 arguments, but got 2.
+src/app/api/themes/route.ts(35,35): error TS2339: Property 'getUserThemes' does not exist on type 'ThemeService'.
+src/app/api/themes/route.ts(38,63): error TS2554: Expected 0 arguments, but got 2.
+src/app/api/themes/route.ts(41,47): error TS2339: Property 'getUserThemes' does not exist on type 'ThemeService'.
+src/app/api/themes/route.ts(86,7): error TS2345: Argument of type '{}' is not assignable to parameter of type '{ name: string; colors: { error: string; primary: string; text: string; secondary: string; background: string; surface: string; textSecondary: string; border: string; success: string; warning: string; }; isPublic?: boolean | undefined; typography?: { ...; } | undefined; spacing?: { ...; } | undefined; }'.
+  Type '{}' is missing the following properties from type '{ name: string; colors: { error: string; primary: string; text: string; secondary: string; background: string; surface: string; textSecondary: string; border: string; success: string; warning: string; }; isPublic?: boolean | undefined; typography?: { ...; } | undefined; spacing?: { ...; } | undefined; }': name, colors
+src/app/api/user/activities/route.ts(23,11): error TS7034: Variable 'activities' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/app/api/user/activities/route.ts(26,40): error TS2339: Property 'lessonCompletion' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/activities/route.ts(43,27): error TS7006: Parameter 'completion' implicitly has an 'any' type.
+src/app/api/user/activities/route.ts(59,44): error TS2339: Property 'courseProgress' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/activities/route.ts(76,31): error TS7006: Parameter 'enrollment' implicitly has an 'any' type.
+src/app/api/user/activities/route.ts(119,41): error TS2339: Property 'communityPost' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/activities/route.ts(132,28): error TS7006: Parameter 'post' implicitly has an 'any' type.
+src/app/api/user/activities/route.ts(148,35): error TS2339: Property 'communityComment' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/activities/route.ts(161,22): error TS7006: Parameter 'comment' implicitly has an 'any' type.
+src/app/api/user/activities/route.ts(176,5): error TS7005: Variable 'activities' implicitly has an 'any[]' type.
+src/app/api/user/activities/route.ts(179,33): error TS7005: Variable 'activities' implicitly has an 'any[]' type.
+src/app/api/user/progress/route.ts(20,41): error TS2339: Property 'courseProgress' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/progress/route.ts(35,52): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(36,53): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(37,58): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(37,63): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(38,49): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(38,54): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/app/api/user/progress/route.ts(53,42): error TS2339: Property 'lessonCompletion' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/progress/route.ts(77,43): error TS2339: Property 'lessonCompletion' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/progress/route.ts(87,41): error TS2339: Property 'studySession' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/user/progress/route.ts(118,42): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/app/calendario/page.tsx(53,5): error TS2353: Object literal may only specify known properties, and 'statuses' does not exist in type 'EventFilters | (() => EventFilters)'.
+src/app/calendario/page.tsx(77,9): error TS18048: 'filters.types' is possibly 'undefined'.
+src/app/calendario/page.tsx(77,38): error TS18048: 'filters.types' is possibly 'undefined'.
+src/app/calendario/page.tsx(82,17): error TS2551: Property 'statuses' does not exist on type 'EventFilters'. Did you mean 'status'?
+src/app/calendario/page.tsx(82,49): error TS2551: Property 'statuses' does not exist on type 'EventFilters'. Did you mean 'status'?
+src/app/calendario/page.tsx(87,17): error TS2339: Property 'location' does not exist on type 'EventFilters'.
+src/app/calendario/page.tsx(87,77): error TS2339: Property 'location' does not exist on type 'EventFilters'.
+src/app/calendario/page.tsx(92,9): error TS18048: 'filters.tags' is possibly 'undefined'.
+src/app/calendario/page.tsx(93,30): error TS18048: 'filters.tags' is possibly 'undefined'.
+src/app/calendario/page.tsx(100,17): error TS2339: Property 'dateRange' does not exist on type 'EventFilters'.
+src/app/calendario/page.tsx(101,40): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(102,31): error TS2339: Property 'dateRange' does not exist on type 'EventFilters'.
+src/app/calendario/page.tsx(102,70): error TS2339: Property 'dateRange' does not exist on type 'EventFilters'.
+src/app/calendario/page.tsx(112,40): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(125,44): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(134,44): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(230,35): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(231,33): error TS2339: Property 'endDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(394,15): error TS2322: Type '{ events: CalendarEvent[]; currentDate: Date; viewMode: "month" | "week" | "day"; onDateSelect: Dispatch<SetStateAction<Date | null>>; onEventClick: (event: any) => Window | null; }' is not assignable to type 'IntrinsicAttributes & CalendarProps'.
+  Property 'events' does not exist on type 'IntrinsicAttributes & CalendarProps'.
+src/app/calendario/page.tsx(398,30): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/app/calendario/page.tsx(464,56): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(475,56): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(493,53): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(494,48): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(494,82): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(504,43): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(517,66): error TS2339: Property 'startDate' does not exist on type 'CalendarEvent'.
+src/app/calendario/page.tsx(532,11): error TS2322: Type '{ isOpen: true; onClose: () => void; onEventCreated: (event: any) => void; }' is not assignable to type 'IntrinsicAttributes & CreateEventModalProps'.
+  Property 'isOpen' does not exist on type 'IntrinsicAttributes & CreateEventModalProps'. Did you mean 'open'?
+src/app/calendario/page.tsx(534,28): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/app/dashboard/gamification/achievements/page.tsx(55,5): error TS2339: Property 'isLoading' does not exist on type 'GamificationState'.
+src/app/dashboard/gamification/achievements/page.tsx(61,7): error TS2322: Type 'AchievementCategory | undefined' is not assignable to type 'string | undefined'.
+  Type 'AchievementCategory' is not assignable to type 'string'.
+src/app/dashboard/gamification/achievements/page.tsx(78,67): error TS2339: Property 'unlockedAt' does not exist on type 'Achievement'.
+src/app/dashboard/gamification/achievements/page.tsx(79,66): error TS2339: Property 'unlockedAt' does not exist on type 'Achievement'.
+src/app/dashboard/gamification/achievements/page.tsx(81,8): error TS2339: Property 'unlockedAt' does not exist on type 'Achievement'.
+src/app/dashboard/gamification/achievements/page.tsx(81,24): error TS2339: Property 'progress' does not exist on type 'Achievement'.
+src/app/dashboard/gamification/achievements/page.tsx(81,38): error TS2339: Property 'progress' does not exist on type 'Achievement'.
+src/app/dashboard/gamification/achievements/page.tsx(219,17): error TS2322: Type 'AchievementCategory | "ALL"' is not assignable to type 'string | number | readonly string[] | undefined'.
+  Type 'AchievementCategory' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/app/dashboard/grupos/[id]/page.tsx(51,11): error TS2339: Property 'id' does not exist on type '{ id: string; } | null'.
+src/app/eventos/[id]/edit/page.tsx(35,11): error TS2339: Property 'id' does not exist on type '{ id: string; } | null'.
+src/app/eventos/[id]/page.tsx(35,11): error TS2339: Property 'id' does not exist on type '{ id: string; } | null'.
+src/app/grupos/[id]/page.tsx(77,11): error TS2339: Property 'id' does not exist on type '{ id: string; } | null'.
+src/app/grupos/convite/[token]/page.tsx(43,11): error TS2339: Property 'token' does not exist on type '{ token: string; } | null'.
+src/app/grupos/convite/[token]/page.tsx(57,14): error TS2448: Block-scoped variable 'fetchInviteData' used before its declaration.
+src/app/grupos/convite/[token]/page.tsx(57,14): error TS2454: Variable 'fetchInviteData' is used before being assigned.
+src/components/analytics/AnalyticsDashboard.tsx(289,24): error TS2322: Type '{ dateRange: string; }' is not assignable to type 'IntrinsicAttributes & EventsTableProps'.
+  Property 'dateRange' does not exist on type 'IntrinsicAttributes & EventsTableProps'.
+src/components/analytics/RealtimeUpdates.tsx(73,9): error TS7022: 'connect' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+src/components/analytics/RealtimeUpdates.tsx(181,32): error TS2448: Block-scoped variable 'scheduleReconnect' used before its declaration.
+src/components/analytics/RealtimeUpdates.tsx(181,32): error TS2454: Variable 'scheduleReconnect' is used before being assigned.
+src/components/analytics/RealtimeUpdates.tsx(181,51): error TS2448: Block-scoped variable 'startPing' used before its declaration.
+src/components/analytics/RealtimeUpdates.tsx(181,51): error TS2454: Variable 'startPing' is used before being assigned.
+src/components/analytics/RealtimeUpdates.tsx(204,9): error TS7022: 'scheduleReconnect' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+src/components/calendar/CalendarFieldMapping.tsx(165,40): error TS2448: Block-scoped variable 'loadMappings' used before its declaration.
+src/components/calendar/CalendarFieldMapping.tsx(165,40): error TS2454: Variable 'loadMappings' is used before being assigned.
+src/components/calendar/CalendarFieldMapping.tsx(165,54): error TS2448: Block-scoped variable 'loadDefaultMappings' used before its declaration.
+src/components/calendar/CalendarFieldMapping.tsx(165,54): error TS2454: Variable 'loadDefaultMappings' is used before being assigned.
+src/components/calendar/CalendarIntegrations.tsx(363,62): error TS2345: Argument of type 'Date | undefined' is not assignable to parameter of type 'Date | null'.
+  Type 'undefined' is not assignable to type 'Date | null'.
+src/components/calendar/CalendarIntegrations.tsx(411,35): error TS2322: Type '{ integration: CalendarIntegration; onUpdate: () => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & CalendarIntegrationSettingsProps'.
+  Property 'integration' does not exist on type 'IntrinsicAttributes & CalendarIntegrationSettingsProps'.
+src/components/calendar/CalendarIntegrations.tsx(437,35): error TS2322: Type '{ integration: CalendarIntegration; }' is not assignable to type 'IntrinsicAttributes & CalendarSyncDashboardProps'.
+  Property 'integration' does not exist on type 'IntrinsicAttributes & CalendarSyncDashboardProps'.
+src/components/calendar/CalendarPrivacySettings.tsx(138,22): error TS2448: Block-scoped variable 'fetchSettings' used before its declaration.
+src/components/calendar/CalendarPrivacySettings.tsx(138,22): error TS2454: Variable 'fetchSettings' is used before being assigned.
+src/components/calendar/CalendarSyncDashboard.tsx(94,7): error TS2448: Block-scoped variable 'fetchDashboardData' used before its declaration.
+src/components/calendar/CalendarSyncDashboard.tsx(94,7): error TS2454: Variable 'fetchDashboardData' is used before being assigned.
+src/components/calendar/CalendarSyncNotifications.tsx(100,22): error TS2448: Block-scoped variable 'fetchNotifications' used before its declaration.
+src/components/calendar/CalendarSyncNotifications.tsx(100,22): error TS2454: Variable 'fetchNotifications' is used before being assigned.
+src/components/calendar/CalendarSyncNotifications.tsx(100,42): error TS2448: Block-scoped variable 'fetchSettings' used before its declaration.
+src/components/calendar/CalendarSyncNotifications.tsx(100,42): error TS2454: Variable 'fetchSettings' is used before being assigned.
+src/components/dashboard/community/CommentThread.tsx(584,24): error TS2741: Property 'src' is missing in type '{ className: string; alt: string; }' but required in type '{ src: string | StaticImport; alt: string; width?: number | `${number}` | undefined; height?: number | `${number}` | undefined; fill?: boolean | undefined; loader?: ImageLoader | undefined; ... 11 more ...; lazyRoot?: string | undefined; }'.
+src/components/dashboard/community/PostEditor.tsx(498,70): error TS2322: Type '{ className: string; alt: string; }' is not assignable to type 'IntrinsicAttributes & LucideProps'.
+  Property 'alt' does not exist on type 'IntrinsicAttributes & LucideProps'.
+src/components/dashboard/community/PostEditor.tsx(499,70): error TS2322: Type '{ className: string; alt: string; }' is not assignable to type 'IntrinsicAttributes & LucideProps'.
+  Property 'alt' does not exist on type 'IntrinsicAttributes & LucideProps'.
+src/components/dashboard/community/PostEditor.tsx(500,73): error TS2322: Type '{ className: string; alt: string; }' is not assignable to type 'IntrinsicAttributes & LucideProps'.
+  Property 'alt' does not exist on type 'IntrinsicAttributes & LucideProps'.
+src/components/email/EmailCampaignManager.tsx(163,23): error TS7053: Element implicitly has an 'any' type because expression of type 'EmailCampaignStatus' can't be used to index type '{ readonly DRAFT: "secondary"; readonly SCHEDULED: "outline"; readonly SENDING: "default"; readonly SENT: "default"; readonly PAUSED: "secondary"; readonly CANCELLED: "destructive"; }'.
+  Property '[EmailCampaignStatus.COMPLETED]' does not exist on type '{ readonly DRAFT: "secondary"; readonly SCHEDULED: "outline"; readonly SENDING: "default"; readonly SENT: "default"; readonly PAUSED: "secondary"; readonly CANCELLED: "destructive"; }'.
+src/components/email/EmailCampaignManager.tsx(164,10): error TS7053: Element implicitly has an 'any' type because expression of type 'EmailCampaignStatus' can't be used to index type '{ DRAFT: string; SCHEDULED: string; SENDING: string; SENT: string; PAUSED: string; CANCELLED: string; }'.
+  Property '[EmailCampaignStatus.COMPLETED]' does not exist on type '{ DRAFT: string; SCHEDULED: string; SENDING: string; SENT: string; PAUSED: string; CANCELLED: string; }'.
+src/components/email/EmailCampaignManager.tsx(240,39): error TS2339: Property 'tags' does not exist on type 'EmailCampaign'.
+src/components/email/EmailCampaignManager.tsx(242,43): error TS2339: Property 'tags' does not exist on type 'EmailCampaign'.
+src/components/email/EmailCampaignManager.tsx(242,65): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/components/email/EmailCampaignManager.tsx(247,43): error TS2339: Property 'tags' does not exist on type 'EmailCampaign'.
+src/components/email/EmailCampaignManager.tsx(249,48): error TS2339: Property 'tags' does not exist on type 'EmailCampaign'.
+src/components/email/EmailCampaignManager.tsx(258,39): error TS2551: Property 'template' does not exist on type 'EmailCampaign'. Did you mean 'templateId'?
+src/components/email/EmailCampaignManager.tsx(262,43): error TS2345: Argument of type 'string' is not assignable to parameter of type 'EmailCampaignStatus'.
+src/components/email/EmailCampaignManager.tsx(302,41): error TS2345: Argument of type 'string' is not assignable to parameter of type 'EmailCampaignStatus'.
+src/components/email/EmailCampaignManager.tsx(308,41): error TS2345: Argument of type 'string' is not assignable to parameter of type 'EmailCampaignStatus'.
+src/components/email/EmailCampaignManager.tsx(314,40): error TS2345: Argument of type 'string' is not assignable to parameter of type 'EmailCampaignStatus'.
+src/components/email/EmailStatsViewer.tsx(380,79): error TS2322: Type '{ value: number; className: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+src/components/email/EmailStatsViewer.tsx(388,84): error TS2322: Type '{ value: number; className: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+src/components/email/EmailTemplateEditor.tsx(16,51): error TS2614: Module '"@/lib/email"' has no exported member 'EmailCategory'. Did you mean to use 'import EmailCategory from "@/lib/email"' instead?
+src/components/email/EmailTemplateEditor.tsx(44,28): error TS2339: Property 'description' does not exist on type 'EmailTemplate'.
+src/components/email/EmailTemplateEditor.tsx(50,25): error TS2339: Property 'isActive' does not exist on type 'EmailTemplate'.
+src/components/gamification/AchievementNotification.tsx(170,28): error TS2448: Block-scoped variable 'handleClose' used before its declaration.
+src/components/gamification/AchievementNotification.tsx(170,28): error TS2454: Variable 'handleClose' is used before being assigned.
+src/components/gamification/achievements/AchievementBadge.tsx(102,51): error TS2551: Property 'isUnlocked' does not exist on type 'UserAchievement'. Did you mean 'unlockedAt'?
+src/components/gamification/achievements/AchievementBadge.tsx(103,49): error TS2339: Property 'progress' does not exist on type 'UserAchievement'.
+src/components/gamification/achievements/AchievementBadge.tsx(106,51): error TS2339: Property 'targetValue' does not exist on type 'AchievementCriteria'.
+src/components/gamification/achievements/AchievementBadge.tsx(107,49): error TS2339: Property 'targetValue' does not exist on type 'AchievementCriteria'.
+src/components/gamification/achievements/AchievementBadge.tsx(192,79): error TS2339: Property 'targetValue' does not exist on type 'AchievementCriteria'.
+src/components/gamification/achievements/AchievementBadge.tsx(238,42): error TS2339: Property 'description' does not exist on type 'AchievementCriteria'.
+src/components/gamification/charts/ProgressChart.tsx(70,5): error TS2339: Property 'isLoading' does not exist on type 'GamificationState'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(20,5): error TS2339: Property 'recentAchievements' does not exist on type 'GamificationState'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(21,5): error TS2339: Property 'currentStreak' does not exist on type 'GamificationState'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(23,5): error TS2339: Property 'isLoading' does not exist on type 'GamificationState'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(24,5): error TS2339: Property 'initializeGamificationData' does not exist on type 'GamificationState'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(100,31): error TS2339: Property 'totalAchievements' does not exist on type 'UserStats'.
+src/components/gamification/dashboard/GamificationDashboard.tsx(133,57): error TS7006: Parameter 'achievement' implicitly has an 'any' type.
+src/components/gamification/dashboard/GamificationDashboard.tsx(169,39): error TS7006: Parameter 'achievement' implicitly has an 'any' type.
+src/components/gamification/dashboard/RecentActivity.tsx(30,12): error TS2678: Type '"COURSE_COMPLETION"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(32,12): error TS2678: Type '"ACHIEVEMENT_UNLOCK"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(34,12): error TS2678: Type '"DAILY_LOGIN"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(36,12): error TS2678: Type '"STREAK_BONUS"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(38,12): error TS2678: Type '"LEVEL_UP"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(47,12): error TS2678: Type '"COURSE_COMPLETION"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(49,12): error TS2678: Type '"ACHIEVEMENT_UNLOCK"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(51,12): error TS2678: Type '"DAILY_LOGIN"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(53,12): error TS2678: Type '"STREAK_BONUS"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(55,12): error TS2678: Type '"LEVEL_UP"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(57,12): error TS2678: Type '"MANUAL_ADJUSTMENT"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(66,12): error TS2678: Type '"COURSE_COMPLETION"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(68,12): error TS2678: Type '"ACHIEVEMENT_UNLOCK"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(70,12): error TS2678: Type '"DAILY_LOGIN"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(72,12): error TS2678: Type '"STREAK_BONUS"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(74,12): error TS2678: Type '"LEVEL_UP"' is not comparable to type 'ActionType'.
+src/components/gamification/dashboard/RecentActivity.tsx(81,34): error TS2339: Property 'points' does not exist on type 'PointTransaction'.
+src/components/gamification/dashboard/RecentActivity.tsx(100,51): error TS2339: Property 'points' does not exist on type 'PointTransaction'.
+src/components/gamification/dashboard/RecentActivity.tsx(115,22): error TS2339: Property 'description' does not exist on type 'PointTransaction'.
+src/components/gamification/dashboard/RecentActivity.tsx(117,26): error TS2339: Property 'description' does not exist on type 'PointTransaction'.
+src/components/gamification/dashboard/RecentActivity.tsx(126,31): error TS2339: Property 'isLoading' does not exist on type 'GamificationState'.
+src/components/gamification/ExpandedAchievementDashboard.tsx(218,34): error TS2339: Property 'level' does not exist on type 'UserStats'.
+src/components/gamification/GamificationDashboard.tsx(49,26): error TS2339: Property 'markAsRead' does not exist on type '{ userPoints: UserPoints | null; achievements: Achievement[]; userStreaks: UserStreak[]; badges: Badge[]; notifications: GamificationNotification[]; ... 20 more ...; refreshStats: () => Promise<...>; }'.
+src/components/gamification/GamificationDashboard.tsx(352,41): error TS2322: Type '{ userId: string | undefined; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'userId' does not exist on type 'IntrinsicAttributes'.
+src/components/gamification/GamificationDashboard.tsx(356,25): error TS2322: Type '{ userId: string | undefined; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'userId' does not exist on type 'IntrinsicAttributes'.
+src/components/gamification/GamificationIntegration.tsx(36,5): error TS2339: Property 'streaks' does not exist on type '{ userPoints: UserPoints | null; achievements: Achievement[]; userStreaks: UserStreak[]; badges: Badge[]; notifications: GamificationNotification[]; ... 20 more ...; refreshStats: () => Promise<...>; }'.
+src/components/gamification/GamificationIntegration.tsx(40,5): error TS2339: Property 'refreshData' does not exist on type '{ userPoints: UserPoints | null; achievements: Achievement[]; userStreaks: UserStreak[]; badges: Badge[]; notifications: GamificationNotification[]; ... 20 more ...; refreshStats: () => Promise<...>; }'.
+src/components/gamification/GamificationIntegration.tsx(45,23): error TS2554: Expected 0 arguments, but got 1.
+src/components/gamification/GamificationIntegration.tsx(106,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/gamification/GamificationIntegration.tsx(165,49): error TS2322: Type '{ userId: string; }' is not assignable to type 'IntrinsicAttributes & NotificationSystemProps'.
+  Property 'userId' does not exist on type 'IntrinsicAttributes & NotificationSystemProps'.
+src/components/gamification/NotificationSystem.tsx(154,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'Omit<GamificationNotification, "id" | "createdAt">'.
+src/components/gamification/NotificationSystem.tsx(167,7): error TS2322: Type '"BADGE_EARNED"' is not assignable to type '"achievement_unlocked" | "level_up" | "streak_milestone" | "rank_change"'.
+src/components/gamification/NotificationSystem.tsx(177,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'Omit<GamificationNotification, "id" | "createdAt">'.
+src/components/gamification/NotificationSystem.tsx(188,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'Omit<GamificationNotification, "id" | "createdAt">'.
+src/components/gamification/NotificationSystem.tsx(200,7): error TS2322: Type '"POINTS_EARNED"' is not assignable to type '"achievement_unlocked" | "level_up" | "streak_milestone" | "rank_change"'.
+src/components/gamification/profile/UserProfile.tsx(76,5): error TS2339: Property 'userStreaks' does not exist on type 'GamificationState'.
+src/components/gamification/profile/UserProfile.tsx(78,5): error TS2339: Property 'isLoading' does not exist on type 'GamificationState'.
+src/components/gamification/profile/UserProfile.tsx(81,5): error TS2339: Property 'fetchUserStreaks' does not exist on type 'GamificationState'.
+src/components/gamification/profile/UserProfile.tsx(116,31): error TS2339: Property 'level' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(123,21): error TS2339: Property 'unlockedAt' does not exist on type 'Achievement'.
+src/components/gamification/profile/UserProfile.tsx(160,26): error TS2339: Property 'totalAchievements' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(217,58): error TS2339: Property 'totalAchievements' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(282,72): error TS2339: Property 'POINTS' does not exist on type 'Record<LeaderboardCategory, number>'.
+src/components/gamification/profile/UserProfile.tsx(288,72): error TS2339: Property 'ACHIEVEMENTS' does not exist on type 'Record<LeaderboardCategory, number>'.
+src/components/gamification/profile/UserProfile.tsx(294,72): error TS2339: Property 'STREAKS' does not exist on type 'Record<LeaderboardCategory, number>'.
+src/components/gamification/profile/UserProfile.tsx(302,36): error TS2339: Property 'recentActivities' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(302,62): error TS2339: Property 'recentActivities' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(310,22): error TS2339: Property 'recentActivities' does not exist on type 'UserStats'.
+src/components/gamification/profile/UserProfile.tsx(310,56): error TS7006: Parameter 'activity' implicitly has an 'any' type.
+src/components/gamification/profile/UserProfile.tsx(310,66): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/components/gamification/streaks/StreakDisplay.tsx(55,33): error TS2551: Property 'lastActivityAt' does not exist on type 'UserStreak'. Did you mean 'lastActivityDate'?
+src/components/gamification/streaks/StreakDisplay.tsx(55,66): error TS2551: Property 'lastActivityAt' does not exist on type 'UserStreak'. Did you mean 'lastActivityDate'?
+src/components/gamification/streaks/StreakDisplay.tsx(56,27): error TS2339: Property 'isActive' does not exist on type 'UserStreak'.
+src/hooks/useGroupChat.ts(232,13): error TS18048: 'session.user' is possibly 'undefined'.
+src/lib/background/reminder-processor.ts(239,48): error TS2554: Expected 1 arguments, but got 2.
+src/lib/calendarDataTransformer.ts(173,9): error TS2353: Object literal may only specify known properties, and 'sensitivity' does not exist in type 'OutlookCalendarEvent'.
+src/lib/calendarDataTransformer.ts(218,9): error TS2322: Type '{ id: string; type: "EMAIL" | "PUSH"; minutes: number; method: "email" | "popup"; }[] | undefined' is not assignable to type 'CalendarReminder[] | undefined'.
+  Type '{ id: string; type: "EMAIL" | "PUSH"; minutes: number; method: "email" | "popup"; }[]' is not assignable to type 'CalendarReminder[]'.
+    Type '{ id: string; type: "EMAIL" | "PUSH"; minutes: number; method: "email" | "popup"; }' is not assignable to type 'CalendarReminder'.
+      Types of property 'type' are incompatible.
+        Type '"EMAIL" | "PUSH"' is not assignable to type 'ReminderType'.
+          Type '"EMAIL"' is not assignable to type 'ReminderType'.
+src/lib/calendarDataTransformer.ts(247,13): error TS2739: Type '{ id: string; title: string; description: string | undefined; startTime: Date; endTime: Date; timezone: string; location: string | undefined; attendees: string[]; visibility: "default"; ... 5 more ...; recurrenceRule: string | undefined; }' is missing the following properties from type 'CalendarEvent': startDate, endDate
+src/lib/calendarDataTransformer.ts(495,37): error TS2339: Property 'category' does not exist on type 'CalendarEvent'.
+src/lib/enhanced-webhook-handlers.ts(208,18): error TS2353: Object literal may only specify known properties, and 'plan' does not exist in type 'SubscriptionInclude<DefaultArgs>'.
+src/lib/gamification-middleware.ts(252,50): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, geo, ip, nextUrl, and 3 more.
+src/lib/group-chat.ts(459,7): error TS18004: No value exists in scope for the shorthand property 'reaction'. Either declare one or provide an initializer.
+src/lib/group-chat.ts(463,12): error TS2304: Cannot find name 'reaction'.
+src/lib/notifications/recurring-events-notification-service.ts(52,26): error TS2339: Property 'startTime' does not exist on type 'Event'.
+src/lib/notifications/recurring-events-notification-service.ts(56,25): error TS2339: Property 'recurringEventId' does not exist on type 'Event'.
+src/lib/notifications/recurring-events-notification-service.ts(219,11): error TS2345: Argument of type '{ creator: { calendarPrivacySettings: string | null; id: string; createdAt: Date; updatedAt: Date; email: string; emailVerified: Date | null; password: string | null; ... 8 more ...; calendarNotificationSettings: string | null; }; registrations: ({ ...; } & { ...; })[]; } & { ...; }' is not assignable to parameter of type 'Event'.
+  Types of property 'description' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/lib/notifications/recurring-events-notification-service.ts(228,15): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/lib/payments/asaas.ts(291,11): error TS2820: Type '"CANCELLED"' is not assignable to type 'EnumPaymentTransactionStatusFieldUpdateOperationsInput | PaymentTransactionStatus | undefined'. Did you mean '"CANCELED"'?
+src/lib/payments/asaas.ts(339,11): error TS2353: Object literal may only specify known properties, and 'cancelReason' does not exist in type '(Without<UserSubscriptionUpdateInput, UserSubscriptionUncheckedUpdateInput> & UserSubscriptionUncheckedUpdateInput) | (Without<...> & UserSubscriptionUpdateInput)'.
+src/lib/payments/asaas.ts(369,24): error TS2339: Property 'price' does not exist on type '{ description: string; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; name: string; isActive: boolean; interval: SubscriptionInterval; ... 7 more ...; maxDownloads: number | null; }'.
+src/lib/payments/asaas.ts(387,21): error TS2339: Property 'price' does not exist on type '{ description: string; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; name: string; isActive: boolean; interval: SubscriptionInterval; ... 7 more ...; maxDownloads: number | null; }'.
+src/lib/payments/mercadopago.ts(77,57): error TS2322: Type '{ items: { title: string; quantity: number; unit_price: number; currency_id: string; description: string | undefined; }[]; external_reference: string | undefined; notification_url: string | undefined; back_urls: { ...; } | undefined; metadata: Record<...> | undefined; auto_return: "approved"; payment_methods: { ...;...' is not assignable to type 'PreferenceRequest'.
+  Types of property 'items' are incompatible.
+    Type '{ title: string; quantity: number; unit_price: number; currency_id: string; description: string | undefined; }[]' is not assignable to type 'Items[]'.
+      Property 'id' is missing in type '{ title: string; quantity: number; unit_price: number; currency_id: string; description: string | undefined; }' but required in type 'Items'.
+src/lib/payments/mercadopago.ts(158,11): error TS2353: Object literal may only specify known properties, and 'processedAt' does not exist in type '(Without<PaymentTransactionUpdateInput, PaymentTransactionUncheckedUpdateInput> & PaymentTransactionUncheckedUpdateInput) | (Without<...> & PaymentTransactionUpdateInput)'.
+src/lib/recurrence/exceptions.ts(160,13): error TS2741: Property 'createdBy' is missing in type '{ id: string; title: string; description: string | undefined; startTime: Date; endTime: Date; location: string | undefined; isRecurrent: false; createdAt: Date; updatedAt: Date; }' but required in type 'CalendarEvent'.
+src/lib/reminders/smartReminders.ts(66,68): error TS2345: Argument of type '{ condition: string; temperature: number; precipitation: number; }' is not assignable to parameter of type 'WeatherData'.
+  Type '{ condition: string; temperature: number; precipitation: number; }' is missing the following properties from type 'WeatherData': windSpeed, humidity
+src/lib/reminders/smartReminders.ts(71,68): error TS2345: Argument of type '{ estimatedTravelTime: number; normalTravelTime: number; congestionLevel: "LOW" | "HIGH" | "MODERATE" | "SEVERE"; }' is not assignable to parameter of type 'TrafficData'.
+  Property 'alternativeRoutes' is missing in type '{ estimatedTravelTime: number; normalTravelTime: number; congestionLevel: "LOW" | "HIGH" | "MODERATE" | "SEVERE"; }' but required in type 'TrafficData'.
+src/lib/reminders/smartReminders.ts(218,59): error TS2345: Argument of type '{ condition: string; temperature: number; precipitation: number; }' is not assignable to parameter of type 'WeatherData'.
+  Type '{ condition: string; temperature: number; precipitation: number; }' is missing the following properties from type 'WeatherData': windSpeed, humidity

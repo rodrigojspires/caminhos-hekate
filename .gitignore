@@ -1,0 +1,55 @@
+# Node / PNPM
+node_modules/
+**/node_modules/
+.pnp.cjs
+.pnp.data.json
+
+# Build artifacts
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+dist/
+out/
+build/
+**/tsconfig.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Env files (keep examples)
+.env
+.env.*
+!.env.example
+apps/*/.env*
+packages/*/.env*
+
+# Vercel / Next
+.vercel/
+
+# Coverage / Cache
+coverage/
+.cache/
+
+# Prisma (keep migrations; ignore local sqlite if any)
+*.db
+*.sqlite
+*.sqlite-journal
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Misc
+*.swp
+*.swo
+

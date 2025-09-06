@@ -1,0 +1,2411 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  emailVerified        DateTime?
+  password             String?
+  name                 String?
+  image                String?
+  bio                  String?
+  role                 Role                    @default(VISITOR)
+  subscriptionTier     SubscriptionTier        @default(FREE)
+  twoFactorEnabled     Boolean                 @default(false)
+  twoFactorSecret      String?
+  twoFactorBackupCodes Json?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  accounts             Account[]
+  addresses            Address[]
+  auditLogs            AuditLog[]
+  certificates         Certificate[]
+  comments             Comment[]
+  downloads            Download[]
+  enrollments          Enrollment[]
+  loginHistory         LoginHistory[]
+  sentNotifications    Notification[]
+  notifications        NotificationPreference?
+  orders               Order[]
+  posts                Post[]
+  progress             Progress[]
+  reactions            Reaction[]
+  reports              Report[]                @relation("UserReports")
+  reviewedReports      Report[]                @relation("ReviewedReports")
+  securityAlerts       SecurityAlert[]
+  sessions             Session[]
+  subscriptions        Subscription[]
+  analyticsMetrics     AnalyticsMetric[]
+  analyticsEvents      AnalyticsEvent[]
+  analyticsDashboards  AnalyticsDashboard[]
+  searchQueries        SearchQuery[]
+  createdEmailTemplates EmailTemplate[]    @relation("EmailTemplateCreator")
+  updatedEmailTemplates EmailTemplate[]    @relation("EmailTemplateUpdater")
+  emailTemplateVersions EmailTemplateVersion[]
+  emailSends           EmailSend[]
+  emailCampaigns       EmailCampaign[]
+  preferences          UserPreferences?
+  customThemes         CustomTheme[]
+  userSubscriptions    UserSubscription[]
+  paymentTransactions  PaymentTransaction[]
+  // Gamification Relations
+  userPoints          UserPoints[]
+  userAchievements    UserAchievement[]
+  userStreaks         UserStreak[]
+  pointTransactions   PointTransaction[]
+  leaderboardEntries  LeaderboardEntry[]
+  gamificationNotifications GamificationNotification[] @relation("UserGamificationNotifications")
+  userBadges          UserBadge[] @relation("UserBadges")
+  userRewards         UserReward[]
+  // Events relations
+  createdEvents        Event[]             @relation("EventCreator")
+  eventRegistrations   EventRegistration[]
+  eventReminders       EventReminder[]
+  reminders            Reminder[]
+  // Groups relations
+  createdGroups        Group[]             @relation("GroupCreator")
+  groupMemberships     GroupMember[]
+  invitedGroupMembers  GroupMember[]       @relation("GroupMemberInviter")
+  groupMessages        GroupMessage[]      @relation("GroupMessageAuthor")
+  pinnedGroupMessages  GroupMessage[]      @relation("GroupMessagePinner")
+  createdGroupEvents   GroupEvent[]        @relation("GroupEventCreator")
+  groupEventAttendances GroupEventAttendee[]
+  sentGroupInvitations GroupInvitation[]   @relation("GroupInvitationInviter")
+  receivedGroupInvitations GroupInvitation[] @relation("GroupInvitationInvitee")
+  uploadedGroupResources GroupResource[]   @relation("GroupResourceUploader")
+  // Calendar integration fields
+  calendarNotificationSettings String?
+  calendarPrivacySettings      String?
+  calendarIntegrations         CalendarIntegration[]
+  resolvedConflicts            CalendarConflict[]   @relation("ConflictResolver")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String
+  tier          SubscriptionTier
+  status        SubscriptionStatus @default(PENDING)
+  startDate     DateTime
+  endDate       DateTime
+  autoRenew     Boolean            @default(true)
+  paymentMethod String?
+  mercadoPagoId String?            @unique
+  cancelledAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  payments      Payment[]
+  user          User               @relation(fields: [userId], references: [id])
+}
+
+model SubscriptionPlan {
+  id            String              @id @default(cuid())
+  tier          SubscriptionTier    @unique
+  name          String
+  description   String
+  monthlyPrice  Decimal             @db.Decimal(10, 2)
+  yearlyPrice   Decimal             @db.Decimal(10, 2)
+  interval      SubscriptionInterval @default(MONTHLY)
+  intervalCount Int                 @default(1)
+  trialDays     Int?                @default(0)
+  features      Json
+  maxCourses    Int?
+  maxDownloads  Int?
+  metadata      Json?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  userSubscriptions UserSubscription[]
+
+  @@index([isActive])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique
+  description      String
+  shortDescription String?
+  type             ProductType
+  categoryId       String?
+  featured         Boolean          @default(false)
+  active           Boolean          @default(true)
+  images           Json
+  metaTitle        String?
+  metaDescription  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  orderItems       OrderItem[]
+  category         Category?        @relation(fields: [categoryId], references: [id])
+  variants         ProductVariant[]
+  reviews          Review[]
+}
+
+model ProductVariant {
+  id           String      @id @default(cuid())
+  productId    String
+  sku          String      @unique
+  name         String
+  price        Decimal     @db.Decimal(10, 2)
+  comparePrice Decimal?    @db.Decimal(10, 2)
+  stock        Int         @default(0)
+  weight       Float?
+  dimensions   Json?
+  attributes   Json?
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  inventory    Inventory[]
+  orderItems   OrderItem[]
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Inventory {
+  id        String         @id @default(cuid())
+  variantId String
+  quantity  Int
+  reserved  Int            @default(0)
+  location  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([variantId, location])
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderNumber       String        @unique
+  userId            String?
+  status            OrderStatus   @default(PENDING)
+  subtotal          Decimal       @db.Decimal(10, 2)
+  shipping          Decimal       @db.Decimal(10, 2)
+  discount          Decimal       @default(0) @db.Decimal(10, 2)
+  total             Decimal       @db.Decimal(10, 2)
+  customerEmail     String
+  customerName      String
+  customerPhone     String?
+  customerDocument  String?
+  billingAddressId  String?
+  shippingAddressId String?
+  notes             String?
+  metadata          Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  couponUsages      CouponUsage[]
+  billingAddress    Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  shippingAddress   Address?      @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  user              User?         @relation(fields: [userId], references: [id])
+  items             OrderItem[]
+  payments          Payment[]
+  paymentTransactions PaymentTransaction[]
+  shipments         Shipment[]
+}
+
+model OrderItem {
+  id        String          @id @default(cuid())
+  orderId   String
+  productId String
+  variantId String?
+  name      String
+  price     Decimal         @db.Decimal(10, 2)
+  quantity  Int
+  total     Decimal         @db.Decimal(10, 2)
+  metadata  Json?
+  createdAt DateTime        @default(now())
+  order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String?
+  subscriptionId    String?
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("BRL")
+  status            PaymentStatus @default(PENDING)
+  method            String
+  mercadoPagoId     String?       @unique
+  mercadoPagoStatus String?
+  qrCode            String?
+  qrCodeBase64      String?
+  boletoUrl         String?
+  pixCopyPaste      String?
+  paidAt            DateTime?
+  metadata          Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order?        @relation(fields: [orderId], references: [id])
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+}
+
+model Coupon {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  description   String?
+  discountType  String
+  discountValue Decimal       @db.Decimal(10, 2)
+  minPurchase   Decimal?      @db.Decimal(10, 2)
+  maxDiscount   Decimal?      @db.Decimal(10, 2)
+  usageLimit    Int?
+  usageCount    Int           @default(0)
+  validFrom     DateTime
+  validUntil    DateTime
+  active        Boolean       @default(true)
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  usages        CouponUsage[]
+}
+
+model CouponUsage {
+  id       String   @id @default(cuid())
+  couponId String
+  orderId  String
+  discount Decimal  @db.Decimal(10, 2)
+  usedAt   DateTime @default(now())
+  coupon   Coupon   @relation(fields: [couponId], references: [id])
+  order    Order    @relation(fields: [orderId], references: [id])
+
+  @@unique([couponId, orderId])
+}
+
+model Address {
+  id             String     @id @default(cuid())
+  userId         String?
+  name           String
+  street         String
+  number         String
+  complement     String?
+  neighborhood   String
+  city           String
+  state          String
+  zipCode        String
+  country        String     @default("Brasil")
+  phone          String?
+  isDefault      Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User?      @relation(fields: [userId], references: [id])
+  billingOrders  Order[]    @relation("BillingAddress")
+  shippingOrders Order[]    @relation("ShippingAddress")
+  shipments      Shipment[]
+}
+
+model Shipment {
+  id                String    @id @default(cuid())
+  orderId           String
+  addressId         String
+  carrier           String?
+  trackingNumber    String?
+  trackingUrl       String?
+  estimatedDelivery DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  address           Address   @relation(fields: [addressId], references: [id])
+  order             Order     @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  title     String?
+  comment   String
+  verified  Boolean  @default(false)
+  helpful   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Download {
+  id            String   @id @default(cuid())
+  userId        String
+  productId     String
+  fileName      String
+  fileUrl       String
+  token         String   @unique
+  expiresAt     DateTime
+  downloadCount Int      @default(0)
+  maxDownloads  Int      @default(5)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  color       String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
+}
+
+model Post {
+  id            String           @id @default(cuid())
+  title         String
+  slug          String           @unique
+  content       String
+  excerpt       String?
+  featuredImage String?
+  authorId      String
+  topicId       String?
+  status        PostStatus       @default(DRAFT)
+  tier          SubscriptionTier @default(FREE)
+  isPinned      Boolean          @default(false)
+  viewCount     Int              @default(0)
+  metadata      Json?
+  publishedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  attachments   Attachment[]
+  comments      Comment[]
+  author        User             @relation(fields: [authorId], references: [id])
+  topic         Topic?           @relation(fields: [topicId], references: [id])
+  reactions     Reaction[]
+  reports       Report[]
+}
+
+model Comment {
+  id        String     @id @default(cuid())
+  content   String
+  postId    String
+  authorId  String
+  parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  author    User       @relation(fields: [authorId], references: [id])
+  parent    Comment?   @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[]  @relation("CommentReplies")
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+  reports   Report[]
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String
+  postId    String?
+  commentId String?
+  createdAt DateTime @default(now())
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, postId, type])
+  @@unique([userId, commentId, type])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  postId    String
+  fileName  String
+  fileUrl   String
+  fileType  String
+  fileSize  Int
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  type        ReportType
+  reason      String
+  description String?
+  status      ReportStatus @default(PENDING)
+  postId      String?
+  commentId   String?
+  reporterId  String
+  reviewerId  String?
+  reviewedAt  DateTime?
+  actionTaken String?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  comment     Comment?     @relation(fields: [commentId], references: [id])
+  post        Post?        @relation(fields: [postId], references: [id])
+  reporter    User         @relation("UserReports", fields: [reporterId], references: [id])
+  reviewer    User?        @relation("ReviewedReports", fields: [reviewerId], references: [id])
+}
+
+model Course {
+  id               String           @id @default(cuid())
+  title            String
+  slug             String           @unique
+  description      String
+  shortDescription String?
+  featuredImage    String?
+  introVideo       String?
+  price            Decimal?         @db.Decimal(10, 2)
+  tier             SubscriptionTier @default(FREE)
+  status           CourseStatus     @default(DRAFT)
+  duration         Int?
+  level            CourseLevel?     @default(BEGINNER)
+  featured         Boolean          @default(false)
+  maxStudents      Int?
+  tags             Json?
+  metaTitle        String?
+  metaDescription  String?
+  objectives       Json?
+  requirements     Json?
+  targetAudience   Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  publishedAt      DateTime?
+  certificates     Certificate[]
+  enrollments      Enrollment[]
+  modules          Module[]
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lessons     Lesson[]
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Lesson {
+  id            String     @id @default(cuid())
+  moduleId      String
+  title         String
+  description   String?
+  content       String?
+  videoUrl      String?
+  videoDuration Int?
+  order         Int
+  isFree        Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  assets        Asset[]
+  module        Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress      Progress[]
+  quizzes       Quiz[]
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  lessonId  String
+  title     String
+  type      String
+  url       String
+  size      Int?
+  createdAt DateTime @default(now())
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model Enrollment {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  status      String    @default("active")
+  completedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  course      Course    @relation(fields: [courseId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id          String    @id @default(cuid())
+  userId      String
+  lessonId    String
+  completed   Boolean   @default(false)
+  videoTime   Int?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lesson      Lesson    @relation(fields: [lessonId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, lessonId])
+}
+
+model Certificate {
+  id                String   @id @default(cuid())
+  userId            String
+  courseId          String
+  certificateNumber String   @unique
+  issuedAt          DateTime @default(now())
+  pdfUrl            String?
+  metadata          Json?
+  course            Course   @relation(fields: [courseId], references: [id])
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Quiz {
+  id           String        @id @default(cuid())
+  lessonId     String
+  title        String
+  questions    Json
+  passingScore Int           @default(70)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  lesson       Lesson        @relation(fields: [lessonId], references: [id])
+  attempts     QuizAttempt[]
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  userId    String
+  answers   Json
+  score     Int
+  passed    Boolean
+  createdAt DateTime @default(now())
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+}
+
+model NotificationPreference {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  email             Boolean             @default(true)
+  whatsapp          Boolean             @default(false)
+  whatsappNumber    String?
+  newLessons        NotificationChannel @default(EMAIL)
+  newPosts          NotificationChannel @default(EMAIL)
+  comments          NotificationChannel @default(EMAIL)
+  subscriptions     NotificationChannel @default(BOTH)
+  orders            NotificationChannel @default(BOTH)
+  marketing         NotificationChannel @default(EMAIL)
+  quietHoursEnabled Boolean             @default(false)
+  quietHoursStart   String?
+  quietHoursEnd     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id         String              @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  content    String
+  channel    NotificationChannel
+  status     String              @default("pending")
+  sentAt     DateTime?
+  failedAt   DateTime?
+  retryCount Int                 @default(0)
+  metadata   Json?
+  createdAt  DateTime            @default(now())
+  user       User                @relation(fields: [userId], references: [id])
+}
+
+
+
+model WhatsAppTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  content   String
+  variables Json?
+  mediaUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  changes   Json?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model SystemSettings {
+  id           String          @id @default(cuid())
+  key          String          @unique
+  value        Json
+  type         SettingType
+  category     SettingCategory
+  name         String
+  description  String?
+  isPublic     Boolean         @default(false)
+  isRequired   Boolean         @default(false)
+  defaultValue Json?
+  validation   Json?
+  order        Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  type      String
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LoginHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  ipAddress     String?
+  userAgent     String?
+  location      String?
+  success       Boolean  @default(true)
+  failureReason String?
+  sessionId     String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SecurityAlert {
+  id             String              @id @default(cuid())
+  userId         String
+  type           SecurityAlertType
+  status         SecurityAlertStatus @default(PENDING)
+  title          String
+  description    String
+  severity       String              @default("medium")
+  ipAddress      String?
+  userAgent      String?
+  location       String?
+  metadata       Json?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  user           User                @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  MEMBER
+  VISITOR
+}
+
+enum SubscriptionTier {
+  FREE
+  INICIADO
+  ADEPTO
+  SACERDOCIO
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  REFUNDED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  MODERATED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportType {
+  SPAM
+  INAPPROPRIATE
+  HARASSMENT
+  COPYRIGHT
+  OTHER
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  BOTH
+}
+
+enum NotificationType {
+  NEW_LESSON
+  NEW_POST
+  COMMENT_REPLY
+  COURSE_COMPLETED
+  SUBSCRIPTION_EXPIRING
+  ORDER_STATUS
+  SYSTEM_ANNOUNCEMENT
+  SECURITY_ALERT
+  SPECIAL_EVENT
+  EVENT_REMINDER
+  EVENT_CREATED
+  EVENT_UPDATED
+  EVENT_CONFLICT
+  SERIES_COMPLETED
+}
+
+enum SettingCategory {
+  GENERAL
+  EMAIL
+  PAYMENT
+  SECURITY
+  INTEGRATIONS
+  APPEARANCE
+  NOTIFICATIONS
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  TEXT
+  URL
+  EMAIL
+}
+
+enum SecurityAlertType {
+  SUSPICIOUS_LOGIN
+  MULTIPLE_FAILED_ATTEMPTS
+  NEW_DEVICE
+  UNUSUAL_LOCATION
+  PASSWORD_CHANGE
+  ACCOUNT_LOCKED
+  DATA_BREACH
+}
+
+enum SecurityAlertStatus {
+  PENDING
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+// Analytics Models
+model AnalyticsMetric {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  value       Float
+  unit        String?
+  dimensions  Json?
+  timestamp   DateTime @default(now())
+  userId      String?
+  sessionId   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([name, timestamp])
+  @@index([category, timestamp])
+  @@index([userId, timestamp])
+  @@map("analytics_metrics")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  action     String
+  label      String?
+  value      Float?
+  userId     String?
+  sessionId  String?
+  ipAddress  String?
+  userAgent  String?
+  referrer   String?
+  page       String?
+  properties Json?
+  timestamp  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([name, timestamp])
+  @@index([category, action, timestamp])
+  @@index([userId, timestamp])
+  @@index([sessionId, timestamp])
+  @@map("analytics_events")
+}
+
+model AnalyticsDashboard {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  config      Json
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("analytics_dashboards")
+}
+
+// Search Models
+model SearchIndex {
+  id          String   @id @default(cuid())
+  entityType  String   // 'product', 'course', 'post', 'user'
+  entityId    String
+  title       String
+  content     String   @db.Text
+  summary     String?
+  tags        String[]
+  categories  String[]
+  metadata    Json?
+  searchVector String? @db.Text // Para full-text search
+  popularity  Float    @default(0)
+  relevance   Float    @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([isActive, popularity])
+  @@index([tags])
+  @@index([categories])
+  @@index([title])
+  @@index([content])
+  @@map("search_index")
+}
+
+model SearchQuery {
+  id          String   @id @default(cuid())
+  query       String
+  filters     Json?
+  userId      String?
+  sessionId   String?
+  resultCount Int      @default(0)
+  clickedResults Json?
+  timestamp   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([query])
+  @@index([userId, timestamp])
+  @@index([timestamp])
+  @@map("search_queries")
+}
+
+model SearchSuggestion {
+  id          String   @id @default(cuid())
+  query       String   @unique
+  suggestion  String
+  category    String?
+  popularity  Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([query])
+  @@index([popularity])
+  @@index([category])
+  @@map("search_suggestions")
+}
+
+model SearchFacet {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // 'category', 'tag', 'price_range', 'date_range', 'rating'
+  values      Json     // Array de valores possíveis
+  entityTypes String[] // Tipos de entidade que suportam esta faceta
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([type])
+  @@index([entityTypes])
+  @@map("search_facets")
+}
+
+// Email Templates Models
+model EmailTemplate {
+  id          String              @id @default(cuid())
+  name        String
+  slug        String              @unique
+  subject     String
+  htmlContent String              @db.Text
+  textContent String?             @db.Text
+  variables   Json?               // Variáveis disponíveis no template
+  category    EmailCategory       @default(TRANSACTIONAL)
+  status      EmailTemplateStatus @default(DRAFT)
+  version     Int                 @default(1)
+  isDefault   Boolean             @default(false)
+  tags        String[]
+  metadata    Json?
+  previewData Json?               // Dados para preview
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  publishedAt DateTime?
+  creator     User                @relation("EmailTemplateCreator", fields: [createdBy], references: [id])
+  updater     User?               @relation("EmailTemplateUpdater", fields: [updatedBy], references: [id])
+  versions    EmailTemplateVersion[]
+  sends       EmailSend[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+  @@index([createdBy])
+  @@index([tags])
+  @@map("email_templates")
+}
+
+model EmailTemplateVersion {
+  id          String        @id @default(cuid())
+  templateId  String
+  version     Int
+  subject     String
+  htmlContent String        @db.Text
+  textContent String?       @db.Text
+  variables   Json?
+  changelog   String?
+  createdBy   String
+  createdAt   DateTime      @default(now())
+  template    EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  creator     User          @relation(fields: [createdBy], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([version])
+  @@map("email_template_versions")
+}
+
+model EmailSend {
+  id           String           @id @default(cuid())
+  templateId   String?
+  templateSlug String?
+  recipientId  String?
+  toEmail      String
+  toName       String?
+  fromEmail    String
+  fromName     String?
+  subject      String
+  htmlContent  String           @db.Text
+  textContent  String?          @db.Text
+  variables    Json?            // Variáveis utilizadas no envio
+  status       EmailSendStatus  @default(PENDING)
+  priority     EmailPriority    @default(NORMAL)
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  bouncedAt    DateTime?
+  errorMessage String?
+  metadata     Json?
+  trackingId   String?          @unique
+  campaignId   String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  template     EmailTemplate?   @relation(fields: [templateId], references: [id])
+  recipient    User?            @relation(fields: [recipientId], references: [id])
+  events       EmailEvent[]
+
+  @@index([toEmail])
+  @@index([status])
+  @@index([templateId])
+  @@index([recipientId])
+  @@index([scheduledFor])
+  @@index([sentAt])
+  @@index([trackingId])
+  @@index([campaignId])
+  @@map("email_sends")
+}
+
+model EmailEvent {
+  id        String          @id @default(cuid())
+  sendId    String
+  type      EmailEventType
+  timestamp DateTime        @default(now())
+  data      Json?
+  ipAddress String?
+  userAgent String?
+  location  String?
+  send      EmailSend       @relation(fields: [sendId], references: [id], onDelete: Cascade)
+
+  @@index([sendId])
+  @@index([type])
+  @@index([timestamp])
+  @@map("email_events")
+}
+
+model EmailCampaign {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  status      EmailCampaignStatus @default(DRAFT)
+  templateId  String?
+  segmentId   String?
+  scheduledFor DateTime?
+  sentAt      DateTime?
+  completedAt DateTime?
+  totalRecipients Int             @default(0)
+  sentCount   Int                 @default(0)
+  deliveredCount Int              @default(0)
+  openedCount Int                 @default(0)
+  clickedCount Int                @default(0)
+  bouncedCount Int                @default(0)
+  unsubscribedCount Int           @default(0)
+  metadata    Json?
+  createdBy   String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  creator     User                @relation(fields: [createdBy], references: [id])
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([scheduledFor])
+  @@map("email_campaigns")
+}
+
+// Email Enums
+enum EmailCategory {
+  TRANSACTIONAL
+  MARKETING
+  NOTIFICATION
+  SYSTEM
+  WELCOME
+  CONFIRMATION
+  REMINDER
+  NEWSLETTER
+}
+
+enum EmailTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  TESTING
+}
+
+enum EmailSendStatus {
+  PENDING
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  CANCELLED
+}
+
+enum EmailPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EmailEventType {
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+  UNSUBSCRIBED
+  FAILED
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PAUSED
+  CANCELLED
+  COMPLETED
+}
+
+// ============================================================================
+// UI CUSTOMIZATION MODELS
+// ============================================================================
+
+model UserPreferences {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  theme        Json?    // Configurações de tema (cores, tipografia, etc.)
+  layout       Json?    // Configurações de layout (sidebar, header, densidade)
+  accessibility Json?   // Configurações de acessibilidade (contraste, movimento, etc.)
+  locale       String   @default("pt-BR")
+  timezone     String   @default("America/Sao_Paulo")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_preferences")
+}
+
+model CustomTheme {
+  id         String   @id @default(cuid())
+  userId     String?
+  name       String
+  colors     Json     // Paleta de cores do tema personalizado
+  typography Json?    // Configurações de tipografia
+  spacing    Json?    // Configurações de espaçamento
+  isPublic   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  creator    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isPublic])
+  @@map("custom_themes")
+}
+
+// ============================================================================
+// PAYMENT SYSTEM MODELS
+// ============================================================================
+
+model UserSubscription {
+  id                String                    @id @default(cuid())
+  userId            String
+  planId            String
+  status            SubscriptionStatus        @default(PENDING)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  trialStart        DateTime?
+  trialEnd          DateTime?
+  canceledAt        DateTime?
+  cancelAtPeriodEnd Boolean                   @default(false)
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  user              User                      @relation(fields: [userId], references: [id])
+  plan              SubscriptionPlan          @relation(fields: [planId], references: [id])
+  payments          PaymentTransaction[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("user_subscriptions")
+}
+
+model PaymentTransaction {
+  id                String                    @id @default(cuid())
+  userId            String?
+  subscriptionId    String?
+  orderId           String?
+  externalId        String?
+  amount            Decimal                   @db.Decimal(10, 2)
+  currency          String                    @default("BRL")
+  status            PaymentTransactionStatus  @default(PENDING)
+  provider          PaymentProvider
+  providerPaymentId String?                   @unique
+  providerStatus    String?
+  paymentMethod     String?
+  qrCode            String?
+  qrCodeBase64      String?
+  boletoUrl         String?
+  pixCopyPaste      String?
+  paidAt            DateTime?
+  failedAt          DateTime?
+  refundedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  user              User?                     @relation(fields: [userId], references: [id])
+  subscription      UserSubscription?         @relation(fields: [subscriptionId], references: [id])
+  order             Order?                    @relation(fields: [orderId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([orderId])
+  @@index([status])
+  @@index([provider])
+  @@index([providerPaymentId])
+  @@index([paidAt])
+  @@map("payment_transactions")
+}
+
+// Payment Enums
+enum SubscriptionInterval {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProvider {
+  MERCADOPAGO
+  ASAAS
+  STRIPE
+}
+
+// ============================================================================
+// GAMIFICATION SYSTEM MODELS
+// ============================================================================
+
+model UserPoints {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  totalPoints  Int      @default(0)
+  currentLevel Int      @default(1)
+  pointsToNext Int      @default(100)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([totalPoints])
+  @@index([currentLevel])
+  @@map("user_points")
+}
+
+model AchievementCategory {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  icon         String?
+  color        String?
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  achievements Achievement[]
+
+  @@index([order])
+  @@map("achievement_categories")
+}
+
+model Achievement {
+  id           String               @id @default(cuid())
+  name         String
+  description  String
+  icon         String?
+  categoryId   String
+  rarity       AchievementRarity    @default(COMMON)
+  points       Int                  @default(0)
+  isActive     Boolean              @default(true)
+  criteria     Json                 // Critérios para desbloquear a conquista
+  metadata     Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  category     AchievementCategory  @relation(fields: [categoryId], references: [id])
+  userAchievements UserAchievement[]
+  rewards      AchievementReward[]
+  userRewards  UserReward[]
+
+  @@index([categoryId])
+  @@index([rarity])
+  @@index([isActive])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  progress      Json?       // Progresso atual para conquistas progressivas
+  metadata      Json?
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+  @@index([unlockedAt])
+  @@map("user_achievements")
+}
+
+model UserStreak {
+  id            String   @id @default(cuid())
+  userId        String
+  streakType    String   // Tipo de streak (daily_login, course_completion, etc.)
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  lastActivity  DateTime?
+  isActive      Boolean  @default(true)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+  @@index([userId])
+  @@index([streakType])
+  @@index([currentStreak])
+  @@index([isActive])
+  @@map("user_streaks")
+}
+
+model PointTransaction {
+  id          String            @id @default(cuid())
+  userId      String
+  points      Int
+  type        PointTransactionType
+  reason      String
+  description String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("point_transactions")
+}
+
+model LeaderboardEntry {
+  id         String              @id @default(cuid())
+  userId     String
+  category   LeaderboardCategory @default(POINTS)
+  period     LeaderboardPeriod   @default(ALL_TIME)
+  score      Int
+  rank       Int
+  periodStart DateTime?
+  periodEnd   DateTime?
+  metadata   Json?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, period, periodStart])
+  @@index([category, period, rank])
+  @@index([userId])
+  @@index([score])
+  @@map("leaderboard_entries")
+}
+
+// Gamification Enums
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum PointTransactionType {
+  EARNED
+  SPENT
+  BONUS
+  PENALTY
+  REFUND
+}
+
+enum LeaderboardCategory {
+  POINTS
+  ACHIEVEMENTS
+  STREAKS
+  COURSE_COMPLETIONS
+  COMMUNITY_PARTICIPATION
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  ALL_TIME
+}
+
+// ============================================================================
+// GAMIFICATION NOTIFICATIONS AND BADGES SYSTEM
+// ============================================================================
+
+model GamificationNotification {
+  id          String                    @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String                    @db.Text
+  data        Json?                     // Dados específicos da notificação
+  isRead      Boolean                   @default(false)
+  isPush      Boolean                   @default(false)
+  pushSentAt  DateTime?
+  emailSentAt DateTime?
+  priority    NotificationPriority      @default(MEDIUM)
+  expiresAt   DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  user        User                      @relation("UserGamificationNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([isPush])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("gamification_notifications")
+}
+
+model Badge {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String
+  icon        String
+  color       String        @default("#3B82F6")
+  rarity      BadgeRarity   @default(COMMON)
+  category    String?
+  isActive    Boolean       @default(true)
+  criteria    Json          // Critérios para obter o badge
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  userBadges  UserBadge[]
+
+  @@index([rarity])
+  @@index([category])
+  @@index([isActive])
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String    @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime  @default(now())
+  metadata  Json?
+  user      User      @relation("UserBadges", fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge     @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([earnedAt])
+  @@map("user_badges")
+}
+
+model AchievementReward {
+  id            String      @id @default(cuid())
+  achievementId String
+  rewardType    RewardType
+  rewardValue   Int         // Pontos extras, dias de premium, etc.
+  description   String?
+  isActive      Boolean     @default(true)
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  userRewards   UserReward[]
+
+  @@index([achievementId])
+  @@index([rewardType])
+  @@index([isActive])
+  @@map("achievement_rewards")
+}
+
+// Registros de recompensas concedidas aos usuários
+model UserReward {
+  id            String            @id @default(cuid())
+  userId        String
+  rewardId      String            // Refere-se a AchievementReward
+  achievementId String?
+  claimed       Boolean           @default(false)
+  claimedAt     DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward        AchievementReward @relation(fields: [rewardId], references: [id])
+  achievement   Achievement?      @relation(fields: [achievementId], references: [id])
+
+  @@index([userId, claimed])
+  @@index([rewardId])
+  @@index([achievementId])
+  @@map("user_rewards")
+}
+
+model NotificationTemplate {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  emailSubject String?
+  emailBody   String?          @db.Text
+  pushTitle   String?
+  pushBody    String?
+  variables   String[]         // Variáveis disponíveis no template
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([type])
+  @@index([isActive])
+  @@map("notification_templates")
+}
+
+// Gamification Notifications Enums
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum BadgeRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+enum RewardType {
+  EXTRA_POINTS
+  PREMIUM_DAYS
+  SPECIAL_BADGE
+  COURSE_ACCESS
+  DISCOUNT_COUPON
+  EXCLUSIVE_CONTENT
+}
+
+// ============================================================================
+// EVENTS AND CALENDAR SYSTEM MODELS
+// ============================================================================
+
+model Event {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?           @db.Text
+  type            EventType         @default(MEETING)
+  status          EventStatus       @default(DRAFT)
+  startDate       DateTime
+  endDate         DateTime
+  timezone        String            @default("America/Sao_Paulo")
+  location        String?
+  virtualLink     String?
+  maxAttendees    Int?
+  isPublic        Boolean           @default(true)
+  requiresApproval Boolean          @default(false)
+  tags            String[]
+  metadata        Json?
+  createdBy       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  publishedAt     DateTime?
+  canceledAt      DateTime?
+  creator         User              @relation("EventCreator", fields: [createdBy], references: [id])
+  registrations   EventRegistration[]
+  eventReminders  EventReminder[]
+  reminders       Reminder[]
+  recurringEvents RecurringEvent[]
+  syncs           EventSync[]
+  calendarSyncs   CalendarSyncEvent[]
+  calendarConflicts CalendarConflict[]
+
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdBy])
+  @@index([isPublic])
+  @@index([tags])
+  @@map("events")
+}
+
+model EventRegistration {
+  id          String                    @id @default(cuid())
+  eventId     String
+  userId      String?
+  guestEmail  String?
+  guestName   String?
+  status      EventRegistrationStatus   @default(REGISTERED)
+  attendedAt  DateTime?
+  registeredAt DateTime?                // Registration timestamp
+  metadata    Json?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  event       Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User?                     @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@unique([eventId, guestEmail])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+  @@index([guestEmail])
+  @@map("event_registrations")
+}
+
+model EventReminder {
+  id           String        @id @default(cuid())
+  eventId      String
+  userId       String?
+  guestEmail   String?
+  type         ReminderType  @default(EMAIL)
+  triggerTime  DateTime
+  reminderDate DateTime      @default(now())
+  sentAt       DateTime?
+  status       ReminderStatus @default(PENDING)
+  retryCount   Int           @default(0)
+  lastError    String?
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([triggerTime])
+  @@index([reminderDate])
+  @@index([status])
+  @@index([guestEmail])
+  @@map("event_reminders")
+}
+
+model RecurringEvent {
+  id            String              @id @default(cuid())
+  parentEventId String
+  recurrenceRule Json               // RRULE format
+  exceptions    DateTime[]          // Datas de exceção
+  endDate       DateTime?
+  maxOccurrences Int?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  parentEvent   Event               @relation(fields: [parentEventId], references: [id], onDelete: Cascade)
+
+  @@index([parentEventId])
+  @@index([isActive])
+  @@map("recurring_events")
+}
+
+model EventSync {
+  id              String            @id @default(cuid())
+  eventId         String
+  provider        CalendarProvider
+  externalId      String
+  syncStatus      SyncStatus        @default(PENDING)
+  lastSyncAt      DateTime?
+  syncError       String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  event           Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, provider])
+  @@index([eventId])
+  @@index([provider])
+  @@index([syncStatus])
+  @@index([externalId])
+  @@map("event_syncs")
+}
+
+// Events Enums
+enum EventType {
+  WEBINAR
+  WORKSHOP
+  COURSE
+  MEETING
+  COMMUNITY
+  CONFERENCE
+  NETWORKING
+  TRAINING
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELED
+  COMPLETED
+}
+
+enum EventRegistrationStatus {
+  REGISTERED
+  CONFIRMED
+  ATTENDED
+  NO_SHOW
+  CANCELED
+  WAITLISTED
+}
+
+enum ReminderType {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+  ICS
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  DELETED
+}
+
+enum SyncDirection {
+  IMPORT
+  EXPORT
+  BIDIRECTIONAL
+}
+
+// ============================================================================
+// WEBHOOK LOGGING SYSTEM
+// ============================================================================
+
+model WebhookLog {
+  id          String            @id @default(cuid())
+  provider    String            // MERCADOPAGO, ASAAS, etc.
+  eventType   String            // payment, subscription, etc.
+  eventId     String            // ID único do evento
+  payload     Json              // Payload completo do webhook
+  status      WebhookLogStatus  @default(PENDING)
+  error       String?           // Mensagem de erro se houver
+  processedAt DateTime          @default(now())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([provider])
+  @@index([eventType])
+  @@index([eventId])
+  @@index([status])
+  @@index([processedAt])
+  @@unique([provider, eventId])
+  @@map("webhook_logs")
+}
+
+enum WebhookLogStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRY
+}
+
+// ============================================================================
+// PRIVATE GROUPS SYSTEM MODELS
+// ============================================================================
+
+model Group {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?       @db.Text
+  type            GroupType     @default(PRIVATE)
+  visibility      GroupVisibility @default(PRIVATE)
+  maxMembers      Int?          @default(50)
+  requiresApproval Boolean      @default(true)
+  tags            String[]
+  avatar          String?
+  banner          String?
+  rules           String?       @db.Text
+  metadata        Json?
+  createdBy       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  archivedAt      DateTime?
+  creator         User          @relation("GroupCreator", fields: [createdBy], references: [id])
+  members         GroupMember[]
+  messages        GroupMessage[]
+  events          GroupEvent[]
+  invitations     GroupInvitation[]
+  resources       GroupResource[]
+
+  @@index([type])
+  @@index([visibility])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@index([tags])
+  @@map("groups")
+}
+
+model GroupMember {
+  id          String          @id @default(cuid())
+  groupId     String
+  userId      String
+  role        GroupMemberRole @default(MEMBER)
+  status      GroupMemberStatus @default(ACTIVE)
+  joinedAt    DateTime        @default(now())
+  leftAt      DateTime?
+  invitedBy   String?
+  permissions Json?           // Permissões específicas do membro
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  group       Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id])
+  inviter     User?           @relation("GroupMemberInviter", fields: [invitedBy], references: [id])
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([role])
+  @@index([status])
+  @@index([joinedAt])
+  @@map("group_members")
+}
+
+model GroupMessage {
+  id          String            @id @default(cuid())
+  groupId     String
+  authorId    String
+  content     String            @db.Text
+  type        GroupMessageType  @default(TEXT)
+  attachments Json?             // URLs de arquivos anexados
+  replyToId   String?           // ID da mensagem sendo respondida
+  mentions    String[]          // IDs dos usuários mencionados
+  reactions   Json?             // Reações à mensagem
+  isEdited    Boolean           @default(false)
+  editedAt    DateTime?
+  isPinned    Boolean           @default(false)
+  pinnedBy    String?
+  pinnedAt    DateTime?
+  deletedAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  group       Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author      User              @relation("GroupMessageAuthor", fields: [authorId], references: [id])
+  replyTo     GroupMessage?     @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies     GroupMessage[]    @relation("MessageReplies")
+  pinner      User?             @relation("GroupMessagePinner", fields: [pinnedBy], references: [id])
+
+  @@index([groupId])
+  @@index([authorId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([isPinned])
+  @@index([replyToId])
+  @@map("group_messages")
+}
+
+model GroupEvent {
+  id              String              @id @default(cuid())
+  groupId         String
+  title           String
+  description     String?             @db.Text
+  type            GroupEventType      @default(MEETING)
+  status          GroupEventStatus    @default(SCHEDULED)
+  startDate       DateTime
+  endDate         DateTime
+  timezone        String              @default("America/Sao_Paulo")
+  location        String?
+  virtualLink     String?
+  maxAttendees    Int?
+  requiresRSVP    Boolean             @default(false)
+  isRecurring     Boolean             @default(false)
+  recurrenceRule  Json?               // RRULE format
+  reminders       Json?               // Configurações de lembrete
+  createdBy       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  canceledAt      DateTime?
+  group           Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator         User                @relation("GroupEventCreator", fields: [createdBy], references: [id])
+  attendees       GroupEventAttendee[]
+
+  @@index([groupId])
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdBy])
+  @@map("group_events")
+}
+
+model GroupEventAttendee {
+  id          String                    @id @default(cuid())
+  eventId     String
+  userId      String
+  status      GroupEventAttendeeStatus  @default(PENDING)
+  respondedAt DateTime?
+  attendedAt  DateTime?
+  metadata    Json?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  event       GroupEvent                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User                      @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+  @@map("group_event_attendees")
+}
+
+model GroupInvitation {
+  id          String                  @id @default(cuid())
+  groupId     String
+  inviterId   String
+  inviteeId   String?
+  email       String?                 // Para convites por email
+  token       String                  @unique
+  role        GroupMemberRole         @default(MEMBER)
+  status      GroupInvitationStatus   @default(PENDING)
+  message     String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  group       Group                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter     User                    @relation("GroupInvitationInviter", fields: [inviterId], references: [id])
+  invitee     User?                   @relation("GroupInvitationInvitee", fields: [inviteeId], references: [id])
+
+  @@index([groupId])
+  @@index([inviterId])
+  @@index([inviteeId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("group_invitations")
+}
+
+model GroupResource {
+  id          String              @id @default(cuid())
+  groupId     String
+  title       String
+  description String?
+  type        GroupResourceType   @default(FILE)
+  url         String
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  uploadedBy  String
+  isPublic    Boolean             @default(false)
+  downloadCount Int               @default(0)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  group       Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  uploader    User                @relation("GroupResourceUploader", fields: [uploadedBy], references: [id])
+
+  @@index([groupId])
+  @@index([type])
+  @@index([uploadedBy])
+  @@index([isPublic])
+  @@index([createdAt])
+  @@map("group_resources")
+}
+
+// Groups Enums
+enum GroupType {
+  STUDY
+  PROFESSIONAL
+  HOBBY
+  COMMUNITY
+  PROJECT
+  PRIVATE
+}
+
+enum GroupVisibility {
+  PUBLIC      // Visível para todos
+  PRIVATE     // Apenas membros
+  UNLISTED    // Não aparece em buscas, mas acessível por link
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum GroupMemberStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  LEFT
+}
+
+enum GroupMessageType {
+  TEXT
+  IMAGE
+  FILE
+  AUDIO
+  VIDEO
+  SYSTEM      // Mensagens do sistema (usuário entrou, saiu, etc.)
+}
+
+enum GroupEventType {
+  MEETING
+  WORKSHOP
+  STUDY_SESSION
+  SOCIAL
+  PRESENTATION
+  DISCUSSION
+  OTHER
+}
+
+enum GroupEventStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELED
+  POSTPONED
+}
+
+enum GroupEventAttendeeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  MAYBE
+  ATTENDED
+  NO_SHOW
+}
+
+enum GroupInvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELED
+}
+
+enum GroupResourceType {
+  FILE
+  LINK
+  IMAGE
+  VIDEO
+  DOCUMENT
+  PRESENTATION
+  SPREADSHEET
+  OTHER
+}
+
+// Calendar Integration Models
+model CalendarIntegration {
+  id                String           @id @default(cuid())
+  userId            String
+  provider          CalendarProvider
+  providerAccountId String
+  accessToken       String
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  isActive          Boolean          @default(true)
+  syncEnabled       Boolean          @default(true)
+  syncStatus        SyncStatus?      @default(PENDING)
+  syncFrequency     String?          // daily, weekly, monthly
+  syncError         String?          // Last sync error message
+  calendarName      String?          // Display name for the calendar
+  lastSyncAt        DateTime?
+  settings          Json?            // Provider-specific settings
+  externalAccountId String?          // External account ID
+  externalAccountEmail String?       // External account email
+  name              String?          // Integration name
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncEvents        CalendarSyncEvent[]
+  conflicts         CalendarConflict[]
+  notifications     CalendarSyncNotification[]
+  privacySettings   CalendarPrivacySettings?
+  fieldMapping      CalendarFieldMapping?
+
+  @@unique([userId, provider, providerAccountId])
+  @@index([userId])
+  @@index([provider])
+  @@index([isActive])
+  @@index([lastSyncAt])
+  @@map("calendar_integrations")
+}
+
+model CalendarSyncEvent {
+  id            String              @id @default(cuid())
+  integrationId String
+  eventId       String?             // Local event ID
+  externalId    String              // External calendar event ID
+  operation     String              // CREATE, UPDATE, DELETE
+  status        SyncStatus          @default(PENDING)
+  direction     String              // IMPORT, EXPORT, BIDIRECTIONAL
+  data          Json?               // Event data
+  error         String?
+  retryCount    Int                 @default(0)
+  scheduledAt   DateTime            @default(now())
+  startedAt     DateTime?
+  processedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  integration   CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  event         Event?              @relation(fields: [eventId], references: [id])
+
+  @@index([integrationId])
+  @@index([eventId])
+  @@index([externalId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([startedAt])
+  @@map("calendar_sync_events")
+}
+
+model CalendarConflict {
+  id            String              @id @default(cuid())
+  integrationId String
+  eventId       String?
+  externalId    String
+  conflictType  String              // TIME_OVERLAP, DUPLICATE, DATA_MISMATCH
+  description   String
+  localData     Json?
+  externalData  Json?
+  resolution    String?             // AUTO_RESOLVED, MANUAL_RESOLVED, IGNORED
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  integration   CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  event         Event?              @relation(fields: [eventId], references: [id])
+  resolver      User?               @relation("ConflictResolver", fields: [resolvedBy], references: [id])
+
+  @@index([integrationId])
+  @@index([eventId])
+  @@index([conflictType])
+  @@index([resolvedAt])
+  @@map("calendar_conflicts")
+}
+
+model CalendarSyncNotification {
+  id            String              @id @default(cuid())
+  integrationId String
+  type          NotificationType
+  title         String
+  message       String              @db.Text
+  severity      String              // info, success, warning, error
+  data          Json?               // Additional notification data
+  isRead        Boolean             @default(false)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  integration   CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("calendar_sync_notifications")
+}
+
+model CalendarPrivacySettings {
+  id                    String              @id @default(cuid())
+  integrationId         String              @unique
+  syncPrivateEvents     Boolean             @default(false)
+  syncAllDayEvents      Boolean             @default(true)
+  syncRecurringEvents   Boolean             @default(true)
+  syncEventTitle        Boolean             @default(true)
+  syncEventDescription  Boolean             @default(true)
+  syncEventLocation     Boolean             @default(true)
+  syncEventAttendees    Boolean             @default(false)
+  syncEventAttachments  Boolean             @default(false)
+  anonymizeTitle        Boolean             @default(false)
+  anonymizeDescription  Boolean             @default(false)
+  anonymizeLocation     Boolean             @default(false)
+  anonymizeAttendees    Boolean             @default(false)
+  timeFilterEnabled     Boolean             @default(false)
+  timeFilterStart       String?             // HH:MM format
+  timeFilterEnd         String?             // HH:MM format
+  keywordFilterEnabled  Boolean             @default(false)
+  includeKeywords       Json?               // Array of keywords to include
+  excludeKeywords       Json?               // Array of keywords to exclude
+  customRules           Json?               // Array of custom privacy rules
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  integration           CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@map("calendar_privacy_settings")
+}
+
+model CalendarFieldMapping {
+  id            String              @id @default(cuid())
+  integrationId String              @unique
+  mappings      Json                // Array of field mapping objects
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  integration   CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@map("calendar_field_mappings")
+}
+
+// Reminder System Models
+model Reminder {
+  id            String    @id @default(cuid())
+  userId        String
+  eventId       String?
+  seriesId      String?
+  instanceId    String?
+  title         String
+  description   String?
+  type          ReminderType @default(EMAIL)
+  status        ReminderStatus @default(PENDING)
+  triggerAt     DateTime
+  sentAt        DateTime?
+  failureReason String?
+  dueDate       DateTime?
+  isCompleted   Boolean   @default(false)
+  priority      String?   @default("medium")
+  category      String?
+  tags          Json?
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@index([triggerAt])
+  @@index([dueDate])
+  @@index([isCompleted])
+  @@map("reminders")
+}

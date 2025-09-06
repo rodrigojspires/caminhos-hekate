@@ -1,0 +1,328 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 43 74% 49%; /* Dourado Hekate */
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 43 74% 49%; /* Dourado */
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 43 74% 49%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 224 71% 3%; /* Preto Hekate */
+    --foreground: 210 20% 98%;
+    --card: 224 71% 4%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 43 74% 49%; /* Dourado Hekate */
+    --primary-foreground: 224 71% 4%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 43 74% 49%; /* Dourado */
+    --accent-foreground: 224 71% 4%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 43 74% 49%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Tema místico permanentemente dark */
+  html {
+    @apply dark;
+  }
+  
+  body {
+    @apply bg-hekate-black;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(218, 165, 32, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(218, 165, 32, 0.02) 0%, transparent 50%);
+  }
+}
+
+@layer components {
+  /* Decorador dourado para títulos */
+  .hekate-divider {
+    @apply relative overflow-hidden;
+  }
+  
+  .hekate-divider::before,
+  .hekate-divider::after {
+    content: '';
+    @apply absolute top-1/2 h-px w-full bg-gradient-to-r from-transparent via-hekate-gold to-transparent;
+  }
+  
+  .hekate-divider::before {
+    @apply -left-full;
+    animation: slide-in-left 1s ease-out forwards;
+  }
+  
+  .hekate-divider::after {
+    @apply -right-full;
+    animation: slide-in-right 1s ease-out forwards;
+  }
+  
+  /* Glow dourado para elementos especiais */
+  .hekate-glow {
+    @apply relative;
+    filter: drop-shadow(0 0 20px rgba(218, 165, 32, 0.3));
+  }
+  
+  .hekate-glow::before {
+    content: '';
+    @apply absolute inset-0 rounded-lg;
+    background: radial-gradient(circle, rgba(218, 165, 32, 0.1) 0%, transparent 70%);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  /* Botão místico */
+  .btn-mystic {
+    @apply relative px-6 py-3 font-serif text-hekate-gold border border-hekate-gold/50 rounded-lg overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, rgba(218, 165, 32, 0.05) 0%, transparent 100%);
+  }
+  
+  .btn-mystic:hover {
+    @apply border-hekate-gold shadow-lg;
+    box-shadow: 0 0 30px rgba(218, 165, 32, 0.3);
+  }
+  
+  .btn-mystic::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, rgba(218, 165, 32, 0.1) 0%, transparent 100%);
+  }
+  
+  .btn-mystic:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Botão místico aprimorado */
+  .btn-mystic-enhanced {
+    @apply relative px-8 py-4 bg-gradient-to-r from-hekate-gold via-hekate-goldLight to-hekate-gold text-hekate-black font-serif font-bold text-lg rounded-xl transition-all duration-500 transform hover:scale-110;
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .btn-mystic-enhanced:hover {
+    box-shadow: 0 20px 60px rgba(255, 215, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Card místico */
+  .card-mystic {
+    @apply relative bg-gradient-to-br from-hekate-gray-950/90 to-hekate-black/95 border border-hekate-gold/20 rounded-lg overflow-hidden backdrop-blur-sm;
+  }
+  
+  .card-mystic::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(218, 165, 32, 0.1) 0%, transparent 50%);
+  }
+  
+  .card-mystic:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Card místico 3D */
+  .card-mystic-3d {
+    @apply bg-gradient-to-br from-hekate-purple-900/30 to-hekate-purple-950/50 backdrop-blur-md border border-hekate-gold/30 rounded-xl hover:border-hekate-gold/60 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl hover:shadow-hekate-gold/20;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 215, 0, 0.1);
+  }
+
+  /* Card místico ultimate */
+    .card-mystic-ultimate {
+      @apply bg-gradient-to-br from-hekate-purple-900/40 to-hekate-purple-950/60 backdrop-blur-lg border-2 border-hekate-gold/40 rounded-2xl hover:border-hekate-gold/80 transition-all duration-700 transform;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 2px 0 rgba(255, 215, 0, 0.2), 0 0 100px rgba(255, 215, 0, 0.1);
+    }
+
+    .card-mystic-ultimate:hover {
+      transform: scale(1.02);
+    }
+  
+  /* Texto gradiente dourado */
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-hekate-goldDark via-hekate-gold to-hekate-goldLight bg-clip-text text-transparent;
+  }
+  
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-hekate-gray-900;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-hekate-gold/50 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-hekate-gold/70;
+  }
+}
+
+@layer utilities {
+  /* Animações */
+  @keyframes slide-in-left {
+    to { left: 0; }
+  }
+  
+  @keyframes slide-in-right {
+    to { right: 0; }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes spin-slow {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes mystical-pulse {
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes glow {
+    from {
+      text-shadow: 0 0 20px #ffd700;
+    }
+    to {
+      text-shadow: 0 0 30px #ffd700, 0 0 40px #ffd700;
+    }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 4s ease-in-out infinite;
+  }
+
+  .animate-bounce-slow {
+    animation: bounce 3s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .animate-mystical-pulse {
+    animation: mystical-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-reveal {
+    animation: reveal 1s ease-out forwards;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  /* Texto gradiente místico */
+  .text-gradient-mystic {
+    @apply bg-gradient-to-r from-hekate-purple-400 via-hekate-gold to-hekate-purple-400 bg-clip-text text-transparent;
+  }
+
+  /* Gradientes de fundo */
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  .bg-gradient-conic {
+    background: conic-gradient(var(--tw-gradient-stops));
+  }
+
+  .bg-gradient-mystic {
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(75, 0, 130, 0.2) 50%, rgba(255, 215, 0, 0.1) 100%);
+  }
+
+  /* Transformações 3D */
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+
+    .transform-3d {
+      transform-style: preserve-3d;
+    }
+  
+  /* Máscaras e efeitos */
+  .mask-fade-bottom {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+  
+  .mask-fade-edges {
+    mask-image: radial-gradient(ellipse at center, black 60%, transparent 100%);
+  }
+
+  .mask-gradient {
+    mask: linear-gradient(180deg, transparent, black 20%, black 80%, transparent);
+  }
+}

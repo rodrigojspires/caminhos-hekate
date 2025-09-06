@@ -1,0 +1,36 @@
+FROM node:20-alpine
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
+
+# Install dependencies for building native modules and OpenSSL
+RUN apk add --no-cache libc6-compat python3 make g++ openssl openssl-dev ca-certificates
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* ./
+COPY pnpm-workspace.yaml ./
+COPY turbo.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/database/package.json ./packages/database/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Configure Prisma environment variables
+ENV PRISMA_SCHEMA_PATH="./packages/database/prisma/schema.prisma"
+ENV OPENSSL_CONF="/etc/ssl/openssl.cnf"
+ENV PRISMA_CLI_QUERY_ENGINE_TYPE="binary"
+
+# Generate Prisma client
+RUN cd packages/database && npx prisma generate
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+CMD ["pnpm", "dev"]
