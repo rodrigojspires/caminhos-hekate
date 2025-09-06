@@ -639,10 +639,9 @@ class EmailService {
       const pass = process.env.SMTP_PASS
       if (!host || !user || !pass) return null
 
-      // Import dinâmico para evitar depender em runtime se não configurado
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodemailer = require('nodemailer')
-      const transporter = nodemailer.createTransport({
+      // Import dinâmico para evitar require e problemas de ESLint em build
+      const { createTransport } = await import('nodemailer') as any
+      const transporter = createTransport({
         host,
         port,
         secure: port === 465,
