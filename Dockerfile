@@ -24,6 +24,8 @@ WORKDIR /app
 COPY . .
 # Ensure envs needed at build-time (override at runtime as needed)
 ENV NODE_ENV=production
+# Generate Prisma client before building
+RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
 RUN pnpm -w build
 
 # --- Runtime layer ---

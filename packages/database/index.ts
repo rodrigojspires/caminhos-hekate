@@ -1,5 +1,14 @@
 export * from '@prisma/client';
-export { PrismaClient } from '@prisma/client';
+export { PrismaClient, Prisma } from '@prisma/client';
+
+// Explicit re-exports for model enums to support named imports
+export type CourseStatus = Prisma.CourseStatus;
+// @ts-expect-error Prisma exposes runtime enum under Prisma namespace
+export const CourseStatus = Prisma.CourseStatus as unknown as Record<string, CourseStatus>;
+
+export type CourseLevel = Prisma.CourseLevel;
+// @ts-expect-error Prisma exposes runtime enum under Prisma namespace
+export const CourseLevel = Prisma.CourseLevel as unknown as Record<string, CourseLevel>;
 
 // Singleton pattern para evitar múltiplas instâncias em desenvolvimento
 import { PrismaClient } from '@prisma/client';
