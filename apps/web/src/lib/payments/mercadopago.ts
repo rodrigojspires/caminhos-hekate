@@ -262,6 +262,60 @@ export class MercadoPagoService {
       throw new Error('Falha ao criar pagamento');
     }
   }
+
+  /**
+   * Cria preferência e transação para um pedido (ordem única)
+   */
+  async createOrderPayment(order: {
+    orderId: string
+    userId?: string | null
+    items: Array<{ id: string; title: string; quantity: number; unit_price: number }>
+    totalAmount: number
+    description?: string
+  }) {
+    try {
+      // Cria a transação vinculada ao pedido
+      const tx = await prisma.paymentTransaction.create({
+        data: {
+          userId: order.userId || undefined,
+          orderId: order.orderId,
+          amount: order.totalAmount,
+          currency: 'BRL',
+          provider: 'MERCADOPAGO',
+          status: 'PENDING',
+          metadata: {
+            description: order.description || `Pedido ${order.orderId}`,
+          },
+        },
+      })
+
+      const preference = await this.preference.create({
+        body: {
+          items: order.items.map((i) => ({
+            id: i.id,
+            title: i.title,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            currency_id: 'BRL',
+          })),
+          external_reference: tx.id,
+          notification_url: `${process.env.NEXTAUTH_URL}/api/webhooks/mercadopago`,
+          metadata: { transaction_id: tx.id, order_id: order.orderId },
+          auto_return: 'approved' as const,
+        },
+      })
+
+      await prisma.paymentTransaction.update({
+        where: { id: tx.id },
+        data: { providerPaymentId: preference.id },
+      })
+
+      return { transaction: tx, preference, paymentUrl: preference.init_point }
+    } catch (error) {
+      console.error('Erro ao criar pagamento de pedido:', error)
+      throw error
+    }
+  }
 }
 
 // Instância singleton do serviço

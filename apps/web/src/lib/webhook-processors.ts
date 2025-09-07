@@ -104,6 +104,46 @@ export class MercadoPagoWebhookProcessor {
       }
     });
 
+    // Atualizar status do pedido se houver
+    if (transaction.orderId) {
+      if (paymentDetails.status === 'approved') {
+        await prisma.order.update({ where: { id: transaction.orderId }, data: { status: 'PAID' } })
+        // Enviar e-mail de confirmação de pagamento
+        try {
+          const order = await prisma.order.findUnique({ where: { id: transaction.orderId } })
+          if (order?.customerEmail) {
+            const { sendEmail } = await import('@/lib/email')
+            await sendEmail({
+              toEmail: order.customerEmail,
+              subject: `Pagamento confirmado • Pedido ${order.orderNumber}`,
+              htmlContent: `<h2>Pagamento confirmado</h2><p>Recebemos o pagamento do seu pedido <strong>${order.orderNumber}</strong>.</p>`,
+              textContent: `Pagamento confirmado para o pedido ${order.orderNumber}.`,
+              priority: 'NORMAL',
+            } as any)
+          }
+        } catch (e) {
+          console.error('Erro ao enviar e-mail de pagamento confirmado:', e)
+        }
+      } else if (['rejected', 'cancelled'].includes(paymentDetails.status)) {
+        await prisma.order.update({ where: { id: transaction.orderId }, data: { status: 'CANCELLED' } })
+        try {
+          const order = await prisma.order.findUnique({ where: { id: transaction.orderId } })
+          if (order?.customerEmail) {
+            const { sendEmail } = await import('@/lib/email')
+            await sendEmail({
+              toEmail: order.customerEmail,
+              subject: `Falha no pagamento • Pedido ${order.orderNumber}`,
+              htmlContent: `<h2>Pagamento não aprovado</h2><p>O pagamento do pedido <strong>${order.orderNumber}</strong> não foi aprovado. Você pode tentar novamente no painel.</p>`,
+              textContent: `Pagamento não aprovado para o pedido ${order.orderNumber}.`,
+              priority: 'NORMAL',
+            } as any)
+          }
+        } catch (e) {
+          console.error('Erro ao enviar e-mail de falha de pagamento:', e)
+        }
+      }
+    }
+
     // Processar assinatura se existir
     if (transaction.subscription && paymentDetails.status === 'approved') {
       await this.activateSubscription(transaction.subscription.id);
