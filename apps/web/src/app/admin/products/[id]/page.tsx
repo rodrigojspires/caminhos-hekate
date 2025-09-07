@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import VariantDigitalSettings from '@/components/admin/VariantDigitalSettings'
 
 interface Product {
   id: string
@@ -366,6 +367,9 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           />
         </CardContent>
       </Card>
+
+      {/* Configurações de Download por Variação (para produtos digitais) */}
+      <VariantDigitalSettings productId={params.id} />
     </div>
   )
 }

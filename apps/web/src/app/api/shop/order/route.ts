@@ -18,11 +18,13 @@ export async function POST(request: NextRequest) {
       billingAddress,
       shippingAddress,
       notes,
+      enrollCourseIds,
     } = body as {
       customer: { name: string; email: string; phone?: string; document?: string; userId?: string | null }
       billingAddress?: { street: string; number: string; complement?: string; neighborhood: string; city: string; state: string; zipCode: string }
       shippingAddress?: { street: string; number: string; complement?: string; neighborhood: string; city: string; state: string; zipCode: string }
       notes?: string
+      enrollCourseIds?: string[]
     }
 
     if (!customer?.name || !customer?.email) {
@@ -88,6 +90,7 @@ export async function POST(request: NextRequest) {
         billingAddressId: billing?.id || null,
         shippingAddressId: shipping?.id || null,
         notes: notes || null,
+        metadata: enrollCourseIds && Array.isArray(enrollCourseIds) && enrollCourseIds.length > 0 ? { enrollCourseIds } : undefined,
         items: {
           create: await Promise.all(
             cart.items.map(async (i) => {

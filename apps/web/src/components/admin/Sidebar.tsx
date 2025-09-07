@@ -17,7 +17,8 @@ import {
   Package,
   FileText,
   Calendar,
-  Bell
+  Bell,
+  DollarSign
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -76,6 +77,11 @@ const menuItems = [
     title: "Relatórios",
     href: "/admin/reports",
     icon: BarChart3,
+  },
+  {
+    title: "Planos",
+    href: "/admin/subscriptions/plans",
+    icon: DollarSign,
   },
   {
     title: "Configurações",

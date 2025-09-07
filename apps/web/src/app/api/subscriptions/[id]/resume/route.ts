@@ -17,11 +17,19 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'ACTIVE' as any } })
+    const updated = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'ACTIVE' as any, currentPeriodStart: new Date() } })
+
+    // Criar downloads incluídos no plano, se configurados
+    try {
+      const { createDownloadsForSubscription } = await import('@/lib/downloads')
+      await createDownloadsForSubscription(updated.userId, updated.planId)
+    } catch (e) {
+      console.error('Erro ao criar downloads do plano ao retomar assinatura:', e)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro ao retomar assinatura:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

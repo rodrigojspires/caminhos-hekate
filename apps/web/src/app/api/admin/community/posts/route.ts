@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { searchService } from '@/lib/search'
 import { 
   CreatePostSchema, 
   UpdatePostSchema, 
@@ -188,6 +189,21 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+
+    // Indexar no SearchIndex
+    try {
+      await searchService.indexContent('post', post.id, {
+        title: post.title,
+        content: post.content,
+        summary: post.excerpt || undefined,
+        tags: [],
+        categories: post.topic ? [post.topic.id] : [],
+        metadata: { slug: post.slug, tier: post.tier },
+        popularity: 0
+      })
+    } catch (e) {
+      console.error('Falha ao indexar post (admin create):', e)
+    }
 
     return NextResponse.json(post, { status: 201 })
   } catch (error) {

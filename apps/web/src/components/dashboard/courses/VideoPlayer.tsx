@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, Settings, SkipBack, SkipForward, Bookmark, MessageSquare } from 'lucide-react'
@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import Hls from 'hls.js'
 
 interface VideoPlayerProps {
   src: string
@@ -62,6 +63,7 @@ export function VideoPlayer({
   const [speed, setSpeed] = useState(playbackSpeed)
   const [showBookmarks, setShowBookmarks] = useState(false)
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  const hlsRef = useRef<Hls | null>(null)
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -199,6 +201,52 @@ export function VideoPlayer({
       video.removeEventListener('pause', () => setIsPlaying(false))
     }
   }, [currentTime, duration, onTimeUpdate, onProgress, showSubtitles, subtitles])
+
+  // Initialize HLS if needed
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !src) return
+
+    const isHlsSource = src.includes('.m3u8') || src.startsWith('http') && src.includes('m3u8')
+
+    // Clean up previous instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy()
+      hlsRef.current = null
+    }
+
+    if (isHlsSource) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari / native HLS
+        video.src = src
+      } else if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        })
+        hlsRef.current = hls
+        hls.loadSource(src)
+        hls.attachMedia(video)
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          // Basic error logging; avoid crashing the player
+          console.warn('HLS error', data)
+        })
+      } else {
+        // Fallback: assign src anyway and let the browser try
+        video.src = src
+      }
+    } else {
+      // Non-HLS source
+      video.src = src
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy()
+        hlsRef.current = null
+      }
+    }
+  }, [src])
 
   // Auto-hide controls
   useEffect(() => {

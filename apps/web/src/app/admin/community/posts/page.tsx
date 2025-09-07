@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Eye, MessageCircle, MoreHorizontal, Plus, Search, ThumbsUp, AlertTriangle, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag } from 'lucide-react'
+import { Eye, MessageCircle, MoreHorizontal, Plus, Search, ThumbsUp, AlertTriangle, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag, Pin, EyeOff } from 'lucide-react'
 import { Suspense } from 'react'
 
 export const metadata: Metadata = {
@@ -41,6 +41,7 @@ interface Post {
   title: string
   content: string
   status: 'PUBLISHED' | 'DRAFT' | 'HIDDEN'
+  isPinned?: boolean
   author: {
     id: string
     name: string
@@ -125,7 +126,8 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       reactionsCount: post._count?.reactions || 0,
       reportsCount: post._count?.reports || 0,
       createdAt: post.createdAt,
-      updatedAt: post.updatedAt
+      updatedAt: post.updatedAt,
+      isPinned: post.isPinned
     }))
 
     return {
@@ -349,6 +351,24 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
   
   const { posts, pagination } = await getPosts(urlSearchParams)
 
+  async function togglePin(postId: string, pin: boolean) {
+    'use server'
+    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/posts/${postId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPinned: pin })
+    })
+  }
+
+  async function setStatus(postId: string, status: 'PUBLISHED' | 'HIDDEN' | 'DRAFT') {
+    'use server'
+    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/posts/${postId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -464,6 +484,27 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                             Visualizar
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={async () => { 'use server'; await togglePin(post.id, !post.isPinned) }}
+                        >
+                          <Pin className="mr-2 h-4 w-4" />
+                          {post.isPinned ? 'Desafixar' : 'Fixar'}
+                        </DropdownMenuItem>
+                        {post.status !== 'HIDDEN' ? (
+                          <DropdownMenuItem
+                            onClick={async () => { 'use server'; await setStatus(post.id, 'HIDDEN') }}
+                          >
+                            <EyeOff className="mr-2 h-4 w-4" />
+                            Ocultar
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={async () => { 'use server'; await setStatus(post.id, 'PUBLISHED') }}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Publicar
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
                           <Link href={`/admin/community/posts/${post.id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" />

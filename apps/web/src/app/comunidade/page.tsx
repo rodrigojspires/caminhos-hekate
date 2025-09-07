@@ -5,6 +5,7 @@ import { CommunityFeatures } from '@/components/public/community/CommunityFeatur
 import { CommunityTestimonials } from '@/components/public/community/CommunityTestimonials'
 import { CommunityJoin } from '@/components/public/community/CommunityJoin'
 import { CTA } from '@/components/public/CTA'
+import CommunityFeedServer from '@/components/public/community/CommunityFeedServer'
 
 export const metadata: Metadata = {
   title: 'Comunidade | Caminhos de Hekate',
@@ -37,12 +38,15 @@ export const metadata: Metadata = {
   }
 }
 
-export default function CommunityPage() {
+export default function CommunityPage({ searchParams }: { searchParams?: { filter?: string } }) {
   return (
     <main className="min-h-screen">
       <CommunityHero />
       <CommunityStats />
       <CommunityFeatures />
+      {/* Feed com filtros e infinitescroll */}
+      {/* @ts-ignore */}
+      <CommunityFeedServer basePath="/comunidade" filter={searchParams?.filter} />
       <CommunityTestimonials />
       <CommunityJoin />
       <CTA />

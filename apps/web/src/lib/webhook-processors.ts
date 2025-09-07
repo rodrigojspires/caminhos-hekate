@@ -107,7 +107,30 @@ export class MercadoPagoWebhookProcessor {
     // Atualizar status do pedido se houver
     if (transaction.orderId) {
       if (paymentDetails.status === 'approved') {
-        await prisma.order.update({ where: { id: transaction.orderId }, data: { status: 'PAID' } })
+        const updatedOrder = await prisma.order.update({ where: { id: transaction.orderId }, data: { status: 'PAID' } })
+
+        // Gerar registros de download para itens digitais
+        try {
+          const { createDownloadsForOrder } = await import('@/lib/downloads')
+          const created = await createDownloadsForOrder(updatedOrder.id)
+          if (created > 0) {
+            // Notificar por e-mail que downloads estão disponíveis
+            const order = await prisma.order.findUnique({ where: { id: updatedOrder.id } })
+            if (order?.customerEmail) {
+              const { sendEmail } = await import('@/lib/email')
+              await sendEmail({
+                toEmail: order.customerEmail,
+                subject: `Downloads disponíveis • Pedido ${order.orderNumber}`,
+                htmlContent: `<h2>Seus downloads estão prontos</h2><p>Os arquivos digitais do pedido <strong>${order.orderNumber}</strong> já estão disponíveis em seu painel: <a href="${process.env.NEXTAUTH_URL || ''}/dashboard/downloads">Meus Downloads</a>.</p>`,
+                textContent: `Seus downloads do pedido ${order.orderNumber} estão disponíveis em ${(process.env.NEXTAUTH_URL || '') + '/dashboard/downloads'}`,
+                priority: 'NORMAL',
+              } as any)
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao gerar downloads após pagamento:', e)
+        }
+
         // Enviar e-mail de confirmação de pagamento
         try {
           const order = await prisma.order.findUnique({ where: { id: transaction.orderId } })
@@ -123,6 +146,24 @@ export class MercadoPagoWebhookProcessor {
           }
         } catch (e) {
           console.error('Erro ao enviar e-mail de pagamento confirmado:', e)
+        }
+
+        // Inscrever usuário em cursos vinculados ao pedido (se fornecido em metadata)
+        try {
+          const order = await prisma.order.findUnique({ where: { id: transaction.orderId }, include: { items: true } })
+          if (order?.userId) {
+            const meta: any = order.metadata || {}
+            const courseIds: string[] = Array.isArray(meta.enrollCourseIds) ? meta.enrollCourseIds : []
+            for (const courseId of courseIds) {
+              await prisma.enrollment.upsert({
+                where: { userId_courseId: { userId: order.userId, courseId } },
+                create: { userId: order.userId, courseId },
+                update: {}
+              })
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao inscrever usuário após pagamento:', e)
         }
       } else if (['rejected', 'cancelled'].includes(paymentDetails.status)) {
         await prisma.order.update({ where: { id: transaction.orderId }, data: { status: 'CANCELLED' } })
@@ -206,6 +247,16 @@ export class MercadoPagoWebhookProcessor {
         currentPeriodEnd: nextMonth
       }
     });
+
+    try {
+      const sub = await prisma.userSubscription.findUnique({ where: { id: subscriptionId } })
+      if (sub) {
+        const { createDownloadsForSubscription } = await import('@/lib/downloads')
+        await createDownloadsForSubscription(sub.userId, sub.planId)
+      }
+    } catch (e) {
+      console.error('Erro ao criar downloads incluídos no plano (MercadoPago):', e)
+    }
   }
 
   private async handleSubscriptionPaymentFailure(subscriptionId: string): Promise<void> {
@@ -360,6 +411,16 @@ export class AsaasWebhookProcessor {
         currentPeriodEnd: nextMonth
       }
     });
+
+    try {
+      const sub = await prisma.userSubscription.findUnique({ where: { id: subscriptionId } })
+      if (sub) {
+        const { createDownloadsForSubscription } = await import('@/lib/downloads')
+        await createDownloadsForSubscription(sub.userId, sub.planId)
+      }
+    } catch (e) {
+      console.error('Erro ao criar downloads incluídos no plano (Asaas):', e)
+    }
   }
 
   private async handleSubscriptionPaymentFailure(subscriptionId: string): Promise<void> {

@@ -181,13 +181,20 @@ export class MercadoPagoService {
    */
   private async activateSubscription(subscriptionId: string) {
     try {
-      await prisma.userSubscription.update({
+      const updated = await prisma.userSubscription.update({
         where: { id: subscriptionId },
         data: {
           status: 'ACTIVE',
           currentPeriodStart: new Date(),
         },
       });
+
+      try {
+        const { createDownloadsForSubscription } = await import('@/lib/downloads')
+        await createDownloadsForSubscription(updated.userId, updated.planId)
+      } catch (e) {
+        console.error('Erro ao criar downloads do plano (MP service):', e)
+      }
     } catch (error) {
       console.error('Erro ao ativar assinatura:', error);
       throw error;

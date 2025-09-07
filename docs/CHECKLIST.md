@@ -1,6 +1,6 @@
 # Checklist de Implementação — Escola Iniciática Caminhos de Hekate
 
-Atualizado: {{preencher data}}
+Atualizado: 2025-09-07
 
 Como usar
 - [ ] Marque itens concluídos. Anote responsável e data em cada seção.
@@ -49,48 +49,57 @@ Testes/DoD
 
 ## Entrega 2 — Cursos + Player HLS + Certificado
 
-Rotas/UX
-- [ ] `/cursos`: catálogo com filtros
-- [ ] `/cursos/[slug]`: módulos, lições e materiais
-- [ ] Player de vídeo HLS com marcações, velocidade e “continuar de onde parou”
-- [ ] Quiz opcional por lição + feedback
+ Rotas/UX
+ - [x] `/cursos`: catálogo com filtros
+ - [x] `/cursos/[slug]`: módulos, lições e materiais
+ - [x] Player de vídeo HLS com marcações, velocidade e “continuar de onde parou”
+ - [x] Quiz opcional por lição + feedback
 
 Backend
-- [ ] Persistir progresso por lição (tempo e conclusão)
-- [ ] Gate por inscrição/tier para curso e lições
-- [ ] Geração de certificado: endpoint `GET /api/certificates/[id].pdf`
-- [ ] Template PDF: nome do aluno, curso, carga horária, data, número único
+- [x] Persistir progresso por lição (tempo e conclusão)
+- [x] Gate por inscrição/tier para curso e lições
+- [x] Geração de certificado: endpoint `GET /api/certificates/[id].pdf`
+- [x] Template PDF: nome do aluno, curso, carga horária, data, número único
 
 Testes/DoD
-- [ ] Progresso salvo e retomado com fidelidade
-- [ ] PDF baixável após 100% do curso; valida campos
+- [x] Progresso salvo e retomado com fidelidade
+- [x] PDF baixável após 100% do curso; valida campos
+- [x] API de progresso/quiz bloqueia lições não grátis sem inscrição
 
 ## Entrega 3 — Comunidade (Feed + Paywall + Moderação)
 
-Funcionalidades
-- [ ] Feed em `/comunidade` com posts markdown rico (imagens/vídeos/anexos)
-- [ ] Tópicos, seguir tópico/autor, ordenar por recente/popular
-- [ ] Comentários aninhados e reações
-- [ ] Paywall por nível (Free/Iniciado/Adepto/Sacerdócio)
-- [ ] Moderação: aprovar/ocultar, reports, pin de posts
+ Funcionalidades
+ - [x] Feed inicial em `/comunidade/feed` (markdown, preview, contadores)
+ - [x] Ordenação por recente/popular (API)
+ - [x] Paywall por nível (gating server + CTA)
+ - [x] Reações (like) e comentários básicos (API)
+ - [x] Comentários aninhados (UI) + like em comentário
+ - [x] Seguir tópico/autor (UI) e filtros “Seguindo”
+ - [x] Feed principal integrado em `/comunidade`
+ - [x] Moderação (UI) — ações de pin/ocultar/publicar e gestão de reports
 
-Backend
-- [ ] APIs públicas (read) e autenticadas (write) com RBAC
-- [ ] Índice básico de busca para posts e comentários
+ Backend
+ - [x] APIs públicas de posts (lista/detalhe) e write autenticado (criar post/comentar/reagir)
+ - [x] RBAC simples (leitura pública; write autenticado)
+ - [x] Gating por tier na resposta (oculta conteúdo e marca `locked`)
+ - [x] Indexação no SearchIndex ao criar/editar/deletar posts
 
 DoD
-- [ ] Conteúdo bloqueado quando nível insuficiente
-- [ ] Criar/editar/excluir post; comentar e reagir funcionando
+- [x] Conteúdo bloqueado quando nível insuficiente
+- [x] Criar post; comentar e reagir funcionando (excluir/editar via Admin)
 
 ## Entrega 4 — Downloads Digitais Tokenizados
 
-- [ ] Geração de registros `Download` após pagamento aprovado
-- [ ] Endpoint seguro `GET /api/downloads/[token]` com expiração e limite de downloads
-- [ ] Assinatura/compra concede acesso conforme regra do produto
-- [ ] Página `'/dashboard/downloads'` com lista e status
+- [x] Geração de registros `Download` após pagamento aprovado
+- [x] Endpoint seguro `GET /api/downloads/[token]` com expiração e limite de downloads
+- [x] Assinatura/compra concede acesso conforme regra do produto
+- [x] Página `'/dashboard/downloads'` com lista e status
+
+Notas
+- [x] Admin: tela de produto expõe campos por variação (URL/Nome/Limite/Expiração) para produtos digitais.
 
 DoD
-- [ ] Links expiram corretamente; contador incrementa; tentativa fora da regra bloqueia
+- [x] Links expiram corretamente; contador incrementa; tentativa fora da regra bloqueia
 
 ## Entrega 5 — Assinaturas + Gates de Conteúdo
 
@@ -98,6 +107,10 @@ DoD
 - [ ] Criação/renovação/cancelamento de `UserSubscription`
 - [ ] Gate por tier em posts/cursos/downloads (middleware + server)
 - [ ] Preferências do usuário em `/dashboard/profile`
+
+Notas
+- [x] Downloads incluídos no plano: defina `downloadProductIds` em `SubscriptionPlan.features` (ou `metadata.downloads.products`). Na ativação/resume da assinatura, é gerado um link de download por produto digital listado.
+- [x] Admin: página simples para editar downloads por plano em `/admin/subscriptions/plans`.
 
 DoD
 - [ ] Upgrade/downgrade com proration simples ou janela de troca definida

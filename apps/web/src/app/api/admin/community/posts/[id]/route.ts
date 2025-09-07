@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { searchService } from '@/lib/search'
 import { UpdatePostSchema } from '@/lib/validations/community'
 import { z } from 'zod'
 
@@ -203,6 +204,21 @@ export async function PUT(
       }
     })
 
+    // Atualizar índice de busca
+    try {
+      await searchService.indexContent('post', post.id, {
+        title: post.title,
+        content: post.content,
+        summary: post.excerpt || undefined,
+        tags: [],
+        categories: post.topic ? [post.topic.id] : [],
+        metadata: { slug: post.slug, tier: post.tier },
+        popularity: post.viewCount || 0
+      })
+    } catch (e) {
+      console.error('Falha ao indexar post (admin update):', e)
+    }
+
     return NextResponse.json(post)
   } catch (error) {
     console.error('Erro ao atualizar post:', error)
@@ -302,6 +318,13 @@ export async function DELETE(
         where: { id: params.id }
       })
     })
+    
+    // Remover do índice de busca
+    try {
+      await searchService.removeFromIndex('post', params.id)
+    } catch (e) {
+      console.error('Falha ao remover do índice (admin delete):', e)
+    }
 
     return NextResponse.json(
       { message: 'Post deletado com sucesso' },
