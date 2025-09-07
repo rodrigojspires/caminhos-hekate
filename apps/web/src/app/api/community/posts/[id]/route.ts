@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
-export async function GET(_req: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id || null
@@ -11,8 +11,9 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     const userTier = dbUser?.subscriptionTier || 'FREE'
     const order: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
-    const post = await prisma.post.findUnique({
-      where: { slug: params.slug },
+    const idOrSlug = params.id
+    const post = await prisma.post.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         author: { select: { id: true, name: true, image: true } },
         topic: { select: { id: true, name: true, slug: true, color: true } },
