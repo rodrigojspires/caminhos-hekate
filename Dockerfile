@@ -40,6 +40,8 @@ COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 COPY --from=build /app/apps/web/scripts ./apps/web/scripts
 COPY --from=build /app/apps/web/src/lib/background ./apps/web/src/lib/background
+# Include Prisma schema and seed scripts for runtime seeding/maintenance
+COPY --from=build /app/packages/database/prisma ./packages/database/prisma
 
 # tsx to run TypeScript workers
 USER root
