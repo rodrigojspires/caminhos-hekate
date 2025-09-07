@@ -1,4 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { config as dotenvConfig } from 'dotenv';
+import path from 'path';
+
+// Load environment variables for Prisma (DATABASE_URL)
+// 1) Try repo root .env (../../.env when running from packages/database)
+dotenvConfig({ path: path.resolve(process.cwd(), '../../.env') });
+// 2) Also load local .env if present
+dotenvConfig();
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
