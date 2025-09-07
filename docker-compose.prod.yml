@@ -83,6 +83,24 @@ services:
     command: ["tsx", "apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
 
+  # One-off utility container for DB tasks (migrations/seed)
+  dbtools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["pnpm"]
+    command: ["--filter", "@hekate/database", "db:seed"]
+    # Run only on demand: `docker compose -f docker-compose.prod.yml run --rm dbtools`
+
 
 volumes:
   postgres_data:
