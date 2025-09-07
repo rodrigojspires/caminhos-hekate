@@ -7,6 +7,95 @@ Como usar
 - [ ] Mantenha observações rápidas sob o item quando necessário.
 - [ ] Cada entrega possui DoD (Definition of Done) para aceite funcional.
 
+## Projeto: Remoção de Hard‑Codes + Integração de Endpoints + Tema
+
+Status geral
+- [x] Default do tema ajustado para dark (persistente via next-themes)
+- [x] Removido conflito de classe `dark` no hook customizado
+- [ ] Dashboards (Admin/Usuário) sem dados hard-coded
+- [ ] Páginas Institucionais (Preços) usando dados reais
+- [ ] Certificados e Cursos (Dashboard) consumindo APIs
+
+DoD (geral)
+- [ ] Todos os componentes listados consomem dados de APIs/serviços (sem mocks fixos)
+- [ ] Erros e loading states tratados (skeleton/placeholder) sem regressão de UX
+- [ ] Dados sensíveis respeitam permissões (ADMIN x usuário)
+- [ ] Teste manual: navegação entre páginas mantém tema escolhido
+
+### Tema (Default Dark + Persistência)
+- [x] Alterar `defaultTheme` para `dark` no layout raiz
+  - Arquivo: `apps/web/src/app/layout.tsx:65`
+- [x] Remover toggle manual da classe `dark` no hook customizado (evitar conflito com next‑themes)
+  - Arquivo: `apps/web/src/hooks/useTheme.ts`
+- [ ] Validar `ThemeToggle` no site público e dashboard (persistência entre rotas)
+- [ ] Documentar fallback para `system` (opcional) e impacto de SSR/Hydration
+
+### Admin Dashboard (substituir dados fixos por endpoints)
+- [ ] Métricas (cards superiores) a partir de:
+  - `GET /api/admin/users/stats`
+  - `GET /api/admin/orders/reports`
+  - `GET /api/admin/courses/stats`
+  - Ajustar: `apps/web/src/app/admin/page.tsx` (remover arrays estáticos `metrics`, `quickStats`)
+- [ ] Gráficos:
+  - Linha (vendas últimos meses): `salesByDay` de `/api/admin/orders/reports`
+  - Barras (vendas por categoria): derivar por categoria de produto/pedidos
+  - Rosca (tipos de usuários): distribuição por tier de `/api/admin/users/stats`
+- [ ] Atividades recentes: usar `/api/analytics?type=events` (ADMIN) ou endpoint dedicado
+- [ ] Ações rápidas: manter links e tornar badges dinâmicos (novos pedidos, usuários etc.)
+
+### Dashboard do Usuário (substituir dados fixos por endpoints)
+- [ ] `DashboardStats`: compor a partir de
+  - `GET /api/user/progress`
+  - `GET /api/gamification/streaks`
+  - (Opcional) Ranking via `GET /api/gamification/leaderboard`
+  - Arquivo: `apps/web/src/components/dashboard/DashboardStats.tsx`
+- [ ] `WelcomeCard`: nome do usuário (sessão), contagens reais, streak, barra de progresso
+  - Arquivo: `apps/web/src/components/dashboard/WelcomeCard.tsx`
+- [ ] `QuickActions`: badges dinâmicos
+  - Comunidade online/engajamento: `GET /api/community/stats`
+  - Próxima aula ao vivo/sessões: integrar fonte real (calendário/eventos)
+  - Arquivo: `apps/web/src/components/dashboard/QuickActions.tsx`
+- [ ] `RecentActivity`: já consome `GET /api/user/activities`; validar tipos e mapeamento
+  - Arquivo: `apps/web/src/components/dashboard/RecentActivity.tsx`
+- [ ] `ProgressOverview`: já consome `GET /api/user/progress`; validar shape/erros
+  - Arquivo: `apps/web/src/components/dashboard/ProgressOverview.tsx`
+
+### Certificados (Dashboard)
+- [ ] API: listar certificados do usuário com campos usados no gallery
+  - Propor: `GET /api/user/certificates` (lista) e `GET /api/user/certificates/stats` (ou computar no cliente)
+  - Confirmar: geração PDF disponível (`GET /api/certificates/[id].pdf`)
+- [ ] UI: preencher `CertificateStats` e `CertificateGallery`
+  - Arquivo: `apps/web/src/app/dashboard/certificates/page.tsx`
+
+### Cursos (Dashboard)
+- [ ] API: cursos matriculados do usuário com progresso agregado
+  - Reusar `GET /api/user/progress` (campo `courseProgress`) ou criar endpoint específico
+- [ ] UI: popular `MyCourses`
+  - Arquivo: `apps/web/src/app/dashboard/courses/page.tsx`
+
+### Analytics (Admin/Usuário)
+- [ ] `EventsTable` sem `mockEvents` por padrão
+  - Passar `recentEvents` do hook `useAnalytics` (já consome `/api/analytics?type=events`)
+  - Arquivo: `apps/web/src/components/analytics/EventsTable.tsx`
+- [ ] Garantir permissões: ADMIN vê geral; usuário vê seus dados
+
+### Preços (Site Institucional)
+- [ ] `PricingPlans`: usar `GET /api/payments/plans` (campos `data` já normalizados)
+  - Arquivo: `apps/web/src/components/public/pricing/PricingPlans.tsx`
+- [ ] `PricingComparison`: usar mesmo endpoint e mapear features por plano
+  - Arquivo: `apps/web/src/components/public/pricing/PricingComparison.tsx`
+
+### Gamificação — Endpoints Placeholder
+- [ ] Substituir placeholders por dados reais (ou ocultar no UI até existir backend)
+  - `apps/web/src/app/api/gamification/events/route.ts`
+  - `apps/web/src/app/api/gamification/events/[id]/scoreboard/route.ts`
+  - `apps/web/src/app/api/gamification/events/[id]/enroll/route.ts`
+
+Observações rápidas
+- Pesquisa inicial identificou arrays fixos em Admin e Dashboard do usuário, além de mocks em pricing e analytics.
+- Tema: o `next-themes` já salva em `localStorage` e aplica classe `dark` no `<html>`. Evitar manipulá-la manualmente previne perda de persistência ao trocar de rota.
+
+
 Pré‑requisitos e Infra
 - [ ] Variáveis .env definidas (dev/stage/prod)
   - [ ] `NEXTAUTH_URL`, `NEXTAUTH_SECRET`

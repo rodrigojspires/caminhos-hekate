@@ -63,13 +63,9 @@ export function useTheme(): ThemeContextType {
   // Aplicar tema ao DOM
   const applyThemeToDOM = useCallback((prefs: UserPreferences) => {
     const root = document.documentElement
-    
-    // Aplicar modo (claro/escuro)
-    if (prefs.theme?.mode === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
+
+    // Importante: não gerenciar a classe 'dark' aqui para evitar conflito
+    // com o next-themes. Mantemos apenas variáveis e classes de acessibilidade.
 
     // Aplicar variáveis CSS personalizadas
     const css = generateCSS()
