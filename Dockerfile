@@ -4,7 +4,8 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME=/root/.pnpm-store \
     NODE_ENV=production
-RUN apk add --no-cache libc6-compat
+# libc6-compat for Node deps, and openssl (v3) so Prisma detects correct engine
+RUN apk add --no-cache libc6-compat openssl
 SHELL ["/bin/sh","-lc"]
 
 # --- Dependencies layer ---

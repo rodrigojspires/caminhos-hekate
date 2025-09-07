@@ -2,9 +2,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
 
+// Avoid prerendering: this page fetches live data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 async function fetchProducts(searchParams: { q?: string; category?: string; page?: string }) {
   const qs = new URLSearchParams(searchParams as any)
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/shop/products?${qs.toString()}`, { cache: 'no-store' })
+  const base = process.env.NEXT_PUBLIC_APP_URL
+  const url = base
+    ? `${base}/api/shop/products?${qs.toString()}`
+    : `/api/shop/products?${qs.toString()}`
+  const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) return { products: [], total: 0, page: 1, totalPages: 1 }
   return res.json()
 }
