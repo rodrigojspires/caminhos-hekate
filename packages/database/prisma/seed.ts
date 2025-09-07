@@ -879,13 +879,11 @@ Total: R$ {{total}}`,
   console.log('\n🎉 Seed concluído com sucesso!');
   console.log(`\n📧 Admin: ${process.env.ADMIN_EMAIL || 'admin@caminhosdehekate.com.br'}`);
   console.log(`🔑 Senha: ${process.env.ADMIN_PASSWORD || 'HekateAdmin#2024'}`);
+  await prisma.$disconnect();
 }
 
 main()
   .catch((e) => {
     console.error('❌ Erro no seed:', e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
