@@ -16,13 +16,11 @@ async function tryLoadDotenv() {
   }
 }
 
-// Top-level await supported by tsx
-await tryLoadDotenv()
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
-
 async function main() {
+  await tryLoadDotenv()
+  const prisma = new PrismaClient();
   console.log('🌱 Iniciando seed...');
 
   // Limpar dados existentes
