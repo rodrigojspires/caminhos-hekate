@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
               state: billingAddress.state,
               zipCode: billingAddress.zipCode,
               country: 'BR',
-              type: 'BILLING' as any,
             },
           })
         : null,
@@ -65,7 +64,6 @@ export async function POST(request: NextRequest) {
               state: shippingAddress.state,
               zipCode: shippingAddress.zipCode,
               country: 'BR',
-              type: 'SHIPPING' as any,
             },
           })
         : null,
@@ -152,4 +150,17 @@ export async function POST(request: NextRequest) {
     console.error('POST /api/shop/order error', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
+}
+
+// Ensure this route is always dynamic and not statically evaluated at build time
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+export async function GET() {
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
+}
+
+export async function HEAD() {
+  return NextResponse.json(null, { status: 405 })
 }

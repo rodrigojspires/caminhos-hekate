@@ -319,4 +319,10 @@ export class MercadoPagoService {
 }
 
 // Instância singleton do serviço
-export const mercadoPagoService = new MercadoPagoService();
+let _mpService: MercadoPagoService | null = null
+export function getMercadoPagoService(): MercadoPagoService {
+  if (!_mpService) {
+    _mpService = new MercadoPagoService()
+  }
+  return _mpService
+}

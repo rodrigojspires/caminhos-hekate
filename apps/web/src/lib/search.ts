@@ -3,7 +3,17 @@ import type { Prisma } from '@prisma/client'
 import Redis from 'ioredis'
 
 const prisma = new PrismaClient()
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+let _redis: Redis | null = null
+function getRedis(): Redis | null {
+  try {
+    if (_redis) return _redis
+    if (!process.env.REDIS_URL) return null
+    _redis = new Redis(process.env.REDIS_URL)
+    return _redis
+  } catch {
+    return null
+  }
+}
 
 // Interfaces
 export interface SearchResult {
@@ -534,7 +544,9 @@ class SearchService {
 
   private async getFromCache(key: string): Promise<any> {
     try {
-      const cached = await redis.get(key)
+      const client = getRedis()
+      if (!client) return null
+      const cached = await client.get(key)
       return cached ? JSON.parse(cached) : null
     } catch (error) {
       console.error('Erro ao buscar cache:', error)
@@ -544,7 +556,9 @@ class SearchService {
 
   private async saveToCache(key: string, data: any, ttl = this.cacheTTL): Promise<void> {
     try {
-      await redis.setex(key, ttl, JSON.stringify(data))
+      const client = getRedis()
+      if (!client) return
+      await client.setex(key, ttl, JSON.stringify(data))
     } catch (error) {
       console.error('Erro ao salvar cache:', error)
     }
@@ -552,9 +566,11 @@ class SearchService {
 
   private async clearSearchCache(): Promise<void> {
     try {
-      const keys = await redis.keys(`${this.cachePrefix}*`)
+      const client = getRedis()
+      if (!client) return
+      const keys = await client.keys(`${this.cachePrefix}*`)
       if (keys.length > 0) {
-        await redis.del(...keys)
+        await client.del(...keys)
       }
     } catch (error) {
       console.error('Erro ao limpar cache:', error)

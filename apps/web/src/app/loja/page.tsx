@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Suspense } from 'react'
 
 async function fetchProducts(searchParams: { q?: string; category?: string; page?: string }) {
@@ -17,8 +18,16 @@ export default async function ShopPage({ searchParams }: { searchParams: { q?: s
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((p: any) => (
             <Link key={p.id} href={`/loja/${p.slug}`} className="border rounded-lg p-4 hover:shadow">
-              <div className="aspect-square bg-muted rounded mb-3 overflow-hidden">
-                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : null}
+              <div className="relative aspect-square bg-muted rounded mb-3 overflow-hidden">
+                {p.image ? (
+                  <Image
+                    src={p.image}
+                    alt={p.name}
+                    fill
+                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                    className="object-cover"
+                  />
+                ) : null}
               </div>
               <div className="font-medium">{p.name}</div>
               <div className="text-sm text-muted-foreground">{p.category?.name}</div>
@@ -34,4 +43,3 @@ export default async function ShopPage({ searchParams }: { searchParams: { q?: s
     </div>
   )
 }
-

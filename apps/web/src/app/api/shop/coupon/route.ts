@@ -30,3 +30,14 @@ export async function DELETE() {
   return NextResponse.json({ cart, totals })
 }
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+export async function GET() {
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
+}
+
+export async function HEAD() {
+  return NextResponse.json(null, { status: 405 })
+}

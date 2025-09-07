@@ -1,8 +1,8 @@
-import { MercadoPagoService, mercadoPagoService } from './mercadopago';
-import { AsaasService, asaasService } from './asaas';
+import { MercadoPagoService, getMercadoPagoService } from './mercadopago';
+import { AsaasService, getAsaasService } from './asaas';
 
-export { MercadoPagoService, mercadoPagoService } from './mercadopago';
-export { AsaasService, asaasService } from './asaas';
+export { MercadoPagoService, getMercadoPagoService } from './mercadopago';
+export { AsaasService, getAsaasService } from './asaas';
 
 export type {
   MercadoPagoPaymentData,
@@ -55,9 +55,9 @@ export const PAYMENT_PROVIDERS: PaymentProvider[] = [
 export function getPaymentProvider(name: 'MERCADOPAGO' | 'ASAAS') {
   switch (name) {
     case 'MERCADOPAGO':
-      return mercadoPagoService;
+      return getMercadoPagoService();
     case 'ASAAS':
-      return asaasService;
+      return getAsaasService();
     default:
       throw new Error(`Provedor de pagamento não suportado: ${name}`);
   }

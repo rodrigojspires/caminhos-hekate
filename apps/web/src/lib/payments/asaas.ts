@@ -411,4 +411,10 @@ export class AsaasService {
 }
 
 // Instância singleton do serviço
-export const asaasService = new AsaasService();
+let _asaasService: AsaasService | null = null
+export function getAsaasService(): AsaasService {
+  if (!_asaasService) {
+    _asaasService = new AsaasService()
+  }
+  return _asaasService
+}

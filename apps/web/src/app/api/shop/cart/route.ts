@@ -8,6 +8,10 @@ export async function GET() {
   return NextResponse.json({ cart, totals })
 }
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -55,4 +59,3 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
-

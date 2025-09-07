@@ -22,3 +22,6 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   }
 }
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0

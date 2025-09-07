@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const [product, setProduct] = useState<any>(null)
@@ -33,9 +34,16 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     <div className="container mx-auto py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          <div className="aspect-square bg-muted rounded overflow-hidden">
+          <div className="relative aspect-square bg-muted rounded overflow-hidden">
             {Array.isArray(product.images) && product.images[0] ? (
-              <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+              <Image
+                src={product.images[0]}
+                alt={product.name}
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+                priority
+              />
             ) : null}
           </div>
         </div>
@@ -67,4 +75,3 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     </div>
   )
 }
-

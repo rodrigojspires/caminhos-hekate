@@ -3,7 +3,17 @@ import { Redis } from 'ioredis'
 import { z } from 'zod'
 
 const prisma = new PrismaClient()
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+let _redis: Redis | null = null
+function getRedis(): Redis | null {
+  try {
+    if (_redis) return _redis
+    if (!process.env.REDIS_URL) return null
+    _redis = new Redis(process.env.REDIS_URL)
+    return _redis
+  } catch {
+    return null
+  }
+}
 
 // Schemas de validação
 const EmailTemplateSchema = z.object({
@@ -225,7 +235,8 @@ class EmailService {
     const cacheKey = `${this.CACHE_PREFIX}template:${id}`
     
     // Tentar buscar do cache
-    const cached = await redis.get(cacheKey)
+    const client = getRedis()
+    const cached = client ? await client.get(cacheKey) : null
     if (cached) {
       return JSON.parse(cached)
     }
@@ -240,7 +251,7 @@ class EmailService {
     })
 
     if (template) {
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(template))
+      if (client) await client.setex(cacheKey, this.CACHE_TTL, JSON.stringify(template))
     }
 
     return template as EmailTemplate | null
@@ -250,7 +261,8 @@ class EmailService {
     const cacheKey = `${this.CACHE_PREFIX}template:slug:${slug}`
     
     // Tentar buscar do cache
-    const cached = await redis.get(cacheKey)
+    const client2 = getRedis()
+    const cached = client2 ? await client2.get(cacheKey) : null
     if (cached) {
       return JSON.parse(cached)
     }
@@ -264,7 +276,7 @@ class EmailService {
     })
 
     if (template) {
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(template))
+      if (client2) await client2.setex(cacheKey, this.CACHE_TTL, JSON.stringify(template))
     }
 
     return template as EmailTemplate | null
@@ -655,13 +667,17 @@ class EmailService {
 
   private async invalidateTemplateCache(templateId?: string): Promise<void> {
     if (templateId) {
-      await redis.del(`${this.CACHE_PREFIX}template:${templateId}`)
+      const client = getRedis()
+      if (client) await client.del(`${this.CACHE_PREFIX}template:${templateId}`)
     }
     
     // Invalidar cache de listagem
-    const keys = await redis.keys(`${this.CACHE_PREFIX}templates:*`)
-    if (keys.length > 0) {
-      await redis.del(...keys)
+    const client = getRedis()
+    if (client) {
+      const keys = await client.keys(`${this.CACHE_PREFIX}templates:*`)
+      if (keys.length > 0) {
+        await client.del(...keys)
+      }
     }
   }
 

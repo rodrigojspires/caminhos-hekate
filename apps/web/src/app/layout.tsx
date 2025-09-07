@@ -19,6 +19,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
     default: "Caminhos de Hekate - Transforme sua vida através do autoconhecimento",
     template: "%s | Caminhos de Hekate"
