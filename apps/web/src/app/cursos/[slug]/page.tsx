@@ -57,6 +57,21 @@ export default async function CoursePage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen container mx-auto py-8">
+      {/* JSON-LD Course */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org/',
+          '@type': 'Course',
+          name: course.title,
+          description: course.shortDescription || course.description,
+          provider: {
+            '@type': 'Organization',
+            name: 'Caminhos de Hekate',
+            sameAs: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL,
+          },
+        }) }}
+      />
       <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={isEnrolled} />
     </main>
   )

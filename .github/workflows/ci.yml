@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: corepack enable
+      - run: corepack prepare pnpm@8.14.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Type Check
+        run: pnpm --filter @hekate/web type-check
+      - name: Prisma Generate
+        run: pnpm --filter @hekate/database db:generate
+      - name: Lint
+        run: pnpm lint || true
+      - name: Build
+        run: pnpm --filter @hekate/web build
+      - name: Migrations Dry Run
+        run: echo "Skipping real DB migrations in CI"

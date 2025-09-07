@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, SubscriptionStatus } from '@hekate/database'
 
 interface RouteParams { params: { id: string } }
 
@@ -17,7 +17,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    const paused = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'PAUSED' as any } , include: { plan: true }})
+    const paused = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: SubscriptionStatus.PAUSED } , include: { plan: true }})
     // Política: pausar remove acesso imediato (downgrade para FREE)
     try {
       await prisma.user.update({ where: { id: paused.userId }, data: { subscriptionTier: 'FREE' as any } })

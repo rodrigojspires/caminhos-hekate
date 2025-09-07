@@ -61,7 +61,7 @@ export async function createDownloadsForOrder(orderId: string): Promise<number> 
       for (let tries = 0; tries < 3; tries++) {
         try {
           await prisma.download.create({
-            data: ({
+            data: {
               userId: order.userId || (order.user?.id as any) || undefined,
               productId: item.productId,
               fileName,
@@ -71,7 +71,7 @@ export async function createDownloadsForOrder(orderId: string): Promise<number> 
               maxDownloads,
               source: 'ORDER',
               sourceRefId: orderId,
-            } as any),
+            },
           })
           created++
           break
@@ -136,7 +136,7 @@ export async function createDownloadsForSubscription(userId: string, planId: str
     for (let tries = 0; tries < 3; tries++) {
       try {
         await prisma.download.create({
-          data: ({
+          data: {
             userId,
             productId: p.id,
             fileName,
@@ -146,7 +146,7 @@ export async function createDownloadsForSubscription(userId: string, planId: str
             maxDownloads,
             source: 'SUBSCRIPTION',
             sourceRefId: planId,
-          } as any),
+          },
         })
         created++
         break
@@ -166,15 +166,15 @@ export async function createDownloadsForSubscription(userId: string, planId: str
 export async function revokeSubscriptionDownloads(userId: string, planId: string): Promise<number> {
   const now = new Date()
   const res = await prisma.download.updateMany({
-    where: ({
+    where: {
       userId,
       source: 'SUBSCRIPTION',
       sourceRefId: planId,
       expiresAt: { gt: now },
-    } as any),
-    data: ({
+    },
+    data: {
       expiresAt: now,
-    } as any),
+    },
   })
   return res.count
 }

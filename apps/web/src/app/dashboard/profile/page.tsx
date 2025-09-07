@@ -5,6 +5,7 @@ import ProfileStats from '@/components/dashboard/profile/ProfileStats'
 import ProfileActivity from '@/components/dashboard/profile/ProfileActivity'
 import SubscriptionSettings from '@/components/dashboard/profile/SubscriptionSettings'
 import CommunicationPreferences from '@/components/dashboard/profile/CommunicationPreferences'
+import Security2FA from '@/components/dashboard/profile/Security2FA'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -27,6 +28,7 @@ export default function ProfilePage() {
           <TabsTrigger value="notifications">Comunicação</TabsTrigger>
           <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           <TabsTrigger value="activity">Atividade</TabsTrigger>
+          <TabsTrigger value="security">Segurança</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
@@ -59,6 +61,10 @@ export default function ProfilePage() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <Security2FA />
         </TabsContent>
 
         <TabsContent value="subscription" className="space-y-6">

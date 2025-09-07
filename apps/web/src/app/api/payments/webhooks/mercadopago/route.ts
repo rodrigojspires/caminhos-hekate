@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { EnhancedMercadoPagoProcessor } from '@/lib/enhanced-webhook-handlers'
 import { createWebhookResponse, generateEventId, logWebhook, updateWebhookStatus, validateMercadoPagoSignature } from '@/lib/webhook-utils'
+import { rateLimit } from '@/lib/rate-limit'
 import { WebhookLogStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = await rateLimit({ key: `mp:${ip}`, max: 100, windowSec: 60 })
+    if (!rl.allowed) return NextResponse.json(createWebhookResponse(false, 'Rate limit exceeded'), { status: 429 })
+
     const signature = request.headers.get('x-signature') || ''
     const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET || ''
     const raw = await request.text()
@@ -37,4 +42,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(createWebhookResponse(false, 'Internal error'), { status: 500 })
   }
 }
-

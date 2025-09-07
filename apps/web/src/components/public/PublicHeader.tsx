@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import CommandPalette from '@/components/search/CommandPalette'
 
 const navigation = [
   { name: 'Início', href: '/' },
@@ -30,6 +31,7 @@ export function PublicHeader() {
   const { data: session, status } = useSession()
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
@@ -62,6 +64,14 @@ export function PublicHeader() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center space-x-4">
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+            className="text-sm px-3 py-1.5 border rounded hover:bg-muted"
+            aria-label="Abrir busca (Ctrl+K)"
+          >
+            Buscar
+            <span className="ml-2 text-xs text-muted-foreground">Ctrl+K</span>
+          </button>
           <ThemeToggle variant="button" size="sm" />
           {status === 'loading' ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
@@ -186,5 +196,7 @@ export function PublicHeader() {
         </div>
       )}
     </header>
+    <CommandPalette />
+    </>
   )
 }

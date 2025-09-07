@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@hekate/database';
+import { rateLimit } from '@/lib/rate-limit'
 // Import dinâmico dos provedores para evitar carregar SDKs no build
 
 interface ProcessPaymentRequest {
@@ -38,6 +39,12 @@ export async function POST(request: NextRequest) {
         },
         { status: 401 }
       );
+    }
+
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const rl = await rateLimit({ key: `pay:${ip}`, max: 30, windowSec: 60 })
+    if (!rl.allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
     }
 
     const body: ProcessPaymentRequest = await request.json();

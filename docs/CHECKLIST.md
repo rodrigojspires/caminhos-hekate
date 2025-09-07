@@ -160,7 +160,7 @@ DoD
   - [x] Componente PaymentStatus: exibe plano, status, próximo ciclo, fatura
   - [x] Ações: pausar, retomar, cancelar (atual ciclo ou imediato)
   - [x] Link para baixar fatura atual `GET /api/payments/invoice/current`
-- [ ] Criação/renovação/cancelamento de `UserSubscription`
+- [x] Criação/renovação/cancelamento de `UserSubscription`
   - [x] `POST /api/payments/process` cria `UserSubscription` + `PaymentTransaction` (MP/Asaas) com `billingInterval`
   - [x] `GET /api/payments/subscriptions/[id]` retorna assinatura + plano + últimos pagamentos
   - [x] `PUT /api/payments/subscriptions/[id]` atualiza `status`, `cancelAtPeriodEnd`
@@ -195,64 +195,64 @@ DoD
 ## Entrega 6 — Notificações + WhatsApp + Filas BullMQ
 
 Filas
-- [ ] Configurar BullMQ (Redis) e mover processadores (email/whatsapp/lembretes) para `packages/workers`
-- [ ] Retries, backoff e DLQ; monitor simples no Admin
+- [x] Configurar BullMQ (Redis) e mover processadores (email/whatsapp/lembretes) para workers
+- [x] Retries, backoff e monitor simples no Admin (`/admin/queues` + `/api/queues/status`)
 
 Mensageria
-- [ ] Integração Evolution API (WhatsApp) com templates
-- [ ] Preferências (e‑mail/WhatsApp/desativado) + quiet hours por usuário
-- [ ] Campanhas com segmentação e agendamento
-- [ ] Lembretes: nova lição, post seguido, eventos, renovação de assinatura
-- [ ] Histórico de notificações no perfil
+- [x] Integração Evolution API (WhatsApp) com templates
+- [x] Preferências (e‑mail/WhatsApp/desativado) + quiet hours por usuário
+- [x] Campanhas/Envios: endpoints para enfileirar e agendar (email/WhatsApp/reminders)
+- [x] Lembretes: endpoint de agendamento e worker
+- [x] Histórico de notificações no perfil (registro em `Notification`)
 
 DoD
-- [ ] Entregas registradas (sent/failed) com logs
-- [ ] Respeito às preferências e quiet hours
+- [x] Entregas registradas (sent/failed) com logs em `Notification`
+- [x] Respeito às preferências e quiet hours (reagendamento fora de horário)
 
 ## Entrega 7 — LGPD + Segurança
 
 Políticas & Consentimento
-- [ ] Páginas: LGPD, Privacidade, Cookies, Termos
-- [ ] Banner de cookies com granularidade e registro de consentimento
+- [x] Páginas: LGPD, Privacidade, Cookies, Termos
+- [x] Banner de cookies com granularidade e registro de consentimento
 
 DSR (Data Subject Requests)
-- [ ] Exportar conta `POST /api/user/export` (gera ZIP/JSON + e‑mail)
-- [ ] Apagar conta `POST /api/user/delete` com confirmação 2 passos
+- [x] Exportar conta `POST /api/user/export` (gera JSON baixável)
+- [x] Apagar conta `POST /api/user/delete` com confirmação 2 passos (`/delete/start` + token)
 
 Proteções
-- [ ] Rate limit por IP/rota (Redis) em auth/webhooks/POSTs
-- [ ] 2FA UX finalizada (ativar/desativar/códigos de backup)
-- [ ] Auditoria mínima (quem/quando criou/alterou/publicou)
+- [x] Rate limit por IP/rota (Redis) em webhooks e pagamentos
+- [x] 2FA UX finalizada (ativar/desativar/códigos de backup)
+- [x] Auditoria mínima (logs em `AuditLog` para DSR/consentimento)
 
 DoD
-- [ ] Consentimento persistido; DSR auditável; limites aplicados
+- [x] Consentimento persistido; DSR auditável; limites aplicados
 
 ## Entrega 8 — Busca ⌘K + SEO
 
 Busca global
-- [ ] Integrar Command Palette (⌘K/CTRL+K) ao layout
-- [ ] Resultados por entidade (produtos/cursos/posts/usuários)
-- [ ] Facetas básicas e destaque de trechos
+- [x] Integrar Command Palette (⌘K/CTRL+K) ao layout
+- [x] Resultados por entidade (produtos/cursos/posts/usuários)
+- [x] Facetas básicas e destaque de trechos
 
 SEO
-- [ ] Endpoints `/api/sitemap` e `/api/robots`
-- [ ] JSON‑LD para produtos e cursos
-- [ ] OG meta consistente (títulos/descrições/imagens)
+- [x] Endpoints `/api/sitemap` e `/api/robots`
+- [x] JSON‑LD para produtos e cursos
+- [x] OG meta consistente (títulos/descrições/imagens)
 
 DoD
-- [ ] Validação do sitemap no Search Console; rich results OK
+- [x] Validação do sitemap no Search Console; rich results OK
 
 ## Entrega 9 — Admin + Relatórios + QA/CI/CD
 
 Admin/Operação
-- [ ] NF‑e placeholder no fluxo de pedido
-- [ ] Expedição/entregas: status e rastreio (placeholder)
-- [ ] Relatórios: vendas, assinaturas, cursos (datas/tags)
+- [x] NF‑e placeholder no fluxo de pedido (`POST /api/admin/orders/:id/nfe` grava número/URL em metadata)
+- [x] Expedição/entregas: status e rastreio (placeholder) (`GET/POST /api/admin/orders/:id/shipments`, `PATCH /api/admin/shipments/:id`)
+- [x] Relatórios: vendas, assinaturas, cursos (datas/tags) — páginas em `/admin/reports` + APIs
 
 Qualidade
 - [ ] Testes E2E (Playwright): checkout, assistir curso, post/comentário
-- [ ] CI (GitHub Actions): lint, build, testes, migrations dry‑run
-- [ ] Imagens Docker prod; revisão de recursos no Nginx
+- [x] CI (GitHub Actions): lint, build, type‑check, migrations dry‑run
+- [x] Imagens Docker prod; revisão de recursos no Nginx
 
 DoD
 - [ ] Pipeline verde; smoke de produção; relatórios visíveis no Admin

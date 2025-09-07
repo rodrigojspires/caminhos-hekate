@@ -56,6 +56,7 @@ model User {
   emailCampaigns       EmailCampaign[]
   preferences          UserPreferences?
   customThemes         CustomTheme[]
+  consents             UserConsent[]
   userSubscriptions    UserSubscription[]
   paymentTransactions  PaymentTransaction[]
   // Gamification Relations
@@ -709,6 +710,20 @@ model AuditLog {
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
+}
+
+model UserConsent {
+  id          String   @id @default(cuid())
+  userId      String?
+  consentType String   // cookies|privacy|terms
+  consent     Json     // categories and flags
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, consentType, createdAt])
+  @@map("user_consents")
 }
 
 model SystemSettings {

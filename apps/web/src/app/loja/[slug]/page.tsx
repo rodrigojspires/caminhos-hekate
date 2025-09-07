@@ -32,6 +32,24 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   return (
     <div className="container mx-auto py-8">
+      {/* JSON-LD Product */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org/',
+          '@type': 'Product',
+          name: product.name,
+          description: product.shortDescription || product.description,
+          image: Array.isArray(product.images) ? product.images : [],
+          sku: product.variants?.[0]?.sku,
+          offers: product.variants?.map((v: any) => ({
+            '@type': 'Offer',
+            priceCurrency: 'BRL',
+            price: Number(v.price || 0),
+            availability: (v.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          })) || [],
+        }) }}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <div className="relative aspect-square bg-muted rounded overflow-hidden">

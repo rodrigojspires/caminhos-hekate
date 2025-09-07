@@ -9,6 +9,7 @@ import {
   validatePayloadStructure,
   checkRateLimit
 } from '@/lib/webhook-utils';
+import { rateLimit } from '@/lib/rate-limit'
 
 const processor = new AsaasWebhookProcessor();
 
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limiting
     const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-    if (!checkRateLimit(`asaas_${clientIp}`, 100, 60000)) {
+    const rl = await rateLimit({ key: `asaas:${clientIp}`, max: 100, windowSec: 60 })
+    if (!rl.allowed) {
       return NextResponse.json(
         createWebhookResponse(false, 'Rate limit exceeded'),
         { status: 429 }

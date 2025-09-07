@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { PublicHeader } from '@/components/public/PublicHeader'
 import { PublicFooter } from '@/components/public/PublicFooter'
 import { cn } from '@/lib/utils'
+import CookieConsentBanner from '@/components/privacy/CookieConsentBanner'
 
 interface PublicLayoutProps {
   children: ReactNode
@@ -29,6 +30,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
         {children}
       </main>
       <PublicFooter />
+      <CookieConsentBanner />
     </div>
   )
 }
