@@ -19,15 +19,18 @@ interface SubscriptionPlan {
   features: string[];
   isPopular?: boolean;
   isActive: boolean;
+  monthlyPrice?: number;
+  yearlyPrice?: number;
 }
 
 interface PlanSelectorProps {
   onPlanSelect: (plan: SubscriptionPlan) => void;
   selectedPlanId?: string;
   loading?: boolean;
+  billing?: 'MONTHLY' | 'YEARLY';
 }
 
-export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false }: PlanSelectorProps) {
+export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, billing = 'MONTHLY' }: PlanSelectorProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,12 +69,19 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false }: 
     return interval.toLowerCase();
   };
 
-  const getMonthlyPrice = (price: number, interval: string, count: number) => {
-    if (interval === 'YEARLY') {
-      return price / (count * 12);
+  const getDisplayPrice = (plan: SubscriptionPlan) => {
+    if (billing === 'YEARLY') {
+      if (typeof plan.yearlyPrice === 'number' && plan.yearlyPrice > 0) return plan.yearlyPrice
+      // fallback
+      return plan.price * 12
     }
-    return price / count;
-  };
+    return plan.price
+  }
+
+  const getMonthlyEquivalent = (plan: SubscriptionPlan) => {
+    const yearly = typeof plan.yearlyPrice === 'number' && plan.yearlyPrice > 0 ? plan.yearlyPrice : plan.price * 12
+    return yearly / 12
+  }
 
   if (isLoading) {
     return (
@@ -122,7 +132,8 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false }: 
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {plans.map((plan) => {
         const isSelected = selectedPlanId === plan.id;
-        const monthlyPrice = getMonthlyPrice(plan.price, plan.interval, plan.intervalCount);
+        const displayPrice = getDisplayPrice(plan)
+        const monthlyEq = getMonthlyEquivalent(plan)
         
         return (
           <Card 
@@ -151,15 +162,13 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false }: 
             <CardContent className="text-center">
               <div className="mb-6">
                 <div className="text-3xl font-bold text-gray-900">
-                  {formatCurrency(plan.price)}
+                  {formatCurrency(displayPrice)}
                 </div>
                 <div className="text-sm text-gray-600">
-                  por {getIntervalText(plan.interval, plan.intervalCount)}
+                  por {billing === 'YEARLY' ? 'ano' : getIntervalText('MONTHLY', 1)}
                 </div>
-                {plan.interval === 'YEARLY' && (
-                  <div className="text-xs text-green-600 mt-1">
-                    {formatCurrency(monthlyPrice)}/mês
-                  </div>
+                {billing === 'YEARLY' && (
+                  <div className="text-xs text-green-600 mt-1">{formatCurrency(monthlyEq)}/mês</div>
                 )}
               </div>
               
@@ -183,7 +192,7 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false }: 
             
             <CardFooter>
               <Button
-                onClick={() => onPlanSelect(plan)}
+                onClick={() => onPlanSelect({ ...plan, price: getDisplayPrice(plan), interval: billing })}
                 disabled={loading || !plan.isActive}
                 className={`w-full ${
                   isSelected 

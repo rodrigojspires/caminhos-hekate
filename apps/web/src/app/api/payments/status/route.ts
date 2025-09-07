@@ -45,13 +45,30 @@ export async function GET(request: NextRequest) {
     }))
 
     let nextPayment: any = undefined
+    let billingInterval: 'MONTHLY' | 'YEARLY' = 'MONTHLY'
+    try {
+      const m = (subscription?.metadata as any) || {}
+      if (m.billingInterval === 'YEARLY') billingInterval = 'YEARLY'
+    } catch {}
+
     if (subscription?.plan && subscription.currentPeriodEnd) {
+      const amount = billingInterval === 'YEARLY'
+        ? Number(subscription.plan.yearlyPrice || subscription.plan.monthlyPrice || 0)
+        : Number(subscription.plan.monthlyPrice || 0)
       nextPayment = {
-        amount: Number(subscription.plan.monthlyPrice || subscription.plan.yearlyPrice || 0),
+        amount,
         dueDate: (subscription.currentPeriodEnd as any as Date).toISOString?.() || new Date(subscription.currentPeriodEnd as any).toISOString(),
-        description: `Renovação do plano ${subscription.plan.name}`
+        description: `Renovação do plano ${subscription.plan.name} (${billingInterval === 'YEARLY' ? 'anual' : 'mensal'})`
       }
     }
+
+    // Histórico recente de transações (qualquer status)
+    const history = await prisma.paymentTransaction.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, amount: true, createdAt: true, status: true, provider: true }
+    })
 
     const payload = {
       subscription: subscription ? {
@@ -63,12 +80,15 @@ export async function GET(request: NextRequest) {
         plan: {
           id: subscription.planId,
           name: subscription.plan?.name || '',
-          price: Number(subscription.plan?.monthlyPrice || subscription.plan?.yearlyPrice || 0),
-          interval: (subscription.plan?.interval as any) || 'MONTHLY',
+          price: billingInterval === 'YEARLY'
+            ? Number(subscription.plan?.yearlyPrice || subscription.plan?.monthlyPrice || 0)
+            : Number(subscription.plan?.monthlyPrice || 0),
+          interval: billingInterval,
           features: Array.isArray(subscription.plan?.features) ? (subscription.plan?.features as any) : []
         }
       } : undefined,
       paymentIssues,
+      history,
       nextPayment,
       usage: undefined,
       credits: { balance: 0 }
@@ -80,4 +100,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

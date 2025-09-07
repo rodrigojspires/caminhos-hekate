@@ -401,6 +401,8 @@ model Download {
   expiresAt     DateTime
   downloadCount Int      @default(0)
   maxDownloads  Int      @default(5)
+  source        DownloadSource @default(ORDER)
+  sourceRefId   String?
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id])
 }
@@ -793,6 +795,7 @@ enum SubscriptionStatus {
   PENDING
   ACTIVE
   PAST_DUE
+  PAUSED
   CANCELLED
   EXPIRED
   UNPAID
@@ -1386,6 +1389,12 @@ enum PaymentProvider {
   MERCADOPAGO
   ASAAS
   STRIPE
+}
+
+enum DownloadSource {
+  ORDER
+  SUBSCRIPTION
+  MANUAL
 }
 
 // ============================================================================

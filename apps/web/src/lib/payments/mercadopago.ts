@@ -187,7 +187,17 @@ export class MercadoPagoService {
           status: 'ACTIVE',
           currentPeriodStart: new Date(),
         },
+        include: { plan: true },
       });
+
+      // Atualiza tier do usuário conforme o plano
+      try {
+        if (updated.plan?.tier) {
+          await prisma.user.update({ where: { id: updated.userId }, data: { subscriptionTier: updated.plan.tier as any } })
+        }
+      } catch (e) {
+        console.error('Erro ao atualizar subscriptionTier do usuário (MP):', e)
+      }
 
       try {
         const { createDownloadsForSubscription } = await import('@/lib/downloads')

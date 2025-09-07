@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@hekate/database';
+import { prisma, SubscriptionStatus } from '@hekate/database';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
@@ -235,7 +235,7 @@ export async function DELETE(
         id,
       },
       data: {
-        status: 'CANCELLED',
+        status: SubscriptionStatus.CANCELLED,
         canceledAt: new Date(),
         cancelAtPeriodEnd: false,
       },

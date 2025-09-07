@@ -314,13 +314,22 @@ export class AsaasService {
    */
   private async activateSubscription(subscriptionId: string) {
     try {
-      await prisma.userSubscription.update({
+      const updated = await prisma.userSubscription.update({
         where: { id: subscriptionId },
         data: {
           status: 'ACTIVE',
           currentPeriodStart: new Date(),
         },
+        include: { plan: true },
       });
+      // Atualiza tier do usuário
+      try {
+        if (updated.plan?.tier) {
+          await prisma.user.update({ where: { id: updated.userId }, data: { subscriptionTier: updated.plan.tier as any } })
+        }
+      } catch (e) {
+        console.error('Erro ao atualizar subscriptionTier do usuário (Asaas):', e)
+      }
     } catch (error) {
       console.error('Erro ao ativar assinatura:', error);
       throw error;
@@ -332,13 +341,24 @@ export class AsaasService {
    */
   private async cancelUserSubscription(subscriptionId: string) {
     try {
-      await prisma.userSubscription.update({
+      const canceled = await prisma.userSubscription.update({
         where: { id: subscriptionId },
         data: {
           status: 'CANCELLED',
           canceledAt: new Date(),
         },
       });
+      try {
+        await prisma.user.update({ where: { id: canceled.userId }, data: { subscriptionTier: 'FREE' as any } })
+      } catch (e) {
+        console.error('Erro ao definir usuário como FREE (Asaas cancel):', e)
+      }
+      try {
+        const { revokeSubscriptionDownloads } = await import('@/lib/downloads')
+        await revokeSubscriptionDownloads(canceled.userId, canceled.planId)
+      } catch (e) {
+        console.error('Erro ao revogar downloads de assinatura (Asaas cancel):', e)
+      }
     } catch (error) {
       console.error('Erro ao cancelar assinatura do usuário:', error);
       throw error;
@@ -348,7 +368,12 @@ export class AsaasService {
   /**
    * Cria uma cobrança para assinatura
    */
-  async createSubscriptionPayment(userId: string, planId: string, customerData: AsaasCustomerData) {
+  async createSubscriptionPayment(
+    userId: string,
+    planId: string,
+    customerData: AsaasCustomerData,
+    options?: { amount?: number; description?: string; billingType?: 'BOLETO' | 'CREDIT_CARD' | 'PIX'; metadata?: Record<string, any> }
+  ) {
     try {
       // Busca o plano
       const plan = await prisma.subscriptionPlan.findUnique({
@@ -363,15 +388,17 @@ export class AsaasService {
       const customer = await this.createCustomer(customerData);
 
       // Cria a transação no banco
+      const value = options?.amount ?? Number(plan.monthlyPrice)
       const transaction = await prisma.paymentTransaction.create({
         data: {
           userId,
-          amount: Number(plan.monthlyPrice),
+          amount: value,
           currency: 'BRL',
           provider: 'ASAAS',
           status: 'PENDING',
           metadata: {
-            description: `Assinatura ${plan.name}`,
+            description: options?.description ?? `Assinatura ${plan.name}`,
+            ...(options?.metadata || {}),
           },
         },
       });
@@ -383,10 +410,10 @@ export class AsaasService {
       // Cria a cobrança no Asaas
       const payment = await this.createPayment({
         customer: customer.id,
-        billingType: 'BOLETO',
-        value: Number(plan.monthlyPrice),
+        billingType: options?.billingType ?? 'BOLETO',
+        value,
         dueDate: dueDate.toISOString().split('T')[0],
-        description: `Assinatura ${plan.name}`,
+        description: options?.description ?? `Assinatura ${plan.name}`,
         externalReference: transaction.id,
       });
 

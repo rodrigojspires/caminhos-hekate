@@ -17,11 +17,24 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'PAUSED' as any } })
+    const paused = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'PAUSED' as any } , include: { plan: true }})
+    // Política: pausar remove acesso imediato (downgrade para FREE)
+    try {
+      await prisma.user.update({ where: { id: paused.userId }, data: { subscriptionTier: 'FREE' as any } })
+    } catch (e) {
+      console.error('Erro ao definir usuário como FREE ao pausar assinatura:', e)
+    }
+
+    // Revogar downloads incluídos por assinatura
+    try {
+      const { revokeSubscriptionDownloads } = await import('@/lib/downloads')
+      await revokeSubscriptionDownloads(paused.userId, paused.planId)
+    } catch (e) {
+      console.error('Erro ao revogar downloads de assinatura (pause):', e)
+    }
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro ao pausar assinatura:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

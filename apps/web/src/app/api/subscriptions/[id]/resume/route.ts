@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, SubscriptionStatus } from '@hekate/database'
 
 interface RouteParams { params: { id: string } }
 
@@ -17,7 +17,16 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    const updated = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'ACTIVE' as any, currentPeriodStart: new Date() } })
+    const updated = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: SubscriptionStatus.ACTIVE, currentPeriodStart: new Date() }, include: { plan: true } })
+
+    // Atualiza tier do usuário conforme o plano
+    try {
+      if (updated.plan?.tier) {
+        await prisma.user.update({ where: { id: updated.userId }, data: { subscriptionTier: updated.plan.tier as any } })
+      }
+    } catch (e) {
+      console.error('Erro ao atualizar subscriptionTier do usuário ao retomar assinatura:', e)
+    }
 
     // Criar downloads incluídos no plano, se configurados
     try {

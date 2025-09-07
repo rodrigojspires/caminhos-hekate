@@ -29,7 +29,7 @@ export class EnhancedMercadoPagoProcessor {
         pending: 'PENDING',
         in_process: 'PROCESSING',
         rejected: 'FAILED',
-        cancelled: 'CANCELLED',
+        cancelled: 'CANCELED',
         refunded: 'REFUNDED',
       };
 

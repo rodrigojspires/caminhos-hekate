@@ -137,6 +137,7 @@ export function PaymentForm({ plan, onPaymentSuccess, onCancel }: PaymentFormPro
           planId: plan.id,
           provider: selectedProvider,
           paymentMethod: selectedMethod,
+          billingInterval: plan.interval, // 'MONTHLY' | 'YEARLY' vindo do PlanSelector
           customerData: selectedProvider === 'ASAAS' ? customerData : undefined,
         }),
       });

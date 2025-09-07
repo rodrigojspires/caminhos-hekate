@@ -106,28 +106,32 @@ export function useTheme(): ThemeContextType {
     }
   }, [generateCSS])
 
-  // Carregar preferências do usuário
+  // Carregar preferências do usuário (evitar loop incluindo apenas deps estáveis)
   useEffect(() => {
     if (!user?.id || !themeService) return
 
+    let cancelled = false
     const loadPreferences = async () => {
       try {
         setIsLoading(true)
         const userPrefs = await themeService.getUserPreferences(user.id)
+        if (cancelled) return
         setPreferences(userPrefs)
-        
-        // Aplicar tema ao DOM
+        // Aplicar tema ao DOM com prefs carregadas
         applyThemeToDOM(userPrefs)
       } catch (error) {
-        console.error('Erro ao carregar preferências:', error)
-        toast.error('Erro ao carregar configurações de tema')
+        if (!cancelled) {
+          console.error('Erro ao carregar preferências:', error)
+          toast.error('Erro ao carregar configurações de tema')
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
 
     loadPreferences()
-  }, [user?.id, themeService, applyThemeToDOM])
+    return () => { cancelled = true }
+  }, [user?.id, themeService])
 
   // Atualizar preferências
   const updatePreferences = useCallback(async (updates: Partial<UserPreferences>) => {

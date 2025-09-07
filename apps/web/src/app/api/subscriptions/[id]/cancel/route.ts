@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, SubscriptionStatus } from '@hekate/database'
 
 interface RouteParams { params: { id: string } }
 
@@ -17,11 +17,23 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: 'CANCELLED' as any, canceledAt: new Date() } })
+    const canceled = await prisma.userSubscription.update({ where: { id: sub.id }, data: { status: SubscriptionStatus.CANCELLED, canceledAt: new Date() }, include: { plan: true } })
+    try {
+      await prisma.user.update({ where: { id: canceled.userId }, data: { subscriptionTier: 'FREE' as any } })
+    } catch (e) {
+      console.error('Erro ao definir usuário como FREE ao cancelar assinatura:', e)
+    }
+
+    // Revogar downloads incluídos por assinatura
+    try {
+      const { revokeSubscriptionDownloads } = await import('@/lib/downloads')
+      await revokeSubscriptionDownloads(canceled.userId, canceled.planId)
+    } catch (e) {
+      console.error('Erro ao revogar downloads de assinatura (cancel):', e)
+    }
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro ao cancelar assinatura:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

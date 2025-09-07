@@ -20,6 +20,54 @@ Pré‑requisitos e Infra
 - [ ] Migrations aplicadas (Prisma) + seed básico
 - [ ] Logs estruturados e níveis configurados (info/warn/error)
 
+## Infra & Deploy (Produção)
+
+Compose/Serviços
+- [ ] `docker-compose.prod.yml` sobe saudável: `postgres`, `redis`, `web`, `worker-email`, `worker-reminders`
+- [ ] `web` exposto em `127.0.0.1:3001→3000`; workers em background; políticas `restart: unless-stopped`
+- [ ] `REDIS_URL` e `DATABASE_URL` válidos no `web` e nos workers
+- [ ] One-off `dbtools` executa seed quando necessário
+  - [ ] `docker compose -f docker-compose.prod.yml run --rm dbtools`
+- [ ] Migrations aplicadas na produção (`prisma migrate deploy`) antes do primeiro tráfego
+
+Nginx/Proxy
+- [ ] `nginx/prod/hekate.conf` (ou `nginx/prod/caminhosdehekate.conf`) instalado e habilitado
+- [ ] Domínio configurado no `server_name`; certificados TLS válidos
+- [ ] Proxy HTTP → `127.0.0.1:3000`; WebSockets → `127.0.0.1:8080/8081`
+- [ ] Headers de upgrade WS OK (`Upgrade`/`Connection`) e `X-Forwarded-*` coerentes
+- [ ] Checagem `nginx -t` e `systemctl reload nginx` sem erros
+
+Saúde/Operação
+- [ ] Endpoint `GET /api/health` responde 200 (app) e conexões a DB/Redis OK
+- [ ] Logs acessíveis: `docker compose -f docker-compose.prod.yml logs -f web worker-email worker-reminders`
+- [ ] Rotação/retention de logs definida (journald/logrotate ou stack centralizada)
+- [ ] Backups Postgres agendados (retention; teste de restore documentado)
+- [ ] Monitoramento/Uptime (HTTP, erros, consumo de CPU/Memória, espaço em disco)
+
+Pagamentos/Webhooks
+- [ ] Webhook Mercado Pago aponta para `/api/payments/webhooks/mercadopago`
+- [ ] Segredo de webhook definido e validado (`MERCADOPAGO_WEBHOOK_SECRET`)
+- [ ] Fluxo sandbox aprovado (vide DoD da Entrega 1)
+
+Segurança
+- [ ] `.env` não versionado; segredos rotacionáveis e documentados
+- [ ] Portas externas mínimas abertas; firewall ativo
+- [ ] Rate limit básico em Nginx para rotas sensíveis (auth/webhooks)
+
+Deploy/Runbook
+- [ ] Procedimento de deploy documentado (build/pull + `up -d --no-deps`)
+- [ ] Plano de rollback (imagem anterior/tag) com verificação pós-rollback
+- [ ] Passo a passo em `docs/README_PROD.md` seguido e atualizado
+
+DoD (Produção)
+- [ ] App atende via HTTPS com domínio final; WS funcionando
+- [ ] Healthcheck verde; logs sem erros; migrações aplicadas
+- [ ] Webhook de pagamento recebendo e processando notificações
+- [ ] Backup recente válido; monitoramento gerando alertas
+
+Referência rápida
+- Ver `docs/README_PROD.md` para comandos de build/up, Nginx e operação.
+
 ## Entrega 1 — Loja + Checkout Mercado Pago
 
 Páginas/UX
@@ -103,18 +151,46 @@ DoD
 
 ## Entrega 5 — Assinaturas + Gates de Conteúdo
 
-- [ ] Página `/precos` com planos (mensal/anual), upsell e trials
+- [x] Página `/precos` com planos (mensal/anual), upsell e trials
+  - [x] Listagem usa `GET /api/payments/plans` (cache no‑store) — retorna somente planos `isActive` com shape: `{ id, name, description, price, interval, intervalCount, trialDays, features[], isPopular, isActive }`
+  - [x] Toggle mensal/anual com destaque de economia; badge “Mais popular”
+  - [x] CTA abre fluxo de pagamento (PaymentForm) e mostra termos/cancelamento
+  - [x] Sucesso redireciona para `/dashboard/subscription` com status
+- [x] `/dashboard/subscription` — status da assinatura + ações
+  - [x] Componente PaymentStatus: exibe plano, status, próximo ciclo, fatura
+  - [x] Ações: pausar, retomar, cancelar (atual ciclo ou imediato)
+  - [x] Link para baixar fatura atual `GET /api/payments/invoice/current`
 - [ ] Criação/renovação/cancelamento de `UserSubscription`
-- [ ] Gate por tier em posts/cursos/downloads (middleware + server)
-- [ ] Preferências do usuário em `/dashboard/profile`
+  - [x] `POST /api/payments/process` cria `UserSubscription` + `PaymentTransaction` (MP/Asaas) com `billingInterval`
+  - [x] `GET /api/payments/subscriptions/[id]` retorna assinatura + plano + últimos pagamentos
+  - [x] `PUT /api/payments/subscriptions/[id]` atualiza `status`, `cancelAtPeriodEnd`
+  - [x] `DELETE /api/payments/subscriptions/[id]` cancela imediatamente
+  - [x] Webhooks/handlers atualizam `PaymentTransaction.status` e `UserSubscription.status`; ativação/cancelamento ajustam `User.subscriptionTier`
+- [x] Gate por tier em posts/cursos/downloads (middleware + server)
+  - [x] Util server: `requireTier(userTier, requiredTier)` já aplicado nos endpoints de Posts/Cursos
+  - [x] Atualização de `User.subscriptionTier` na ativação/pause/cancel garante gate imediato
+  - [x] Middleware: ao acessar conteúdo gated sem permissão → redirect para `/precos?reason=tier&returnTo=...` (posts/cursos)
+- [x] Preferências do usuário em `/dashboard/profile`
+  - [x] Seção Assinatura: `auto‑renovar` (`cancelAtPeriodEnd`), histórico, notas de fatura
+  - [x] Preferências de comunicação (placeholder): email/WhatsApp e quiet hours
 
 Notas
 - [x] Downloads incluídos no plano: defina `downloadProductIds` em `SubscriptionPlan.features` (ou `metadata.downloads.products`). Na ativação/resume da assinatura, é gerado um link de download por produto digital listado.
 - [x] Admin: página simples para editar downloads por plano em `/admin/subscriptions/plans`.
+- [x] Endpoint `GET /api/payments/plans` mapeia Prisma → UI (inclui `monthlyPrice/yearlyPrice` e `features[]`).
+- [x] Enum `SubscriptionStatus` inclui `PAUSED` e endpoints de pause/resume/cancel usam o enum.
+- [x] Ajuste integração Mercado Pago/Asaas: alinhado `PaymentTransaction.status` para `CANCELED` (1 L) em cancelamentos.
+- [x] `POST /api/payments/process` aceita `billingInterval` ('MONTHLY'|'YEARLY') e cobra `monthlyPrice`/`yearlyPrice` conforme o toggle. Persistido em `UserSubscription.metadata.billingInterval`.
 
 DoD
-- [ ] Upgrade/downgrade com proration simples ou janela de troca definida
-- [ ] Bloqueio/desbloqueio imediato após mudança de status
+- [x] Upgrade/downgrade: implementar uma das opções
+  - [x] Proration simples com crédito aplicado na próxima fatura (`POST /api/payments/subscriptions/[id]/change-plan`)
+  - [ ] Janela de troca (ex.: permite trocar 1x/ciclo sem cobrança adicional)
+- [x] Bloqueio/desbloqueio imediato após mudança de status (tier do usuário atualizado em tempo real)
+- [x] `/precos` exibe planos corretos (mensal/anual/trial) e redireciona pós‑compra
+- [x] `/dashboard/subscription` mostra status, permite pausar/retomar/cancelar e baixar fatura
+- [x] Downloads incluídos gerados na ativação/retorno; remoção/bloqueio ao cancelar (conforme política)
+  - [x] Campo `Download.source` + `sourceRefId` e revogação seletiva por assinatura
 
 ## Entrega 6 — Notificações + WhatsApp + Filas BullMQ
 
