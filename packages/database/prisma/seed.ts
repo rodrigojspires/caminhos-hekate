@@ -1,12 +1,23 @@
 import { PrismaClient } from '@prisma/client';
-import { config as dotenvConfig } from 'dotenv';
-import path from 'path';
 
-// Load environment variables for Prisma (DATABASE_URL)
-// 1) Try repo root .env (../../.env when running from packages/database)
-dotenvConfig({ path: path.resolve(process.cwd(), '../../.env') });
-// 2) Also load local .env if present
-dotenvConfig();
+// Try to load .env files if dotenv is available; otherwise, continue
+async function tryLoadDotenv() {
+  try {
+    const [{ config }, path] = await Promise.all([
+      import('dotenv') as Promise<{ config: (options?: any) => void }>,
+      import('path') as Promise<typeof import('path')>,
+    ])
+    // 1) Repo root .env (../../.env when running from packages/database)
+    config({ path: path.resolve(process.cwd(), '../../.env') })
+    // 2) Local .env (packages/database/.env) if present
+    config()
+  } catch {
+    // Ignore if dotenv is not installed; rely on environment
+  }
+}
+
+// Top-level await supported by tsx
+await tryLoadDotenv()
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
