@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const results: any = {}
 
     // Award points based on activity type
-    let pointsAwarded = 0
+    let points = 0
     const pointsMap: Record<string, number> = {
       'LOGIN': 5,
       'PROFILE_COMPLETE': 50,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (pointsMap[activityType]) {
-      pointsAwarded = pointsMap[activityType]
+      points = pointsMap[activityType]
       
       // Award points through the points API
       const pointsResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/gamification/points/award`, {
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           'Cookie': request.headers.get('cookie') || ''
         },
         body: JSON.stringify({
-          points: pointsAwarded,
+          points,
           reason: `Atividade: ${activityType}`,
           metadata: {
             activityType,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
       if (pointsResponse.ok) {
         const pointsData = await pointsResponse.json()
-        results.pointsAwarded = pointsAwarded
+        results.points = points
         results.levelUp = pointsData.levelUp
         results.userPoints = pointsData.userPoints
       }
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       activityType,
-      pointsAwarded,
+      points,
       levelUp: results.levelUp || false,
       streakUpdated: results.streakUpdated || false,
       streakData: results.streakData,

@@ -3,6 +3,17 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
+interface SubscriptionMetadata {
+  billingInterval?: 'MONTHLY' | 'YEARLY';
+  [key: string]: unknown;
+}
+
+interface NextPayment {
+  amount: number;
+  dueDate: string;
+  description: string;
+}
+
 // GET /api/payments/status[?userId=]
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +39,7 @@ export async function GET(request: NextRequest) {
     // Problemas de pagamento recentes (FAILED)
     const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const failed = await prisma.paymentTransaction.findMany({
-      where: { userId, status: 'FAILED' as any, createdAt: { gte: last30 } },
+      where: { userId, status: 'FAILED', createdAt: { gte: last30 } },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: { id: true, amount: true, createdAt: true, status: true }
@@ -44,10 +55,11 @@ export async function GET(request: NextRequest) {
       canRetry: true
     }))
 
-    let nextPayment: any = undefined
+
+    let nextPayment: NextPayment | undefined = undefined
     let billingInterval: 'MONTHLY' | 'YEARLY' = 'MONTHLY'
     try {
-      const m = (subscription?.metadata as any) || {}
+      const m = (subscription?.metadata as SubscriptionMetadata) || {}
       if (m.billingInterval === 'YEARLY') billingInterval = 'YEARLY'
     } catch {}
 
@@ -55,9 +67,11 @@ export async function GET(request: NextRequest) {
       const amount = billingInterval === 'YEARLY'
         ? Number(subscription.plan.yearlyPrice || subscription.plan.monthlyPrice || 0)
         : Number(subscription.plan.monthlyPrice || 0)
+      const cpe = subscription.currentPeriodEnd as Date | string
+      const dueDate = cpe instanceof Date ? cpe.toISOString() : new Date(cpe).toISOString()
       nextPayment = {
         amount,
-        dueDate: (subscription.currentPeriodEnd as any as Date).toISOString?.() || new Date(subscription.currentPeriodEnd as any).toISOString(),
+        dueDate,
         description: `Renovação do plano ${subscription.plan.name} (${billingInterval === 'YEARLY' ? 'anual' : 'mensal'})`
       }
     }
@@ -73,9 +87,17 @@ export async function GET(request: NextRequest) {
     const payload = {
       subscription: subscription ? {
         id: subscription.id,
-        status: subscription.status as any,
-        currentPeriodStart: subscription.currentPeriodStart?.toISOString?.() || new Date(subscription.currentPeriodStart as any).toISOString(),
-        currentPeriodEnd: subscription.currentPeriodEnd?.toISOString?.() || new Date(subscription.currentPeriodEnd as any).toISOString(),
+        status: subscription.status,
+        currentPeriodStart: subscription.currentPeriodStart instanceof Date
+          ? subscription.currentPeriodStart.toISOString()
+          : subscription.currentPeriodStart
+            ? new Date(subscription.currentPeriodStart).toISOString()
+            : undefined,
+        currentPeriodEnd: subscription.currentPeriodEnd instanceof Date
+          ? subscription.currentPeriodEnd.toISOString()
+          : subscription.currentPeriodEnd
+            ? new Date(subscription.currentPeriodEnd).toISOString()
+            : undefined,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd || false,
         plan: {
           id: subscription.planId,
@@ -84,7 +106,7 @@ export async function GET(request: NextRequest) {
             ? Number(subscription.plan?.yearlyPrice || subscription.plan?.monthlyPrice || 0)
             : Number(subscription.plan?.monthlyPrice || 0),
           interval: billingInterval,
-          features: Array.isArray(subscription.plan?.features) ? (subscription.plan?.features as any) : []
+          features: Array.isArray(subscription.plan?.features) ? (subscription.plan?.features as string[]) : []
         }
       } : undefined,
       paymentIssues,

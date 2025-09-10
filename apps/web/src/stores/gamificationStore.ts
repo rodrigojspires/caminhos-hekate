@@ -223,7 +223,7 @@ export const useGamificationStore = create<GamificationState>()(devtools(
         }
 
         // Atualizar pontos se foram adicionados
-        if (data.pointsAwarded > 0) {
+        if (data.points > 0) {
           await get().fetchUserPoints();
         }
       } catch (error) {
@@ -279,7 +279,7 @@ export const useGamificationStore = create<GamificationState>()(devtools(
         }
 
         // Atualizar pontos se foram adicionados
-        if (data.pointsAwarded > 0) {
+        if (data.points > 0) {
           await get().fetchUserPoints();
         }
       } catch (error) {

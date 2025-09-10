@@ -300,58 +300,130 @@ class NotificationService {
   }
 
   /**
-   * Método placeholder para envio de email
-   * Integre com seu provedor de email preferido
+   * Envio real de email usando Resend
    */
   private async sendEmail(data: EmailNotificationData): Promise<void> {
-    // Implementar integração com provedor de email
-    console.log('Enviando email:', {
-      to: data.to,
-      subject: data.subject,
-      eventId: data.eventId
-    })
-    
-    // Exemplo com fetch para API externa:
-    // await fetch('/api/send-email', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(data)
-    // })
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: data.to,
+          subject: data.subject,
+          html: data.html,
+          eventId: data.eventId,
+          type: 'event_reminder'
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`Falha ao enviar email: ${error.message}`)
+      }
+
+      console.log('Email enviado com sucesso para:', data.to)
+    } catch (error) {
+      console.error('Erro ao enviar email:', error)
+      throw error
+    }
   }
 
   /**
-   * Método placeholder para envio de push notification
-   * Integre com seu provedor de push preferido
+   * Envio real de push notification usando Web Push API
    */
   private async sendPush(data: PushNotificationData): Promise<void> {
-    // Implementar integração com provedor de push notifications
-    console.log('Enviando push notification:', data)
-    
-    // Exemplo com Firebase:
-    // await admin.messaging().send({
-    //   token: userToken,
-    //   notification: {
-    //     title: data.title,
-    //     body: data.body
-    //   },
-    //   data: data.data
-    // })
+    try {
+      // Buscar tokens de push do usuário
+      const pushSubscriptions = await prisma.pushSubscription.findMany({
+        where: { userId: data.userId }
+      })
+
+      if (pushSubscriptions.length === 0) {
+        console.log('Nenhuma subscription de push encontrada para o usuário:', data.userId)
+        return
+      }
+
+      // Enviar para todas as subscriptions do usuário
+      const pushPromises = pushSubscriptions.map(async (subscription: any) => {
+        try {
+          const response = await fetch('/api/push/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              subscription: {
+                endpoint: subscription.endpoint,
+                keys: {
+                  p256dh: subscription.p256dh,
+                  auth: subscription.auth
+                }
+              },
+              payload: {
+                title: data.title,
+                body: data.body,
+                icon: '/icons/notification-icon.png',
+                badge: '/icons/badge-icon.png',
+                data: data.data
+              }
+            })
+          })
+
+          if (!response.ok) {
+            // Se a subscription é inválida, remover do banco
+            if (response.status === 410) {
+              await prisma.pushSubscription.delete({
+                where: { id: subscription.id }
+              })
+            }
+            throw new Error(`Push failed: ${response.status}`)
+          }
+        } catch (error) {
+          console.error('Erro ao enviar push para subscription:', subscription.id, error)
+        }
+      })
+
+      await Promise.allSettled(pushPromises)
+      console.log('Push notifications enviadas para usuário:', data.userId)
+    } catch (error) {
+      console.error('Erro ao enviar push notifications:', error)
+      throw error
+    }
   }
 
   /**
-   * Método placeholder para envio de SMS
-   * Integre com seu provedor de SMS preferido
+   * Envio real de SMS usando Twilio
    */
   private async sendSMS(data: { to: string; message: string }): Promise<void> {
-    // Implementar integração com provedor de SMS
-    console.log('Enviando SMS:', data)
-    
-    // Exemplo com Twilio:
-    // await twilioClient.messages.create({
-    //   body: data.message,
-    //   from: process.env.TWILIO_PHONE_NUMBER,
-    //   to: data.to
-    // })
+    try {
+      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+        console.warn('Configurações do Twilio não encontradas, SMS não será enviado')
+        return
+      }
+
+      const response = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: data.to,
+          message: data.message
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`Falha ao enviar SMS: ${error.message}`)
+      }
+
+      console.log('SMS enviado com sucesso para:', data.to)
+    } catch (error) {
+      console.error('Erro ao enviar SMS:', error)
+      throw error
+    }
   }
 
   /**

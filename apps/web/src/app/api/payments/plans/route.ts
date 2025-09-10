@@ -3,15 +3,27 @@ import { prisma } from '@hekate/database'
 
 export const dynamic = 'force-dynamic'
 
-function mapFeaturesToList(features: any, plan: any): string[] {
+interface PlanFeatures {
+  access?: string[];
+  courses?: number;
+  downloads?: number;
+}
+
+interface PlanData {
+  maxCourses: number | null;
+  maxDownloads: number | null;
+  features?: PlanFeatures | string[] | null;
+}
+
+function mapFeaturesToList(features: PlanFeatures | string[] | null, plan: PlanData): string[] {
   const list: string[] = []
   if (!features) return list
   // Access list if provided
-  if (Array.isArray(features.access)) {
+  if (typeof features === 'object' && !Array.isArray(features) && features.access && Array.isArray(features.access)) {
     for (const it of features.access) if (typeof it === 'string') list.push(it)
   }
   // Courses limit
-  if (typeof features.courses === 'number') {
+  if (typeof features === 'object' && !Array.isArray(features) && typeof features.courses === 'number') {
     if (features.courses < 0) list.push('Cursos ilimitados')
     else if (features.courses > 0) list.push(`Até ${features.courses} cursos`)
   } else if (typeof plan.maxCourses === 'number') {
@@ -19,7 +31,7 @@ function mapFeaturesToList(features: any, plan: any): string[] {
     else if (plan.maxCourses > 0) list.push(`Até ${plan.maxCourses} cursos`)
   }
   // Downloads limit
-  if (typeof features.downloads === 'number') {
+  if (typeof features === 'object' && !Array.isArray(features) && typeof features.downloads === 'number') {
     if (features.downloads < 0) list.push('Downloads ilimitados')
     else if (features.downloads > 0) list.push(`Até ${features.downloads} downloads`)
   } else if (typeof plan.maxDownloads === 'number') {
@@ -40,14 +52,14 @@ export async function GET(req: NextRequest) {
     })
 
     const data = plans.map((p) => {
-      const features: any = p.features as any
+      const features = p.features as PlanFeatures | string[] | null
       const featuresList = Array.isArray(features)
         ? (features as string[])
-        : mapFeaturesToList(features, p)
+        : mapFeaturesToList(features, { maxCourses: p.maxCourses ?? null, maxDownloads: p.maxDownloads ?? null, features })
 
       // Heurística simples para destacar um plano popular (meio da faixa)
       const popularTier = 'ADEPTO'
-      const isPopular = (p.tier as any) === popularTier
+      const isPopular = p.tier === popularTier
 
       return {
         id: p.id,

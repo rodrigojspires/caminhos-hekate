@@ -1,15 +1,42 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { Trophy, Medal, Award, Crown, Star, TrendingUp, Users, Calendar } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Trophy, 
+  Medal, 
+  Award, 
+  Crown,
+  Star,
+  Flame,
+  Users,
+  TrendingUp,
+  Calendar,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { LeaderboardEntry as LeaderboardEntryRow } from './leaderboard/LeaderboardEntry';
+import { RankingFilters } from './leaderboard/RankingFilters';
+import { UserRankCard } from './leaderboard/UserRankCard';
+import { useGamificationStore } from '@/stores/gamificationStore';
+import { LeaderboardCategory, LeaderboardPeriod } from '@/types/gamification';
 
-interface LeaderboardEntry {
+const CATEGORY_CONFIG = {
+  general: { label: 'Geral', icon: Trophy },
+  learning: { label: 'Aprendizado', icon: Star },
+  engagement: { label: 'Engajamento', icon: Flame },
+  social: { label: 'Social', icon: Users }
+};
+
+// Legacy interfaces (não utilizadas). Mantidas para referência.
+interface LegacyLeaderboardEntry {
   rank: number
   userId: string
   name: string
@@ -21,8 +48,8 @@ interface LeaderboardEntry {
   badges: number
 }
 
-interface LeaderboardData {
-  leaderboard: LeaderboardEntry[]
+interface LegacyLeaderboardData {
+  leaderboard: LegacyLeaderboardEntry[]
   userRank: number | null
   totalUsers: number
   category: string
@@ -37,33 +64,22 @@ interface LeaderboardProps {
 }
 
 export function Leaderboard({ userId }: LeaderboardProps) {
-  const [data, setData] = useState<LeaderboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [category, setCategory] = useState('POINTS')
-  const [period, setPeriod] = useState('ALL_TIME')
-  const [page, setPage] = useState(1)
-
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(
-        `/api/gamification/leaderboard?category=${category}&period=${period}&page=${page}&limit=20`
-      )
-      
-      if (response.ok) {
-        const leaderboardData = await response.json()
-        setData(leaderboardData)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar leaderboard:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [category, period, page])
+  const {
+    leaderboard,
+    isLoadingLeaderboard,
+    fetchLeaderboard,
+  } = useGamificationStore()
+  
+  const [category, setCategory] = useState<LeaderboardCategory>('general')
+  const [period, setPeriod] = useState<LeaderboardPeriod>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [minLevel, setMinLevel] = useState<number | undefined>()
+  const [maxLevel, setMaxLevel] = useState<number | undefined>()
+  const [showOnlyFriends, setShowOnlyFriends] = useState(false)
 
   useEffect(() => {
-    fetchLeaderboard()
-  }, [fetchLeaderboard])
+    fetchLeaderboard(period, category)
+  }, [category, period, fetchLeaderboard])
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -133,229 +149,118 @@ export function Leaderboard({ userId }: LeaderboardProps) {
     return score.toString()
   }
 
-  if (loading) {
+  const handleFiltersReset = () => {
+    setSearchQuery('')
+    setMinLevel(undefined)
+    setMaxLevel(undefined)
+    setShowOnlyFriends(false)
+  }
+
+  if (isLoadingLeaderboard) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            Leaderboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 animate-pulse">
-                <div className="w-8 h-8 bg-muted rounded" />
-                <div className="w-10 h-10 bg-muted rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <div className="w-32 h-4 bg-muted rounded" />
-                  <div className="w-24 h-3 bg-muted rounded" />
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Leaderboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
                 </div>
-                <div className="w-16 h-6 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {(() => {
+        if (!userId || !leaderboard || leaderboard.length === 0) return null;
+        const currentUser = leaderboard.find((e) => e.userId === userId);
+        if (!currentUser) return null;
+        const nextRankUser = leaderboard.find((e) => e.rank === currentUser.rank - 1);
+        const prevRankUser = leaderboard.find((e) => e.rank === currentUser.rank + 1);
+        const pointsToNext = nextRankUser ? Math.max(0, nextRankUser.points - currentUser.points) : undefined;
+        return (
+          <UserRankCard
+            userRank={currentUser}
+            category={category}
+            totalUsers={leaderboard.length}
+            previousRank={undefined}
+            nextRankUser={nextRankUser}
+            prevRankUser={prevRankUser}
+            pointsToNext={pointsToNext}
+            onViewProfile={(uid) => console.log('View profile:', uid)}
+            onViewFullLeaderboard={() => console.log('View full leaderboard')}
+          />
+        );
+      })()}
+      {/* Filters */}
+      <RankingFilters
+        selectedCategory={category}
+        selectedPeriod={period}
+        searchQuery={searchQuery}
+        minLevel={minLevel}
+        maxLevel={maxLevel}
+        showOnlyFriends={showOnlyFriends}
+        onCategoryChange={setCategory}
+        onPeriodChange={setPeriod}
+        onSearchChange={setSearchQuery}
+        onLevelRangeChange={(min, max) => {
+          setMinLevel(min)
+          setMaxLevel(max)
+        }}
+        onFriendsToggle={setShowOnlyFriends}
+        onReset={handleFiltersReset}
+        compact={false}
+      />
+      
+      {/* Leaderboard */}
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5" />
-            Leaderboard
+            Ranking - {CATEGORY_CONFIG[category]?.label || 'Geral'}
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {data?.totalUsers} usuários
-            </span>
-          </div>
-        </div>
+        </CardHeader>
         
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="POINTS">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4" />
-                  Pontos
-                </div>
-              </SelectItem>
-              <SelectItem value="ACHIEVEMENTS">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4" />
-                  Conquistas
-                </div>
-              </SelectItem>
-              <SelectItem value="BADGES">
-                <div className="flex items-center gap-2">
-                  <Medal className="h-4 w-4" />
-                  Medalhas
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="DAILY">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Hoje
-                </div>
-              </SelectItem>
-              <SelectItem value="WEEKLY">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Esta Semana
-                </div>
-              </SelectItem>
-              <SelectItem value="MONTHLY">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Este Mês
-                </div>
-              </SelectItem>
-              <SelectItem value="ALL_TIME">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Todos os Tempos
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        {data?.userRank && (
-          <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                #{data.userRank}
-              </div>
-              <div>
-                <p className="font-medium">Sua Posição</p>
-                <p className="text-sm text-muted-foreground">
-                  {getCategoryLabel(category)} - {getPeriodLabel(period)}
-                </p>
-              </div>
+        <CardContent>
+          {leaderboard && leaderboard.length > 0 ? (
+            <div className="space-y-2">
+              {leaderboard.map((entry) => (
+                <LeaderboardEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  position={entry.rank}
+                  category={category}
+                  isCurrentUser={entry.userId === userId}
+                  showActions={true}
+                />
+              ))}
             </div>
-          </div>
-        )}
-        
-        <div className="space-y-2">
-          {data?.leaderboard.map((entry, index) => {
-            const isCurrentUser = entry.userId === userId
-            
-            return (
-              <div
-                key={entry.userId}
-                className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${
-                  isCurrentUser
-                    ? 'bg-primary/10 border border-primary/20'
-                    : 'bg-muted/30 hover:bg-muted/50'
-                }`}
-              >
-                {/* Rank */}
-                <div className="flex items-center justify-center w-8 h-8">
-                  {getRankIcon(entry.rank)}
-                </div>
-                
-                {/* Avatar */}
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={entry.image} alt={entry.name} />
-                  <AvatarFallback>
-                    {entry.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                
-                {/* User Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">
-                      {entry.name || 'Usuário Anônimo'}
-                    </p>
-                    {isCurrentUser && (
-                      <Badge variant="secondary" className="text-xs">
-                        Você
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Nível {entry.level}</span>
-                    <span>{entry.achievements} conquistas</span>
-                    <span>{entry.badges} medalhas</span>
-                  </div>
-                </div>
-                
-                {/* Score */}
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    {getCategoryIcon(category)}
-                    <span className="font-bold text-lg">
-                      {formatScore(entry.score, category)}
-                    </span>
-                  </div>
-                  {entry.rank <= 3 && (
-                    <Badge 
-                      className={`text-xs text-white ${getRankBadgeColor(entry.rank)}`}
-                    >
-                      Top {entry.rank}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Anterior
-            </Button>
-            
-            <span className="text-sm text-muted-foreground">
-              Página {page} de {data.totalPages}
-            </span>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
-              disabled={page === data.totalPages}
-            >
-              Próxima
-            </Button>
-          </div>
-        )}
-        
-        {(!data?.leaderboard || data.leaderboard.length === 0) && (
-          <div className="text-center py-8">
-            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Nenhum dado encontrado para este período.
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum dado disponível para este período</p>
+            </div>
+          )}
+          {/* Pagination removed: backend returns a single page; adjust when API supports pagination */}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

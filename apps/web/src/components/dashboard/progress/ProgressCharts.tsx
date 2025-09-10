@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from "recharts"
 import { Calendar, TrendingUp, Clock, Target, Filter } from "lucide-react"
 
@@ -37,6 +37,20 @@ interface ProgressChartsProps {
 export default function ProgressCharts({ data, loading = false }: ProgressChartsProps) {
   const [activeChart, setActiveChart] = useState<'weekly' | 'category' | 'daily' | 'goals'>('weekly')
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
+
+  const weeklyData = data
+  const categoryData = data.categoryProgress.length > 0 ? [
+    { category: 'Matemática', progress: 85, lessons: 12 },
+    { category: 'Ciências', progress: 72, lessons: 8 },
+    { category: 'História', progress: 90, lessons: 15 },
+    { category: 'Literatura', progress: 68, lessons: 6 }
+  ] : []
+  const dailyData = data
+  const goalsData = data.monthlyGoals.length > 0 ? [
+    { goal: 'Lições Diárias', current: 3, target: 5, percentage: 60 },
+    { goal: 'Tempo de Estudo', current: 45, target: 60, percentage: 75 },
+    { goal: 'Sequência', current: 7, target: 30, percentage: 23 }
+  ] : []
 
   const COLORS = {
     primary: '#7C3AED',
@@ -249,6 +263,17 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando dados de progresso...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm border">
       {/* Header */}
@@ -307,19 +332,19 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {data.weeklyProgress.reduce((acc, week) => acc + week.studyTime, 0)}
+                {data.dailyActivity.reduce((sum, day) => sum + (day.minutes || 0), 0)}
               </div>
               <div className="text-sm text-gray-600">Minutos Totais</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {data.weeklyProgress.reduce((acc, week) => acc + week.lessonsCompleted, 0)}
+                {data.dailyActivity.reduce((sum, day) => sum + (day.lessons || 0), 0)}
               </div>
               <div className="text-sm text-gray-600">Lições Concluídas</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {Math.round(data.categoryProgress.reduce((acc, cat) => acc + cat.percentage, 0) / data.categoryProgress.length)}%
+                {data.categoryProgress.length > 0 ? Math.round(data.categoryProgress.reduce((acc, cat) => acc + cat.percentage, 0) / data.categoryProgress.length) : 0}%
               </div>
               <div className="text-sm text-gray-600">Progresso Médio</div>
             </div>

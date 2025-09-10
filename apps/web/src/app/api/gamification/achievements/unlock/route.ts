@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         return {
           userAchievement: updatedUserAchievement,
           isNewUnlock: false,
-          pointsAwarded: 0,
+          points: 0,
         };
       }
 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      let pointsAwarded = 0;
+      let points = 0;
 
       // Se a conquista foi completamente desbloqueada, adicionar pontos
       if (progress >= 100) {
@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Adicionar pontos da conquista
-        pointsAwarded = achievement.points;
-        const newTotalPoints = userPoints.totalPoints + pointsAwarded;
+        points = achievement.points;
+        const newTotalPoints = userPoints.totalPoints + points;
         const newLevel = Math.floor(newTotalPoints / 100) + 1;
         const pointsToNext = (newLevel * 100) - newTotalPoints;
 
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         await tx.pointTransaction.create({
           data: {
             userId: session.user.id,
-            points: pointsAwarded,
+            points: points,
             type: 'EARNED',
             reason: 'ACHIEVEMENT_UNLOCK',
             description: `Conquista desbloqueada: ${achievement.name}`,
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       return {
         userAchievement,
         isNewUnlock: true,
-        pointsAwarded,
+        points,
       };
     });
 

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,67 +15,38 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Search, Filter, Download, MoreHorizontal } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 interface Event {
   id: string
   name: string
-  type: 'click' | 'view' | 'conversion' | 'error'
-  timestamp: string
-  user: string
-  page: string
-  value?: number
+  category: string
+  action: string
+  timestamp: Date | string
+  userId?: string
+  page?: string
+  properties?: Record<string, any>
+  user?: {
+    name: string | null
+    email: string
+  }
 }
 
 interface EventsTableProps {
-  events?: Event[]
+  events: Event[]
   loading?: boolean
 }
 
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    name: 'Page View',
-    type: 'view',
-    timestamp: '2024-01-15T10:30:00Z',
-    user: 'user@example.com',
-    page: '/dashboard',
-    value: 1
-  },
-  {
-    id: '2',
-    name: 'Button Click',
-    type: 'click',
-    timestamp: '2024-01-15T10:25:00Z',
-    user: 'admin@example.com',
-    page: '/settings',
-    value: 1
-  },
-  {
-    id: '3',
-    name: 'Form Submission',
-    type: 'conversion',
-    timestamp: '2024-01-15T10:20:00Z',
-    user: 'user2@example.com',
-    page: '/contact',
-    value: 100
-  }
-]
-
-const getEventTypeColor = (type: Event['type']) => {
-  switch (type) {
-    case 'click':
+const getCategoryColor = (category: string) => {
+  switch (category.toLowerCase()) {
+    case 'interaction':
       return 'bg-blue-100 text-blue-800'
-    case 'view':
+    case 'navigation':
       return 'bg-green-100 text-green-800'
     case 'conversion':
       return 'bg-purple-100 text-purple-800'
+    case 'media':
+      return 'bg-orange-100 text-orange-800'
     case 'error':
       return 'bg-red-100 text-red-800'
     default:
@@ -81,23 +54,43 @@ const getEventTypeColor = (type: Event['type']) => {
   }
 }
 
-const formatTimestamp = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('pt-BR')
+const formatTimestamp = (timestamp: Date) => {
+  return timestamp.toLocaleString('pt-BR')
 }
 
-export { EventsTable }
-
-export default function EventsTable({ events = mockEvents, loading = false }: EventsTableProps) {
+export function EventsTable({ events, loading = false }: EventsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<Event['type'] | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.page.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterType === 'all' || event.type === filterType
-    return matchesSearch && matchesFilter
+  // Mapear eventos para o formato esperado
+  const mappedEvents = events.map(event => ({
+    ...event,
+    timestamp: new Date(event.timestamp),
+    // Garantir que temos os campos necessários
+    category: event.category || 'unknown',
+    action: event.action || event.name || 'unknown'
+  }))
+
+  const filteredEvents = mappedEvents.filter(event => {
+    const action = event.action.toLowerCase()
+    const category = event.category.toLowerCase()
+    const searchLower = searchTerm.toLowerCase()
+    
+    const matchesSearch = action.includes(searchLower) || 
+                         category.includes(searchLower)
+    
+    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter
+    
+    return matchesSearch && matchesCategory
+  }).sort((a, b) => {
+    const aTime = a.timestamp.getTime()
+    const bTime = b.timestamp.getTime()
+    return sortOrder === 'desc' ? bTime - aTime : aTime - bTime
   })
+  
+  // Verificar se temos dados de usuário (indica que é admin)
+  const hasUserData = events.some(event => event.user)
 
   if (loading) {
     return (
@@ -128,82 +121,79 @@ export default function EventsTable({ events = mockEvents, loading = false }: Ev
               className="pl-10"
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filtrar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setFilterType('all')}>
-                Todos
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('view')}>
-                Visualizações
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('click')}>
-                Cliques
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('conversion')}>
-                Conversões
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterType('error')}>
-                Erros
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+          >
+            <option value="all">Todas as categorias</option>
+            <option value="navigation">Navegação</option>
+            <option value="interaction">Interação</option>
+            <option value="conversion">Conversão</option>
+            <option value="media">Mídia</option>
+            <option value="error">Erros</option>
+          </select>
         </div>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Evento</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Usuário</TableHead>
-              <TableHead>Página</TableHead>
-              <TableHead>Data/Hora</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+              <TableRow>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Ação</TableHead>
+                {hasUserData && <TableHead>Usuário</TableHead>}
+                <TableHead className="cursor-pointer" onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}>
+                  Timestamp {sortOrder === 'desc' ? '↓' : '↑'}
+                </TableHead>
+                <TableHead>Propriedades</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={hasUserData ? 5 : 4} className="text-center text-muted-foreground py-8">
                   Nenhum evento encontrado
                 </TableCell>
               </TableRow>
             ) : (
               filteredEvents.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell className="font-medium">{event.name}</TableCell>
                   <TableCell>
-                    <Badge className={getEventTypeColor(event.type)}>
-                      {event.type}
+                    <Badge 
+                      variant="outline" 
+                      className={`${getCategoryColor(event.category)} text-white border-0`}
+                    >
+                      {event.category}
                     </Badge>
                   </TableCell>
-                  <TableCell>{event.user}</TableCell>
-                  <TableCell>{event.page}</TableCell>
-                  <TableCell>{formatTimestamp(event.timestamp)}</TableCell>
-                  <TableCell>{event.value || '-'}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Exportar</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="font-medium">{event.action}</TableCell>
+                  {hasUserData && (
+                    <TableCell className="text-sm">
+                      {event.user ? (
+                        <div>
+                          <div className="font-medium">{event.user.name || 'Sem nome'}</div>
+                          <div className="text-xs text-muted-foreground">{event.user.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(event.timestamp, { addSuffix: true, locale: ptBR })}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {event.properties && Object.keys(event.properties).length > 0 ? (
+                      <div className="space-y-1">
+                        {Object.entries(event.properties).map(([key, value]) => (
+                          <div key={key} className="text-xs">
+                            <span className="font-medium">{key}:</span> {String(value)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

@@ -50,7 +50,7 @@ interface ProgressData {
     completedLessons: number
     totalLessons: number
     progress: number
-    lastAccessed: Date
+    lastAccessed: string // Changed from Date to string to match API response
   }>
 }
 
@@ -220,38 +220,48 @@ export function ProgressOverview() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={progressData.weeklyProgress}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="week" 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs"
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs"
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value) => [`${value} lições`, 'Lições Completadas']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="lessons"
-                    stroke="#8b5cf6"
-                    fill="#8b5cf6"
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {progressData.weeklyProgress && progressData.weeklyProgress.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={progressData.weeklyProgress}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey="week" 
+                      axisLine={false}
+                      tickLine={false}
+                      className="text-xs"
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      className="text-xs"
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value) => [`${value} lições`, 'Lições Completadas']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="lessons"
+                      stroke="#8b5cf6"
+                      fill="#8b5cf6"
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-48 text-muted-foreground">
+                  <div className="text-center">
+                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma atividade semanal registrada</p>
+                    <p className="text-sm">Continue estudando para ver seus dados aqui</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -335,46 +345,56 @@ export function ProgressOverview() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={progressData.monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false}
-                  tickLine={false}
-                  className="text-xs"
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  className="text-xs"
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                  formatter={(value, name) => {
-                    if (name === 'lessons') return [`${value} lições`, 'Lições Completadas']
-                    if (name === 'hours') return [`${value}h`, 'Horas de Estudo']
-                    return [value, name]
-                  }}
-                />
-                <Bar 
-                  dataKey="lessons" 
-                  fill="#8b5cf6" 
-                  radius={[4, 4, 0, 0]}
-                  name="lessons"
-                />
-                <Bar 
-                  dataKey="hours" 
-                  fill="#06b6d4" 
-                  radius={[4, 4, 0, 0]}
-                  name="hours"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {progressData.monthlyData && progressData.monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={progressData.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false}
+                    tickLine={false}
+                    className="text-xs"
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    className="text-xs"
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'lessons') return [`${value} lições`, 'Lições Completadas']
+                      if (name === 'hours') return [`${value}h`, 'Horas de Estudo']
+                      return [value, name]
+                    }}
+                  />
+                  <Bar 
+                    dataKey="lessons" 
+                    fill="#8b5cf6" 
+                    radius={[4, 4, 0, 0]}
+                    name="lessons"
+                  />
+                  <Bar 
+                    dataKey="hours" 
+                    fill="#06b6d4" 
+                    radius={[4, 4, 0, 0]}
+                    name="hours"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-60 text-muted-foreground">
+                <div className="text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum dado mensal disponível</p>
+                  <p className="text-sm">Continue estudando para ver sua tendência de progresso</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

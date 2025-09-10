@@ -64,7 +64,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
         order: m.order,
       }
     })
-  }, [course.modules, course.id, canAccessAllContent, getLessonProgress])
+  }, [course.modules, course.id, canAccessAllContent, getLessonProgress, enrolled])
 
   const resumeTime = useMemo(() => {
     if (!currentLessonId) return 0

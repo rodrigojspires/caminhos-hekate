@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, GroupMemberRole, GroupMemberStatus, GroupInvitationStatus } from '@hekate/database'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { sendEmail } from '@/lib/email'
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       where: {
         groupId: groupId,
         userId: session.user.id,
-        status: 'ACTIVE'
+        status: GroupMemberStatus.ACTIVE
       }
     })
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const activeMembersCount = await prisma.groupMember.count({
-      where: { groupId, status: 'ACTIVE' }
+      where: { groupId, status: GroupMemberStatus.ACTIVE }
     })
 
     // Verificar permissões baseadas no papel do usuário
@@ -111,6 +111,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Mapear role de convite para enum do Prisma
+    const inviteRole: GroupMemberRole = validatedData.role === 'ADMIN'
+      ? GroupMemberRole.ADMIN
+      : validatedData.role === 'MODERATOR'
+        ? GroupMemberRole.MODERATOR
+        : GroupMemberRole.MEMBER
+
     if (validatedData.type === 'EMAIL' && validatedData.emails) {
       // Criar convites por email
       const invites = []
@@ -123,7 +130,7 @@ export async function POST(request: NextRequest) {
             groupMemberships: {
               where: {
                 groupId: groupId,
-                status: 'ACTIVE'
+                status: GroupMemberStatus.ACTIVE
               }
             }
           }
@@ -139,7 +146,7 @@ export async function POST(request: NextRequest) {
           where: {
             groupId: groupId,
             email: email,
-            status: 'PENDING',
+            status: GroupInvitationStatus.PENDING,
             expiresAt: { gt: new Date() }
           }
         })
@@ -154,9 +161,8 @@ export async function POST(request: NextRequest) {
           data: {
             groupId: groupId,
             email: email,
-            // validatedData.role é 'MEMBER' | 'MODERATOR' | 'ADMIN'
-            // Mapeie para enum GroupMemberRole se necessário
-            status: 'PENDING',
+            role: inviteRole,
+            status: GroupInvitationStatus.PENDING,
             token: token,
             message: validatedData.message,
             expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -212,7 +218,8 @@ export async function POST(request: NextRequest) {
     const linkInvite = await prisma.groupInvitation.create({
       data: {
         groupId: groupId,
-        status: 'PENDING',
+        role: inviteRole,
+        status: GroupInvitationStatus.PENDING,
         token: token,
         message: validatedData.message,
         expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -244,7 +251,7 @@ export async function PUT(request: NextRequest) {
     const invitation = await prisma.groupInvitation.findFirst({
       where: {
         token,
-        status: 'PENDING',
+        status: GroupInvitationStatus.PENDING,
         expiresAt: { gt: new Date() }
       },
       include: {
@@ -261,7 +268,7 @@ export async function PUT(request: NextRequest) {
       where: {
         groupId: invitation.groupId,
         userId: session.user.id,
-        status: 'ACTIVE'
+        status: GroupMemberStatus.ACTIVE
       }
     })
 
@@ -269,14 +276,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Você já é membro deste grupo' }, { status: 400 })
     }
 
-    // Adicionar como membro
+    // Adicionar como membro com role do convite (ou MEMBER como padrão)
     await prisma.groupMember.create({
       data: {
         groupId: invitation.groupId,
         userId: session.user.id,
-        status: 'ACTIVE',
-        // papel padrão para convites por link
-        // para convites por email, o papel poderá ser gerenciado em outro fluxo
+        status: GroupMemberStatus.ACTIVE,
+        role: invitation.role ?? GroupMemberRole.MEMBER
       }
     })
 
@@ -284,7 +290,7 @@ export async function PUT(request: NextRequest) {
     await prisma.groupInvitation.update({
       where: { id: invitation.id },
       data: {
-        status: 'ACCEPTED'
+        status: GroupInvitationStatus.ACCEPTED
       }
     })
 

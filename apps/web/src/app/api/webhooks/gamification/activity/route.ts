@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
       REVIEW_SUBMIT: 40,
     }
 
-    let pointsAwarded = 0
+    let points = 0
     if (pointsMap[activityType]) {
-      const points = pointsMap[activityType]
-      pointsAwarded = points
+      const p = pointsMap[activityType]
+      points = p
 
       // Upsert user points
       let userPoints = await prisma.userPoints.findUnique({ where: { userId } })
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
 
       const previousLevel = userPoints.currentLevel
-      const newTotal = userPoints.totalPoints + points
+      const newTotal = userPoints.totalPoints + p
       let newLevel = userPoints.currentLevel
       let pointsToNext = userPoints.pointsToNext
       let carry = newTotal
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId,
           type: 'EARNED',
-          points,
+          points: p,
           reason: `Atividade: ${activityType}`,
           description: `Atividade: ${activityType}`,
           metadata: metadata || {},
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ success: true, pointsAwarded })
+    return NextResponse.json({ success: true, points })
   } catch (error) {
     if ((error as any)?.issues) {
       return NextResponse.json({ error: 'Dados inválidos', details: (error as any).issues }, { status: 400 })

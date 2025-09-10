@@ -115,7 +115,7 @@ const AchievementCard: React.FC<{
     description: string
     rarity: string
     points: number
-    unlocked: boolean
+    unlocked?: boolean
     unlockedAt?: string
     progress?: number
     maxProgress?: number
@@ -204,76 +204,93 @@ export const ExpandedAchievementDashboard: React.FC = () => {
   const { userStats, achievements, userAchievements } = useGamificationStore()
 
   useEffect(() => {
-    // Simular carregamento de dados
+    // Carregar dados reais da API
     const loadStats = async () => {
       setLoading(true)
       
-      // Dados mockados para demonstração
-      const mockStats: AchievementStats = {
-        totalAchievements: 50,
-        unlockedAchievements: 23,
-        totalBadges: 25,
-        earnedBadges: 12,
-        totalPoints: userStats?.totalPoints || 1250,
-        currentLevel: userStats?.currentLevel || 8,
-        currentStreak: userStats?.currentStreak || 15,
-        longestStreak: userStats?.longestStreak || 28,
-        recentActivity: [
-          {
-            id: '1',
-            type: 'achievement',
-            title: 'Primeira Compra',
-            points: 100,
-            date: '2024-01-15',
-            rarity: 'COMMON'
-          },
-          {
-            id: '2',
-            type: 'badge',
-            title: 'Explorador',
-            points: 50,
-            date: '2024-01-14',
-            rarity: 'UNCOMMON'
-          },
-          {
-            id: '3',
-            type: 'streak',
-            title: '15 Dias Consecutivos',
-            points: 75,
-            date: '2024-01-13',
-            rarity: 'RARE'
-          }
-        ],
-        categoryProgress: [
-          { category: 'Compras', total: 10, unlocked: 6, percentage: 60 },
-          { category: 'Social', total: 8, unlocked: 3, percentage: 37.5 },
-          { category: 'Atividade', total: 12, unlocked: 8, percentage: 66.7 },
-          { category: 'Especiais', total: 5, unlocked: 2, percentage: 40 }
-        ],
-        rarityDistribution: [
-          { rarity: 'COMMON', count: 8, color: 'bg-gray-500' },
-          { rarity: 'UNCOMMON', count: 6, color: 'bg-green-500' },
-          { rarity: 'RARE', count: 4, color: 'bg-blue-500' },
-          { rarity: 'EPIC', count: 3, color: 'bg-purple-500' },
-          { rarity: 'LEGENDARY', count: 2, color: 'bg-orange-500' }
-        ],
-        weeklyProgress: [
-          { day: 'Seg', points: 120, achievements: 1 },
-          { day: 'Ter', points: 85, achievements: 0 },
-          { day: 'Qua', points: 200, achievements: 2 },
-          { day: 'Qui', points: 150, achievements: 1 },
-          { day: 'Sex', points: 300, achievements: 3 },
-          { day: 'Sáb', points: 180, achievements: 1 },
-          { day: 'Dom', points: 90, achievements: 0 }
-        ]
+      try {
+        // Buscar estatísticas de gamificação
+        const statsResponse = await fetch('/api/gamification/stats')
+        if (!statsResponse.ok) {
+          throw new Error('Failed to fetch stats')
+        }
+        const statsData = await statsResponse.json()
+        
+        // Fetch achievements from API
+        const achievements = statsData?.achievements || []
+        
+        // Converter dados da API para o formato esperado
+        const convertedStats: AchievementStats = {
+          totalAchievements: statsData.totalAchievements,
+          unlockedAchievements: statsData.unlockedAchievements,
+          totalBadges: statsData.totalBadges,
+          earnedBadges: statsData.earnedBadges,
+          totalPoints: statsData.totalPoints,
+          currentLevel: statsData.currentLevel,
+          currentStreak: statsData.activeStreaks,
+          longestStreak: statsData.longestStreak,
+          recentActivity: [
+            ...statsData.recentAchievements.map((achievement: any) => ({
+              id: achievement.id,
+              type: 'achievement',
+              title: achievement.title,
+              points: achievement.points,
+              date: achievement.unlockedAt,
+              rarity: achievement.rarity
+            })),
+            ...statsData.recentBadges.map((badge: any) => ({
+              id: badge.id,
+              type: 'badge',
+              title: badge.name,
+              points: 0, // Badges não têm pontos diretos
+              date: badge.earnedAt,
+              rarity: badge.rarity
+            }))
+          ],
+          categoryProgress: statsData.categoryProgress.map((cat: any) => ({
+            category: cat.name,
+            total: cat.total,
+            unlocked: cat.unlocked,
+            percentage: cat.progress
+          })),
+          rarityDistribution: statsData.rarityDistribution || [
+            { rarity: 'common', count: 0, percentage: 0 },
+            { rarity: 'rare', count: 0, percentage: 0 },
+            { rarity: 'epic', count: 0, percentage: 0 },
+            { rarity: 'legendary', count: 0, percentage: 0 }
+          ],
+          weeklyProgress: statsData.weeklyActivity.map((day: any) => ({
+            day: new Date(day.date).toLocaleDateString('pt-BR', { weekday: 'short' }),
+            points: day.points,
+            achievements: day.achievements || 0
+          }))
+        }
+        
+        setStats(convertedStats)
+      } catch (error) {
+        console.error('Error loading gamification stats:', error)
+        // Fallback para dados básicos se a API falhar
+        setStats({
+          totalAchievements: 0,
+          unlockedAchievements: 0,
+          totalBadges: 0,
+          earnedBadges: 0,
+          totalPoints: 0,
+          currentLevel: 1,
+          currentStreak: 0,
+          longestStreak: 0,
+          recentActivity: [],
+          categoryProgress: [],
+          rarityDistribution: [],
+          weeklyProgress: []
+        })
+      } finally {
+        setLoading(false)
       }
-      
-      setStats(mockStats)
-      setLoading(false)
     }
 
     loadStats()
-  }, [userStats])
+  }, [])
 
   if (loading || !stats) {
     return (
@@ -343,44 +360,13 @@ export const ExpandedAchievementDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
-                {/* Conquistas mockadas */}
-                <AchievementCard
-                  achievement={{
-                    id: '1',
-                    name: 'Primeira Compra',
-                    description: 'Realize sua primeira compra na plataforma',
-                    rarity: 'COMMON',
-                    points: 100,
-                    unlocked: true,
-                    unlockedAt: '2024-01-15T10:30:00Z'
-                  }}
-                />
-                
-                <AchievementCard
-                  achievement={{
-                    id: '2',
-                    name: 'Colecionador',
-                    description: 'Adquira 10 produtos diferentes',
-                    rarity: 'RARE',
-                    points: 250,
-                    unlocked: false,
-                    progress: 7,
-                    maxProgress: 10
-                  }}
-                />
-                
-                <AchievementCard
-                  achievement={{
-                    id: '3',
-                    name: 'Mestre da Sequência',
-                    description: 'Mantenha uma sequência de 30 dias',
-                    rarity: 'LEGENDARY',
-                    points: 500,
-                    unlocked: false,
-                    progress: 15,
-                    maxProgress: 30
-                  }}
-                />
+                {/* Real achievements from API */}
+                {achievements.map((achievement) => (
+                  <AchievementCard
+                    key={achievement.id}
+                    achievement={achievement}
+                  />
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -395,19 +381,32 @@ export const ExpandedAchievementDashboard: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {stats.rarityDistribution.map((rarity) => (
-                  <div key={rarity.rarity} className="text-center p-4 rounded-lg border">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center",
-                      rarity.color
-                    )}>
-                      <Award className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="font-semibold text-sm">{rarity.rarity}</p>
-                    <p className="text-xs text-gray-500">{rarity.count} badges</p>
-                  </div>
-                ))}
+              <div className="grid gap-4">
+                {userAchievements && userAchievements.length > 0 ? (
+                  userAchievements
+                    .filter((ua) => !!ua.achievement)
+                    .map((ua) => {
+                      const ach = ua.achievement!;
+                      return (
+                        <div key={ua.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                              <Trophy className="h-6 w-6 text-yellow-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium">{ach.name}</h4>
+                              <p className="text-sm text-muted-foreground">{ach.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">{ach.rarity}</Badge>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum badge conquistado ainda
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -469,7 +468,7 @@ export const ExpandedAchievementDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {stats.recentActivity.map((activity) => (
+                {stats.recentActivity?.map((activity) => (
                   <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                     <div className="flex items-center space-x-3">
                       <div className={cn(
@@ -500,7 +499,11 @@ export const ExpandedAchievementDashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                )) || (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhuma atividade recente
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

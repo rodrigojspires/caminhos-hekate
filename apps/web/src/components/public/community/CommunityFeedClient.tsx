@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,7 +30,7 @@ export default function CommunityFeedClient({ initial, filter }: { initial: Post
   const [topics, setTopics] = useState<Array<{ id: string; name: string }>>([])
   const [authors, setAuthors] = useState<Array<{ id: string; name: string }>>([])
 
-  const fetchPage = async (nextPage: number, replace = false) => {
+  const fetchPage = useCallback(async (nextPage: number, replace = false) => {
     setLoading(true)
     const params = new URLSearchParams()
     params.set('page', String(nextPage))
@@ -44,7 +44,7 @@ export default function CommunityFeedClient({ initial, filter }: { initial: Post
     setHasMore(newPosts.length >= 10)
     setPosts(prev => replace ? newPosts : [...prev, ...newPosts])
     setLoading(false)
-  }
+  }, [filter, topicId, authorId])
 
   useEffect(() => {
     // Carregar listas de tópicos e autores
@@ -65,15 +65,17 @@ export default function CommunityFeedClient({ initial, filter }: { initial: Post
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting && !loading && hasMore) {
-          const next = page + 1
-          setPage(next)
-          fetchPage(next)
+          setPage((prev) => {
+            const next = prev + 1
+            fetchPage(next)
+            return next
+          })
         }
       })
     })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [page, loading, hasMore])
+  }, [loading, hasMore, fetchPage])
 
   // Filters submit
   const applyFilters = async () => {

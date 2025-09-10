@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -17,31 +17,63 @@ import {
   Bar,
   PieChart,
   Pie,
-  Cell,
-  Legend
+  Cell
 } from 'recharts';
 import { 
   TrendingUp, 
-  Calendar, 
   Trophy, 
-  Target,
+  Target, 
+  Zap, 
   BarChart3,
-  PieChart as PieChartIcon,
-  LineChart as LineChartIcon
+  Calendar,
+  Award,
+  Star,
+  LineChart as LineChartIcon,
+  PieChart as PieChartIcon
 } from 'lucide-react';
-import { useGamificationStore } from '@/stores/gamificationStore';
-import { format, subDays, startOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
-type ChartPeriod = '7d' | '30d' | '90d' | '1y';
+type TimePeriod = '7d' | '30d' | '90d' | '1y';
 type ChartType = 'line' | 'bar' | 'pie';
+type ChartPeriod = TimePeriod;
 
 interface ChartDataPoint {
   date: string;
   points: number;
   achievements: number;
+  badges?: number;
   activities: number;
   level: number;
+}
+
+interface GamificationStats {
+  totalAchievements: number;
+  unlockedAchievements: number;
+  totalBadges: number;
+  earnedBadges: number;
+  currentLevel: number;
+  totalPoints: number;
+  achievementProgress: number;
+  badgeProgress: number;
+  levelProgress: number;
+  categoryProgress: Array<{
+    id: string;
+    name: string;
+    color: string;
+    total: number;
+    unlocked: number;
+    progress: number;
+  }>;
+  weeklyActivity: Array<{
+    date: string;
+    points: number;
+  }>;
+  progressHistory: Array<{
+    date: string;
+    points?: number;
+    achievements?: number;
+    activities?: number;
+    level?: number;
+  }>;
 }
 
 const PERIOD_CONFIG = {
@@ -60,54 +92,62 @@ const ACHIEVEMENT_COLORS = {
 };
 
 export function ProgressChart() {
-  const [selectedPeriod, setSelectedPeriod] = useState<ChartPeriod>('30d');
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
   const [chartType, setChartType] = useState<ChartType>('line');
-  
-  const {
-    userStats,
-    recentTransactions,
-    achievements,
-    isLoadingStats,
-    isLoadingAchievements,
-    isLoadingPoints,
-  } = useGamificationStore();
-  const isLoading = isLoadingStats || isLoadingAchievements || isLoadingPoints;
+  const [stats, setStats] = useState<GamificationStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
 
-  // Generate mock data for demonstration
-  // In a real app, this would come from the API
-  const generateChartData = (period: ChartPeriod): ChartDataPoint[] => {
-    const days = PERIOD_CONFIG[period].days;
-    const data: ChartDataPoint[] = [];
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = startOfDay(subDays(new Date(), i));
-      const dayData: ChartDataPoint = {
-        date: format(date, 'dd/MM', { locale: ptBR }),
-        points: Math.floor(Math.random() * 50) + 10,
-        achievements: Math.floor(Math.random() * 3),
-        activities: Math.floor(Math.random() * 5) + 1,
-        level: Math.floor(Math.random() * 2) + (userStats?.currentLevel || 1)
-      };
-      data.push(dayData);
+  // Fetch real gamification stats from API
+  const fetchGamificationStats = async (): Promise<GamificationStats | null> => {
+    try {
+      const response = await fetch('/api/gamification/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching gamification stats:', error);
+      return null;
     }
-    
-    return data;
   };
 
-  const chartData = generateChartData(selectedPeriod);
+  // Convert API data to chart format
+  const convertToChartData = (stats: GamificationStats, period: TimePeriod): ChartDataPoint[] => {
+    // Convert real stats data to chart format
+    if (!stats.progressHistory || stats.progressHistory.length === 0) {
+      return []
+    }
+    
+    return stats.progressHistory.map(entry => ({
+      date: entry.date,
+      points: entry.points || 0,
+      achievements: entry.achievements || 0,
+      activities: entry.activities || 0,
+      level: entry.level || stats.currentLevel
+    }))
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const fetchedStats = await fetchGamificationStats();
+      if (fetchedStats) {
+        setStats(fetchedStats);
+        setChartData(convertToChartData(fetchedStats, selectedPeriod));
+      }
+      setIsLoading(false);
+    };
+    
+    loadData();
+  }, [selectedPeriod]);
   
   // Achievement distribution data
-  const achievementDistribution = achievements?.reduce((acc, achievement) => {
-    const rarity = achievement.rarity;
-    acc[rarity] = (acc[rarity] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
-
-  const pieData = Object.entries(achievementDistribution).map(([rarity, count]) => ({
-    name: rarity,
-    value: count,
-    color: ACHIEVEMENT_COLORS[rarity as keyof typeof ACHIEVEMENT_COLORS]
-  }));
+  const pieData = stats ? [
+    { name: 'Desbloqueadas', value: stats.unlockedAchievements, color: '#10B981' },
+    { name: 'Bloqueadas', value: stats.totalAchievements - stats.unlockedAchievements, color: '#E5E7EB' }
+  ] : [];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -276,7 +316,6 @@ export function ProgressChart() {
                     ))}
                   </Pie>
                   <Tooltip />
-                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -301,27 +340,27 @@ export function ProgressChart() {
               <span className="text-sm font-medium">Conquistas</span>
             </div>
             <p className="text-2xl font-bold text-green-600">
-              {chartData.reduce((sum, day) => sum + day.achievements, 0)}
+              {stats?.unlockedAchievements || 0}
             </p>
           </div>
           
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Target className="h-4 w-4 text-purple-500" />
-              <span className="text-sm font-medium">Atividades</span>
+              <span className="text-sm font-medium">Badges</span>
             </div>
             <p className="text-2xl font-bold text-purple-600">
-              {chartData.reduce((sum, day) => sum + day.activities, 0)}
+              {stats?.earnedBadges || 0}
             </p>
           </div>
           
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Calendar className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-medium">Período</span>
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm font-medium">Nível</span>
             </div>
-            <p className="text-2xl font-bold text-orange-600">
-              {PERIOD_CONFIG[selectedPeriod].days}d
+            <p className="text-2xl font-bold text-yellow-600">
+              {stats?.currentLevel || 1}
             </p>
           </div>
         </div>

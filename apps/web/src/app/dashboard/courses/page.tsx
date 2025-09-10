@@ -1,67 +1,124 @@
 import { Metadata } from 'next'
-
-export const dynamic = 'force-dynamic'
-import MyCourses from '@/components/dashboard/courses/MyCourses'
-import CourseFilters from '@/components/dashboard/courses/CourseFilters'
-import CourseProgress from '@/components/dashboard/courses/CourseProgress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { MyCourses } from '@/components/dashboard/courses/MyCourses'
+import { CourseFilters } from '@/components/dashboard/courses/CourseFilters'
+import { CourseProgress } from '@/components/dashboard/courses/CourseProgress'
+import { CoursesClient } from '@/components/dashboard/courses/CoursesClient'
 
 export const metadata: Metadata = {
-  title: 'Meus Cursos | Dashboard | Caminhos de Hekate',
-  description: 'Gerencie seus cursos e acompanhe seu progresso'
+  title: 'Meus Cursos | Dashboard',
+  description: 'Gerencie seus cursos e acompanhe seu progresso de aprendizado'
 }
 
-export default function CoursesPage() {
+interface CourseData {
+  id: string
+  title: string
+  description: string
+  thumbnail: string
+  instructor: string
+  duration: string
+  progress: number
+  status: 'not_started' | 'in_progress' | 'completed'
+  rating: number
+  totalLessons: number
+  completedLessons: number
+  lastAccessed?: string
+  category: string
+  level: 'beginner' | 'intermediate' | 'advanced'
+  enrolledAt: string
+  totalStudyTime: number
+  estimatedTimeRemaining: number
+}
+
+interface CourseStats {
+  totalCourses: number
+  completedCourses: number
+  inProgressCourses: number
+  notStartedCourses: number
+  totalStudyTime: number
+  averageProgress: number
+}
+
+async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseStats } | null> {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return null
+    }
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const response = await fetch(`${baseUrl}/api/user/courses`, {
+      headers: {
+        'Cookie': `next-auth.session-token=${session.user.id}` // Simplified for server-side
+      },
+      cache: 'no-store'
+    })
+
+    if (!response.ok) {
+      console.error('Erro ao buscar cursos:', response.status)
+      return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Erro ao buscar cursos do usuário:', error)
+    return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }
+  }
+}
+
+export default async function CoursesPage() {
+  const session = await getServerSession(authOptions)
+  
+  if (!session?.user) {
+    redirect('/auth/signin')
+  }
+
+  const data = await getUserCourses()
+  
+  if (!data) {
+    redirect('/auth/signin')
+  }
+
+  const { courses, stats } = data
+  
+  // Separar cursos por status
+  const inProgressCourses = courses.filter(course => course.status === 'in_progress')
+  const completedCourses = courses.filter(course => course.status === 'completed')
+  const notStartedCourses = courses.filter(course => course.status === 'not_started')
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Meus Cursos</h1>
-        <p className="text-muted-foreground">
-          Acompanhe seu progresso e continue aprendendo
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Meus Cursos</h1>
+          <p className="text-muted-foreground">
+            Acompanhe seu progresso e continue aprendendo
+          </p>
+        </div>
       </div>
 
-      <Tabs defaultValue="active" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="active">Em Andamento</TabsTrigger>
-          <TabsTrigger value="completed">Concluídos</TabsTrigger>
-          <TabsTrigger value="progress">Progresso Detalhado</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active" className="space-y-6">
-          <CourseFilters 
-            onSearchChange={() => {}}
-            onCategoryChange={() => {}}
-            onLevelChange={() => {}}
-            onStatusChange={() => {}}
-            onSortChange={() => {}}
+      <div className="grid gap-6 lg:grid-cols-4">
+        <div className="lg:col-span-3">
+          <CoursesClient 
+            inProgressCourses={inProgressCourses}
+            completedCourses={completedCourses}
+            notStartedCourses={notStartedCourses}
           />
-          <MyCourses courses={[]} />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="completed" className="space-y-6">
-          <CourseFilters 
-            onSearchChange={() => {}}
-            onCategoryChange={() => {}}
-            onLevelChange={() => {}}
-            onStatusChange={() => {}}
-            onSortChange={() => {}}
+        <div className="space-y-6">
+          <CourseProgress 
+            totalCourses={stats.totalCourses}
+            completedCourses={stats.completedCourses}
+            inProgressCourses={stats.inProgressCourses}
+            totalHours={Math.round(stats.totalStudyTime / 60)}
+            completedHours={Math.round(stats.totalStudyTime / 60)}
+            averageProgress={stats.averageProgress}
           />
-          <MyCourses courses={[]} />
-        </TabsContent>
-
-        <TabsContent value="progress" className="space-y-6">
-          <CourseProgress data={{
-            totalCourses: 0,
-            completedCourses: 0,
-            inProgressCourses: 0,
-            totalHours: 0,
-            completedHours: 0,
-            averageProgress: 0,
-            streakDays: 0
-          }} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   )
 }

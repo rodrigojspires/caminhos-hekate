@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown, ChevronRight } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export interface NavigationItem {
@@ -11,8 +12,12 @@ export interface NavigationItem {
   href?: string
   icon?: React.ComponentType<{ className?: string }>
   children?: NavigationItem[]
-  badge?: string | number
+  badge?: string | number | {
+    count: number
+    variant?: "default" | "secondary" | "destructive" | "outline"
+  }
   disabled?: boolean
+  description?: string
 }
 
 export interface NavigationProps {
@@ -63,9 +68,12 @@ export function Navigation({ items, className, variant = 'sidebar' }: Navigation
             {Icon && <Icon className="w-4 h-4" />}
             <span>{item.label}</span>
             {item.badge && (
-              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                {item.badge}
-              </span>
+              <Badge 
+                variant={typeof item.badge === 'object' ? item.badge.variant || 'default' : 'default'}
+                className="text-xs"
+              >
+                {typeof item.badge === 'object' ? item.badge.count : item.badge}
+              </Badge>
             )}
           </div>
         </Link>
@@ -89,9 +97,12 @@ export function Navigation({ items, className, variant = 'sidebar' }: Navigation
             {Icon && <Icon className="w-4 h-4" />}
             <span>{item.label}</span>
             {item.badge && (
-              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                {item.badge}
-              </span>
+              <Badge 
+                variant={typeof item.badge === 'object' ? item.badge.variant || 'default' : 'default'}
+                className="text-xs"
+              >
+                {typeof item.badge === 'object' ? item.badge.count : item.badge}
+              </Badge>
             )}
           </div>
         </Link>
@@ -119,14 +130,15 @@ export function Navigation({ items, className, variant = 'sidebar' }: Navigation
               <span>{item.label}</span>
             </div>
             {item.badge && (
-              <span className={cn(
-                "px-2 py-1 text-xs rounded-full",
-                active
-                  ? "bg-purple-500 text-white"
-                  : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
-              )}>
-                {item.badge}
-              </span>
+              <Badge 
+                variant={typeof item.badge === 'object' ? item.badge.variant || 'default' : 'default'}
+                className={cn(
+                  "text-xs",
+                  active && "bg-purple-500 text-white hover:bg-purple-500"
+                )}
+              >
+                {typeof item.badge === 'object' ? item.badge.count : item.badge}
+              </Badge>
             )}
           </Link>
         ) : (
@@ -144,9 +156,12 @@ export function Navigation({ items, className, variant = 'sidebar' }: Navigation
               {Icon && <Icon className="w-4 h-4" />}
               <span>{item.label}</span>
               {item.badge && (
-                <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full">
-                  {item.badge}
-                </span>
+                <Badge 
+                  variant={typeof item.badge === 'object' ? item.badge.variant || 'default' : 'secondary'}
+                  className="text-xs"
+                >
+                  {typeof item.badge === 'object' ? item.badge.count : item.badge}
+                </Badge>
               )}
             </div>
             {hasChildren && (

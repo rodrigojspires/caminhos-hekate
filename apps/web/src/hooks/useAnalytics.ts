@@ -44,7 +44,19 @@ export type AdminOverview = {
 }
 
 export type AnalyticsTimeseriesPoint = { period: string; value: number; count: number }
-export type AnalyticsEventItem = { id: string; name: string; category: string; action: string; timestamp: string }
+export type AnalyticsEventItem = { 
+  id: string
+  name: string
+  category: string
+  action: string
+  timestamp: string
+  userId?: string
+  properties?: any
+  user?: {
+    name: string | null
+    email: string
+  }
+}
 
 export function useAnalytics(userId?: string, isAdmin: boolean = false) {
   const [dateRange, setDateRange] = useState<'1d' | '7d' | '30d' | '90d'>('7d')
@@ -108,15 +120,28 @@ export function useAnalytics(userId?: string, isAdmin: boolean = false) {
   const fetchRecentEvents = useCallback(async () => {
     const params = new URLSearchParams()
     params.append('type', 'events')
-    params.append('limit', '100')
-    if (rangeToDates.start) params.append('startDate', rangeToDates.start.toISOString())
-    if (rangeToDates.end) params.append('endDate', rangeToDates.end.toISOString())
+    params.append('period', dateRange)
 
     const response = await fetch(`/api/analytics?${params}`)
-    if (!response.ok) throw new Error('Falha ao carregar eventos recentes')
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
+      throw new Error(errorData.error || 'Falha ao carregar eventos recentes')
+    }
     const data = await response.json()
-    setRecentEvents(Array.isArray(data) ? data as AnalyticsEventItem[] : [])
-  }, [rangeToDates])
+    
+    // A API agora retorna { events: [...], period: '7d', isAdmin: boolean }
+    const events = data.events || data
+    setRecentEvents(Array.isArray(events) ? events.map((event: any) => ({
+      id: event.id,
+      name: event.action,
+      category: event.category,
+      action: event.action,
+      timestamp: event.createdAt,
+      userId: event.userId,
+      properties: event.properties,
+      user: event.user
+    })) : [])
+  }, [dateRange])
 
   const refresh = useCallback(async () => {
     setRefreshing(true)
@@ -156,6 +181,7 @@ export function useAnalytics(userId?: string, isAdmin: boolean = false) {
     error,
     // actions
     refresh,
+    fetchRecentEvents,
   }
 }
 

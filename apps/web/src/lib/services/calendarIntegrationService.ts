@@ -361,10 +361,57 @@ class OutlookCalendarIntegration {
 
   static async signIn(): Promise<boolean> {
     try {
-      // This would typically use Microsoft Authentication Library (MSAL)
-      // For now, we'll show a placeholder implementation
-      toast.info('Integração com Outlook em desenvolvimento');
-      return false;
+      if (!this.CLIENT_ID) {
+        toast.error('Outlook Client ID não configurado');
+        return false;
+      }
+
+      // Implementação real usando Microsoft Graph API
+      const authUrl = new URL('https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+      authUrl.searchParams.set('client_id', this.CLIENT_ID);
+      authUrl.searchParams.set('response_type', 'token');
+      authUrl.searchParams.set('redirect_uri', window.location.origin + '/auth/outlook/callback');
+      authUrl.searchParams.set('scope', this.SCOPES.join(' '));
+      authUrl.searchParams.set('response_mode', 'fragment');
+      authUrl.searchParams.set('state', Math.random().toString(36).substring(7));
+
+      // Abrir popup para autenticação
+      const popup = window.open(
+        authUrl.toString(),
+        'outlook-auth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      return new Promise((resolve) => {
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed);
+            resolve(false);
+          }
+        }, 1000);
+
+        // Listener para receber o token do popup
+        const messageListener = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          
+          if (event.data.type === 'OUTLOOK_AUTH_SUCCESS') {
+            this.accessToken = event.data.accessToken;
+            popup?.close();
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageListener);
+            toast.success('Conectado ao Outlook Calendar');
+            resolve(true);
+          } else if (event.data.type === 'OUTLOOK_AUTH_ERROR') {
+            popup?.close();
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageListener);
+            toast.error('Falha ao conectar com Outlook Calendar');
+            resolve(false);
+          }
+        };
+
+        window.addEventListener('message', messageListener);
+      });
     } catch (error) {
       console.error('Outlook Calendar sign-in failed:', error);
       toast.error('Falha ao conectar com Outlook Calendar');

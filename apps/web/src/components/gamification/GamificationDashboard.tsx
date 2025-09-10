@@ -6,13 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { AchievementNotification } from './AchievementNotification'
+// Removido: import { Button } from '@/components/ui/button'
+// Removido: import { AchievementNotification } from './AchievementNotification'
 import { NotificationSystem } from './NotificationSystem'
 import { ExpandedAchievementDashboard } from './ExpandedAchievementDashboard'
 import { RewardCenter } from './RewardCenter'
 import { Leaderboard } from './Leaderboard'
-import { useGamification } from '@/hooks/useGamification'
+import { PointsDisplay } from './dashboard/PointsDisplay'
+import { BadgeCollection } from './achievements/BadgeCollection'
+import { LevelProgress } from './dashboard/LevelProgress'
+// Removido: import { useGamification } from '@/hooks/useGamification'
+import { useGamificationStore } from '@/stores/gamificationStore'
+import { useInitializeGamification } from '@/stores/gamificationStore'
 
 interface GamificationStats {
   totalAchievements: number
@@ -46,7 +51,12 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
   const [stats, setStats] = useState<GamificationStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const { notifications, markNotificationAsRead } = useGamification()
+  const { 
+    userPoints, 
+    achievements, 
+    userAchievements 
+  } = useGamificationStore()
+  const { initialize } = useInitializeGamification()
 
   const fetchStats = async () => {
     try {
@@ -66,7 +76,8 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
 
   useEffect(() => {
     fetchStats()
-  }, [])
+    initialize()
+  }, [initialize])
 
   const StatCard = ({ 
     title, 
@@ -308,10 +319,20 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Points and Level Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PointsDisplay compact={true} showTransactions={false} />
+            <LevelProgress />
+          </div>
+          
+          {/* Recent Activity and Weekly Progress */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RecentActivity />
             <WeeklyProgress />
           </div>
+          
+          {/* Badge Collection Preview */}
+          <BadgeCollection compact={true} showFilters={false} />
           
           {/* Streaks */}
           {stats?.streaks && stats.streaks.length > 0 && (
@@ -348,7 +369,8 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
           )}
         </TabsContent>
 
-        <TabsContent value="achievements">
+        <TabsContent value="achievements" className="space-y-6">
+          <BadgeCollection showFilters={true} />
           <ExpandedAchievementDashboard />
         </TabsContent>
 
@@ -361,6 +383,12 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-6">
+          {/* Points Display with Full Transactions */}
+          <PointsDisplay showTransactions={true} />
+          
+          {/* Level Progress */}
+          <LevelProgress />
+          
           {/* Category Progress */}
           {stats?.categoryProgress && (
             <Card>
@@ -412,26 +440,29 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Pontos Disponíveis</span>
-                  <span className="font-bold">{stats?.availablePoints?.toLocaleString() || '0'}</span>
+                  <span className="font-bold">{userPoints?.totalPoints?.toLocaleString() || '0'}</span>
                 </div>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Progresso do Nível</CardTitle>
+                <CardTitle>Resumo de Conquistas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold mb-2">Nível {stats?.currentLevel || 1}</div>
-                  <Progress value={stats?.levelProgress || 0} className="h-3 mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {stats?.experiencePoints || 0} / {stats?.nextLevelPoints || 100} XP
+                  <div className="text-3xl font-bold mb-2">{userAchievements?.length || 0}</div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    de {achievements?.length || 0} conquistas desbloqueadas
                   </p>
+                  <Progress 
+                    value={achievements?.length ? (userAchievements?.length / achievements.length) * 100 : 0} 
+                    className="h-3 mb-2" 
+                  />
                 </div>
                 <div className="pt-4 border-t">
                   <p className="text-sm text-muted-foreground text-center">
-                    Faltam {(stats?.nextLevelPoints || 100) - (stats?.experiencePoints || 0)} XP para o próximo nível
+                    {((achievements?.length || 0) - (userAchievements?.length || 0))} conquistas restantes
                   </p>
                 </div>
               </CardContent>

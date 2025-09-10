@@ -3,73 +3,64 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
-// GET /api/gamification/points - Get current user's points summary
+// GET /api/gamification/points - Get user points and level info
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-
+    
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
-
-    const userPoints = await prisma.userPoints.findUnique({
-      where: { userId: session.user.id },
-      select: {
-        userId: true,
-        totalPoints: true,
-        currentLevel: true,
-        pointsToNext: true,
-        updatedAt: true,
-        createdAt: true,
-      }
-    })
 
     const { searchParams } = new URL(request.url)
     const includeTransactions = searchParams.get('includeTransactions') === 'true'
+    const transactionLimit = parseInt(searchParams.get('transactionLimit') || '10')
 
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-
-    const todayAgg = await prisma.pointTransaction.aggregate({
-      where: {
-        userId: session.user.id,
-        createdAt: { gte: startOfDay },
-        type: 'EARNED'
-      },
-      _sum: { points: true }
+    // Get or create user points
+    let userPoints = await prisma.userPoints.findUnique({
+      where: { userId: session.user.id }
     })
 
-    const summary = userPoints || {
-      userId: session.user.id,
-      totalPoints: 0,
-      currentLevel: 1,
-      pointsToNext: 100,
-      createdAt: null,
-      updatedAt: null,
+    if (!userPoints) {
+      userPoints = await prisma.userPoints.create({
+        data: {
+          userId: session.user.id,
+          totalPoints: 0,
+          currentLevel: 1,
+          pointsToNext: 100
+        }
+      })
     }
 
-    const payload: any = {
-      userPoints: {
-        ...summary,
-        todayPoints: Number(todayAgg._sum.points || 0),
-      }
+    // Calculate level progress
+    const levelProgress = {
+      currentLevel: userPoints.currentLevel,
+      totalPoints: userPoints.totalPoints,
+      pointsToNext: userPoints.pointsToNext,
+      progressPercentage: Math.max(0, Math.min(100, 
+        ((userPoints.totalPoints % userPoints.pointsToNext) / userPoints.pointsToNext) * 100
+      ))
     }
 
+    const response: any = {
+      userPoints,
+      levelProgress
+    }
+
+    // Include recent transactions if requested
     if (includeTransactions) {
-      const txs = await prisma.pointTransaction.findMany({
+      const transactions = await prisma.pointTransaction.findMany({
         where: { userId: session.user.id },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: transactionLimit
       })
-      payload.transactions = txs
+
+      response.recentTransactions = transactions
     }
 
-    return NextResponse.json(payload)
+    return NextResponse.json(response)
   } catch (error) {
-    console.error('Erro ao obter pontos do usuário:', error)
+    console.error('Error fetching user points:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -77,69 +68,83 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/gamification/points - Award points (alias for /points/award)
+// POST /api/gamification/points - Deduct points (for purchases, etc.)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { points, reason, description, metadata } = await request.json()
+    const { points, reason, metadata } = await request.json()
 
     if (!points || points <= 0) {
-      return NextResponse.json({ error: 'Pontos devem ser positivos' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Pontos devem ser um número positivo' },
+        { status: 400 }
+      )
     }
+
     if (!reason) {
-      return NextResponse.json({ error: 'Motivo é obrigatório' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Motivo é obrigatório' },
+        { status: 400 }
+      )
     }
 
-    // Ensure record exists
-    let userPoints = await prisma.userPoints.findUnique({ where: { userId: session.user.id } })
-    if (!userPoints) {
-      userPoints = await prisma.userPoints.create({
-        data: { userId: session.user.id, totalPoints: 0, currentLevel: 1, pointsToNext: 100 }
-      })
-    }
-
-    const previousLevel = userPoints.currentLevel
-    const newTotal = userPoints.totalPoints + Number(points)
-
-    // Compute new level (simple exponential growth)
-    let newLevel = userPoints.currentLevel
-    let pointsToNext = userPoints.pointsToNext
-    let carry = newTotal
-    while (carry >= pointsToNext) {
-      carry -= pointsToNext
-      newLevel += 1
-      pointsToNext = Math.floor(100 * Math.pow(1.5, newLevel - 1))
-    }
-
-    const updated = await prisma.userPoints.update({
-      where: { userId: session.user.id },
-      data: { totalPoints: newTotal, currentLevel: newLevel, pointsToNext }
+    // Get user points
+    const userPoints = await prisma.userPoints.findUnique({
+      where: { userId: session.user.id }
     })
 
-    const transaction = await prisma.pointTransaction.create({
+    if (!userPoints) {
+      return NextResponse.json(
+        { error: 'Usuário não possui pontos' },
+        { status: 400 }
+      )
+    }
+
+    if (userPoints.totalPoints < points) {
+      return NextResponse.json(
+        { error: 'Pontos insuficientes' },
+        { status: 400 }
+      )
+    }
+
+    // Deduct points
+    const updatedUserPoints = await prisma.userPoints.update({
+      where: { userId: session.user.id },
+      data: {
+        totalPoints: {
+          decrement: points
+        }
+      }
+    })
+
+    // Create transaction record
+    await prisma.pointTransaction.create({
       data: {
         userId: session.user.id,
-        type: 'EARNED',
-        points: Number(points),
-        reason,
-        description: description || reason,
-        metadata: metadata || {},
+        type: 'SPENT',
+        points: -points,
+        reason: reason,
+        description: reason,
+        metadata: metadata || {}
       }
     })
 
     return NextResponse.json({
-      userPoints: updated,
-      transaction,
-      pointsAwarded: Number(points),
-      levelUp: newLevel > previousLevel,
-      previousLevel,
+      userPoints: updatedUserPoints,
+      pointsDeducted: points,
+      reason,
+      remainingPoints: updatedUserPoints.totalPoints
     })
   } catch (error) {
-    console.error('Erro ao conceder pontos (alias):', error)
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+    console.error('Error deducting user points:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
   }
 }

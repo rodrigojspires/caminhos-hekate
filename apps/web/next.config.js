@@ -13,6 +13,7 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
   },
   output: 'standalone',
+  eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [
       {

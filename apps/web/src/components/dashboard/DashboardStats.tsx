@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import {
   Award
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
 
 interface StatCardProps {
   title: string
@@ -68,50 +69,102 @@ function StatCard({ title, value, description, icon: Icon, trend, badge, index }
 }
 
 export function DashboardStats() {
+  const [loading, setLoading] = useState(true)
+  const [progress, setProgress] = useState<null | {
+    overview: {
+      totalCourses: number
+      completedCourses: number
+      inProgressCourses: number
+      totalLessonsCompleted: number
+      totalLessons: number
+      completionRate: number
+    }
+    monthlyData: Array<{ month: string; lessons: number; hours: number }>
+    courseProgress: Array<{ progress: number }>
+  }>(null)
+  const [streakDays, setStreakDays] = useState<number>(0)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const [pRes, sRes] = await Promise.all([
+          fetch('/api/user/progress'),
+          fetch('/api/gamification/streaks?active=true')
+        ])
+        if (!pRes.ok) throw new Error('Falha ao carregar progresso')
+        const pJson = await pRes.json()
+        const sJson = sRes.ok ? await sRes.json() : []
+        if (cancelled) return
+        setProgress({
+          overview: pJson.overview,
+          monthlyData: pJson.monthlyData || [],
+          courseProgress: pJson.courseProgress || []
+        })
+        const current = Array.isArray(sJson) ? Math.max(0, ...sJson.map((x: any) => Number(x.currentStreak || 0))) : 0
+        setStreakDays(Number.isFinite(current) ? current : 0)
+      } catch (_e) {
+        if (!cancelled) {
+          setProgress(null)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const averageProgress = useMemo(() => {
+    if (!progress?.courseProgress?.length) return 0
+    const sum = progress.courseProgress.reduce((acc, c) => acc + (Number(c.progress) || 0), 0)
+    return Math.round(sum / progress.courseProgress.length)
+  }, [progress])
+
+  const monthHours = useMemo(() => {
+    if (!progress?.monthlyData?.length) return 0
+    const last = progress.monthlyData[progress.monthlyData.length - 1]
+    return Number(last?.hours || 0)
+  }, [progress])
+
   const stats = [
     {
       title: 'Cursos Ativos',
-      value: 3,
+      value: progress?.overview?.inProgressCourses ?? 0,
       description: 'Em andamento',
       icon: BookOpen,
-      trend: { value: 12, isPositive: true },
-      badge: 'Ativo'
+      trend: progress ? { value: 0, isPositive: true } : undefined,
+      badge: undefined
     },
     {
       title: 'Horas de Estudo',
-      value: '24.5h',
+      value: `${monthHours}h`,
       description: 'Este mês',
       icon: Clock,
-      trend: { value: 8, isPositive: true }
+      trend: undefined
     },
     {
-      title: 'Certificados',
-      value: 2,
-      description: 'Conquistados',
+      title: 'Cursos Concluídos',
+      value: progress?.overview?.completedCourses ?? 0,
+      description: 'Total',
       icon: Trophy,
-      badge: 'Novo'
+      badge: undefined
     },
     {
       title: 'Progresso Médio',
-      value: '68%',
+      value: `${averageProgress}%`,
       description: 'Todos os cursos',
       icon: Target,
-      trend: { value: 15, isPositive: true }
+      trend: undefined
     },
     {
       title: 'Sequência',
-      value: '7 dias',
+      value: `${streakDays} dias`,
       description: 'Estudo contínuo',
       icon: Calendar,
-      trend: { value: 3, isPositive: true },
+      trend: undefined,
       badge: 'Streak'
-    },
-    {
-      title: 'Ranking',
-      value: '#42',
-      description: 'Entre estudantes',
-      icon: Award,
-      trend: { value: 5, isPositive: true }
     }
   ]
 

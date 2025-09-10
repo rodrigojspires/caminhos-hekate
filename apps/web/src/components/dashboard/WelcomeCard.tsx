@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,10 +6,46 @@ import { Badge } from '@/components/ui/badge'
 import { BookOpen, Play, Star } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { useSession } from 'next-auth/react'
+import { useEffect, useState } from 'react'
 
 export function WelcomeCard() {
+  const { data: session } = useSession()
+  const [inProgress, setInProgress] = useState<number>(0)
+  const [avgProgress, setAvgProgress] = useState<number>(0)
+  const [streak, setStreak] = useState<number>(0)
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite'
+  const name = session?.user?.name || 'Bem-vindo(a)'
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const [pRes, sRes] = await Promise.all([
+          fetch('/api/user/progress'),
+          fetch('/api/gamification/streaks?active=true')
+        ])
+        if (pRes.ok) {
+          const p = await pRes.json()
+          if (!cancelled) {
+            const ip = Number(p?.overview?.inProgressCourses || 0)
+            setInProgress(ip)
+            const list = Array.isArray(p?.courseProgress) ? p.courseProgress : []
+            const avg = list.length ? Math.round(list.reduce((a: number, c: any) => a + (Number(c.progress)||0), 0) / list.length) : 0
+            setAvgProgress(avg)
+          }
+        }
+        if (sRes.ok) {
+          const s = await sRes.json()
+          const current = Array.isArray(s) ? Math.max(0, ...s.map((x: any) => Number(x.currentStreak || 0))) : 0
+          if (!cancelled) setStreak(Number.isFinite(current) ? current : 0)
+        }
+      } catch { /* noop */ }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
   
   return (
     <motion.div
@@ -23,7 +59,7 @@ export function WelcomeCard() {
             <div className="space-y-4">
               <div>
                 <h1 className="text-2xl font-bold">
-                  {greeting}, João! 👋
+                  {greeting}, {name}! 👋
                 </h1>
                 <p className="text-purple-100 mt-1">
                   Continue sua jornada de aprendizado
@@ -33,11 +69,11 @@ export function WelcomeCard() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
-                  <span className="text-sm">3 cursos ativos</span>
+                  <span className="text-sm">{inProgress} cursos ativos</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4" />
-                  <span className="text-sm">68% progresso médio</span>
+                  <span className="text-sm">{avgProgress}% progresso médio</span>
                 </div>
               </div>
               
@@ -51,7 +87,7 @@ export function WelcomeCard() {
                   Continuar Estudando
                 </Button>
                 <Badge variant="secondary" className="bg-white/20 text-white">
-                  Sequência de 7 dias 🔥
+                  Sequência de {streak} dias 🔥
                 </Badge>
               </div>
             </div>
@@ -68,16 +104,7 @@ export function WelcomeCard() {
             </div>
           </div>
           
-          {/* Progress indicator */}
-          <div className="mt-6 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>Progresso semanal</span>
-              <span>4/7 dias</span>
-            </div>
-            <div className="w-full bg-white/20 rounded-full h-2">
-              <div className="bg-white h-2 rounded-full" style={{ width: '57%' }} />
-            </div>
-          </div>
+          {/* Indicadores adicionais podem ser adicionados aqui com dados reais */}
         </CardContent>
       </Card>
     </motion.div>

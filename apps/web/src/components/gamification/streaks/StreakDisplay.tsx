@@ -52,7 +52,7 @@ export function StreakDisplay({ streak, className, showDetails = true }: StreakD
 
   const currentStreak = streak.currentStreak || 0;
   const longestStreak = streak.longestStreak || 0;
-  const lastActivityAt = streak.lastActivityDate ? new Date(streak.lastActivityDate) : null;
+  const lastActivityAt = streak.lastActivity ? new Date(streak.lastActivity) : null;
   // Derive activity status: active if last activity within 48h
   const isActive = lastActivityAt ? differenceInHours(new Date(), lastActivityAt) < 48 : false;
   

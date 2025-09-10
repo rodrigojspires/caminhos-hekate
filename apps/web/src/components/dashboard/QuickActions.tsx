@@ -64,7 +64,7 @@ export function QuickActions() {
       description: 'Retome onde parou',
       icon: BookOpen,
       href: '/dashboard/courses',
-      badge: 'Em andamento'
+      badge: undefined
     },
     {
       title: 'Agendar Sessão',
@@ -82,22 +82,19 @@ export function QuickActions() {
       title: 'Comunidade',
       description: 'Conecte-se com outros',
       icon: Users,
-      href: '/comunidade',
-      badge: '12 online'
+      href: '/comunidade'
     },
     {
       title: 'Aula ao Vivo',
       description: 'Próxima em 2h',
       icon: Video,
-      href: '/dashboard/live',
-      badge: 'Hoje 19h'
+      href: '/dashboard/live'
     },
     {
       title: 'Fórum',
       description: 'Tire suas dúvidas',
       icon: MessageCircle,
-      href: '/forum',
-      badge: '3 novas'
+      href: '/forum'
     },
     {
       title: 'Certificados',

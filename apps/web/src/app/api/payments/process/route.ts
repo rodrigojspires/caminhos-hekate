@@ -120,14 +120,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    let paymentResult: any;
+    interface PaymentProviderResult {
+      transaction: {
+        id: string;
+        status: string;
+        amount: number;
+        provider: string;
+        method: string;
+      };
+      paymentUrl?: string;
+      subscriptionId?: string;
+    }
+
+    let paymentResult: PaymentProviderResult;
 
     // Processa o pagamento baseado no provedor
     switch (provider) {
       case 'MERCADOPAGO': {
         const { MercadoPagoService } = await import('@/lib/payments/mercadopago')
         const mpService = new MercadoPagoService()
-        paymentResult = await mpService.createSubscriptionPayment({
+        const mpRes = await mpService.createSubscriptionPayment({
           amount,
           description: `Assinatura ${plan.name} (${billingInterval === 'YEARLY' ? 'anual' : 'mensal'})`,
           userId: session.user.id,
@@ -138,6 +150,17 @@ export async function POST(request: NextRequest) {
             billing_interval: billingInterval,
           },
         })
+        paymentResult = {
+          transaction: {
+            id: mpRes.transaction.id,
+            status: String(mpRes.transaction.status),
+            amount: Number(mpRes.transaction.amount ?? 0),
+            provider: 'MERCADOPAGO',
+            method: paymentMethod ?? 'PIX',
+          },
+          paymentUrl: mpRes.paymentUrl,
+          subscriptionId: subscription.id,
+        }
         break;
       }
 
@@ -168,7 +191,7 @@ export async function POST(request: NextRequest) {
 
         const { AsaasService } = await import('@/lib/payments/asaas')
         const asService = new AsaasService()
-        paymentResult = await asService.createSubscriptionPayment(
+        const asRes = await asService.createSubscriptionPayment(
           session.user.id,
           plan.id,
           asaasCustomerData,
@@ -182,6 +205,18 @@ export async function POST(request: NextRequest) {
             }
           }
         );
+        const method = (paymentMethod === 'PIX' || paymentMethod === 'BOLETO' || paymentMethod === 'CREDIT_CARD') ? paymentMethod : 'BOLETO'
+        paymentResult = {
+          transaction: {
+            id: asRes.transaction.id,
+            status: String(asRes.transaction.status),
+            amount: Number(asRes.transaction.amount ?? 0),
+            provider: 'ASAAS',
+            method,
+          },
+          paymentUrl: asRes.paymentUrl,
+          subscriptionId: subscription.id,
+        }
         break;
       }
 

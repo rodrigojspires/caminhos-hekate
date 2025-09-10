@@ -1,6 +1,6 @@
 // Tipos para o Sistema de Gamificação
 
-export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
+export type AchievementRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 export type LeaderboardPeriod = 'daily' | 'weekly' | 'monthly' | 'all'
 export type LeaderboardCategory = 'general' | 'learning' | 'engagement' | 'social'
 export type ActionType = 'course_completed' | 'video_watched' | 'exercise_completed' | 'comment_posted' | 'daily_activity' | 'streak_milestone' | 'achievement_unlocked'
@@ -32,7 +32,7 @@ export interface Achievement {
   categoryId: string
   category?: AchievementCategory
   criteria: AchievementCriteria
-  pointsReward: number
+  points: number
   isActive: boolean
   createdAt: string
 }
@@ -63,9 +63,7 @@ export interface UserPoints {
   userId: string
   totalPoints: number
   currentLevel: number
-  todayPoints: number
-  pointsToNextLevel: number
-  lastActivity: string
+  pointsToNext: number
   createdAt: string
   updatedAt: string
 }
@@ -74,21 +72,26 @@ export interface UserPoints {
 export interface UserStreak {
   id: string
   userId: string
+  streakType: string
   currentStreak: number
   longestStreak: number
-  lastActivityDate: string
-  createdAt: string
-  updatedAt: string
+  lastActivity: string | null
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 // Transação de Pontos
 export interface PointTransaction {
   id: string
   userId: string
-  actionType: ActionType
-  pointsEarned: number
+  points: number
+  type: 'EARNED' | 'SPENT' | 'BONUS' | 'PENALTY' | 'REFUND'
+  reason: string
+  description?: string
   metadata?: Record<string, any>
   createdAt: string
+  actionType?: ActionType
 }
 
 // Entrada do Ranking
@@ -103,6 +106,10 @@ export interface LeaderboardEntry {
   rank: number
   level: number
   calculatedAt: string
+  // Campos opcionais utilizados em componentes de UI
+  achievementCount?: number
+  badgeCount?: number
+  pointsChange?: number
 }
 
 // Estatísticas do Usuário
@@ -191,7 +198,7 @@ export interface LeaderboardResponse {
 export interface StreakResponse {
   currentStreak: number
   longestStreak: number
-  lastActivityDate: string
+  lastActivity: string | null
   streakHistory: {
     date: string
     hasActivity: boolean

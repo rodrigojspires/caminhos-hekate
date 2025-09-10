@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
 import { 
   Check, 
   X, 
@@ -23,7 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
-const plans = [
+const plansStatic = [
   {
     id: 'gratuito',
     name: 'Caminho Livre',
@@ -57,7 +58,7 @@ const plans = [
   }
 ]
 
-const featureCategories = [
+const featureCategoriesStatic = [
   {
     name: 'Conteúdo e Cursos',
     icon: BookOpen,
@@ -243,9 +244,68 @@ function FeatureValue({ value, planId }: { value: any, planId: string }) {
 }
 
 export function PricingComparison() {
-  return (
-    <section className="py-20 bg-white">
-      <div className="container mx-auto px-4">
+  const [remotePlans, setRemotePlans] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/payments/plans')
+        const json = await res.json().catch(() => ({}))
+        const data = Array.isArray(json?.data) ? json.data : []
+        if (!cancelled) setRemotePlans(data)
+      } catch {
+        if (!cancelled) setRemotePlans([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const plansToRender = useMemo(() => {
+    const source = remotePlans && remotePlans.length ? remotePlans : plansStatic
+    return source.map((p: any, idx: number) => {
+      const tier = (p.tier || p.id || '').toString()
+      const isVip = /vip|sagrad|adepto/i.test(tier) || /vip/i.test(p?.name || '')
+      const isFree = /free|grat/i.test(tier) || Number(p?.monthlyPrice ?? p?.price ?? 0) === 0
+      const priceNumber = Number(p?.monthlyPrice ?? p?.price ?? 0)
+      const Icon = isVip ? Crown : (isFree ? Heart : Star)
+      const color = isVip ? 'text-yellow-600' : (isFree ? 'text-green-600' : 'text-purple-600')
+      const bgColor = isVip ? 'bg-yellow-50' : (isFree ? 'bg-green-50' : 'bg-purple-50')
+      const borderColor = isVip ? 'border-yellow-200' : (isFree ? 'border-green-200' : 'border-purple-200')
+      return {
+        id: p.id || ['gratuito','premium','vip'][idx] || String(idx),
+        name: p.name || ['Caminho Livre','Caminho Iluminado','Caminho Sagrado'][idx] || 'Plano',
+        price: priceNumber > 0 ? priceNumber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Gratuito',
+        period: priceNumber > 0 ? '/mês' : 'Para sempre',
+        icon: Icon,
+        color,
+        bgColor,
+        borderColor,
+        popular: Boolean(p.isPopular),
+        features: Array.isArray(p.features) ? p.features : [],
+      }
+    })
+  }, [remotePlans])
+
+  const allFeatures = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of plansToRender) {
+      for (const f of p.features || []) {
+        if (typeof f === 'string' && f.trim()) set.add(f.trim())
+      }
+    }
+    return Array.from(set)
+  }, [plansToRender])
+
+  const usingRemote = remotePlans.length > 0
+   return (
+     <section className="py-20 bg-white">
+       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -286,7 +346,7 @@ export function PricingComparison() {
               <div className="p-4">
                 {/* Empty space for feature names */}
               </div>
-              {plans.map((plan, index) => {
+              {plansToRender.map((plan, index) => {
                 const Icon = plan.icon
                 return (
                   <motion.div
@@ -329,7 +389,7 @@ export function PricingComparison() {
             </div>
 
             {/* Feature Categories */}
-            {featureCategories.map((category, categoryIndex) => {
+            {featureCategoriesStatic.map((category, categoryIndex) => {
               const CategoryIcon = category.icon
               return (
                 <motion.div
@@ -387,7 +447,42 @@ export function PricingComparison() {
                 </motion.div>
               )
             })}
+            {allFeatures.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+                className="mb-12"
+              >
+                <Card className="border border-gray-200">
+                  <CardContent className="p-0">
+                    {allFeatures.map((feature, featureIndex) => (
+                      <div
+                        key={feature}
+                        className={`grid grid-cols-4 gap-4 p-4 ${
+                          featureIndex !== allFeatures.length - 1 ? 'border-b border-gray-100' : ''
+                        } hover:bg-gray-50 transition-colors duration-200`}
+                      >
+                        {/* Feature Name */}
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-900">
+                            {feature}
+                          </span>
+                        </div>
 
+                        {/* Plan Values */}
+                        {plansToRender.map((plan, index) => (
+                          <div key={plan.id} className="flex items-center justify-center">
+                            <FeatureValue value={(plan.features || []).includes(feature)} planId={plan.id} />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
             {/* CTA Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -399,7 +494,7 @@ export function PricingComparison() {
               <div className="p-4">
                 {/* Empty space */}
               </div>
-              {plans.map((plan, index) => (
+              {plansToRender.map((plan, index) => (
                 <motion.div
                   key={plan.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -420,9 +515,10 @@ export function PricingComparison() {
                     {plan.id === 'gratuito' ? 'Começar Grátis' :
                      plan.id === 'premium' ? 'Escolher Plano' :
                      'Transformar Vida'}
-                  </Button>
-                </motion.div>
-              ))}
+
+                   </Button>
+                 </motion.div>
+               ))}
             </motion.div>
           </div>
         </motion.div>

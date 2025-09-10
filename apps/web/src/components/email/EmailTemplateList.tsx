@@ -23,7 +23,8 @@ import {
   Download,
   Upload
 } from 'lucide-react'
-import type { EmailTemplate, EmailCategory as EmailTemplateCategory, EmailTemplateStatus } from '@/lib/email'
+import type { EmailCategory as EmailTemplateCategory, EmailTemplateStatus } from '@/lib/email'
+import type { EmailTemplate } from '@/hooks/useEmailTemplates'
 
 interface EmailTemplateListProps {
   templates: EmailTemplate[]
@@ -112,24 +113,32 @@ export function EmailTemplateList({
     }
   }
 
-  const getStatusBadge = (status: EmailTemplateStatus) => {
-    const variants: Record<EmailTemplateStatus, 'secondary' | 'default' | 'outline' | 'destructive'> = {
+  const getStatusBadge = (status?: EmailTemplateStatus | string) => {
+    if (!status) {
+      return <Badge variant="secondary">—</Badge>
+    }
+
+    const normalized = String(status).toUpperCase() as EmailTemplateStatus | string
+
+    const variants: Record<string, 'secondary' | 'default' | 'outline' | 'destructive'> = {
       DRAFT: 'secondary',
       ACTIVE: 'default',
       ARCHIVED: 'outline',
-      TESTING: 'default'
+      TESTING: 'default',
+      PUBLISHED: 'default'
     }
 
-    const labels: Record<EmailTemplateStatus, string> = {
+    const labels: Record<string, string> = {
       DRAFT: 'Rascunho',
       ACTIVE: 'Ativo',
       ARCHIVED: 'Arquivado',
-      TESTING: 'Teste'
+      TESTING: 'Teste',
+      PUBLISHED: 'Publicado'
     }
 
     return (
-      <Badge variant={variants[status]}>
-        {labels[status]}
+      <Badge variant={variants[normalized] || 'secondary'}>
+        {labels[normalized] || normalized}
       </Badge>
     )
   }
@@ -203,100 +212,59 @@ export function EmailTemplateList({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filtros */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle>Filtros</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-            >
+            <CardTitle className="text-lg">Filtros</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowFilters(v => !v)}>
               <Filter className="h-4 w-4 mr-2" />
-              {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+              {showFilters ? 'Ocultar' : 'Mostrar'}
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Buscar</label>
+              <div className="flex gap-2 mt-1">
                 <Input
-                  placeholder="Buscar templates..."
+                  placeholder="Buscar por nome, slug ou tag"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
                 />
+                <Button variant="secondary" onClick={() => setSearchQuery('')}>Limpar</Button>
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Categoria</label>
+              <Select onValueChange={(v) => handleFilterChange('category', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {(['TRANSACTIONAL','MARKETING','NOTIFICATION','SYSTEM','WELCOME','CONFIRMATION','REMINDER','NEWSLETTER'] as const).map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Status</label>
+              <Select onValueChange={(v) => handleFilterChange('status', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {(['DRAFT','ACTIVE','ARCHIVED','TESTING'] as const).map((st) => (
+                    <SelectItem key={st} value={st}>{st}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-
-          {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Select
-                  value={filters.category || 'all'}
-                  onValueChange={(value) => handleFilterChange('category', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    <SelectItem value="TRANSACTIONAL">Transacional</SelectItem>
-                    <SelectItem value="MARKETING">Marketing</SelectItem>
-                    <SelectItem value="NOTIFICATION">Notificação</SelectItem>
-                    <SelectItem value="SYSTEM">Sistema</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Select
-                  value={filters.status || 'all'}
-                  onValueChange={(value) => handleFilterChange('status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="DRAFT">Rascunho</SelectItem>
-                    <SelectItem value="ACTIVE">Ativo</SelectItem>
-                    <SelectItem value="ARCHIVED">Arquivado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Select
-                  value={filters.isActive === undefined ? 'all' : filters.isActive.toString()}
-                  onValueChange={(value) => handleFilterChange('isActive', value === 'all' ? undefined : value === 'true')}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Ativo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="true">Ativo</SelectItem>
-                    <SelectItem value="false">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFilters({})}
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -330,7 +298,8 @@ export function EmailTemplateList({
                 </TableRow>
               ) : (
                 templates.map((template) => {
-                  const isActive = (template.status as any) === 'ACTIVE' || (template.status as any) === 'PUBLISHED'
+                  const status = (template as any).status as string | undefined
+                  const isActive = template.isActive ?? (status === 'ACTIVE' || status === 'PUBLISHED')
                   return (
                     <TableRow key={template.id}>
                       <TableCell>
@@ -357,7 +326,7 @@ export function EmailTemplateList({
                         {getCategoryBadge(template.category as unknown as EmailTemplateCategory)}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(template.status as unknown as EmailTemplateStatus)}
+                        {getStatusBadge(status)}
                       </TableCell>
                       <TableCell>
                         <Badge variant={isActive ? 'default' : 'secondary'}>
@@ -420,61 +389,39 @@ export function EmailTemplateList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Mostrando {((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, totalCount)} de {totalCount} templates
+            Página {currentPage} de {totalPages}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              size="sm"
+              disabled={currentPage <= 1}
               onClick={() => onPageChange?.(currentPage - 1)}
-              disabled={currentPage === 1}
             >
               Anterior
             </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const page = i + 1
-                return (
-                  <Button
-                    key={page}
-                    variant={page === currentPage ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => onPageChange?.(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              })}
-            </div>
             <Button
               variant="outline"
-              size="sm"
+              disabled={currentPage >= totalPages}
               onClick={() => onPageChange?.(currentPage + 1)}
-              disabled={currentPage === totalPages}
             >
-              Próximo
+              Próxima
             </Button>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTemplateId} onOpenChange={() => setDeleteTemplateId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Excluir template</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar este template? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteTemplateId && handleDelete(deleteTemplateId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Deletar
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => deleteTemplateId && handleDelete(deleteTemplateId)}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

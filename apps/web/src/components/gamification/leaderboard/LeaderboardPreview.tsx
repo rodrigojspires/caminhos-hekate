@@ -1,23 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Trophy, 
   Medal, 
   Award, 
   Crown,
-  TrendingUp,
+  Star,
+  Flame,
   Users,
-  Calendar,
-  Flame
+  TrendingUp,
+  Calendar
 } from 'lucide-react';
-import { useGamificationStore } from '@/stores/gamificationStore';
 import { LeaderboardCategory, LeaderboardPeriod } from '@/types/gamification';
-import { cn } from '@/lib/utils';
+import { useGamificationStore } from '@/stores/gamificationStore';
+import { LeaderboardEntry } from './LeaderboardEntry';
 
 interface LeaderboardPreviewProps {
   maxEntries?: number;
@@ -59,36 +60,6 @@ const PERIOD_CONFIG = {
   all: { label: 'Todos os tempos', icon: TrendingUp }
 };
 
-function getRankIcon(position: number) {
-  switch (position) {
-    case 1:
-      return <Crown className="h-5 w-5 text-yellow-500" />;
-    case 2:
-      return <Medal className="h-5 w-5 text-gray-400" />;
-    case 3:
-      return <Award className="h-5 w-5 text-amber-600" />;
-    default:
-      return (
-        <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-          {position}
-        </div>
-      );
-  }
-}
-
-function getRankBadgeColor(position: number) {
-  switch (position) {
-    case 1:
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 2:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-    case 3:
-      return 'bg-amber-100 text-amber-800 border-amber-200';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
-}
-
 export function LeaderboardPreview({ 
   maxEntries = 5, 
   showFilters = true,
@@ -104,12 +75,12 @@ export function LeaderboardPreview({
     fetchLeaderboard 
   } = useGamificationStore();
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // Corrige a assinatura: (period, category)
     fetchLeaderboard(selectedPeriod, selectedCategory);
   }, [selectedCategory, selectedPeriod, fetchLeaderboard]);
 
   const categoryConfig = CATEGORY_CONFIG[selectedCategory];
-  const CategoryIcon = categoryConfig.icon;
 
   if (isLoadingLeaderboard) {
     return (
@@ -123,15 +94,7 @@ export function LeaderboardPreview({
         <CardContent>
           <div className="space-y-3">
             {[...Array(maxEntries)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
-                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-                <div className="h-6 bg-gray-200 rounded w-16"></div>
-              </div>
+              <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
         </CardContent>
@@ -207,77 +170,14 @@ export function LeaderboardPreview({
           <div className="space-y-2">
             {topEntries.map((entry, index) => {
               const position = index + 1;
-              const isCurrentUser = entry.userId === 'current-user'; // This should come from auth context
-              
               return (
-                <div
+                <LeaderboardEntry
                   key={entry.id}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-                    isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-card hover:bg-accent/50',
-                    position <= 3 ? categoryConfig.bgColor : ''
-                  )}
-                >
-                  {/* Rank */}
-                  <div className="flex items-center justify-center w-8">
-                    {getRankIcon(position)}
-                  </div>
-                  
-                  {/* Avatar */}
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={entry.userAvatar || ''} />
-                    <AvatarFallback className="text-xs">
-                      {entry.userName?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  {/* User Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={cn(
-                        'font-medium truncate',
-                        isCurrentUser ? 'text-primary' : 'text-foreground'
-                      )}>
-                        {entry.userName || 'Usuário'}
-                        {isCurrentUser && (
-                          <span className="text-xs text-muted-foreground ml-1">(Você)</span>
-                        )}
-                      </p>
-                      
-                      {position <= 3 && (
-                        <Badge 
-                          variant="secondary" 
-                          className={cn('text-xs', getRankBadgeColor(position))}
-                        >
-                          #{position}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mt-1">
-                      <CategoryIcon className={cn('h-3 w-3', categoryConfig.color)} />
-                      <p className="text-sm text-muted-foreground">
-                        {selectedCategory === 'general' && `${entry.points?.toLocaleString('pt-BR') || 0} pontos`}
-                        {selectedCategory === 'learning' && `${entry.points?.toLocaleString('pt-BR') || 0} pontos de aprendizado`}
-                        {selectedCategory === 'engagement' && `${entry.points?.toLocaleString('pt-BR') || 0} pontos de engajamento`}
-                        {selectedCategory === 'social' && `${entry.points?.toLocaleString('pt-BR') || 0} pontos sociais`}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Score */}
-                  <div className="text-right">
-                    <p className={cn(
-                      'font-bold',
-                      position === 1 ? 'text-yellow-600' :
-                      position === 2 ? 'text-gray-600' :
-                      position === 3 ? 'text-amber-600' :
-                      'text-muted-foreground'
-                    )}>
-                      {entry.points?.toLocaleString('pt-BR') || 0}
-                    </p>
-                  </div>
-                </div>
+                  entry={entry}
+                  position={position}
+                  category={selectedCategory}
+                  compact
+                />
               );
             })}
           </div>

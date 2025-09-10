@@ -38,9 +38,18 @@ interface CustomerData {
   };
 }
 
+interface PaymentResult {
+  subscriptionId?: string;
+  paymentId?: string;
+  paymentUrl?: string;
+  status: string;
+  provider: string;
+  method: string;
+}
+
 interface PaymentFormProps {
   plan: SubscriptionPlan;
-  onPaymentSuccess: (data: any) => void;
+  onPaymentSuccess: (data: PaymentResult) => void;
   onCancel: () => void;
 }
 

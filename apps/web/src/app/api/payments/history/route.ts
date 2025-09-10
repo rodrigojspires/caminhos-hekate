@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 
 // GET /api/payments/history
 export async function GET(request: NextRequest) {
@@ -26,14 +26,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    const where: any = { userId }
+    const where: Prisma.PaymentTransactionWhereInput = { userId }
+
     if (search) {
+      // Campos válidos para busca textual: id, externalId, providerPaymentId, paymentMethod
       where.OR = [
-        { description: { contains: search, mode: 'insensitive' as const } },
-        { id: { contains: search, mode: 'insensitive' as const } },
+        { id: { contains: search, mode: 'insensitive' } },
+        { externalId: { contains: search, mode: 'insensitive' } },
+        { providerPaymentId: { contains: search, mode: 'insensitive' } },
+        { paymentMethod: { contains: search, mode: 'insensitive' } },
       ]
     }
-    if (status !== 'all') where.status = status
+
+    if (status !== 'all') {
+      // Atribui diretamente; validação pode ser feita pela UI
+      where.status = status as any
+    }
+
     if (method !== 'all') where.paymentMethod = method
 
     const [payments, total] = await Promise.all([
@@ -42,28 +51,42 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         skip: offset,
         take: limit,
-        include: { subscription: { select: { id: true, plan: { select: { name: true } } } } }
+        include: {
+          subscription: { select: { id: true, plan: { select: { name: true } } } },
+        },
       }),
-      prisma.paymentTransaction.count({ where })
+      prisma.paymentTransaction.count({ where }),
     ])
 
+    interface PaymentMetadata {
+      description?: string;
+      invoiceUrl?: string;
+      receiptUrl?: string;
+      [key: string]: unknown;
+    }
+
     return NextResponse.json({
-      payments: payments.map(p => ({
-        id: p.id,
-        amount: Number(p.amount || 0),
-        status: p.status as any,
-        paymentMethod: (p.paymentMethod as any) || 'PIX',
-        provider: (p.provider as any) || 'MERCADOPAGO',
-        description: ((p.metadata as any)?.description) || '',
-        invoiceUrl: (p as any).boletoUrl || ((p.metadata as any)?.invoiceUrl) || undefined,
-        receiptUrl: ((p.metadata as any)?.receiptUrl) || undefined,
-        createdAt: p.createdAt.toISOString(),
-        paidAt: p.paidAt?.toISOString(),
-        subscription: (p as any).subscription ? { id: (p as any).subscription.id, plan: { name: (p as any).subscription.plan?.name || '' } } : undefined,
-      })),
+      payments: payments.map((p) => {
+        const metadata = p.metadata as PaymentMetadata | null
+        return {
+          id: p.id,
+          amount: Number(p.amount || 0),
+          status: p.status,
+          paymentMethod: p.paymentMethod || 'PIX',
+          provider: p.provider || 'MERCADOPAGO',
+          description: metadata?.description || '',
+          invoiceUrl: (p as any).boletoUrl || metadata?.invoiceUrl || undefined,
+          receiptUrl: metadata?.receiptUrl || undefined,
+          createdAt: p.createdAt.toISOString(),
+          paidAt: p.paidAt?.toISOString(),
+          subscription: p.subscription
+            ? { id: p.subscription.id, plan: { name: p.subscription.plan?.name || '' } }
+            : undefined,
+        }
+      }),
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     })
   } catch (error) {
     console.error('Erro ao buscar histórico de pagamentos:', error)

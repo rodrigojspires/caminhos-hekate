@@ -40,43 +40,43 @@ interface NotificationData {
   onAction?: () => void;
 }
 
-const RARITY_CONFIG = {
-  common: { 
+const RARITY_CONFIG: Record<AchievementRarity, { color: string; bgColor: string; borderColor: string; label: string }> = {
+  COMMON: { 
     color: 'text-gray-600', 
     bgColor: 'bg-gray-100', 
     borderColor: 'border-gray-200',
     label: 'Comum'
   },
-  rare: { 
+  UNCOMMON: { 
+    color: 'text-green-600', 
+    bgColor: 'bg-green-100', 
+    borderColor: 'border-green-200',
+    label: 'Incomum'
+  },
+  RARE: { 
     color: 'text-blue-600', 
     bgColor: 'bg-blue-100', 
     borderColor: 'border-blue-200',
     label: 'Raro'
   },
-  epic: { 
+  EPIC: { 
     color: 'text-purple-600', 
     bgColor: 'bg-purple-100', 
     borderColor: 'border-purple-200',
     label: 'Épico'
   },
-  legendary: { 
+  LEGENDARY: { 
     color: 'text-yellow-600', 
     bgColor: 'bg-yellow-100', 
     borderColor: 'border-yellow-200',
     label: 'Lendário'
-  },
-  mythic: { 
-    color: 'text-pink-600', 
-    bgColor: 'bg-pink-100', 
-    borderColor: 'border-pink-200',
-    label: 'Mítico'
   }
 };
 
 function getNotificationIcon(type: NotificationData['type'], rarity?: AchievementRarity) {
   switch (type) {
     case 'achievement':
-      return rarity === 'legendary' ? Crown : Award;
+      return rarity === 'LEGENDARY' ? Crown : Award;
     case 'level_up':
       return Crown;
     case 'points':
@@ -383,4 +383,5 @@ export function useGamificationNotifications() {
   };
 }
 
+export { NotificationToastContent };
 export default NotificationToastContent;

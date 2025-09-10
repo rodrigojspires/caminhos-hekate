@@ -27,41 +27,47 @@ interface AchievementBadgeProps {
   className?: string;
 }
 
-const RARITY_CONFIG = {
-  common: {
+const RARITY_CONFIG: Record<AchievementRarity, {
+  icon: React.ComponentType<any>;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  badgeColor: string;
+}> = {
+  COMMON: {
     icon: Award,
     color: 'text-gray-600',
     bgColor: 'bg-gray-50',
     borderColor: 'border-gray-200',
     badgeColor: 'bg-gray-100 text-gray-700'
   },
-  rare: {
+  UNCOMMON: {
+    icon: Star,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    badgeColor: 'bg-green-100 text-green-700'
+  },
+  RARE: {
     icon: Trophy,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
     badgeColor: 'bg-blue-100 text-blue-700'
   },
-  epic: {
+  EPIC: {
     icon: Crown,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     badgeColor: 'bg-purple-100 text-purple-700'
   },
-  legendary: {
+  LEGENDARY: {
     icon: Gem,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50',
     borderColor: 'border-yellow-200',
     badgeColor: 'bg-yellow-100 text-yellow-700'
-  },
-  mythic: {
-    icon: Star,
-    color: 'text-pink-600',
-    bgColor: 'bg-pink-50',
-    borderColor: 'border-pink-200',
-    badgeColor: 'bg-pink-100 text-pink-700'
   }
 };
 
@@ -91,11 +97,11 @@ const SIZE_CONFIG = {
 
 function getRarityLabel(rarity: AchievementRarity) {
   switch (rarity) {
-    case 'common': return 'Comum';
-    case 'rare': return 'Raro';
-    case 'epic': return 'Épico';
-    case 'legendary': return 'Lendário';
-    case 'mythic': return 'Mítico';
+    case 'COMMON': return 'Comum';
+    case 'UNCOMMON': return 'Incomum';
+    case 'RARE': return 'Raro';
+    case 'EPIC': return 'Épico';
+    case 'LEGENDARY': return 'Lendário';
     default: return 'Comum';
   }
 }
@@ -233,7 +239,7 @@ export function AchievementBadge({
                   {/* Points reward */}
                   <div className="flex items-center justify-between mt-3">
                     <Badge variant="outline" className="text-xs">
-                      +{achievement.pointsReward} pontos
+                      +{achievement.points} pontos
                     </Badge>
                     
                     {achievement.category && (
@@ -261,7 +267,7 @@ export function AchievementBadge({
             )}
             
             <div className="flex items-center justify-between text-xs pt-2 border-t">
-              <span>Recompensa: +{achievement.pointsReward} pontos</span>
+              <span>Recompensa: +{achievement.points} pontos</span>
               <span className="capitalize">{getRarityLabel(achievement.rarity)}</span>
             </div>
           </div>

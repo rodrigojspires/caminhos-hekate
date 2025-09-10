@@ -1,19 +1,31 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Eye, Save, Send, Code, Palette, Settings, Plus, X, Copy } from 'lucide-react'
-import type { EmailTemplate, EmailTemplateStatus, EmailCategory } from '@/lib/email'
+import { 
+  Save, 
+  Eye, 
+  Send, 
+  Code, 
+  Palette, 
+  Settings, 
+  Plus, 
+  X, 
+  Copy
+} from 'lucide-react'
+import { useSystemSettings, usePreviewData } from '@/hooks/useSystemSettings'
+import { useEmailTemplates, type EmailTemplate, type CreateEmailTemplateData } from '@/hooks/useEmailTemplates'
+import { EmailTemplateSelector } from './EmailTemplateSelector'
 
 interface EmailTemplateEditorProps {
   template?: EmailTemplate
@@ -38,21 +50,52 @@ export function EmailTemplateEditor({
   onSend,
   isLoading = false
 }: EmailTemplateEditorProps) {
+  const { createTemplate, updateTemplate, previewTemplate, sendTestEmail } = useEmailTemplates()
+  
   const [formData, setFormData] = useState({
     name: template?.name || '',
     slug: template?.slug || '',
-    description: template?.description || '',
-    category: template?.category || 'TRANSACTIONAL' as EmailCategory,
+    description: '',
+    category: (template?.category as any) || 'TRANSACTIONAL',
     subject: template?.subject || '',
     htmlContent: template?.htmlContent || '',
     textContent: template?.textContent || '',
-    status: template?.status || 'DRAFT' as EmailTemplateStatus,
+    status: 'DRAFT',
     isActive: template?.isActive ?? true,
     tags: template?.tags || []
   })
 
   const [variables, setVariables] = useState<Variable[]>([])
   const [newTag, setNewTag] = useState('')
+  const { sampleData } = usePreviewData()
+
+  // Atualizar quando o template prop mudar
+  useEffect(() => {
+    if (template) {
+      setFormData(prev => ({
+        ...prev,
+        name: template.name,
+        slug: template.slug,
+        category: template.category as any,
+        subject: template.subject,
+        htmlContent: template.htmlContent,
+        textContent: template.textContent || '',
+        isActive: template.isActive,
+        tags: template.tags || prev.tags
+      }))
+
+      if (template.variables) {
+        const vars = Object.keys(template.variables).map((name) => ({
+          name,
+          type: 'text' as const,
+          defaultValue: String((template.variables as any)[name] ?? ''),
+          description: ''
+        }))
+        setVariables(vars)
+      }
+    }
+  }, [template])
+
   const [activeTab, setActiveTab] = useState('content')
   const [previewData, setPreviewData] = useState<Record<string, any>>({})
 
@@ -126,7 +169,7 @@ export function EmailTemplateEditor({
     setPreviewData(prev => ({ ...prev, [variableName]: value }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error('Nome do template é obrigatório')
       return
@@ -142,15 +185,85 @@ export function EmailTemplateEditor({
       return
     }
 
-    onSave?.(formData)
+    try {
+      const templateData: CreateEmailTemplateData = {
+        name: formData.name,
+        slug: formData.slug,
+        subject: formData.subject,
+        htmlContent: formData.htmlContent,
+        textContent: formData.textContent,
+        category: formData.category as any,
+        tags: formData.tags,
+        variables: Object.fromEntries(variables.map(v => [v.name, v.defaultValue ?? '']))
+      }
+
+      if (template?.id) {
+        await updateTemplate({ id: template.id, ...templateData })
+        toast.success('Template atualizado com sucesso!')
+      } else {
+        await createTemplate(templateData)
+        toast.success('Template criado com sucesso!')
+      }
+      
+      onSave?.({ ...formData } as Partial<EmailTemplate>)
+    } catch (error) {
+      toast.error('Erro ao salvar template')
+      console.error('Erro ao salvar template:', error)
+    }
   }
 
-  const handlePreview = () => {
-    onPreview?.({ ...formData, variables: previewData })
+  const handlePreview = async () => {
+    try {
+      const mergedData = { ...sampleData, ...previewData }
+      const preview = await previewTemplate({
+        name: formData.name || 'preview',
+        slug: formData.slug || 'preview',
+        subject: formData.subject,
+        htmlContent: formData.htmlContent,
+        textContent: formData.textContent,
+        category: formData.category as any,
+        tags: formData.tags,
+        variables: mergedData
+      })
+      
+      // Abrir preview em nova janela ou modal
+      const previewWindow = window.open('', '_blank')
+      if (previewWindow) {
+        previewWindow.document.write(preview.html)
+        previewWindow.document.title = formData.subject
+      }
+      
+      onPreview?.({ ...formData, variables: previewData })
+    } catch (error) {
+      toast.error('Erro ao gerar preview')
+      console.error('Erro ao gerar preview:', error)
+    }
   }
 
-  const handleSendTest = () => {
-    onSend?.({ ...formData, variables: previewData })
+  const handleSendTest = async () => {
+    const testEmail = prompt('Digite o email para teste:')
+    if (!testEmail) return
+
+    try {
+      const mergedData = { ...sampleData, ...previewData }
+      await sendTestEmail({
+        name: formData.name || 'Teste',
+        slug: formData.slug || 'teste',
+        subject: formData.subject,
+        htmlContent: formData.htmlContent,
+        textContent: formData.textContent,
+        category: formData.category as any,
+        tags: formData.tags,
+        variables: mergedData,
+        testEmail
+      })
+      
+      toast.success(`Email de teste enviado para ${testEmail}`)
+      onSend?.({ ...formData, variables: previewData })
+    } catch (error) {
+      toast.error('Erro ao enviar email de teste')
+      console.error('Erro ao enviar email de teste:', error)
+    }
   }
 
   const insertVariable = (variableName: string) => {
@@ -211,6 +324,37 @@ export function EmailTemplateEditor({
           </Button>
         </div>
       </div>
+
+      {/* Seletor de Templates Predefinidos */}
+      <EmailTemplateSelector
+        onTemplateSelect={(templateData) => {
+          const mapCategory = (cat: string): EmailTemplate['category'] => {
+            switch (cat) {
+              case 'marketing': return 'MARKETING'
+              case 'notification': return 'NOTIFICATION'
+              case 'transactional': return 'TRANSACTIONAL'
+              case 'auth': return 'SYSTEM'
+              default: return 'SYSTEM'
+            }
+          }
+
+          setFormData({
+            ...formData,
+            name: templateData.name,
+            subject: templateData.subject,
+            htmlContent: templateData.htmlContent,
+            textContent: templateData.textContent || '',
+            category: mapCategory(templateData.category)
+          })
+          setVariables((templateData.variables || []).map((name: string) => ({
+            name,
+            type: 'text',
+            defaultValue: '',
+            description: ''
+          })))
+          toast.success('Template predefinido aplicado com sucesso!')
+        }}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">

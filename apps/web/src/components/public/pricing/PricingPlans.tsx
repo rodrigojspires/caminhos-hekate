@@ -20,6 +20,23 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { useEffect, useMemo, useState } from 'react'
+
+type PlanUI = {
+  id: string
+  name: string
+  description: string
+  price: string
+  originalPrice: string | null
+  period: string
+  badge?: { text: string; color: string }
+  icon: any
+  color: string
+  features: string[]
+  limitations: string[]
+  cta: string
+  highlight: boolean
+}
 
 const plans = [
   {
@@ -135,6 +152,53 @@ const guarantees = [
 ]
 
 export function PricingPlans() {
+  const [remotePlans, setRemotePlans] = useState<PlanUI[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/payments/plans')
+        if (!res.ok) throw new Error('failed to load plans')
+        const json = await res.json()
+        const data = Array.isArray(json?.data) ? json.data : []
+        const fmt = (n: number) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        const mapIcon = (tier?: string) => {
+          if (!tier) return Star
+          if (/vip|sacer/i.test(tier)) return Crown
+          if (/ini|free|grat/i.test(tier)) return Heart
+          return Star
+        }
+        const palette = ['from-purple-500 to-indigo-600', 'from-green-500 to-emerald-600', 'from-yellow-400 to-orange-500']
+        const ui: PlanUI[] = data.map((p: any, idx: number) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || '',
+          price: Number(p.monthlyPrice || 0) > 0 ? fmt(p.monthlyPrice) : 'Gratuito',
+          originalPrice: null,
+          period: Number(p.monthlyPrice || 0) > 0 ? '/mês' : 'Para sempre',
+          badge: p.isPopular ? { text: 'Mais Popular', color: 'bg-purple-600' } : undefined,
+          icon: mapIcon(p.tier),
+          color: palette[idx % palette.length],
+          features: Array.isArray(p.features) ? p.features : [],
+          limitations: [],
+          cta: Number(p.monthlyPrice || 0) > 0 ? 'Começar Agora' : 'Começar Gratuitamente',
+          highlight: Boolean(p.isPopular)
+        }))
+        if (!cancelled) setRemotePlans(ui)
+      } catch {
+        if (!cancelled) setRemotePlans([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const plansToRender = useMemo(() => (remotePlans.length ? remotePlans : plans), [remotePlans])
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
       <div className="container mx-auto px-4">
@@ -183,7 +247,7 @@ export function PricingPlans() {
 
         {/* Plans Grid */}
         <div className="grid lg:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan, index) => {
+          {(loading ? [] : plansToRender).map((plan, index) => {
             const Icon = plan.icon
             return (
               <motion.div

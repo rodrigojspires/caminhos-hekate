@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@hekate/database"
-import { sendPasswordResetEmail } from "@/lib/email"
+import { resendEmailService } from "@/lib/resend-email"
 import { generatePasswordResetToken } from "@/lib/tokens"
 import { ForgotPasswordSchema } from "@/lib/validations/auth"
 
@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
         const resetToken = await generatePasswordResetToken(user.email)
 
         // Send password reset email
-        await sendPasswordResetEmail(user.email, resetToken)
+        await resendEmailService.sendPasswordResetEmail({
+      toEmail: user.email,
+      resetToken
+    })
       } catch (emailError) {
         console.error("Failed to send password reset email:", emailError)
         // Don't expose email sending errors to the client

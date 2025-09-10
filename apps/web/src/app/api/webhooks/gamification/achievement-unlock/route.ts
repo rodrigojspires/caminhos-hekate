@@ -27,21 +27,21 @@ export async function POST(request: NextRequest) {
           where: { id: existing.id },
           data: { progress },
         })
-        return { userAchievement: updated, isNewUnlock: false, pointsAwarded: 0 }
+        return { userAchievement: updated, isNewUnlock: false, points: 0 }
       }
 
       const ua = await tx.userAchievement.create({
         data: { userId, achievementId, progress },
       })
 
-      let pointsAwarded = 0
+      let points = 0
       if (progress >= 100) {
         let up = await tx.userPoints.findUnique({ where: { userId } })
         if (!up) {
           up = await tx.userPoints.create({ data: { userId, totalPoints: 0, currentLevel: 1, pointsToNext: 100 } })
         }
-        pointsAwarded = achievement.points
-        const newTotal = up.totalPoints + pointsAwarded
+        points = achievement.points
+        const newTotal = up.totalPoints + points
         const newLevel = Math.floor(newTotal / 100) + 1
         const pointsToNext = Math.max(0, newLevel * 100 - newTotal)
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         await tx.pointTransaction.create({
           data: {
             userId,
-            points: pointsAwarded,
+            points: points,
             type: 'EARNED',
             reason: 'ACHIEVEMENT_UNLOCK',
             description: `Conquista desbloqueada via webhook`,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return { userAchievement: ua, isNewUnlock: true, pointsAwarded }
+      return { userAchievement: ua, isNewUnlock: true, points }
     })
 
     return NextResponse.json(result)

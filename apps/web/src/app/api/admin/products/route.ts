@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
+import { withAdminAuth } from '@/lib/auth-middleware'
 
 // Schema de validação para criação de produto
 const createProductSchema = z.object({
@@ -44,25 +43,8 @@ const querySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 })
 
-// Verificar se usuário tem permissão de admin
-async function checkAdminPermission() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-  
-  if (!['ADMIN', 'MODERATOR'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-  }
-  
-  return null
-}
-
 // GET /api/admin/products - Listar produtos
-export async function GET(request: NextRequest) {
-  const permissionError = await checkAdminPermission()
-  if (permissionError) return permissionError
+export const GET = withAdminAuth(async (user, request: NextRequest) => {
   
   try {
     const { searchParams } = new URL(request.url)
@@ -148,12 +130,10 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
 
 // POST /api/admin/products - Criar produto
-export async function POST(request: NextRequest) {
-  const permissionError = await checkAdminPermission()
-  if (permissionError) return permissionError
+export const POST = withAdminAuth(async (user, request: NextRequest) => {
   
   try {
     const body = await request.json()
@@ -209,4 +189,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

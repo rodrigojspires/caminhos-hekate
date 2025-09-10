@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma, GroupMemberRole, GroupMemberStatus, GroupInvitationStatus } from '@hekate/database'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
+import { resendEmailService } from '@/lib/resend-email'
 
 const CreateInviteSchema = z.object({
   email: z.string().email('Email inválido').optional(),
@@ -274,8 +275,23 @@ export async function POST(
       }
     })
 
-    // TODO: Enviar email de convite se email foi fornecido
-    // TODO: Criar notificação para o usuário convidado (se existir)
+    // Enviar email de convite se email foi fornecido
+    if (data.email) {
+      try {
+        const inviteUrl = `${process.env.NEXTAUTH_URL}/groups/${params.id}/join?token=${invite.token}`
+        
+        await resendEmailService.sendGroupInviteEmail({
+          toEmail: data.email,
+          toName: undefined, // Nome será obtido quando o usuário aceitar
+          groupName: (group?.name ?? 'Grupo'),
+          inviterName: session.user.name || 'Um membro',
+          inviteUrl
+        })
+      } catch (emailError) {
+        console.error('Erro ao enviar email de convite:', emailError)
+        // Continuar mesmo se o email falhar
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -30,31 +30,7 @@ import {
   SortDesc
 } from 'lucide-react'
 import { toast } from 'sonner'
-
-interface GroupMember {
-  id: string
-  role: string
-  user: {
-    id: string
-    name: string
-    image?: string
-  }
-}
-
-interface Group {
-  id: string
-  name: string
-  description?: string
-  imageUrl?: string
-  isPrivate: boolean
-  memberCount: number
-  messageCount: number
-  maxMembers?: number
-  lastActivityAt: Date
-  createdAt: Date
-  members?: GroupMember[]
-  userRole?: string
-}
+import type { Group, GroupMember } from './types'
 
 interface GroupListProps {
   currentUserId?: string
@@ -119,11 +95,19 @@ export function GroupList({
       const data = await response.json()
 
       if (data.success) {
-        const newGroups = data.data.groups.map((group: any) => ({
-          ...group,
-          lastActivityAt: new Date(group.lastActivityAt),
-          createdAt: new Date(group.createdAt)
-        }))
+        const newGroups = data.data.groups.map((group: any) => {
+          const lastActivitySource = group.lastActivityAt || group.updatedAt || group.createdAt
+          const updatedAt = group.updatedAt ? new Date(group.updatedAt) : new Date(group.createdAt)
+          return {
+            ...group,
+            imageUrl: group.avatarUrl || group.imageUrl,
+            isPrivate: typeof group.isPrivate === 'boolean' ? group.isPrivate : !!group.isInviteOnly,
+            userRole: group.userRole ? String(group.userRole).toLowerCase() : undefined,
+            lastActivityAt: lastActivitySource ? new Date(lastActivitySource) : undefined,
+            createdAt: new Date(group.createdAt),
+            updatedAt
+          } as Group
+        })
 
         if (append) {
           setGroups(prev => [...prev, ...newGroups])
@@ -167,9 +151,12 @@ export function GroupList({
         case 'members':
           comparison = a.memberCount - b.memberCount
           break
-        case 'activity':
-          comparison = new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime()
+        case 'activity': {
+          const aTime = new Date(a.lastActivityAt ?? a.updatedAt ?? a.createdAt).getTime()
+          const bTime = new Date(b.lastActivityAt ?? b.updatedAt ?? b.createdAt).getTime()
+          comparison = aTime - bTime
           break
+        }
         case 'created':
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           break

@@ -4,20 +4,16 @@ import { useState } from "react"
 import { Search, Filter, BookOpen, Clock, Star } from "lucide-react"
 
 interface CourseFiltersProps {
-  onSearchChange: (search: string) => void
-  onCategoryChange: (category: string) => void
-  onLevelChange: (level: string) => void
-  onStatusChange: (status: string) => void
-  onSortChange: (sort: string) => void
+  onFilterChange: (filters: {
+    search?: string
+    category?: string
+    level?: string
+    status?: string
+    sort?: string
+  }) => void
 }
 
-export default function CourseFilters({
-  onSearchChange,
-  onCategoryChange,
-  onLevelChange,
-  onStatusChange,
-  onSortChange
-}: CourseFiltersProps) {
+export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("all")
   const [level, setLevel] = useState("all")
@@ -26,27 +22,27 @@ export default function CourseFilters({
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    onSearchChange(value)
+    onFilterChange({ search: value, category, level, status, sort })
   }
 
   const handleCategoryChange = (value: string) => {
     setCategory(value)
-    onCategoryChange(value)
+    onFilterChange({ search, category: value, level, status, sort })
   }
 
   const handleLevelChange = (value: string) => {
     setLevel(value)
-    onLevelChange(value)
+    onFilterChange({ search, category, level: value, status, sort })
   }
 
   const handleStatusChange = (value: string) => {
     setStatus(value)
-    onStatusChange(value)
+    onFilterChange({ search, category, level, status: value, sort })
   }
 
   const handleSortChange = (value: string) => {
     setSort(value)
-    onSortChange(value)
+    onFilterChange({ search, category, level, status, sort: value })
   }
 
   return (
@@ -157,8 +153,9 @@ export default function CourseFilters({
           <span className="text-sm font-medium text-gray-700">Filtros rápidos:</span>
           <button
             onClick={() => {
-              handleStatusChange('in_progress')
-              handleSortChange('recent')
+              setStatus('in_progress')
+              setSort('recent')
+              onFilterChange({ search, category, level, status: 'in_progress', sort: 'recent' })
             }}
             className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
           >
@@ -166,8 +163,9 @@ export default function CourseFilters({
           </button>
           <button
             onClick={() => {
-              handleStatusChange('not_started')
-              handleSortChange('rating')
+              setStatus('not_started')
+              setSort('rating')
+              onFilterChange({ search, category, level, status: 'not_started', sort: 'rating' })
             }}
             className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors"
           >
@@ -175,8 +173,9 @@ export default function CourseFilters({
           </button>
           <button
             onClick={() => {
-              handleStatusChange('completed')
-              handleSortChange('recent')
+              setStatus('completed')
+              setSort('recent')
+              onFilterChange({ search, category, level, status: 'completed', sort: 'recent' })
             }}
             className="px-3 py-1 text-xs bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200 transition-colors"
           >

@@ -38,6 +38,7 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
     refreshing,
     error,
     refresh,
+    recentEvents,
   } = useAnalytics(userId, isAdmin)
 
   const handleRefresh = () => {
@@ -257,7 +258,7 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
         </TabsContent>
 
         <TabsContent value="events">
-          <EventsTable />
+          <EventsTable events={recentEvents} loading={loading || refreshing} />
         </TabsContent>
 
         <TabsContent value="realtime">

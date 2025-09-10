@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
+import { withAdminAuth } from '@/lib/auth-middleware'
 
 // Schema de validação para filtros
 const querySchema = z.object({
@@ -24,25 +23,8 @@ const updateStatusSchema = z.object({
   status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
 })
 
-// Verificar se usuário tem permissão de admin
-async function checkAdminPermission() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-  
-  if (!['ADMIN', 'MODERATOR'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-  }
-  
-  return null
-}
-
 // GET /api/admin/orders - Listar pedidos
-export async function GET(request: NextRequest) {
-  const permissionError = await checkAdminPermission()
-  if (permissionError) return permissionError
+export const GET = withAdminAuth(async (user, request: NextRequest) => {
   
   try {
     const { searchParams } = new URL(request.url)
@@ -155,12 +137,10 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
 
 // PATCH /api/admin/orders - Atualizar status de múltiplos pedidos
-export async function PATCH(request: NextRequest) {
-  const permissionError = await checkAdminPermission()
-  if (permissionError) return permissionError
+export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
   
   try {
     const body = await request.json()
@@ -200,4 +180,4 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

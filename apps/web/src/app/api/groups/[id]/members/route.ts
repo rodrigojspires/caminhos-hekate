@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma, GroupMemberRole, GroupMemberStatus } from '@hekate/database'
 import { z } from 'zod'
 import { randomUUID } from 'crypto'
+import { resendEmailService } from '@/lib/resend-email'
 
 const AddMemberSchema = z.object({
   userId: z.string().uuid().optional(),
@@ -185,7 +186,7 @@ export async function POST(
     // Buscar configuração do grupo para limite de membros
     const group = await prisma.group.findUnique({
       where: { id: params.id },
-      select: { maxMembers: true }
+      select: { maxMembers: true, name: true }
     })
 
     // Verificar se o grupo não excedeu o limite de membros
@@ -224,7 +225,21 @@ export async function POST(
           }
         })
 
-        // TODO: Enviar email de convite
+        // Enviar email de convite usando Resend
+         const inviteUrl = `${process.env.NEXTAUTH_URL}/groups/${params.id}/join?token=${invitation.token}`
+         
+         try {
+           await resendEmailService.sendGroupInviteEmail({
+             toEmail: data.email,
+             toName: undefined, // Nome será obtido quando o usuário aceitar
+             groupName: group?.name || 'Grupo',
+             inviterName: session.user.name || 'Um membro',
+             inviteUrl
+           })
+        } catch (emailError) {
+          console.error('Erro ao enviar email de convite:', emailError)
+          // Continuar mesmo se o email falhar
+        }
         
         return NextResponse.json({
           success: true,
@@ -304,6 +319,18 @@ export async function POST(
         }
       }
     })
+
+    // Enviar email de boas-vindas usando Resend
+    try {
+      await resendEmailService.sendWelcomeEmail({
+        toEmail: newMember.user.email,
+        toName: newMember.user.name || undefined,
+        groupName: group?.name || 'Grupo'
+      })
+    } catch (emailError) {
+      console.error('Erro ao enviar email de boas-vindas:', emailError)
+      // Continuar mesmo se o email falhar
+    }
 
     return NextResponse.json({
       success: true,

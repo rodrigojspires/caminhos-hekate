@@ -2,367 +2,439 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { z } from 'zod'
 
-// Types
-type LeaderboardItem = {
-  rank: number
-  userId: string
-  name?: string | null
-  email?: string | null
-  image?: string | null
-  score: number
-  level: number
-  achievements: number
-  badges: number
-}
-
-// GET /api/gamification/leaderboard - Get leaderboard data
+// GET /api/gamification/leaderboard - Get leaderboard rankings
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category') || 'POINTS'
-    const period = (searchParams.get('period') || 'ALL_TIME').toUpperCase()
-    const format = (searchParams.get('format') || 'json').toLowerCase()
-    const startParam = searchParams.get('start')
-    const endParam = searchParams.get('end')
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const page = parseInt(searchParams.get('page') || '1')
-    const offset = (page - 1) * limit
 
-    let dateFilter: Record<string, any> = {}
+    const querySchema = z.object({
+      type: z.enum(['points', 'level', 'achievements', 'streaks']).default('points'),
+      period: z.enum(['all', 'monthly', 'weekly', 'daily']).default('all'),
+      limit: z.coerce.number().min(1).max(100).default(50),
+      includeUser: z.coerce.boolean().default(false)
+    })
+
+    const query = querySchema.parse({
+      type: searchParams.get('type') ?? undefined,
+      period: searchParams.get('period') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+      includeUser: searchParams.get('includeUser') ?? undefined
+    })
+
+    let leaderboard: any[] = []
+    let userRank: any = null
+
+    // Calculate date range for period filtering
     const now = new Date()
+    let startDate: Date | null = null
     
-    // Apply period filter
-    switch (period) {
-      case 'DAILY': {
-        const startOfDay = new Date(now)
-        startOfDay.setHours(0, 0, 0, 0)
-        dateFilter = { gte: startOfDay }
-        break
+    if (query.period !== 'all') {
+      startDate = new Date()
+      switch (query.period) {
+        case 'daily':
+          startDate.setHours(0, 0, 0, 0)
+          break
+        case 'weekly':
+          startDate.setDate(startDate.getDate() - startDate.getDay())
+          startDate.setHours(0, 0, 0, 0)
+          break
+        case 'monthly':
+          startDate.setDate(1)
+          startDate.setHours(0, 0, 0, 0)
+          break
       }
-      case 'WEEKLY': {
-        const startOfWeek = new Date(now)
-        startOfWeek.setDate(now.getDate() - now.getDay())
-        startOfWeek.setHours(0, 0, 0, 0)
-        dateFilter = { gte: startOfWeek }
-        break
-      }
-      case 'MONTHLY': {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        dateFilter = { gte: startOfMonth }
-        break
-      }
-      case 'CUSTOM': {
-        const start = startParam ? new Date(startParam) : null
-        const end = endParam ? new Date(endParam) : null
-        if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime())) {
-          dateFilter = { gte: start, lte: end }
-        } else if (start && !isNaN(start.getTime())) {
-          dateFilter = { gte: start }
-        } else if (end && !isNaN(end.getTime())) {
-          dateFilter = { lte: end }
-        } else {
-          // Fallback to all time if invalid custom range
-          dateFilter = {}
-        }
-        break
-      }
-      case 'ALL_TIME':
-      default:
-        dateFilter = {}
-        break
     }
 
-    let leaderboardData: LeaderboardItem[] = []
-    let userRank: number | null = null
-    let totalUsers = 0
-
-    if (category === 'POINTS') {
-      if (period === 'ALL_TIME') {
-        // Points leaderboard - all time from UserPoints
-        const userPoints = await prisma.userPoints.findMany({
-          orderBy: { totalPoints: 'desc' },
-          include: {
+    switch (query.type) {
+      case 'points':
+        // Get top users by total points
+        const pointsLeaderboard = await prisma.userPoints.findMany({
+          where: query.period === 'all' ? {} : {
+            // For period filtering, we need to sum points from transactions
             user: {
-              select: { id: true, name: true, email: true, image: true }
+              pointTransactions: {
+                some: {
+                  createdAt: { gte: startDate! }
+                }
+              }
             }
           },
-          skip: offset,
-          take: limit
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            totalPoints: 'asc' // will be replaced below
+          },
+          take: query.limit
         })
 
-        totalUsers = await prisma.userPoints.count()
+        // Ensure ordering by totalPoints desc (workaround for mixed filters)
+        pointsLeaderboard.sort((a, b) => b.totalPoints - a.totalPoints)
 
-        leaderboardData = userPoints.map((up, index) => ({
-          rank: offset + index + 1,
-          userId: up.userId,
-          name: up.user?.name ?? null,
-          email: up.user?.email ?? null,
-          image: up.user?.image ?? null,
-          score: up.totalPoints,
-          level: up.currentLevel,
-          achievements: 0,
-          badges: 0
+        leaderboard = pointsLeaderboard.map((entry, index) => ({
+          rank: index + 1,
+          userId: entry.userId,
+          user: entry.user,
+          score: entry.totalPoints,
+          level: entry.currentLevel,
+          type: 'points'
         }))
+        break
 
-        // Get user's rank (raw SQL for window function)
-        const userRankQuery = await prisma.$queryRaw<Array<{ rank: number }>>`
-          SELECT 
-            RANK() OVER (ORDER BY total_points DESC) as rank
-          FROM user_points 
-          WHERE user_id = ${session.user.id}
-        `
-        userRank = userRankQuery[0]?.rank ?? null
-      } else {
-        // Period points leaderboard - from point transactions (EARNED)
-        const grouped = await prisma.pointTransaction.groupBy({
-          by: ['userId'],
-          where: {
-            type: 'EARNED',
-            createdAt: dateFilter
+      case 'level':
+        // Get top users by level
+        const levelLeaderboard = await prisma.userPoints.findMany({
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true
+              }
+            }
           },
-          _sum: { points: true },
-          orderBy: { _sum: { points: 'desc' } },
-          skip: offset,
-          take: limit
+          orderBy: [
+            { currentLevel: 'desc' },
+            { totalPoints: 'desc' }
+          ],
+          take: query.limit
         })
 
-        const allGrouped = await prisma.pointTransaction.groupBy({
+        leaderboard = levelLeaderboard.map((entry, index) => ({
+          rank: index + 1,
+          userId: entry.userId,
+          user: entry.user,
+          score: entry.currentLevel,
+          totalPoints: entry.totalPoints,
+          type: 'level'
+        }))
+        break
+
+      case 'achievements':
+        // Get top users by achievement count
+        const achievementCounts = await prisma.userAchievement.groupBy({
           by: ['userId'],
           where: {
-            type: 'EARNED',
-            createdAt: dateFilter
+            ...(startDate ? { unlockedAt: { gte: startDate } } : {})
           },
-          _sum: { points: true },
-          orderBy: { _sum: { points: 'desc' } }
+          _count: {
+            _all: true,
+            userId: true
+          },
+          orderBy: {
+            _count: {
+              userId: 'desc'
+            }
+          },
+          take: query.limit
         })
-        totalUsers = allGrouped.length
 
-        const userIds = grouped.map((g) => g.userId)
+        // Get user details for achievement leaderboard
+        const userIds = achievementCounts.map(entry => entry.userId)
         const users = await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true, image: true }
+          where: {
+            id: { in: userIds }
+          },
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
         })
-        const userMap = users.reduce((map, u) => {
-          map[u.id] = u
-          return map
-        }, {} as Record<string, { id: string; name: string | null; email: string | null; image: string | null }>)
 
-        leaderboardData = grouped
-          .filter((g) => (g._sum.points ?? 0) > 0)
-          .map((g, index) => ({
-            rank: offset + index + 1,
-            userId: g.userId,
-            name: userMap[g.userId]?.name ?? null,
-            email: userMap[g.userId]?.email ?? null,
-            image: userMap[g.userId]?.image ?? null,
-            score: g._sum.points ?? 0,
-            level: 0, // will be populated below
-            achievements: 0,
-            badges: 0
-          }))
+        const userMap = users.reduce((acc, user) => {
+          acc[user.id] = user
+          return acc
+        }, {} as Record<string, any>)
 
-        const userIndex = allGrouped.findIndex((g) => g.userId === session.user.id)
-        userRank = userIndex >= 0 ? userIndex + 1 : null
+        leaderboard = achievementCounts.map((entry, index) => {
+          const score = typeof entry._count === 'object' && entry._count
+            ? (entry._count._all ?? entry._count.userId ?? 0)
+            : 0
+
+          return {
+            rank: index + 1,
+            userId: entry.userId,
+            user: userMap[entry.userId],
+            score,
+            type: 'achievements'
+          }
+        })
+        break
+
+      case 'streaks':
+        // Get top users by longest active streaks
+        const streakLeaderboard = await prisma.userStreak.findMany({
+          where: {
+            isActive: true,
+            ...(startDate ? { createdAt: { gte: startDate } } : {})
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true
+              }
+            }
+          },
+          orderBy: [
+            { currentStreak: 'desc' },
+            { longestStreak: 'desc' }
+          ],
+          take: query.limit
+        })
+
+        leaderboard = streakLeaderboard.map((entry, index) => ({
+          rank: index + 1,
+          userId: entry.userId,
+          user: entry.user,
+          score: entry.currentStreak,
+          longestStreak: entry.longestStreak,
+          streakType: entry.streakType,
+          type: 'streaks'
+        }))
+        break
+
+      default:
+        return NextResponse.json(
+          { error: 'Tipo de leaderboard inválido' },
+          { status: 400 }
+        )
+    }
+
+    // Find current user's rank if requested
+    if (query.includeUser) {
+      const userIndex = leaderboard.findIndex(entry => entry.userId === session.user.id)
+      if (userIndex !== -1) {
+        userRank = leaderboard[userIndex]
+      } else {
+        // User not in top results, find their actual rank
+        switch (query.type) {
+          case 'points':
+            const userPoints = await prisma.userPoints.findUnique({
+              where: { userId: session.user.id },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    image: true
+                  }
+                }
+              }
+            })
+            
+            if (userPoints) {
+              const betterCount = await prisma.userPoints.count({
+                where: {
+                  totalPoints: { gt: userPoints.totalPoints }
+                }
+              })
+              
+              userRank = {
+                rank: betterCount + 1,
+                userId: userPoints.userId,
+                user: userPoints.user,
+                score: userPoints.totalPoints,
+                level: userPoints.currentLevel,
+                type: 'points'
+              }
+            }
+            break
+            
+          // Add similar logic for other types if needed
+        }
       }
-
-    } else if (category === 'ACHIEVEMENTS') {
-      // Achievements leaderboard
-      const achievementCounts = await prisma.userAchievement.groupBy({
-        by: ['userId'],
-        where: 'gte' in dateFilter ? { unlockedAt: dateFilter } : {},
-        _count: { userId: true },
-        orderBy: { _count: { userId: 'desc' } },
-        skip: offset,
-        take: limit
-      })
-
-      const userIds = achievementCounts.map((ac) => ac.userId)
-      const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true, image: true }
-      })
-      const userMap = users.reduce((map, user) => {
-        map[user.id] = user
-        return map
-      }, {} as Record<string, any>)
-
-      leaderboardData = achievementCounts.map((ac, index) => {
-        const user = userMap[ac.userId]
-        return {
-          rank: offset + index + 1,
-          userId: ac.userId,
-          name: user?.name ?? null,
-          email: user?.email ?? null,
-          image: user?.image ?? null,
-          score: ac._count.userId,
-          level: 0, // Will be populated below
-          achievements: ac._count.userId,
-          badges: 0
-        }
-      })
-
-      totalUsers = await prisma.userAchievement
-        .groupBy({ by: ['userId'], where: 'gte' in dateFilter ? { unlockedAt: dateFilter } : {} })
-        .then((results) => results.length)
-
-      // Get user's rank
-      const allAchievementCounts = await prisma.userAchievement.groupBy({
-        by: ['userId'],
-        where: 'gte' in dateFilter ? { unlockedAt: dateFilter } : {},
-        _count: { userId: true },
-        orderBy: { _count: { userId: 'desc' } }
-      })
-      const userIndex = allAchievementCounts.findIndex((ac) => ac.userId === session.user.id)
-      userRank = userIndex >= 0 ? userIndex + 1 : null
-
-    } else if (category === 'BADGES') {
-      // Badges leaderboard
-      const badgeCounts = await prisma.userBadge.groupBy({
-        by: ['userId'],
-        where: 'gte' in dateFilter ? { earnedAt: dateFilter } : {},
-        _count: { userId: true },
-        orderBy: { _count: { userId: 'desc' } },
-        skip: offset,
-        take: limit
-      })
-
-      const userIds = badgeCounts.map((bc) => bc.userId)
-      const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true, image: true }
-      })
-      const userMap = users.reduce((map, user) => {
-        map[user.id] = user
-        return map
-      }, {} as Record<string, any>)
-
-      leaderboardData = badgeCounts.map((bc, index) => {
-        const user = userMap[bc.userId]
-        return {
-          rank: offset + index + 1,
-          userId: bc.userId,
-          name: user?.name ?? null,
-          email: user?.email ?? null,
-          image: user?.image ?? null,
-          score: bc._count.userId,
-          level: 0,
-          achievements: 0,
-          badges: bc._count.userId
-        }
-      })
-
-      totalUsers = await prisma.userBadge
-        .groupBy({ by: ['userId'], where: 'gte' in dateFilter ? { earnedAt: dateFilter } : {} })
-        .then((results) => results.length)
-
-      // Get user's rank
-      const allBadgeCounts = await prisma.userBadge.groupBy({
-        by: ['userId'],
-        where: 'gte' in dateFilter ? { earnedAt: dateFilter } : {},
-        _count: { userId: true },
-        orderBy: { _count: { userId: 'desc' } }
-      })
-      const userIndex = allBadgeCounts.findIndex((bc) => bc.userId === session.user.id)
-      userRank = userIndex >= 0 ? userIndex + 1 : null
     }
 
-    // Populate additional data for all entries
-    if (leaderboardData.length > 0) {
-      const userIds = leaderboardData.map((item) => item.userId)
-      
-      // Get user points for level info
-      const userPointsData = await prisma.userPoints.findMany({
-        where: { userId: { in: userIds } }
-      })
+    return NextResponse.json({
+      leaderboard,
+      userRank,
+      metadata: {
+        type: query.type,
+        period: query.period,
+        limit: query.limit,
+        total: leaderboard.length
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao obter leaderboard:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
 
-      // Get achievement counts
-      const achievementCounts = await prisma.userAchievement.groupBy({
-        by: ['userId'],
-        where: { userId: { in: userIds } },
-        _count: { userId: true }
-      })
-
-      // Get badge counts
-      const badgeCounts = await prisma.userBadge.groupBy({
-        by: ['userId'],
-        where: { userId: { in: userIds } },
-        _count: { userId: true }
-      })
-
-      // Create lookup maps
-      const pointsMap = userPointsData.reduce((map, up) => {
-        map[up.userId] = up
-        return map
-      }, {} as Record<string, { userId: string; totalPoints: number; currentLevel: number }>)
-
-      const achievementsMap = achievementCounts.reduce((map, ac) => {
-        map[ac.userId] = ac._count.userId
-        return map
-      }, {} as Record<string, number>)
-
-      const badgesMap = badgeCounts.reduce((map, bc) => {
-        map[bc.userId] = bc._count.userId
-        return map
-      }, {} as Record<string, number>)
-
-      // Update leaderboard data
-      leaderboardData = leaderboardData.map((item) => ({
-        ...item,
-        level: pointsMap[item.userId]?.currentLevel || 1,
-        achievements: category === 'ACHIEVEMENTS' ? item.achievements : achievementsMap[item.userId] || 0,
-        badges: category === 'BADGES' ? item.badges : badgesMap[item.userId] || 0
-      }))
+// POST /api/gamification/leaderboard - Update leaderboard entry
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    // CSV export support
-    if (format === 'csv') {
-      const headers = ['rank', 'userId', 'name', 'email', 'score', 'level', 'achievements', 'badges']
-      const rows = leaderboardData.map((row) => [
-        row.rank,
-        row.userId,
-        row.name ?? '',
-        row.email ?? '',
-        row.score,
-        row.level,
-        row.achievements,
-        row.badges,
-      ])
-      const csv = [
-        headers.join(','),
-        ...rows.map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')),
-      ].join('\n')
-      const filename = `leaderboard_${category.toLowerCase()}_${period.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`
-      return new NextResponse(csv, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${filename}"`,
+    const body = await request.json()
+    const inputType: string | undefined = body.type ?? body.category
+    const score: number | undefined = body.score
+    const metadata = body.metadata ?? {}
+    const inputPeriod: string | undefined = body.period
+
+    if (!inputType || score === undefined) {
+      return NextResponse.json(
+        { error: 'Categoria (type/category) e pontuação são obrigatórios' },
+        { status: 400 }
+      )
+    }
+
+    // Map category string to Prisma enum
+    const toCategory = (val: string) => {
+      switch (val.toLowerCase()) {
+        case 'points':
+          return 'POINTS'
+        case 'achievements':
+          return 'ACHIEVEMENTS'
+        case 'streaks':
+          return 'STREAKS'
+        case 'course_completions':
+          return 'COURSE_COMPLETIONS'
+        case 'community_participation':
+          return 'COMMUNITY_PARTICIPATION'
+        // Fallback: map unknown/legacy values like 'level' to POINTS
+        default:
+          return 'POINTS'
+      }
+    }
+
+    const toPeriod = (val?: string) => {
+      switch ((val ?? 'all').toLowerCase()) {
+        case 'daily':
+          return 'DAILY'
+        case 'weekly':
+          return 'WEEKLY'
+        case 'monthly':
+          return 'MONTHLY'
+        case 'yearly':
+          return 'YEARLY'
+        case 'all':
+        default:
+          return 'ALL_TIME'
+      }
+    }
+
+    const category = toCategory(inputType) as any
+    const period = toPeriod(inputPeriod) as any
+
+    // Compute periodStart/periodEnd for non ALL_TIME periods
+    let periodStart: Date | null = null
+    let periodEnd: Date | null = null
+    if (period !== 'ALL_TIME') {
+      const now = new Date()
+      const start = new Date(now)
+      switch (period) {
+        case 'DAILY':
+          start.setHours(0, 0, 0, 0)
+          break
+        case 'WEEKLY':
+          start.setDate(start.getDate() - start.getDay())
+          start.setHours(0, 0, 0, 0)
+          break
+        case 'MONTHLY':
+          start.setDate(1)
+          start.setHours(0, 0, 0, 0)
+          break
+        case 'YEARLY':
+          start.setMonth(0, 1)
+          start.setHours(0, 0, 0, 0)
+          break
+      }
+      periodStart = start
+      periodEnd = null
+    }
+
+    const bucketWhere = {
+      category,
+      period,
+      ...(periodStart ? { periodStart: periodStart as any } : { periodStart: null as any }),
+    }
+
+    // Pre-calculate rank for create
+    const betterCountBefore = await prisma.leaderboardEntry.count({
+      where: {
+        ...bucketWhere,
+        score: { gt: score },
+      },
+    })
+    const initialRank = betterCountBefore + 1
+
+    // Create or update leaderboard entry using composite unique
+    const leaderboardEntry = await prisma.leaderboardEntry.upsert({
+      where: {
+        userId_category_period_periodStart: {
+          userId: session.user.id,
+          category,
+          period,
+          periodStart: periodStart as any, // null for ALL_TIME
         },
+      },
+      update: {
+        score,
+        metadata,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: session.user.id,
+        category,
+        period,
+        periodStart: periodStart ?? null,
+        periodEnd: periodEnd ?? null,
+        score,
+        rank: initialRank,
+        metadata,
+      },
+    })
+
+    // Calculate new rank within same bucket after upsert
+    const betterCount = await prisma.leaderboardEntry.count({
+      where: {
+        ...bucketWhere,
+        score: { gt: score },
+      },
+    })
+
+    const rank = betterCount + 1
+
+    // Persist updated rank if changed
+    if (leaderboardEntry.rank !== rank) {
+      await prisma.leaderboardEntry.update({
+        where: { id: leaderboardEntry.id },
+        data: { rank },
       })
     }
 
     return NextResponse.json({
-      leaderboard: leaderboardData,
-      userRank,
-      totalUsers,
-      category,
-      period,
-      page,
-      limit,
-      totalPages: Math.ceil(totalUsers / limit)
+      leaderboardEntry: { ...leaderboardEntry, rank },
+      rank,
+      message: 'Entrada do leaderboard atualizada com sucesso',
     })
   } catch (error) {
-    console.error('Erro ao buscar leaderboard:', error)
+    console.error('Error updating leaderboard:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

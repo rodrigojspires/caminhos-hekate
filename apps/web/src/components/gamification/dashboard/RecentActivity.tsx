@@ -25,7 +25,7 @@ interface ActivityItemProps {
 }
 
 function ActivityItem({ transaction }: ActivityItemProps) {
-  const getActivityIcon = (actionType: ActionType) => {
+  const getActivityIcon = (actionType?: ActionType) => {
     switch (actionType) {
       case 'course_completed':
         return <BookOpen className="h-4 w-4" />;
@@ -40,7 +40,7 @@ function ActivityItem({ transaction }: ActivityItemProps) {
     }
   };
 
-  const getActivityDescription = (actionType: ActionType, metadata?: any) => {
+  const getActivityDescription = (actionType?: ActionType, metadata?: any) => {
     switch (actionType) {
       case 'course_completed':
         return `Curso concluído: ${metadata?.courseName || 'Curso'}`;
@@ -55,7 +55,7 @@ function ActivityItem({ transaction }: ActivityItemProps) {
     }
   };
 
-  const getActivityColor = (actionType: ActionType) => {
+  const getActivityColor = (actionType?: ActionType) => {
     switch (actionType) {
       case 'course_completed':
         return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -70,7 +70,7 @@ function ActivityItem({ transaction }: ActivityItemProps) {
     }
   };
 
-  const isPositive = transaction.pointsEarned > 0;
+  const isPositive = transaction.points > 0;
   const colorClass = getActivityColor(transaction.actionType);
 
   return (
@@ -89,7 +89,7 @@ function ActivityItem({ transaction }: ActivityItemProps) {
               variant={isPositive ? "default" : "destructive"}
               className="text-xs"
             >
-              {isPositive ? '+' : ''}{transaction.pointsEarned}
+              {isPositive ? '+' : ''}{transaction.points}
             </Badge>
           </div>
         </div>

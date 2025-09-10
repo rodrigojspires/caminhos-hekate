@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
-import { notificationService } from '@/lib/notifications/notification-service'
-import { achievementEngine } from '@/lib/gamification/achievement-engine'
 
 // POST /api/gamification/points/award - Award points to user
 export async function POST(request: NextRequest) {
@@ -89,52 +87,21 @@ export async function POST(request: NextRequest) {
     // Check for level up
     const levelUp = newLevel > previousLevel
     
-    if (levelUp) {
-      // Create level up notification
-      await notificationService.createLevelUpNotification(
-        session.user.id,
-        newLevel,
-        previousLevel,
-        newTotalPoints
-      )
-    }
-
-    // Create points notification (generic special event)
-    await notificationService.createNotification({
-      userId: session.user.id,
-      type: 'SPECIAL_EVENT',
-      title: 'Pontos ganhos',
-      message: `Você ganhou ${points} pontos: ${reason}`,
-      data: {
-        points,
-        reason,
-        totalPoints: newTotalPoints
-      },
-      isPush: true
-    })
-
-    // Process achievements (no return value)
-    await achievementEngine.processActivity({
-      userId: session.user.id,
-      type: 'POINTS_EARNED',
-      data: {
-        points,
-        reason,
-        totalPoints: newTotalPoints,
-        currentLevel: newLevel,
-        ...metadata
-      },
-      timestamp: new Date()
-    })
+    // Check for achievements based on points and level
+    const newAchievements = await checkPointsAchievements(
+      session.user.id,
+      newTotalPoints,
+      newLevel,
+      levelUp
+    )
 
     return NextResponse.json({
       userPoints: updatedUserPoints,
       levelUp,
       previousLevel,
-      pointsAwarded: points,
+      points: points,
       reason,
-      newAchievements: [],
-      newBadges: []
+      newAchievements
     })
   } catch (error) {
     console.error('Erro ao conceder pontos:', error)
@@ -143,4 +110,213 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Helper function to check for points-based achievements
+async function checkPointsAchievements(
+  userId: string,
+  totalPoints: number,
+  currentLevel: number,
+  levelUp: boolean
+) {
+  const newAchievements = []
+
+  try {
+    // Points milestones
+    const pointsMilestones = [
+      { points: 100, name: 'Primeiro Centenário', description: 'Alcançou 100 pontos totais' },
+      { points: 500, name: 'Meio Milhar', description: 'Alcançou 500 pontos totais' },
+      { points: 1000, name: 'Primeiro Milhar', description: 'Alcançou 1000 pontos totais' },
+      { points: 2500, name: 'Acumulador', description: 'Alcançou 2500 pontos totais' },
+      { points: 5000, name: 'Colecionador', description: 'Alcançou 5000 pontos totais' },
+      { points: 10000, name: 'Mestre dos Pontos', description: 'Alcançou 10000 pontos totais' }
+    ]
+
+    for (const milestone of pointsMilestones) {
+      if (totalPoints >= milestone.points) {
+        // Check if user already has this achievement
+        const existingAchievement = await prisma.userAchievement.findFirst({
+          where: {
+            userId,
+            achievement: {
+              name: milestone.name,
+              category: { is: { name: 'POINTS_MILESTONE' } }
+            }
+          }
+        })
+
+        if (!existingAchievement) {
+          // Create or find achievement
+          let achievement = await prisma.achievement.findFirst({
+            where: {
+              name: milestone.name,
+              category: { is: { name: 'POINTS_MILESTONE' } }
+            }
+          })
+
+          if (!achievement) {
+            achievement = await prisma.achievement.create({
+              data: {
+                name: milestone.name,
+                description: milestone.description,
+                // Relacionar categoria corretamente
+                category: {
+                  connectOrCreate: {
+                    where: { name: 'POINTS_MILESTONE' },
+                    create: { name: 'POINTS_MILESTONE' }
+                  }
+                },
+                rarity: milestone.points >= 5000 ? 'LEGENDARY' : 
+                        milestone.points >= 2500 ? 'EPIC' : 
+                        milestone.points >= 1000 ? 'RARE' : 'COMMON',
+                // Usar o campo points do Achievement como recompensa
+                points: Math.floor(milestone.points * 0.05),
+                // Campo obrigatório no schema
+                criteria: {}
+              }
+            })
+          }
+
+          // Award achievement
+          await prisma.userAchievement.create({
+            data: {
+              userId,
+              achievementId: achievement.id,
+              metadata: {
+                pointsAtAchievement: totalPoints,
+                levelAtAchievement: currentLevel
+              }
+            }
+          })
+
+          newAchievements.push(achievement)
+
+          // Award bonus points
+          if (achievement.points > 0) {
+            await prisma.userPoints.update({
+              where: { userId },
+              data: {
+                totalPoints: {
+                  increment: achievement.points
+                }
+              }
+            })
+
+            await prisma.pointTransaction.create({
+              data: {
+                userId,
+                points: achievement.points,
+                type: 'BONUS',
+                reason: 'Achievement bonus',
+                description: `Bônus por conquista: ${achievement.name}`,
+                metadata: {
+                  achievementId: achievement.id
+                }
+              }
+            })
+          }
+        }
+      }
+    }
+
+    // Level-based achievements
+    if (levelUp) {
+      const levelMilestones = [
+        { level: 5, name: 'Iniciante Dedicado', description: 'Alcançou o nível 5' },
+        { level: 10, name: 'Estudante Aplicado', description: 'Alcançou o nível 10' },
+        { level: 20, name: 'Conhecedor', description: 'Alcançou o nível 20' },
+        { level: 30, name: 'Especialista', description: 'Alcançou o nível 30' },
+        { level: 50, name: 'Mestre', description: 'Alcançou o nível 50' },
+        { level: 100, name: 'Lenda', description: 'Alcançou o nível 100' }
+      ]
+
+      for (const milestone of levelMilestones) {
+        if (currentLevel >= milestone.level) {
+          // Check if user already has this achievement
+          const existingAchievement = await prisma.userAchievement.findFirst({
+            where: {
+              userId,
+              achievement: {
+                name: milestone.name,
+                category: { is: { name: 'LEVEL_MILESTONE' } }
+              }
+            }
+          })
+
+          if (!existingAchievement) {
+            // Create or find achievement
+            let achievement = await prisma.achievement.findFirst({
+              where: {
+                name: milestone.name,
+                category: { is: { name: 'LEVEL_MILESTONE' } }
+              }
+            })
+
+            if (!achievement) {
+              achievement = await prisma.achievement.create({
+                data: {
+                  name: milestone.name,
+                  description: milestone.description,
+                  category: {
+                    connectOrCreate: {
+                      where: { name: 'LEVEL_MILESTONE' },
+                      create: { name: 'LEVEL_MILESTONE' }
+                    }
+                  },
+                  rarity: milestone.level >= 50 ? 'LEGENDARY' : 
+                          milestone.level >= 30 ? 'EPIC' : 
+                          milestone.level >= 20 ? 'RARE' : 'COMMON',
+                  points: milestone.level * 10,
+                  criteria: {}
+                }
+              })
+            }
+
+            // Award achievement
+            await prisma.userAchievement.create({
+              data: {
+                userId,
+                achievementId: achievement.id,
+                metadata: {
+                  levelAtAchievement: currentLevel,
+                  pointsAtAchievement: totalPoints
+                }
+              }
+            })
+
+            newAchievements.push(achievement)
+
+            // Award bonus points based on achievement points
+            if (achievement.points > 0) {
+              await prisma.userPoints.update({
+                where: { userId },
+                data: {
+                  totalPoints: {
+                    increment: achievement.points
+                  }
+                }
+              })
+
+              await prisma.pointTransaction.create({
+                data: {
+                  userId,
+                  points: achievement.points,
+                  type: 'BONUS',
+                  reason: 'Achievement bonus',
+                  description: `Bônus por conquista: ${achievement.name}`,
+                  metadata: {
+                    achievementId: achievement.id
+                  }
+                }
+              })
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking points achievements:', error)
+  }
+
+  return newAchievements
 }

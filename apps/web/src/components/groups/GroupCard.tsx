@@ -26,31 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-interface GroupMember {
-  id: string
-  role: string
-  user: {
-    id: string
-    name: string
-    image?: string
-  }
-}
-
-interface Group {
-  id: string
-  name: string
-  description?: string
-  imageUrl?: string
-  isPrivate: boolean
-  memberCount: number
-  messageCount: number
-  maxMembers?: number
-  lastActivityAt: Date
-  createdAt: Date
-  members?: GroupMember[]
-  userRole?: string
-}
+import type { Group } from './types'
 
 interface GroupCardProps {
   group: Group
@@ -132,13 +108,15 @@ export function GroupCard({
     }
   }
 
+  const lastActivity = group.lastActivityAt ?? group.updatedAt ?? group.createdAt
+
   return (
     <Card className={`group hover:shadow-lg transition-all duration-200 ${className}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={group.imageUrl} alt={group.name} />
+              <AvatarImage src={group.imageUrl || group.image} alt={group.name} />
               <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold">
                 {getGroupInitials(group.name)}
               </AvatarFallback>
@@ -226,7 +204,7 @@ export function GroupCard({
           
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
-            <span>{formatLastActivity(group.lastActivityAt)}</span>
+            <span>{formatLastActivity(lastActivity)}</span>
           </div>
         </div>
 

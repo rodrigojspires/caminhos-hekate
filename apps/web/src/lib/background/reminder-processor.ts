@@ -31,6 +31,22 @@ export class ReminderProcessor {
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
 
+  /** Atualiza a configuração do processador em runtime */
+  updateConfig(config: Partial<ReminderProcessorConfig>) {
+    const prevInterval = this.config.intervalMs
+    this.config = { ...this.config, ...config }
+
+    // Se o processador estiver rodando e o intervalo mudar, reiniciar o timer
+    if (this.isRunning && config.intervalMs && config.intervalMs !== prevInterval) {
+      if (this.intervalId) {
+        clearInterval(this.intervalId)
+      }
+      this.intervalId = setInterval(() => {
+        this.processReminders()
+      }, this.config.intervalMs)
+    }
+  }
+
   /**
    * Inicia o processamento em background
    */
@@ -72,7 +88,25 @@ export class ReminderProcessor {
   }
 
   /**
-   * Processa lembretes pendentes
+   * Executa um ciclo de processamento imediatamente, independente do estado isRunning
+   */
+  async processNow() {
+    try {
+      await this.generateRecurringInstances()
+      await this.processPendingReminders()
+      await this.cleanupExpiredReminders()
+      return {
+        processed: this.processingQueue.size,
+        stats: this.getStats()
+      }
+    } catch (error) {
+      console.error('Erro ao processar lembretes sob demanda:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Processa lembretes em loop quando em execução contínua
    */
   private async processReminders() {
     if (!this.isRunning) return
@@ -342,6 +376,9 @@ let processorInstance: ReminderProcessor | null = null
 export function getReminderProcessor(config?: Partial<ReminderProcessorConfig>): ReminderProcessor {
   if (!processorInstance) {
     processorInstance = new ReminderProcessor(config)
+  } else if (config && Object.keys(config).length > 0) {
+    // Aplicar atualização de configuração se já existir instância
+    processorInstance.updateConfig(config)
   }
   return processorInstance
 }

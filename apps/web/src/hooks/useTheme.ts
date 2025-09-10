@@ -68,7 +68,7 @@ export function useTheme(): ThemeContextType {
     // com o next-themes. Mantemos apenas variáveis e classes de acessibilidade.
 
     // Aplicar variáveis CSS personalizadas
-    const css = generateCSS()
+    const css = themeService ? themeService.generateCSSVariables(prefs) : ''
     
     // Remover estilo anterior se existir
     const existingStyle = document.getElementById('theme-variables')
@@ -100,7 +100,7 @@ export function useTheme(): ThemeContextType {
     } else {
       root.classList.remove('large-text')
     }
-  }, [generateCSS])
+  }, [themeService])
 
   // Carregar preferências do usuário (evitar loop incluindo apenas deps estáveis)
   useEffect(() => {
@@ -127,7 +127,7 @@ export function useTheme(): ThemeContextType {
 
     loadPreferences()
     return () => { cancelled = true }
-  }, [user?.id, themeService])
+  }, [user?.id, themeService, applyThemeToDOM])
 
   // Atualizar preferências
   const updatePreferences = useCallback(async (updates: Partial<UserPreferences>) => {

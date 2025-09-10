@@ -56,7 +56,7 @@ const EMAIL_TEMPLATES = {
             
             <div class="stats">
               <div class="stat">
-                <div class="stat-value">${data.metadata?.pointsAwarded || 0}</div>
+                <div class="stat-value">${data.metadata?.points || 0}</div>
                 <div class="stat-label">Pontos Ganhos</div>
               </div>
               <div class="stat">
@@ -253,7 +253,7 @@ export async function sendAchievementEmail(
     metadata: {
       icon: achievement.icon,
       rarity: achievement.rarity,
-      pointsAwarded: achievement.points,
+      points: achievement.points,
       totalAchievements: userStats.totalAchievements,
       userLevel: userStats.level
     }

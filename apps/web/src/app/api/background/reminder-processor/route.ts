@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Verificar se o usuário é admin (você pode ajustar essa lógica)
     const isAdmin = session.user.email?.includes('admin') || 
-                   process.env.ADMIN_EMAILS?.split(',').includes(session.user.email || '')
+                   process.env.ADMIN_EMAILS?.split(',')?.includes(session.user.email || '')
     
     if (!isAdmin) {
       return NextResponse.json(
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o usuário é admin
     const isAdmin = session.user.email?.includes('admin') || 
-                   process.env.ADMIN_EMAILS?.split(',').includes(session.user.email || '')
+                   process.env.ADMIN_EMAILS?.split(',')?.includes(session.user.email || '')
     
     if (!isAdmin) {
       return NextResponse.json(
@@ -109,8 +109,12 @@ export async function POST(request: NextRequest) {
         break
 
       case 'process_now':
-        // Forçar processamento imediato (método privado, então vamos usar uma abordagem diferente)
-        result = { message: 'Processamento manual não implementado diretamente. Use restart para forçar.' }
+        // Executar processamento imediato usando API pública
+        const onDemand = await processor.processNow()
+        result = { 
+          message: 'Processamento manual executado.',
+          ...onDemand
+        }
         break
 
       default:
@@ -156,7 +160,7 @@ export async function PUT(request: NextRequest) {
 
     // Verificar se o usuário é admin
     const isAdmin = session.user.email?.includes('admin') || 
-                   process.env.ADMIN_EMAILS?.split(',').includes(session.user.email || '')
+                   process.env.ADMIN_EMAILS?.split(',')?.includes(session.user.email || '')
     
     if (!isAdmin) {
       return NextResponse.json(
@@ -176,11 +180,11 @@ export async function PUT(request: NextRequest) {
       currentProcessor.stop()
     }
 
-    // Criar novo processador com nova configuração
-    const newProcessor = getReminderProcessor(config)
+    // Atualizar configuração na instância existente
+    currentProcessor.updateConfig(config)
     
     if (wasRunning) {
-      newProcessor.start()
+      currentProcessor.start()
     }
 
     return NextResponse.json({
@@ -188,7 +192,7 @@ export async function PUT(request: NextRequest) {
       data: {
         message: 'Configuração atualizada',
         config,
-        stats: newProcessor.getStats()
+        stats: currentProcessor.getStats()
       }
     })
   } catch (error) {

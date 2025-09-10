@@ -8,7 +8,7 @@ interface ActivityResult {
   activityType?: string
   newAchievements?: any[]
   newBadges?: any[]
-  pointsAwarded?: number
+  points?: number
   levelUp?: boolean
   error?: string
 }
@@ -68,8 +68,8 @@ export function useActivityTracker() {
           })
         }
 
-        if (result.pointsAwarded > 0) {
-          toast.success(`⭐ +${result.pointsAwarded} pontos conquistados!`, {
+        if (result.points > 0) {
+          toast.success(`⭐ +${result.points} pontos conquistados!`, {
             duration: 3000
           })
         }
@@ -161,7 +161,7 @@ export function useActivityTracker() {
     
     // Show summary notification for batch operations
     if (showNotifications && activities.length > 1) {
-      const totalPoints = results.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0)
+      const totalPoints = results.reduce((sum, r) => sum + (r.points || 0), 0)
       const totalAchievements = results.reduce((sum, r) => sum + (r.newAchievements?.length || 0), 0)
       const totalBadges = results.reduce((sum, r) => sum + (r.newBadges?.length || 0), 0)
       

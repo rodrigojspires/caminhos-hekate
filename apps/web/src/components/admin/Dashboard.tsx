@@ -128,9 +128,9 @@ export function StatsGrid({ metrics, loading = false, className }: StatsGridProp
 export interface Activity {
   id: string
   type: 'user' | 'order' | 'course' | 'system'
-  title: string
+  title?: string
   description: string
-  timestamp: Date
+  timestamp: Date | string
   user?: {
     name: string
     avatar?: string
@@ -227,9 +227,11 @@ export function RecentActivity({
                   {getActivityIcon(activity.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {activity.title}
-                  </p>
+                  {activity.title && (
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {activity.title}
+                    </p>
+                  )}
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {activity.description}
                   </p>
@@ -240,7 +242,7 @@ export function RecentActivity({
                       </span>
                     )}
                     <span className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatTimestamp(activity.timestamp)}
+                      {formatTimestamp(typeof activity.timestamp === 'string' ? new Date(activity.timestamp) : activity.timestamp)}
                     </span>
                   </div>
                 </div>

@@ -30,7 +30,8 @@ import {
   TrendingUp,
   Clock
 } from 'lucide-react'
-import type { EmailCampaign, EmailCampaignStatus, EmailTemplate } from '@/lib/email'
+import type { EmailCampaign, EmailCampaignStatus } from '@/lib/email'
+import type { EmailTemplate } from '@/hooks/useEmailTemplates'
 
 interface EmailCampaignManagerProps {
   campaigns: EmailCampaign[]

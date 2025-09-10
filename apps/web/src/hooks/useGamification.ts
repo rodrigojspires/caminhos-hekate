@@ -35,10 +35,10 @@ interface Achievement {
 interface UserStreak {
   id: string
   userId: string
-  type: string
+  streakType: string
   currentStreak: number
   longestStreak: number
-  lastActivityDate: string
+  lastActivity: string | null
   isActive: boolean
 }
 
@@ -104,12 +104,22 @@ export const useGamification = () => {
   // Fetch user points
   const fetchUserPoints = useCallback(async () => {
     if (!session?.user?.id) return
-
+    
     try {
       const response = await fetch('/api/gamification/points')
       if (response.ok) {
         const data = await response.json()
-        setUserPoints(data)
+        setUserPoints(data.userPoints)
+      } else {
+        // Fallback para dados padrão em caso de erro
+        setUserPoints({
+          id: 'fallback',
+          userId: session.user.id,
+          totalPoints: 0,
+          currentLevel: 1,
+          pointsToNext: 100,
+          updatedAt: new Date().toISOString()
+        })
       }
     } catch (error) {
       console.error('Erro ao buscar pontos do usuário:', error)
@@ -125,6 +135,9 @@ export const useGamification = () => {
       if (response.ok) {
         const data = await response.json()
         setAchievements(data)
+      } else {
+        // Fallback para dados vazios em caso de erro
+        setAchievements([])
       }
     } catch (error) {
       console.error('Erro ao buscar conquistas:', error)
@@ -183,6 +196,9 @@ export const useGamification = () => {
       if (response.ok) {
         const data = await response.json()
         setLeaderboard(data)
+      } else {
+        // Fallback para dados vazios em caso de erro
+        setLeaderboard([])
       }
     } catch (error) {
       console.error('Erro ao buscar leaderboard:', error)

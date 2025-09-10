@@ -13,12 +13,12 @@ import { EmailCampaignManager } from '@/components/email/EmailCampaignManager'
 import { EmailStatsViewer } from '@/components/email/EmailStatsViewer'
 import { Plus, Mail, Send, BarChart3 } from 'lucide-react'
 import type {
-  EmailTemplate,
   EmailCampaign,
   EmailCategory as EmailTemplateCategory,
   EmailTemplateStatus,
   EmailCampaignStatus,
 } from '@/lib/email'
+import type { EmailTemplate } from '@/hooks/useEmailTemplates'
 
 interface EmailTemplatesPageState {
   templates: EmailTemplate[]

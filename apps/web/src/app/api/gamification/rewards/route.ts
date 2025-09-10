@@ -1,49 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { RewardSystem } from '@/lib/reward-system'
+import { prisma } from '@hekate/database'
 
-const rewardSystem = RewardSystem.getInstance()
-
-// GET /api/gamification/rewards - Buscar recompensas do usuário
+// GET /api/gamification/rewards - Get available rewards
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') // 'pending' | 'history' | 'stats'
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const type = searchParams.get('type')
+    const available = searchParams.get('available') === 'true'
+    const userOnly = searchParams.get('userOnly') === 'true'
 
-    switch (type) {
-      case 'pending':
-        const pendingRewards = await rewardSystem.getPendingRewards(session.user.id)
-        return NextResponse.json(pendingRewards)
+    if (userOnly) {
+      // Recompensas que o usuário já resgatou (GamificationUserReward)
+      const userRewards = await prisma.gamificationUserReward.findMany({
+        where: { userId: session.user.id },
+        include: { reward: true },
+        orderBy: { claimedAt: 'desc' }
+      })
 
-      case 'history':
-        const rewardHistory = await rewardSystem.getRewardHistory(session.user.id, limit)
-        return NextResponse.json(rewardHistory)
-
-      case 'stats':
-        const rewardStats = await rewardSystem.getRewardStats(session.user.id)
-        return NextResponse.json(rewardStats)
-
-      default:
-        // Retornar resumo geral
-        const [pending, stats] = await Promise.all([
-          rewardSystem.getPendingRewards(session.user.id),
-          rewardSystem.getRewardStats(session.user.id)
-        ])
-
-        return NextResponse.json({
-          pending,
-          stats
-        })
+      return NextResponse.json({
+        userRewards: userRewards.map((ur) => ({
+          ...ur.reward,
+          claimedAt: ur.claimedAt,
+          status: ur.status,
+          claimedFrom: ur.claimedFrom ?? null,
+        }))
+      })
     }
+
+    // Monta where clause para GamificationReward
+    const whereClause: any = {}
+
+    if (type) {
+      // Aceita valores como "points", "badge", etc., normalizando para maiúsculas
+      whereClause.rewardType = type.toUpperCase()
+    }
+
+    if (available) {
+      const now = new Date()
+      whereClause.isActive = true
+      whereClause.AND = [
+        { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+        { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+      ]
+      // Observação: o limite de claims (maxClaims/currentClaims) será avaliado após a busca
+    }
+
+    const rewards = await prisma.gamificationReward.findMany({
+      where: whereClause,
+      orderBy: [{ createdAt: 'desc' }]
+    })
+
+    const filtered = available
+      ? rewards.filter((r) => r.maxClaims == null || r.currentClaims < (r.maxClaims ?? 0))
+      : rewards
+
+    return NextResponse.json({
+      rewards: filtered
+    })
   } catch (error) {
-    console.error('Erro ao buscar recompensas:', error)
+    console.error('Error fetching rewards:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -51,52 +74,112 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/gamification/rewards - Conceder recompensa manual (admin)
+// POST /api/gamification/rewards - Claim a reward
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    // Verificar se é admin (implementar lógica de autorização)
-    // if (!session.user.isAdmin) {
-    //   return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-    // }
+    const { rewardId } = await request.json()
 
-    const body = await request.json()
-    const { userId, reward, achievementId } = body
-
-    if (!userId || !reward) {
+    if (!rewardId) {
       return NextResponse.json(
-        { error: 'Campos obrigatórios: userId, reward' },
+        { error: 'ID da recompensa é obrigatório' },
         { status: 400 }
       )
     }
 
-    // Map legacy types if any
-    const mappedReward = {
-      ...reward,
-      type: (
-        reward.type === 'POINTS' ? 'EXTRA_POINTS' :
-        reward.type === 'DISCOUNT' ? 'DISCOUNT_COUPON' :
-        reward.type === 'PREMIUM_ACCESS' ? 'PREMIUM_DAYS' :
-        reward.type
-      )
-    }
+    // Detalhes da recompensa (GamificationReward)
+    const reward = await prisma.gamificationReward.findUnique({
+      where: { id: rewardId }
+    })
 
-    const userReward = await rewardSystem.grantReward(userId, mappedReward, achievementId)
-
-    if (!userReward) {
+    if (!reward) {
       return NextResponse.json(
-        { error: 'Erro ao conceder recompensa' },
-        { status: 500 }
+        { error: 'Recompensa não encontrada' },
+        { status: 404 }
       )
     }
 
-    return NextResponse.json(userReward, { status: 201 })
+    if (!reward.isActive) {
+      return NextResponse.json(
+        { error: 'Recompensa não está ativa' },
+        { status: 400 }
+      )
+    }
+
+    const now = new Date()
+    if ((reward.validFrom && reward.validFrom > now) || (reward.validUntil && reward.validUntil < now)) {
+      return NextResponse.json(
+        { error: 'Recompensa fora do período de validade' },
+        { status: 400 }
+      )
+    }
+
+    if (reward.maxClaims != null && reward.currentClaims >= reward.maxClaims) {
+      return NextResponse.json(
+        { error: 'Recompensa esgotada' },
+        { status: 400 }
+      )
+    }
+
+    // Processa o resgate em transação
+    const result = await prisma.$transaction(async (tx) => {
+      // Cria registro de resgate do usuário (GamificationUserReward)
+      const userReward = await tx.gamificationUserReward.create({
+        data: {
+          userId: session.user.id,
+          rewardId: rewardId,
+          status: 'CLAIMED',
+          claimedAt: new Date(),
+          claimedFrom: 'API'
+        }
+      })
+
+      // Incrementa contador de claims
+      await tx.gamificationReward.update({
+        where: { id: rewardId },
+        data: { currentClaims: { increment: 1 } }
+      })
+
+      // Se for recompensa de pontos, creditar imediatamente
+      if (reward.rewardType === 'POINTS') {
+        const value = reward.rewardValue as unknown as { amount?: number; points?: number } | null
+        const amount = value?.amount ?? value?.points ?? 0
+
+        if (amount > 0) {
+          await tx.userPoints.upsert({
+            where: { userId: session.user.id },
+            update: { totalPoints: { increment: amount } },
+            create: { userId: session.user.id, totalPoints: amount }
+          })
+
+          await tx.pointTransaction.create({
+            data: {
+              userId: session.user.id,
+              type: 'BONUS',
+              points: amount,
+              reason: 'GAMIFICATION_REWARD',
+              description: `Recompensa: ${reward.name}`,
+              metadata: { rewardId, userRewardId: userReward.id }
+            }
+          })
+        }
+      }
+
+      return { userReward }
+    })
+
+    return NextResponse.json({
+      userReward: result.userReward,
+      reward,
+      message: 'Recompensa resgatada com sucesso'
+    })
   } catch (error) {
-    console.error('Erro ao conceder recompensa:', error)
+    console.error('Error claiming reward:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

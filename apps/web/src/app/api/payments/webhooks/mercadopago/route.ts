@@ -14,7 +14,17 @@ export async function POST(request: NextRequest) {
     const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET || ''
     const raw = await request.text()
 
-    let payload: any
+    interface MercadoPagoWebhookPayload {
+      type?: string;
+      action?: string;
+      data?: {
+        id?: string;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    }
+
+    let payload: MercadoPagoWebhookPayload
     try {
       payload = JSON.parse(raw)
     } catch {

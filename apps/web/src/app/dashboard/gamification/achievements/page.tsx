@@ -33,11 +33,11 @@ const CATEGORY_CONFIG = {
 };
 
 const RARITY_CONFIG: Record<AchievementRarity, { label: string; color: string }> = {
-  common: { label: 'Comum', color: 'text-gray-600' },
-  rare: { label: 'Raro', color: 'text-blue-600' },
-  epic: { label: 'Épico', color: 'text-purple-600' },
-  legendary: { label: 'Lendário', color: 'text-yellow-600' },
-  mythic: { label: 'Mítico', color: 'text-pink-600' }
+  COMMON: { label: 'Comum', color: 'text-gray-600' },
+  UNCOMMON: { label: 'Incomum', color: 'text-green-600' },
+  RARE: { label: 'Raro', color: 'text-blue-600' },
+  EPIC: { label: 'Épico', color: 'text-purple-600' },
+  LEGENDARY: { label: 'Lendário', color: 'text-yellow-600' }
 };
 
 export default function AchievementsPage() {

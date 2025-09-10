@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Bell, Menu, Search, Settings, User, LogOut } from 'lucide-react'
 import Link from 'next/link'
 
@@ -47,6 +48,9 @@ export function DashboardHeader({ onMenuClick, sidebarOpen }: DashboardHeaderPro
 
       {/* Right side */}
       <div className="flex items-center gap-4">
+        {/* Theme Toggle */}
+        <ThemeToggle variant="button" size="sm" />
+        
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />

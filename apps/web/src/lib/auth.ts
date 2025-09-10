@@ -190,3 +190,24 @@ export const requireAdminAuth = async () => {
 
   return { user, session }
 }
+
+// Helper function to check analytics permissions
+export const checkAnalyticsPermission = async () => {
+  const { getServerSession } = await import('next-auth/next')
+  const session = await getServerSession(authOptions)
+  
+  if (!session?.user?.email) {
+    return { error: 'Não autorizado', status: 401 }
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true, role: true }
+  })
+
+  if (!user) {
+    return { error: 'Usuário não encontrado', status: 404 }
+  }
+
+  return { user, isAdmin: user.role === 'ADMIN' }
+}

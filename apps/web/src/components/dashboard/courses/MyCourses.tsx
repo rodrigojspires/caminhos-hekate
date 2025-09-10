@@ -25,9 +25,10 @@ interface Course {
 interface MyCoursesProps {
   courses: Course[]
   loading?: boolean
+  onCourseSelect?: (courseId: string) => void
 }
 
-export default function MyCourses({ courses, loading = false }: MyCoursesProps) {
+export function MyCourses({ courses, loading = false, onCourseSelect }: MyCoursesProps) {
   const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started'>('all')
   const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent')
 
@@ -262,13 +263,13 @@ export default function MyCourses({ courses, loading = false }: MyCoursesProps) 
 
                   {/* Actions */}
                   <div className="flex gap-3">
-                    <Link
-                      href={`/courses/${course.id}`}
+                    <button
+                      onClick={() => onCourseSelect?.(course.id)}
                       className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                     >
                       <Play className="w-4 h-4" />
                       {course.status === 'not_started' ? 'Começar' : 'Continuar'}
-                    </Link>
+                    </button>
                     <Link
                       href={`/courses/${course.id}/details`}
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"

@@ -12,7 +12,31 @@ export const metadata: Metadata = {
   description: 'Visualize e gerencie seus certificados conquistados'
 }
 
-export default function CertificatesPage() {
+async function fetchCertificateData() {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  
+  try {
+    const [statsRes, certificatesRes] = await Promise.all([
+      fetch(`${baseUrl}/api/user/certificates/stats`, { cache: 'no-store' }),
+      fetch(`${baseUrl}/api/user/certificates`, { cache: 'no-store' })
+    ])
+
+    const stats = statsRes.ok ? await statsRes.json() : { totalCertificates: 0, completedThisMonth: 0, downloadCount: 0, averageScore: 0 }
+    const certificates = certificatesRes.ok ? await certificatesRes.json() : []
+
+    return { stats, certificates }
+  } catch (error) {
+    console.error('Erro ao buscar dados de certificados:', error)
+    return {
+      stats: { totalCertificates: 0, completedThisMonth: 0, downloadCount: 0, averageScore: 0 },
+      certificates: []
+    }
+  }
+}
+
+export default async function CertificatesPage() {
+  const { stats, certificates } = await fetchCertificateData()
+
   return (
     <div className="space-y-8">
       <div>
@@ -23,10 +47,10 @@ export default function CertificatesPage() {
       </div>
 
       <CertificateStats 
-        totalCertificates={12}
-        completedThisMonth={3}
-        downloadCount={45}
-        averageScore={92}
+        totalCertificates={stats.totalCertificates}
+        completedThisMonth={stats.completedThisMonth}
+        downloadCount={stats.downloadCount}
+        averageScore={stats.averageScore}
       />
 
       <Tabs defaultValue="all" className="space-y-6">
@@ -42,11 +66,11 @@ export default function CertificatesPage() {
             onStatusChange={() => {}}
             onDateRangeChange={() => {}}
           />
-          <CertificateGallery certificates={[]} />
+          <CertificateGallery certificates={certificates} />
         </TabsContent>
 
         <TabsContent value="recent" className="space-y-6">
-          <CertificateGallery certificates={[]} />
+          <CertificateGallery certificates={certificates.slice(0, 6)} />
         </TabsContent>
 
         <TabsContent value="favorites" className="space-y-6">

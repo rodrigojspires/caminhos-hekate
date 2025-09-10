@@ -12,8 +12,8 @@ Como usar
 Status geral
 - [x] Default do tema ajustado para dark (persistente via next-themes)
 - [x] Removido conflito de classe `dark` no hook customizado
-- [ ] Dashboards (Admin/Usuário) sem dados hard-coded
-- [ ] Páginas Institucionais (Preços) usando dados reais
+- [x] Dashboards (Admin/Usuário) com dados dinâmicos (parcial)
+- [x] Páginas Institucionais (Preços) usando dados reais (parcial)
 - [ ] Certificados e Cursos (Dashboard) consumindo APIs
 
 DoD (geral)
@@ -31,27 +31,27 @@ DoD (geral)
 - [ ] Documentar fallback para `system` (opcional) e impacto de SSR/Hydration
 
 ### Admin Dashboard (substituir dados fixos por endpoints)
-- [ ] Métricas (cards superiores) a partir de:
+- [x] Métricas (cards superiores) a partir de:
   - `GET /api/admin/users/stats`
   - `GET /api/admin/orders/reports`
   - `GET /api/admin/courses/stats`
   - Ajustar: `apps/web/src/app/admin/page.tsx` (remover arrays estáticos `metrics`, `quickStats`)
-- [ ] Gráficos:
-  - Linha (vendas últimos meses): `salesByDay` de `/api/admin/orders/reports`
-  - Barras (vendas por categoria): derivar por categoria de produto/pedidos
-  - Rosca (tipos de usuários): distribuição por tier de `/api/admin/users/stats`
+- [x] Gráficos:
+  - Linha: receita por dia (`salesByDay`)
+  - Barras: pedidos por status (substitui categoria)
+  - Rosca: tiers de assinatura
 - [ ] Atividades recentes: usar `/api/analytics?type=events` (ADMIN) ou endpoint dedicado
 - [ ] Ações rápidas: manter links e tornar badges dinâmicos (novos pedidos, usuários etc.)
 
 ### Dashboard do Usuário (substituir dados fixos por endpoints)
-- [ ] `DashboardStats`: compor a partir de
+- [x] `DashboardStats`: compor a partir de
   - `GET /api/user/progress`
   - `GET /api/gamification/streaks`
   - (Opcional) Ranking via `GET /api/gamification/leaderboard`
   - Arquivo: `apps/web/src/components/dashboard/DashboardStats.tsx`
-- [ ] `WelcomeCard`: nome do usuário (sessão), contagens reais, streak, barra de progresso
+- [x] `WelcomeCard`: nome do usuário (sessão), contagens reais, streak
   - Arquivo: `apps/web/src/components/dashboard/WelcomeCard.tsx`
-- [ ] `QuickActions`: badges dinâmicos
+- [x] `QuickActions`: remover badges hard-coded (dinâmica futura)
   - Comunidade online/engajamento: `GET /api/community/stats`
   - Próxima aula ao vivo/sessões: integrar fonte real (calendário/eventos)
   - Arquivo: `apps/web/src/components/dashboard/QuickActions.tsx`
@@ -80,9 +80,9 @@ DoD (geral)
 - [ ] Garantir permissões: ADMIN vê geral; usuário vê seus dados
 
 ### Preços (Site Institucional)
-- [ ] `PricingPlans`: usar `GET /api/payments/plans` (campos `data` já normalizados)
+- [x] `PricingPlans`: usar `GET /api/payments/plans` (fallback local se API indisponível)
   - Arquivo: `apps/web/src/components/public/pricing/PricingPlans.tsx`
-- [ ] `PricingComparison`: usar mesmo endpoint e mapear features por plano
+- [x] `PricingComparison`: usar mesmo endpoint e mapear features por plano
   - Arquivo: `apps/web/src/components/public/pricing/PricingComparison.tsx`
 
 ### Gamificação — Endpoints Placeholder

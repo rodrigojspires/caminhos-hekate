@@ -1,9 +1,24 @@
 // Group Types
+export interface GroupMember {
+  id: string
+  role: 'owner' | 'admin' | 'moderator' | 'member'
+  joinedAt: Date
+  lastActiveAt?: Date
+  isActive: boolean
+  user: {
+    id: string
+    name: string
+    email: string
+    image?: string
+  }
+}
+
 export interface Group {
   id: string
   name: string
   description?: string
   image?: string
+  imageUrl?: string
   isPrivate: boolean
   maxMembers?: number
   memberCount: number
@@ -19,27 +34,14 @@ export interface Group {
     name: string
     image?: string
   }
-  userRole?: 'owner' | 'admin' | 'member'
+  userRole?: 'owner' | 'admin' | 'moderator' | 'member'
   userMembership?: {
     id: string
-    role: 'owner' | 'admin' | 'member'
+    role: 'owner' | 'admin' | 'moderator' | 'member'
     joinedAt: Date
     isActive: boolean
   }
-}
-
-export interface GroupMember {
-  id: string
-  role: 'owner' | 'admin' | 'member'
-  joinedAt: Date
-  lastActiveAt?: Date
-  isActive: boolean
-  user: {
-    id: string
-    name: string
-    email: string
-    image?: string
-  }
+  members?: GroupMember[]
 }
 
 export interface GroupMessage {
@@ -126,6 +128,6 @@ export interface MessageFilters {
 
 export interface MemberFilters {
   search?: string
-  role?: 'owner' | 'admin' | 'member'
+  role?: 'owner' | 'admin' | 'moderator' | 'member'
   isActive?: boolean
 }

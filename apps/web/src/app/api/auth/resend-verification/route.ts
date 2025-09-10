@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@hekate/database"
-import { sendVerificationEmail } from "@/lib/email"
+import { resendEmailService } from "@/lib/resend-email"
 import { generateVerificationToken } from "@/lib/tokens"
 import { ResendVerificationSchema } from "@/lib/validations/auth"
 
@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
 
     // Send verification email
     try {
-      await sendVerificationEmail(email, verificationToken)
+      await resendEmailService.sendVerificationEmail({
+      toEmail: email,
+      verificationToken
+    })
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError)
       return NextResponse.json(

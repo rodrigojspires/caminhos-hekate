@@ -33,6 +33,7 @@ import {
   Braces
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSystemSettings, usePreviewData } from '@/hooks/useSystemSettings'
 
 interface EmailTemplate {
   id?: string
@@ -59,20 +60,33 @@ const TEMPLATE_CATEGORIES = [
   { value: 'transactional', label: 'Transacional' }
 ]
 
-const COMMON_VARIABLES = [
-  '{{user.name}}',
-  '{{user.email}}',
-  '{{site.name}}',
-  '{{site.url}}',
-  '{{date}}',
-  '{{time}}',
-  '{{verification.url}}',
-  '{{reset.url}}',
-  '{{order.id}}',
-  '{{order.total}}',
-  '{{course.name}}',
-  '{{course.url}}'
-]
+// Função para gerar variáveis comuns baseadas nas configurações do sistema
+function getCommonVariables(settings: any) {
+  const baseVariables = [
+    '{{user.name}}',
+    '{{user.email}}',
+    '{{date}}',
+    '{{time}}'
+  ]
+  
+  if (settings) {
+    return [
+      ...baseVariables,
+      '{{site.name}}',
+      '{{site.url}}',
+      '{{contact.email}}',
+      '{{support.email}}',
+      '{{verification.url}}',
+      '{{reset.url}}',
+      '{{order.id}}',
+      '{{order.total}}',
+      '{{course.name}}',
+      '{{course.url}}'
+    ]
+  }
+  
+  return baseVariables
+}
 
 function extractVariables(content: string): string[] {
   const regex = /\{\{([^}]+)\}\}/g
@@ -120,6 +134,9 @@ function validateTemplate(template: Partial<EmailTemplate>): string[] {
 }
 
 export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateFormProps) {
+  const { settings, isLoading: settingsLoading } = useSystemSettings()
+  const { sampleData, getVariablesByCategory } = usePreviewData()
+  
   const [formData, setFormData] = useState<Partial<EmailTemplate>>({
     name: template?.name || '',
     subject: template?.subject || '',
@@ -134,6 +151,9 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
   const [errors, setErrors] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [previewMode, setPreviewMode] = useState<'html' | 'text'>('html')
+  
+  // Gerar variáveis comuns baseadas nas configurações
+  const commonVariables = getCommonVariables(settings)
 
   const handleInputChange = (field: keyof EmailTemplate, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -189,22 +209,7 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
     
     if (!content) return 'Nenhum conteúdo para preview'
     
-    // Replace variables with sample data
-    const sampleData: Record<string, string> = {
-      '{{user.name}}': 'João Silva',
-      '{{user.email}}': 'joao@exemplo.com',
-      '{{site.name}}': 'Caminhos de Hekate',
-      '{{site.url}}': 'https://caminhosdehekate.com',
-      '{{date}}': new Date().toLocaleDateString('pt-BR'),
-      '{{time}}': new Date().toLocaleTimeString('pt-BR'),
-      '{{verification.url}}': 'https://exemplo.com/verificar/abc123',
-      '{{reset.url}}': 'https://exemplo.com/redefinir/xyz789',
-      '{{order.id}}': '#12345',
-      '{{order.total}}': 'R$ 299,90',
-      '{{course.name}}': 'Curso de Tarot Avançado',
-      '{{course.url}}': 'https://exemplo.com/cursos/tarot-avancado'
-    }
-    
+    // Replace variables with dynamic sample data
     Object.entries(sampleData).forEach(([variable, value]) => {
       content = content?.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value)
     })
@@ -212,16 +217,27 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
     return content
   }
 
+  if (settingsLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando configurações...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-2xl font-bold tracking-tight">
             {template ? 'Editar Template' : 'Novo Template'}
           </h2>
           <p className="text-muted-foreground">
-            {template ? 'Edite as informações do template de e-mail' : 'Crie um novo template de e-mail'}
+            {template ? 'Modifique as configurações do template de email' : 'Crie um novo template de email personalizado'}
           </p>
         </div>
         
@@ -306,7 +322,7 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
                     placeholder="Ex: Bem-vindo(a) ao {{site.name}}, {{user.name}}!"
                   />
                   <div className="flex flex-wrap gap-1">
-                    {COMMON_VARIABLES.slice(0, 4).map((variable) => (
+                    {commonVariables.slice(0, 4).map((variable) => (
                       <Button
                         key={variable}
                         variant="outline"
@@ -348,7 +364,7 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
                     className="font-mono text-sm"
                   />
                   <div className="flex flex-wrap gap-1">
-                    {COMMON_VARIABLES.map((variable) => (
+                    {commonVariables.map((variable) => (
                       <Button
                         key={variable}
                         variant="outline"
@@ -372,7 +388,7 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
                     rows={12}
                   />
                   <div className="flex flex-wrap gap-1">
-                    {COMMON_VARIABLES.map((variable) => (
+                    {commonVariables.map((variable) => (
                       <Button
                         key={variable}
                         variant="outline"
@@ -395,19 +411,66 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Braces className="h-5 w-5" />
-                  Variáveis Detectadas
+                  Variáveis
                 </CardTitle>
                 <CardDescription>
-                  Variáveis encontradas no template
+                  Variáveis detectadas e disponíveis para uso
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {formData.variables.map((variable) => (
-                    <Badge key={variable} variant="outline">
-                      {variable}
-                    </Badge>
-                  ))}
+              <CardContent className="space-y-4">
+                {/* Detected Variables */}
+                {formData.variables && formData.variables.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Variáveis Detectadas:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.variables.map((variable) => (
+                        <Badge key={variable} variant="outline" className="bg-blue-50 text-blue-700">
+                          {variable}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Available Variables */}
+                <div>
+                  <h4 className="font-medium text-sm mb-3">Variáveis Disponíveis:</h4>
+                  <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
+                    {['user', 'site', 'order', 'course', 'auth', 'date'].map((category) => {
+                      const categoryVars = getVariablesByCategory(category)
+                      if (categoryVars.length === 0) return null
+                      
+                      const categoryLabels: Record<string, string> = {
+                        user: '👤 Usuário',
+                        site: '🌐 Site', 
+                        order: '🛒 Pedido',
+                        course: '📚 Curso',
+                        auth: '🔐 Auth',
+                        date: '📆 Data'
+                      }
+                      
+                      return (
+                        <div key={category} className="border rounded p-2 bg-gray-50">
+                          <h5 className="font-medium text-xs mb-1 text-gray-700">
+                            {categoryLabels[category]}
+                          </h5>
+                          <div className="flex flex-wrap gap-1">
+                            {categoryVars.slice(0, 6).map((variable) => (
+                              <Button
+                                key={variable}
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1 text-xs bg-white hover:bg-gray-100"
+                                onClick={() => insertVariable(variable, 'htmlContent')}
+                              >
+                                {variable.replace(/[{}]/g, '')}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -446,13 +509,11 @@ export function EmailTemplateForm({ template, onSave, onCancel }: EmailTemplateF
                 <div>
                   <Label className="text-sm font-medium">Assunto:</Label>
                   <p className="text-sm bg-gray-50 p-2 rounded border">
-                    {formData.subject?.replace(/\{\{([^}]+)\}\}/g, (match, variable) => {
-                      const sampleData: Record<string, string> = {
-                        'user.name': 'João Silva',
-                        'site.name': 'Caminhos de Hekate'
-                      }
-                      return sampleData[variable] || match
-                    }) || 'Sem assunto'}
+                    {formData.subject ? (
+                      Object.entries(sampleData).reduce((content, [variable, value]) => {
+                        return content.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value)
+                      }, formData.subject)
+                    ) : 'Sem assunto'}
                   </p>
                 </div>
                 
