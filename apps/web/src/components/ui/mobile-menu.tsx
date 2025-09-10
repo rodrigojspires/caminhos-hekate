@@ -19,7 +19,8 @@ import {
   Star,
   Award,
   Calendar,
-  Bell
+  Bell,
+  Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -100,6 +101,15 @@ const dashboardNavigation: NavigationItem[] = [
     title: 'Agenda',
     href: '/dashboard/calendar',
     icon: Calendar
+  },
+  {
+    title: 'Ferramentas',
+    href: '/dashboard/tools',
+    icon: Wrench,
+    children: [
+      { title: 'Horas Planetárias', href: '/dashboard/tools/planetary-hours' },
+      { title: 'Sigilo (Quadrado Mágico)', href: '/dashboard/tools/magic-square-sigil' }
+    ]
   },
   {
     title: 'Comunidade',
