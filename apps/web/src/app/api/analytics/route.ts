@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAnalyticsPermission } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { z } from 'zod'
 
 // Função auxiliar para converter período em milissegundos
@@ -184,7 +184,11 @@ export async function GET(request: NextRequest) {
         // Agregar métricas por período usando AnalyticsMetric
         const periodUnit = query.groupBy || 'day'
         // Construir SQL seguro (groupBy validado pelo Zod)
-        const truncExpr = Prisma.sql([`date_trunc('${periodUnit}', "timestamp")`])
+        const truncExpr =
+          periodUnit === 'hour' ? Prisma.sql`date_trunc('hour', "timestamp")` :
+          periodUnit === 'day' ? Prisma.sql`date_trunc('day', "timestamp")` :
+          periodUnit === 'week' ? Prisma.sql`date_trunc('week', "timestamp")` :
+          Prisma.sql`date_trunc('month', "timestamp")`
         const whereCategory = query.category ? Prisma.sql`AND "category" = ${query.category}` : Prisma.empty
         const whereUser = userId ? Prisma.sql`AND "userId" = ${userId}` : Prisma.empty
         const rows = await prisma.$queryRaw<{ period: Date; count: number; value: number }[]>(
