@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Dashboard | Caminhos de Hekate',
+    default: 'Minha Escola | Caminhos de Hekate',
     template: '%s | Dashboard | Caminhos de Hekate'
   },
   description: 'Área do usuário para perfis, progresso e configurações'

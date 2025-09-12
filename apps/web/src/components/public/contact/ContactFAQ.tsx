@@ -147,7 +147,7 @@ const faqData = {
       question: 'Como acompanho meu progresso nos cursos?',
       answer: 'Seu progresso é automaticamente salvo conforme você assiste às aulas. Você pode visualizar estatísticas detalhadas no seu dashboard, incluindo tempo assistido e exercícios completados.',
       helpful: 156,
-      tags: ['progresso', 'dashboard']
+      tags: ['progresso', 'minha escola']
     },
     {
       question: 'Existe prazo para completar os cursos?',

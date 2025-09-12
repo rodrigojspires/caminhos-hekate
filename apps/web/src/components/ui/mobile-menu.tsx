@@ -82,7 +82,7 @@ const defaultNavigation: NavigationItem[] = [
 
 const dashboardNavigation: NavigationItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Minha Escola',
     href: '/dashboard',
     icon: Home
   },

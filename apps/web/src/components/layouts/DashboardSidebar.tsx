@@ -28,7 +28,7 @@ interface DashboardSidebarProps {
 
 const navigation = [
   {
-    name: 'Dashboard',
+    name: 'Minha Escola',
     href: '/dashboard',
     icon: Home,
   },

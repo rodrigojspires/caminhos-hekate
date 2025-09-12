@@ -137,7 +137,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 overflow-hidden">
       {/* Filters and Sort */}
       <div className="bg-card rounded-lg shadow-sm border p-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
@@ -187,13 +187,13 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
       </div>
 
       {/* Courses List */}
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-0">
         {sortedCourses.map((course) => (
-          <div key={course.id} className="bg-card rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div key={course.id} className="bg-card rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden">
             <div className="p-6">
               <div className="flex gap-4">
                 {/* Course Thumbnail */}
-                <div className="relative w-32 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                <div className="relative w-32 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
                   <Image
                     src={course.thumbnail}
                     alt={course.title}
@@ -224,56 +224,47 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
 
                   {/* Progress Bar */}
                   <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-muted-foreground">
-                        {course.completedLessons} de {course.totalLessons} aulas
-                      </span>
-                      <span className="text-sm font-medium text-foreground">
-                        {course.progress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        className="h-full bg-primary rounded-full"
                         style={{ width: `${course.progress}%` }}
-                      ></div>
+                      />
                     </div>
-                  </div>
-
-                  {/* Course Meta */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {course.duration}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-current text-yellow-400" />
-                      {course.rating}
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(course.level)}`}>
-                      {getLevelText(course.level)}
-                    </span>
-                    {course.lastAccessed && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(course.lastAccessed).toLocaleDateString('pt-BR')}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        <span>{course.duration}</span>
                       </div>
-                    )}
+                      <span className="text-sm font-medium text-foreground">{course.progress}% concluído</span>
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onCourseSelect?.(course.id)}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    >
-                      Continuar
-                    </button>
-                    <button
-                      className="px-4 py-2 border border-input text-foreground rounded-lg hover:bg-accent transition-colors"
-                    >
-                      Ver Detalhes
-                    </button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(course.level)}`}>
+                        {getLevelText(course.level)}
+                      </span>
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        <Star className="w-4 h-4 fill-current" />
+                        <span className="text-sm font-medium text-foreground">{course.rating.toFixed(1)}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-sm">{course.completedLessons}/{course.totalLessons} aulas</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/courses/${course.id}`}
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                      >
+                        Continuar
+                      </Link>
+                      <button className="px-4 py-2 border border-input rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                        Detalhes
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

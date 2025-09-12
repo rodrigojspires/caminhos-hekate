@@ -7,7 +7,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions'
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard'
 
 export const metadata: Metadata = {
-  title: 'Dashboard | Caminhos de Hekate',
+  title: 'Minha Escola | Caminhos de Hekate',
   description: 'Seu painel pessoal de aprendizado'
 }
 

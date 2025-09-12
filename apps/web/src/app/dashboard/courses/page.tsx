@@ -99,8 +99,8 @@ export default async function CoursesPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3">
+      <div className="grid gap-6 items-start lg:grid-cols-4">
+        <div className="lg:col-span-3 min-w-0">
           <CoursesClient 
             inProgressCourses={inProgressCourses}
             completedCourses={completedCourses}
@@ -108,7 +108,7 @@ export default async function CoursesPage() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0 lg:col-span-1">
           <CourseProgress 
             totalCourses={stats.totalCourses}
             completedCourses={stats.completedCourses}

@@ -27,7 +27,7 @@ export function Breadcrumbs({
   separator = <ChevronRight className="h-4 w-4" />
 }: BreadcrumbsProps) {
   const allItems = showHome
-    ? [{ label: 'Dashboard', href: homeHref }, ...items]
+    ? [{ label: 'Minha Escola', href: homeHref }, ...items]
     : items
 
   return (
@@ -93,7 +93,7 @@ export function useBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
     // Mapeamento de rotas para labels mais amigáveis
     const routeLabels: Record<string, string> = {
-      dashboard: 'Dashboard',
+      dashboard: 'Minha Escola',
       courses: 'Meus Cursos',
       progress: 'Progresso',
       certificates: 'Certificados',
