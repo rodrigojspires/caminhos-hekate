@@ -46,17 +46,17 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+    <div className="bg-card rounded-lg shadow-sm border border-border p-6 mb-6">
       <div className="space-y-4">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar cursos..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
@@ -64,15 +64,15 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Category Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Categoria
             </label>
             <div className="relative">
-              <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <select
                 value={category}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
+                className="w-full pl-9 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
               >
                 <option value="all">Todas as Categorias</option>
                 <option value="tarot">Tarô</option>
@@ -88,15 +88,15 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
 
           {/* Level Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Nível
             </label>
             <div className="relative">
-              <Star className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Star className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <select
                 value={level}
                 onChange={(e) => handleLevelChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
+                className="w-full pl-9 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
               >
                 <option value="all">Todos os Níveis</option>
                 <option value="beginner">Iniciante</option>
@@ -108,15 +108,15 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
 
           {/* Status Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Status
             </label>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <select
                 value={status}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
+                className="w-full pl-9 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
               >
                 <option value="all">Todos os Status</option>
                 <option value="not_started">Não Iniciado</option>
@@ -128,15 +128,15 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
 
           {/* Sort */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
               Ordenar por
             </label>
             <div className="relative">
-              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <select
                 value={sort}
                 onChange={(e) => handleSortChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
+                className="w-full pl-9 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
               >
                 <option value="recent">Mais Recentes</option>
                 <option value="progress">Maior Progresso</option>
@@ -149,15 +149,15 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
         </div>
 
         {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-          <span className="text-sm font-medium text-gray-700">Filtros rápidos:</span>
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">Filtros rápidos:</span>
           <button
             onClick={() => {
               setStatus('in_progress')
               setSort('recent')
               onFilterChange({ search, category, level, status: 'in_progress', sort: 'recent' })
             }}
-            className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
+            className="px-3 py-1 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
           >
             Continuar estudando
           </button>
@@ -167,7 +167,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
               setSort('rating')
               onFilterChange({ search, category, level, status: 'not_started', sort: 'rating' })
             }}
-            className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors"
+            className="px-3 py-1 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
           >
             Novos cursos
           </button>
@@ -177,7 +177,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
               setSort('recent')
               onFilterChange({ search, category, level, status: 'completed', sort: 'recent' })
             }}
-            className="px-3 py-1 text-xs bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200 transition-colors"
+            className="px-3 py-1 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
           >
             Concluídos
           </button>

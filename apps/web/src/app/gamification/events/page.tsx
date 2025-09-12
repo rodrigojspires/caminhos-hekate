@@ -595,7 +595,7 @@ export default function EventsPage() {
   useEffect(() => {
     if (status === 'loading') return; // Still loading
     if (!session) {
-      router.push('/auth/signin');
+      router.push('/auth/login');
     }
   }, [session, status, router]);
 

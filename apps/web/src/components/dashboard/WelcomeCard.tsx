@@ -14,8 +14,11 @@ export function WelcomeCard() {
   const [inProgress, setInProgress] = useState<number>(0)
   const [avgProgress, setAvgProgress] = useState<number>(0)
   const [streak, setStreak] = useState<number>(0)
-  const currentHour = new Date().getHours()
-  const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite'
+  const [greeting, setGreeting] = useState<string>('Olá')
+  useEffect(() => {
+    const hour = new Date().getHours()
+    setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite')
+  }, [])
   const name = session?.user?.name || 'Bem-vindo(a)'
 
   useEffect(() => {

@@ -84,7 +84,7 @@ export function LessonList({
       return <CheckCircle className="w-4 h-4 text-green-500" />
     }
     if (lesson.isLocked) {
-      return <Lock className="w-4 h-4 text-gray-400" />
+      return <Lock className="w-4 h-4 text-muted-foreground" />
     }
     
     switch (lesson.type) {

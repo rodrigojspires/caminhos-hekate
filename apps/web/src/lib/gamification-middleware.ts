@@ -277,7 +277,7 @@ export async function manualTrackActivity(
  */
 export const GAMIFICATION_CONFIG = {
   // Routes that should always track login activity
-  LOGIN_ROUTES: ['/api/auth/callback', '/api/auth/signin'],
+  LOGIN_ROUTES: ['/api/auth/callback', '/api/auth/signin', '/auth/login'],
   
   // Routes that should be excluded from tracking
   EXCLUDED_ROUTES: [

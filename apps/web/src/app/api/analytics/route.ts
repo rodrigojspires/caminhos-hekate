@@ -42,14 +42,22 @@ export async function GET(request: NextRequest) {
   try {
     // Verificar permissões de analytics
     const permissionCheck = await checkAnalyticsPermission()
-    
+
+    // Guard contra valor nulo
+    if (!permissionCheck) {
+      return NextResponse.json(
+        { error: 'Não autenticado' },
+        { status: 401 }
+      )
+    }
+
     if ('error' in permissionCheck) {
       return NextResponse.json(
-        { error: permissionCheck.error }, 
+        { error: permissionCheck.error },
         { status: permissionCheck.status }
       )
     }
-    
+
     const { user, isAdmin } = permissionCheck
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
@@ -217,14 +225,22 @@ export async function POST(request: NextRequest) {
   try {
     // Verificar permissões de analytics
     const permissionCheck = await checkAnalyticsPermission()
-    
+
+    // Guard contra valor nulo
+    if (!permissionCheck) {
+      return NextResponse.json(
+        { error: 'Não autenticado' },
+        { status: 401 }
+      )
+    }
+
     if ('error' in permissionCheck) {
       return NextResponse.json(
-        { error: permissionCheck.error }, 
+        { error: permissionCheck.error },
         { status: permissionCheck.status }
       )
     }
-    
+
     const { user } = permissionCheck
     const body = await request.json()
     const { searchParams } = new URL(request.url)

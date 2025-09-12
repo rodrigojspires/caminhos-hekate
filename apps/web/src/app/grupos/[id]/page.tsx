@@ -109,7 +109,7 @@ export default function GroupDetailsPage() {
 
   const handleJoinGroup = async () => {
     if (!session?.user) {
-      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`)
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`)
       return
     }
 

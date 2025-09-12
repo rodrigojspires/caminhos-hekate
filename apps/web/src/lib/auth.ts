@@ -123,7 +123,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/auth/signin",
+    signIn: "/auth/login",
     error: "/auth/error",
   },
 }
@@ -202,12 +202,17 @@ export const checkAnalyticsPermission = async () => {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, role: true }
+    select: { id: true, email: true, role: true }
   })
 
   if (!user) {
     return { error: 'Usuário não encontrado', status: 404 }
   }
 
-  return { user, isAdmin: user.role === 'ADMIN' }
+  const isAdmin = hasAdminAccess(user.role)
+  if (!isAdmin) {
+    return { error: 'Sem permissão', status: 403 }
+  }
+
+  return { user, isAdmin }
 }

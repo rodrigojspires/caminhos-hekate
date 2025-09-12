@@ -295,7 +295,7 @@ export function VideoPlayer({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{bookmark.title}</p>
-                  <p className="text-xs text-gray-400">{formatTime(bookmark.time)}</p>
+                  <p className="text-xs text-muted-foreground">{formatTime(bookmark.time)}</p>
                 </TooltipContent>
               </Tooltip>
             )
@@ -420,7 +420,7 @@ export function VideoPlayer({
                   onClick={() => setShowSubtitles(!showSubtitles)}
                   className={cn(
                     "text-xs",
-                    showSubtitles ? "bg-blue-600" : "bg-gray-600"
+                    showSubtitles ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   )}
                 >
                   {showSubtitles ? 'ON' : 'OFF'}
@@ -445,7 +445,7 @@ export function VideoPlayer({
                   <div className="flex-1">
                     <p className="text-sm font-medium">{bookmark.title}</p>
                     {bookmark.note && (
-                      <p className="text-xs text-gray-400 mt-1">{bookmark.note}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{bookmark.note}</p>
                     )}
                   </div>
                 </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Menu, X, Moon, User, LogOut, Settings, BookOpen } from 'lucide-react'
 import {
@@ -114,11 +114,9 @@ export function PublicHeader() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/auth/signout" className="flex items-center">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sair
-                  </Link>
+                <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/' })}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -171,21 +169,23 @@ export function PublicHeader() {
                       Dashboard
                     </Link>
                   </Button>
-                  <Button variant="ghost" className="w-full" asChild>
-                    <Link href="/auth/signout" onClick={() => setMobileMenuOpen(false)}>
-                      Sair
-                    </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full"
+                    onClick={() => { setMobileMenuOpen(false); signOut({ callbackUrl: '/' }) }}
+                  >
+                    Sair
                   </Button>
                 </>
               ) : (
                 <>
                   <Button variant="outline" className="w-full" asChild>
-                    <Link href="/auth/signin" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                       Entrar
                     </Link>
                   </Button>
                   <Button className="w-full" asChild>
-                    <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
                       Começar Agora
                     </Link>
                   </Button>

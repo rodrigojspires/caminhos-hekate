@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,14 @@ export default function CustomizationPage() {
   const [activeTab, setActiveTab] = useState('appearance')
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [nowString, setNowString] = useState<string>('—')
+
+  useEffect(() => {
+    const updateNow = () => setNowString(new Date().toLocaleString('pt-BR'))
+    updateNow()
+    const id = setInterval(updateNow, 60000)
+    return () => clearInterval(id)
+  }, [])
 
   // Exportar configurações
   const handleExportSettings = async () => {
@@ -320,7 +328,8 @@ export default function CustomizationPage() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Última Atualização:</span>
-                    <span className="ml-2">{new Date().toLocaleString('pt-BR')}</span>
+-                    <span className="ml-2">{new Date().toLocaleString('pt-BR')}</span>
++                    <span className="ml-2">{nowString}</span>
                   </div>
                 </div>
               </div>

@@ -39,7 +39,7 @@ const filtersSchema = z.object({
   endDate: z.string().datetime().optional(),
   tags: z.array(z.string()).optional(),
   createdBy: z.string().optional(),
-  isPublic: z.boolean().optional(),
+  isPublic: z.coerce.boolean().optional(),
   search: z.string().optional(),
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20)

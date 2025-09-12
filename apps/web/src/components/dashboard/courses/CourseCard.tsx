@@ -74,13 +74,13 @@ export function CourseCard({
   const getLevelColor = (level: string) => {
     switch (level) {
       case 'beginner':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
       case 'advanced':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-muted text-foreground'
     }
   }
 
@@ -187,13 +187,13 @@ export function CourseCard({
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-3 right-3 h-8 w-8 p-0 bg-white/80 hover:bg-white"
+            className="absolute top-3 right-3 h-8 w-8 p-0 bg-card/80 hover:bg-card"
             onClick={() => onToggleFavorite?.(course.id)}
           >
             <Bookmark 
               className={cn(
                 'w-4 h-4',
-                course.isFavorite ? 'fill-current text-yellow-500' : 'text-gray-600'
+                course.isFavorite ? 'fill-current text-yellow-500' : 'text-muted-foreground'
               )} 
             />
           </Button>

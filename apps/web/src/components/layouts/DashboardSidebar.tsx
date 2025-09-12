@@ -20,6 +20,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
 
 interface DashboardSidebarProps {
   onClose?: () => void
@@ -35,7 +36,7 @@ const navigation = [
     name: 'Meus Cursos',
     href: '/dashboard/courses',
     icon: BookOpen,
-    badge: '3',
+    // badge removido: será dinâmico via estado
   },
   {
     name: 'Progresso',
@@ -90,6 +91,23 @@ const secondaryNavigation = [
 
 export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const [courseCount, setCourseCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    // Buscar contagem real de cursos do usuário logado
+    fetch('/api/user/courses', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null
+        const data = await res.json()
+        return data?.stats?.totalCourses as number | undefined
+      })
+      .then((count) => {
+        if (isMounted && typeof count === 'number') setCourseCount(count)
+      })
+      .catch(() => {})
+    return () => { isMounted = false }
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -126,6 +144,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
         <nav className="space-y-2">
           {navigation.map((item) => {
             const isActive = pathname === item.href
+            const isCourses = item.href === '/dashboard/courses'
             return (
               <Link
                 key={item.name}
@@ -140,11 +159,15 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
               >
                 <item.icon className="h-4 w-4" />
                 <span className="flex-1">{item.name}</span>
-                {item.badge && (
+                {(isCourses && !!courseCount) ? (
+                  <Badge variant="secondary" className="ml-auto">
+                    {courseCount}
+                  </Badge>
+                ) : item.badge ? (
                   <Badge variant="secondary" className="ml-auto">
                     {item.badge}
                   </Badge>
-                )}
+                ) : null}
               </Link>
             )
           })}

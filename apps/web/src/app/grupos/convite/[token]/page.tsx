@@ -79,7 +79,7 @@ export default function GroupInvitePage() {
 
   const handleJoinGroup = async () => {
     if (!session?.user) {
-      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`)
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`)
       return
     }
 
@@ -314,7 +314,7 @@ export default function GroupInvitePage() {
                     Você precisa estar logado para aceitar este convite
                   </p>
                   <Button asChild className="w-full">
-                    <Link href={`/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`}>
+                    <Link href={`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`}>
                       Fazer Login
                     </Link>
                   </Button>

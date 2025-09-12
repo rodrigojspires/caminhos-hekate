@@ -491,7 +491,7 @@ export default function SecuritySettings() {
         <p className="text-muted-foreground mb-4">
           Você precisa estar logado para acessar as configurações de segurança.
         </p>
-        <Button onClick={() => window.location.href = '/auth/signin'}>
+        <Button onClick={() => window.location.href = '/auth/login'}>
           Fazer Login
         </Button>
       </div>

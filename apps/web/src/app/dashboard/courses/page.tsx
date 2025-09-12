@@ -72,13 +72,13 @@ export default async function CoursesPage() {
   const session = await getServerSession(authOptions)
   
   if (!session?.user) {
-    redirect('/auth/signin')
+    redirect('/auth/login')
   }
 
   const data = await getUserCourses()
   
   if (!data) {
-    redirect('/auth/signin')
+    redirect('/auth/login')
   }
 
   const { courses, stats } = data
