@@ -55,7 +55,7 @@ const menuItems = [
   },
   {
     title: "Posts",
-    href: "/admin/posts",
+    href: "/admin/community/posts",
     icon: FileText,
   },
   {
@@ -63,16 +63,8 @@ const menuItems = [
     href: "/admin/community",
     icon: MessageSquare,
   },
-  {
-    title: "Eventos",
-    href: "/admin/events",
-    icon: Calendar,
-  },
-  {
-    title: "Notificações",
-    href: "/admin/notifications",
-    icon: Bell,
-  },
+  // Eventos e Notificações ainda não possuem páginas no admin
+  // Removidos para evitar 404 no painel
   {
     title: "Relatórios",
     href: "/admin/reports",

@@ -60,21 +60,32 @@ export async function GET(request: NextRequest) {
 
     const { user, isAdmin } = permissionCheck
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type')
+    const type = searchParams.get('type') || undefined
     const period = searchParams.get('period') || '7d'
-    
-    // Validar tipo de consulta
+
+    // Parâmetros opcionais usados para métricas temporais
+    const groupBy = searchParams.get('groupBy') || undefined
+    const startDateParam = searchParams.get('startDate') || undefined
+    const endDateParam = searchParams.get('endDate') || undefined
+    const category = searchParams.get('category') || undefined
+
+    // Validar tipo de consulta (inclui "metrics")
     const querySchema = z.object({
-      type: z.enum(['stats', 'events', 'users']).optional(),
-      period: z.enum(['1d', '7d', '30d', '90d']).default('7d')
+      type: z.enum(['stats', 'events', 'users', 'metrics']).optional(),
+      period: z.enum(['1d', '7d', '30d', '90d']).default('7d'),
+      groupBy: z.enum(['hour', 'day', 'week', 'month']).optional(),
+      startDate: z.string().datetime().optional(),
+      endDate: z.string().datetime().optional(),
+      category: z.string().optional()
     })
-    
-    const query = querySchema.parse({ type, period })
-    
+
+    const query = querySchema.parse({ type, period, groupBy, startDate: startDateParam, endDate: endDateParam, category })
+
     // Definir filtro de usuário baseado nas permissões
     const userId = isAdmin ? undefined : user.id
 
-    const startDate = new Date(Date.now() - getPeriodMs(query.period))
+    const startDate = query.startDate ? new Date(query.startDate) : new Date(Date.now() - getPeriodMs(query.period))
+    const endDate = query.endDate ? new Date(query.endDate) : new Date()
     
     switch (query.type) {
       case 'stats':
@@ -85,18 +96,14 @@ export async function GET(request: NextRequest) {
           },
           where: {
             ...(userId && { userId }),
-            createdAt: {
-              gte: startDate
-            }
+            createdAt: { gte: startDate }
           }
         })
         
         const totalEvents = await prisma.analyticsEvent.count({
           where: {
             ...(userId && { userId }),
-            createdAt: {
-              gte: startDate
-            }
+            createdAt: { gte: startDate }
           }
         })
         
@@ -114,9 +121,7 @@ export async function GET(request: NextRequest) {
         const events = await prisma.analyticsEvent.findMany({
           where: {
             ...(userId && { userId }),
-            createdAt: {
-              gte: startDate
-            }
+            createdAt: { gte: startDate }
           },
           orderBy: {
             createdAt: 'desc'
@@ -157,9 +162,7 @@ export async function GET(request: NextRequest) {
               select: {
                 analyticsEvents: {
                   where: {
-                    createdAt: {
-                      gte: startDate
-                    }
+                    createdAt: { gte: startDate }
                   }
                 }
               }
@@ -176,7 +179,37 @@ export async function GET(request: NextRequest) {
           period: query.period,
           isAdmin
         })
-        
+
+      case 'metrics': {
+        // Agregar métricas por período usando AnalyticsMetric
+        const periodUnit = query.groupBy || 'day'
+        // Construir SQL seguro (groupBy validado pelo Zod)
+        const truncExpr = Prisma.sql([`date_trunc('${periodUnit}', "timestamp")`])
+        const whereCategory = query.category ? Prisma.sql`AND "category" = ${query.category}` : Prisma.empty
+        const whereUser = userId ? Prisma.sql`AND "userId" = ${userId}` : Prisma.empty
+        const rows = await prisma.$queryRaw<{ period: Date; count: number; value: number }[]>(
+          Prisma.sql`
+            SELECT 
+              ${truncExpr} AS period,
+              COUNT(*)::int AS count,
+              COALESCE(SUM("value"), 0)::float AS value
+            FROM "analytics_metrics"
+            WHERE "timestamp" >= ${startDate}
+              AND "timestamp" <= ${endDate}
+              ${whereCategory}
+              ${whereUser}
+            GROUP BY 1
+            ORDER BY 1 ASC
+          `
+        )
+        const data = rows.map(r => ({
+          timestamp: r.period.toISOString(),
+          count: Number(r.count || 0),
+          value: Number(r.value || 0)
+        }))
+        return NextResponse.json(data)
+      }
+      
       default:
         // Retornar estatísticas gerais por padrão
         const defaultStats = await prisma.analyticsEvent.groupBy({
@@ -186,18 +219,14 @@ export async function GET(request: NextRequest) {
           },
           where: {
             ...(userId && { userId }),
-            createdAt: {
-              gte: startDate
-            }
+            createdAt: { gte: startDate }
           }
         })
         
         const defaultTotal = await prisma.analyticsEvent.count({
           where: {
             ...(userId && { userId }),
-            createdAt: {
-              gte: startDate
-            }
+            createdAt: { gte: startDate }
           }
         })
         
@@ -213,10 +242,13 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('Erro ao obter analytics:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Parâmetros inválidos', details: error.errors },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
 
