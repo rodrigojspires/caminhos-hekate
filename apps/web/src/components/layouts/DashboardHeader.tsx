@@ -13,15 +13,28 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { Bell, Menu, Search, Settings, User, LogOut } from 'lucide-react'
+import { Menu, Search, Settings, User, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { NotificationBell } from '@/components/ui/notification-bell'
+import { useSession, signOut } from 'next-auth/react'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
   sidebarOpen: boolean
 }
 
-export function DashboardHeader({ onMenuClick, sidebarOpen }: DashboardHeaderProps) {
+export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const { data: session } = useSession()
+  const user = session?.user
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'US'
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
       {/* Mobile menu button */}
@@ -52,33 +65,24 @@ export function DashboardHeader({ onMenuClick, sidebarOpen }: DashboardHeaderPro
         <ThemeToggle variant="button" size="sm" />
         
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <Badge 
-            variant="destructive" 
-            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs"
-          >
-            3
-          </Badge>
-          <span className="sr-only">Notificações</span>
-        </Button>
+        <NotificationBell />
 
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/avatars/user.jpg" alt="Avatar" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={user?.image || '/avatars/user.jpg'} alt="Avatar" />
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">João Silva</p>
+                <p className="text-sm font-medium leading-none">{user?.name || 'Usuário'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  joao@exemplo.com
+                  {user?.email || '—'}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -96,7 +100,12 @@ export function DashboardHeader({ onMenuClick, sidebarOpen }: DashboardHeaderPro
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault()
+                signOut()
+              }}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
