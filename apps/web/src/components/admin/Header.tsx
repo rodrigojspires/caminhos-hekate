@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { signOut } from "next-auth/react"
-import { Bell, Search, User, LogOut, Settings, Moon, Sun } from "lucide-react"
+import Link from "next/link"
+import { Bell, Search, User, LogOut, Settings, Moon, Sun, LayoutDashboard } from "lucide-react"
 import { useAdminSession } from "@/hooks/use-admin-session"
 import { cn } from "@/lib/utils"
 
@@ -122,20 +123,24 @@ export function Header({ title = "Dashboard" }: HeaderProps) {
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                 <div className="p-2">
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                    <Settings className="w-4 h-4" />
-                    <span>Configurações</span>
-                  </button>
-                  <button 
-                    onClick={handleSignOut}
-                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sair</span>
-                  </button>
-                </div>
-              </div>
-            )}
+                  <Link href="/dashboard" className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Ir para Dashboard</span>
+                  </Link>
+                   <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                     <Settings className="w-4 h-4" />
+                     <span>Configurações</span>
+                   </button>
+                   <button 
+                     onClick={handleSignOut}
+                     className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                   >
+                     <LogOut className="w-4 h-4" />
+                     <span>Sair</span>
+                   </button>
+                 </div>
+               </div>
+             )}
           </div>
         </div>
       </div>

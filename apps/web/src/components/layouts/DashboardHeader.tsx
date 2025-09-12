@@ -16,6 +16,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Menu, Search, Settings, User, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { NotificationBell } from '@/components/ui/notification-bell'
+import { useAdminSession } from '@/hooks/use-admin-session'
 import { useSession, signOut } from 'next-auth/react'
 
 interface DashboardHeaderProps {
@@ -26,6 +27,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const { data: session } = useSession()
   const user = session?.user
+  const { hasAdminAccess } = useAdminSession()
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -64,6 +66,13 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         {/* Theme Toggle */}
         <ThemeToggle variant="button" size="sm" />
         
+        {/* Go to Admin Panel (only for admins/editors) */}
+        {hasAdminAccess && (
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/admin">Painel Admin</Link>
+          </Button>
+        )}
+
         {/* Notifications */}
         <NotificationBell />
 
