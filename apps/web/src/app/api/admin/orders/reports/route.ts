@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { z } from 'zod'
 
 // Schema de validação para filtros de relatório
@@ -120,7 +120,9 @@ export async function GET(request: NextRequest) {
     })
     
     // 3. Vendas por dia (últimos 30 dias ou período especificado)
-    const salesByDay = await prisma.$queryRaw`
+    const statusCondition = filters.status ? Prisma.sql`AND "status" = ${filters.status}` : Prisma.empty
+    const salesByDay = await prisma.$queryRaw(
+      Prisma.sql`
       SELECT 
         DATE("createdAt") as date,
         COUNT(*)::int as orders,
@@ -128,11 +130,11 @@ export async function GET(request: NextRequest) {
       FROM "Order"
       WHERE "createdAt" >= ${start}
         AND "createdAt" <= ${end}
-        ${filters.status ? prisma.$queryRaw`AND "status" = ${filters.status}` : prisma.$queryRaw``}
+        ${statusCondition}
       GROUP BY DATE("createdAt")
       ORDER BY date DESC
       LIMIT 30
-    `
+    `)
     
     // 4. Top produtos mais vendidos
     const topProducts = await prisma.orderItem.groupBy({
@@ -188,13 +190,14 @@ export async function GET(request: NextRequest) {
     // 5. Clientes com mais pedidos
     const topCustomers = await prisma.order.groupBy({
       by: ['userId'],
-      where: whereClause,
+      where: {
+        ...whereClause,
+        userId: { not: null },
+      },
       _count: { _all: true },
       _sum: { total: true },
       orderBy: {
-        _count: {
-          id: 'desc'
-        }
+        _count: { userId: 'desc' }
       },
       take: 10
     })

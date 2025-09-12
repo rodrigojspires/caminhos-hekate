@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { signOut } from "next-auth/react"
 import Link from "next/link"
-import { Bell, Search, User, LogOut, Settings, Moon, Sun, LayoutDashboard } from "lucide-react"
+import { Search, User, LogOut, Settings, Moon, Sun, LayoutDashboard } from "lucide-react"
 import { useAdminSession } from "@/hooks/use-admin-session"
 import { cn } from "@/lib/utils"
+import { NotificationBell } from "@/components/ui/notification-bell"
 
 interface HeaderProps {
   title?: string
@@ -14,7 +15,6 @@ interface HeaderProps {
 export function Header({ title = "Dashboard" }: HeaderProps) {
   const { user, isAdmin } = useAdminSession()
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showNotifications, setShowNotifications] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(true)
 
   const handleSignOut = async () => {
@@ -60,45 +60,7 @@ export function Header({ title = "Dashboard" }: HeaderProps) {
           </button>
 
           {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                3
-              </span>
-            </button>
-
-            {/* Notifications Dropdown */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Novo pedido recebido</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Há 5 minutos</p>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Usuário se inscreveu no curso</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Há 1 hora</p>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Novo comentário na comunidade</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Há 2 horas</p>
-                  </div>
-                </div>
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                    Ver todas as notificações
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <NotificationBell />
 
           {/* User Menu */}
           <div className="relative">
