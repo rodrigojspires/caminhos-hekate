@@ -129,7 +129,8 @@ export async function GET(request: NextRequest) {
         const achievementCounts = await prisma.userAchievement.groupBy({
           by: ['userId'],
           where: {
-            ...(startDate ? { unlockedAt: { gte: startDate } } : {})
+            ...(startDate ? { unlockedAt: { gte: startDate } } : {}),
+            user: { NOT: { email: { startsWith: 'deleted_' } } }
           },
           _count: {
             _all: true,
@@ -147,7 +148,8 @@ export async function GET(request: NextRequest) {
         const userIds = achievementCounts.map(entry => entry.userId)
         const users = await prisma.user.findMany({
           where: {
-            id: { in: userIds }
+            id: { in: userIds },
+            NOT: { email: { startsWith: 'deleted_' } }
           },
           select: {
             id: true,
@@ -181,7 +183,8 @@ export async function GET(request: NextRequest) {
         const streakLeaderboard = await prisma.userStreak.findMany({
           where: {
             isActive: true,
-            ...(startDate ? { createdAt: { gte: startDate } } : {})
+            ...(startDate ? { createdAt: { gte: startDate } } : {}),
+            user: { NOT: { email: { startsWith: 'deleted_' } } }
           },
           include: {
             user: {

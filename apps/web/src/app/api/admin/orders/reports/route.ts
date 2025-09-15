@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
     // Buscar informações dos usuários
     const userIds = topCustomers.map(item => item.userId).filter((id): id is string => id !== null)
     const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
+      where: { id: { in: userIds }, NOT: { email: { startsWith: 'deleted_' } } },
       select: {
         id: true,
         name: true,

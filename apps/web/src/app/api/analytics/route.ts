@@ -153,6 +153,7 @@ export async function GET(request: NextRequest) {
         }
         
         const users = await prisma.user.findMany({
+          where: { NOT: { email: { startsWith: 'deleted_' } } },
           select: {
             id: true,
             name: true,

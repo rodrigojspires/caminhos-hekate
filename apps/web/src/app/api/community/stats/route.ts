@@ -10,6 +10,8 @@ export async function GET(_req: NextRequest) {
   try {
     const today = startOfToday()
 
+    const baseUserFilter = { NOT: { email: { startsWith: 'deleted_' } } } as const
+
     const [
       totalMembers,
       totalPosts,
@@ -20,17 +22,18 @@ export async function GET(_req: NextRequest) {
       newPostsToday,
       newCommentsToday,
     ] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where: baseUserFilter }),
       prisma.post.count(),
       prisma.comment.count(),
       prisma.topic.count(),
       prisma.reaction.count(),
-      prisma.user.count({ where: { createdAt: { gte: today } } }),
+      prisma.user.count({ where: { ...baseUserFilter, createdAt: { gte: today } } }),
       prisma.post.count({ where: { createdAt: { gte: today } } }),
       prisma.comment.count({ where: { createdAt: { gte: today } } }),
     ])
 
     const mostActiveMembers = await prisma.user.findMany({
+      where: baseUserFilter,
       select: {
         id: true,
         name: true,
@@ -100,4 +103,3 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao obter estatísticas' }, { status: 500 })
   }
 }
-

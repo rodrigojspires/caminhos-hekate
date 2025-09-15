@@ -18,7 +18,8 @@ import {
   FileText,
   Calendar,
   Bell,
-  DollarSign
+  DollarSign,
+  Trophy
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -54,6 +55,11 @@ const menuItems = [
     icon: BookOpen,
   },
   {
+    title: "Eventos",
+    href: "/admin/events",
+    icon: Calendar,
+  },
+  {
     title: "Posts",
     href: "/admin/community/posts",
     icon: FileText,
@@ -62,6 +68,11 @@ const menuItems = [
     title: "Comunidade",
     href: "/admin/community",
     icon: MessageSquare,
+  },
+  {
+    title: "Gamification",
+    href: "/admin/gamification",
+    icon: Trophy,
   },
   // Eventos e Notificações ainda não possuem páginas no admin
   // Removidos para evitar 404 no painel

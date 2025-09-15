@@ -21,16 +21,21 @@ export async function GET(_request: NextRequest) {
     const prevMonthEnd = new Date(thisMonthStart.getTime() - 1)
 
     // Users metrics
+    const baseUserFilter = { NOT: { email: { startsWith: 'deleted_' } } } as const
+
     const [usersTotal, activeUserIds, newThisMonth] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where: baseUserFilter }),
       prisma.loginHistory.findMany({
         where: { createdAt: { gte: last30 } },
         distinct: ['userId'],
         select: { userId: true },
       }),
-      prisma.user.count({ where: { createdAt: { gte: thisMonthStart } } }),
+      prisma.user.count({ where: { ...baseUserFilter, createdAt: { gte: thisMonthStart } } }),
     ])
-    const usersActive = activeUserIds.length
+    const activeIds = activeUserIds.map(u => u.userId).filter((id): id is string => !!id)
+    const usersActive = activeIds.length
+      ? await prisma.user.count({ where: { ...baseUserFilter, id: { in: activeIds } } })
+      : 0
     const retentionRate = usersTotal > 0 ? usersActive / usersTotal : 0
 
     // Courses metrics
@@ -115,10 +120,13 @@ export async function GET(_request: NextRequest) {
         distinct: ['authorId'],
       }),
     ])
-    const communityActiveUsers = new Set([
+    const authorIds = Array.from(new Set([
       ...recentPostsAuthors.map((a) => a.authorId),
       ...recentCommentsAuthors.map((a) => a.authorId),
-    ]).size
+    ].filter((id): id is string => !!id)))
+    const communityActiveUsers = authorIds.length
+      ? await prisma.user.count({ where: { ...baseUserFilter, id: { in: authorIds } } })
+      : 0
     const engagementRate = usersTotal > 0 ? communityActiveUsers / usersTotal : 0
 
     const payload = {
@@ -160,4 +168,3 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

@@ -213,11 +213,11 @@ export function RegisterForm({
               />
               <Label htmlFor="terms" className="text-sm">
                 Aceito os{" "}
-                <a href="/terms" className="text-primary hover:underline">
+                <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                   termos de uso
                 </a>{" "}
                 e{" "}
-                <a href="/privacy" className="text-primary hover:underline">
+                <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                   política de privacidade
                 </a>
               </Label>

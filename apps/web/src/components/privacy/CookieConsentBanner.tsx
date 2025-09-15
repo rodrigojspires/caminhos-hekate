@@ -42,28 +42,28 @@ export default function CookieConsentBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-white border-t shadow p-4">
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t shadow p-4 bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-800">
       <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="text-sm text-gray-700 flex-1">
-          Usamos cookies para melhorar sua experiência. Leia nossa <a className="underline" href="/cookies">política de cookies</a>.
+        <div className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+          Usamos cookies para melhorar sua experiência. Leia nossa {" "}
+          <a className="underline hover:opacity-80" href="/cookies" target="_blank" rel="noopener noreferrer">política de cookies</a>.
         </div>
         <div className="flex items-center gap-4">
-          <label className="text-sm flex items-center gap-2">
-            <input type="checkbox" checked disabled /> Necessários
+          <label className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-200">
+            <input type="checkbox" checked disabled aria-label="Cookies necessários" /> Necessários
           </label>
-          <label className="text-sm flex items-center gap-2">
-            <input type="checkbox" checked={cats.analytics} onChange={e => setCats(p => ({ ...p, analytics: e.target.checked }))} /> Analytics
+          <label className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-200">
+            <input type="checkbox" checked={cats.analytics} onChange={e => setCats(p => ({ ...p, analytics: e.target.checked }))} aria-label="Cookies de analytics" /> Analytics
           </label>
-          <label className="text-sm flex items-center gap-2">
-            <input type="checkbox" checked={cats.marketing} onChange={e => setCats(p => ({ ...p, marketing: e.target.checked }))} /> Marketing
+          <label className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-200">
+            <input type="checkbox" checked={cats.marketing} onChange={e => setCats(p => ({ ...p, marketing: e.target.checked }))} aria-label="Cookies de marketing" /> Marketing
           </label>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={save} className="px-3 py-2 border rounded">Salvar</button>
-          <button onClick={acceptAll} className="px-3 py-2 bg-primary text-white rounded">Aceitar tudo</button>
+          <button onClick={save} className="px-3 py-2 border rounded bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Salvar</button>
+          <button onClick={acceptAll} className="px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700">Aceitar tudo</button>
         </div>
       </div>
     </div>
   )
 }
-

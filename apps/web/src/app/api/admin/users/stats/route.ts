@@ -16,12 +16,15 @@ export async function GET(request: NextRequest) {
     startDate.setDate(startDate.getDate() - (isFinite(periodDays) ? periodDays : 30))
 
     // Totais básicos
+    const baseUserFilter = { NOT: { email: { startsWith: 'deleted_' } } } as const
+
     const [totalUsers, newUsers, premiumUsersByTier, activeUsersGroup] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { createdAt: { gte: startDate } } }),
+      prisma.user.count({ where: baseUserFilter }),
+      prisma.user.count({ where: { ...baseUserFilter, createdAt: { gte: startDate } } }),
       prisma.user.groupBy({
         by: ['subscriptionTier'],
         _count: { _all: true },
+        where: baseUserFilter,
       }),
       // Usuários ativos: com histórico de login nos últimos N dias
       prisma.loginHistory.groupBy({
@@ -38,13 +41,19 @@ export async function GET(request: NextRequest) {
 
     const conversionRate = totalUsers > 0 ? (premiumUsers / totalUsers) * 100 : 0
 
+    // Contar usuários ativos (apenas não deletados)
+    const activeUserIds = activeUsersGroup.map(g => g.userId).filter((id): id is string => !!id)
+    const activeUsers = activeUserIds.length
+      ? await prisma.user.count({ where: { ...baseUserFilter, id: { in: activeUserIds } } })
+      : 0
+
     return NextResponse.json({
       overview: {
         totalUsers,
         newUsers,
         premiumUsers,
         conversionRate,
-        activeUsers: activeUsersGroup.filter(g => g.userId !== null).length,
+        activeUsers,
       },
       distribution: {
         subscription: premiumUsersByTier.map((t) => ({
