@@ -44,7 +44,11 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Construir filtros
-    const where: any = {}
+    const where: any = {
+      NOT: {
+        email: { startsWith: 'deleted_' }
+      }
+    }
     
     if (search) {
       where.OR = [

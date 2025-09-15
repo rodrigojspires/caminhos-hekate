@@ -177,8 +177,8 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
   return (
     <div className="space-y-6">
       {/* Status atual */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Status da Assinatura
         </h3>
         
@@ -190,10 +190,10 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
           </div>
           
           <div>
-            <div className="font-medium text-gray-900">
+            <div className="font-medium text-gray-900 dark:text-gray-100">
               Plano {currentPlan?.name}
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {currentPlan?.description}
             </div>
           </div>
@@ -203,8 +203,8 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Iniciado em:</span>
-              <span className="font-medium">
+              <span className="text-gray-600 dark:text-gray-300">Iniciado em:</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">
                 {format(new Date(user.subscriptionStartedAt), 'dd/MM/yyyy', { locale: ptBR })}
               </span>
             </div>
@@ -212,8 +212,8 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
             {user.subscriptionExpiresAt && (
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600">Expira em:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-300">Expira em:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
                   {format(new Date(user.subscriptionExpiresAt), 'dd/MM/yyyy', { locale: ptBR })}
                 </span>
               </div>
@@ -223,8 +223,8 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
       </div>
 
       {/* Alterar plano */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Alterar Assinatura
         </h3>
         
@@ -235,31 +235,31 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
               key={plan.id}
               className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                 selectedPlan === plan.id
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
               onClick={() => setSelectedPlan(plan.id)}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className={`p-2 rounded-lg ${plan.bgColor}`}>
+                <div className={`p-2 rounded-lg ${plan.bgColor} dark:opacity-90`}>
                   <div className={plan.color}>
                     {plan.icon}
                   </div>
                 </div>
                 
                 <div>
-                  <div className="font-medium text-gray-900">{plan.name}</div>
-                  <div className="text-sm text-gray-500">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">{plan.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     {plan.price > 0 ? `R$ ${plan.price}/mês` : 'Gratuito'}
                   </div>
                 </div>
               </div>
               
-              <div className="text-sm text-gray-600 mb-3">
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 {plan.description}
               </div>
               
-              <ul className="text-xs text-gray-500 space-y-1">
+              <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                 {plan.features.map((feature, index) => (
                   <li key={index}>• {feature}</li>
                 ))}
@@ -271,7 +271,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
         {/* Duração (apenas para planos pagos) */}
         {selectedPlan !== 'FREE' && (
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Duração
             </label>
             <div className="flex gap-4">
@@ -283,7 +283,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
                   onChange={(e) => setDuration(e.target.value as 'monthly' | 'yearly')}
                   className="mr-2"
                 />
-                Mensal
+                <span className="text-gray-800 dark:text-gray-200">Mensal</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -293,7 +293,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
                   onChange={(e) => setDuration(e.target.value as 'monthly' | 'yearly')}
                   className="mr-2"
                 />
-                Anual (2 meses grátis)
+                <span className="text-gray-800 dark:text-gray-200">Anual (2 meses grátis)</span>
               </label>
             </div>
           </div>
@@ -301,14 +301,14 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
         
         {/* Resumo da alteração */}
         {selectedPlan !== user.subscriptionTier && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div>
-                <div className="font-medium text-blue-900 mb-1">
+                <div className="font-medium text-blue-900 dark:text-blue-200 mb-1">
                   Alteração de Plano
                 </div>
-                <div className="text-sm text-blue-700">
+                <div className="text-sm text-blue-700 dark:text-blue-300">
                   {currentPlan?.name} → {newPlan?.name}
                   {selectedPlan !== 'FREE' && (
                     <span className="ml-2">
@@ -317,7 +317,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
                   )}
                 </div>
                 {selectedPlan !== 'FREE' && (
-                  <div className="text-xs text-blue-600 mt-1">
+                  <div className="text-xs text-blue-600 dark:text-blue-300 mt-1">
                     Nova data de expiração: {calculateExpirationDate(selectedPlan, duration) && 
                       format(calculateExpirationDate(selectedPlan, duration)!, 'dd/MM/yyyy', { locale: ptBR })
                     }

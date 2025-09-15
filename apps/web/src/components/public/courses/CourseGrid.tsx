@@ -209,7 +209,7 @@ export function CourseGrid() {
         >
           {courses.map((course) => (
             <motion.div key={course.id} variants={itemVariants}>
-              <Card className="group hover:shadow-2xl transition-all duration-500 border-0 bg-white overflow-hidden">
+              <Card className="group hover:shadow-2xl transition-all duration-500 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
                 {/* Thumbnail */}
                 <div className="relative overflow-hidden">
                   <Image
@@ -244,7 +244,7 @@ export function CourseGrid() {
 
                   {/* Category */}
                   <div className="absolute top-4 right-4">
-                    <Badge variant="outline" className="bg-white/90 text-gray-700">
+                    <Badge variant="outline" className="bg-white/90 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-white/0 dark:border-gray-700">
                       {course.category}
                     </Badge>
                   </div>
@@ -253,10 +253,10 @@ export function CourseGrid() {
                 <CardContent className="p-6">
                   {/* Title and Description */}
                   <div className="mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors duration-300">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-purple-600 transition-colors duration-300">
                       {course.title}
                     </h3>
-                    <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed line-clamp-2">
                       {course.description}
                     </p>
                   </div>
@@ -268,13 +268,13 @@ export function CourseGrid() {
                       <AvatarFallback>{course.instructor.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{course.instructor.name}</div>
-                      <div className="text-xs text-gray-500">{course.instructor.title}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{course.instructor.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{course.instructor.title}</div>
                     </div>
                   </div>
 
                   {/* Stats */}
-                  <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 mb-4 text-sm text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {course.duration}
@@ -303,8 +303,8 @@ export function CourseGrid() {
                         />
                       ))}
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{course.rating}</span>
-                    <span className="text-sm text-gray-500">({course.reviews} avaliações)</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{course.rating}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">({course.reviews} avaliações)</span>
                   </div>
 
                   {/* Highlights */}
@@ -323,11 +323,11 @@ export function CourseGrid() {
                         <span className="text-2xl font-bold text-green-600">Gratuito</span>
                       ) : (
                         <>
-                          <span className="text-2xl font-bold text-gray-900">
+                          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                             R$ {course.price}
                           </span>
                           {course.originalPrice > course.price && (
-                            <span className="text-sm text-gray-500 line-through">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
                               R$ {course.originalPrice}
                             </span>
                           )}

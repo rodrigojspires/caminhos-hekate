@@ -88,7 +88,7 @@ const statusConfig = {
   ACTIVE: { label: 'Ativo', variant: 'default' as const, color: 'bg-green-100 text-green-800' },
   INACTIVE: { label: 'Inativo', variant: 'secondary' as const, color: 'bg-gray-100 text-gray-800' },
   OUT_OF_STOCK: { label: 'Fora de Estoque', variant: 'destructive' as const, color: 'bg-red-100 text-red-800' },
-}
+} as const
 
 const typeConfig = {
   PHYSICAL: { label: 'Físico', color: 'bg-blue-100 text-blue-800' },
@@ -262,12 +262,17 @@ export function ProductTable({
                         </TableCell>
                         
                         <TableCell>
-                          <Badge 
-                            variant="outline" 
-                            className={typeConfig[product.type].color}
-                          >
-                            {typeConfig[product.type].label}
-                          </Badge>
+                          {(() => {
+                            const tcfg = typeConfig[product.type as keyof typeof typeConfig] || typeConfig.DIGITAL
+                            return (
+                              <Badge 
+                                variant="outline" 
+                                className={tcfg.color}
+                              >
+                                {tcfg.label}
+                              </Badge>
+                            )
+                          })()}
                         </TableCell>
                         
                         <TableCell>
@@ -284,12 +289,17 @@ export function ProductTable({
                         </TableCell>
                         
                         <TableCell>
-                          <Badge 
-                            variant={statusConfig[product.status].variant}
-                            className={statusConfig[product.status].color}
-                          >
-                            {statusConfig[product.status].label}
-                          </Badge>
+                          {(() => {
+                            const cfg = statusConfig[product.status as keyof typeof statusConfig] || statusConfig.ACTIVE
+                            return (
+                              <Badge 
+                                variant={cfg.variant}
+                                className={cfg.color}
+                              >
+                                {cfg.label}
+                              </Badge>
+                            )
+                          })()}
                         </TableCell>
                         
                         <TableCell>

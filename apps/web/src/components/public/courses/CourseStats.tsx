@@ -86,7 +86,7 @@ const itemVariants = {
 
 export function CourseStats() {
   return (
-    <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
+    <section className="py-20 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
@@ -96,13 +96,13 @@ export function CourseStats() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-6">
             Números que
             <span className="block bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
               Falam por Si
             </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Nossa plataforma é reconhecida pela qualidade excepcional e resultados transformadores. 
             Veja os números que comprovam nosso compromisso com sua jornada de crescimento.
           </p>
@@ -120,7 +120,7 @@ export function CourseStats() {
             const Icon = stat.icon
             return (
               <motion.div key={stat.label} variants={itemVariants}>
-                <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm hover:bg-white">
+                <Card className="group hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900">
                   <CardContent className="p-6 text-center">
                     {/* Icon */}
                     <div className="relative mb-4">
@@ -131,17 +131,17 @@ export function CourseStats() {
                     </div>
 
                     {/* Value */}
-                    <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 group-hover:scale-105 transition-transform duration-300">
+                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:scale-105 transition-transform duration-300">
                       {stat.value}
                     </div>
 
                     {/* Label */}
-                    <div className="text-lg font-semibold text-gray-800 mb-2">
+                    <div className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                       {stat.label}
                     </div>
 
                     {/* Description */}
-                    <div className="text-sm text-gray-600 leading-relaxed">
+                    <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                       {stat.description}
                     </div>
                   </CardContent>

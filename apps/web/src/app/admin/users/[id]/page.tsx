@@ -337,9 +337,9 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       )}
       
       {activeTab === 'orders' && (
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Histórico de Pedidos
             </h2>
           </div>
@@ -348,21 +348,21 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             {user.orders.length > 0 ? (
               <div className="space-y-4">
                 {user.orders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
                     <div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         Pedido #{order.id.slice(-8)}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                       </div>
                     </div>
                     
                     <div className="text-right">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         R$ {order.total.toFixed(2)}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {order.status}
                       </div>
                     </div>
@@ -370,7 +370,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
                 Nenhum pedido encontrado
               </p>
             )}
@@ -379,9 +379,9 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       )}
       
       {activeTab === 'courses' && (
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Cursos Matriculados
             </h2>
           </div>
@@ -390,21 +390,21 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             {user.enrollments.length > 0 ? (
               <div className="space-y-4">
                 {user.enrollments.map((enrollment) => (
-                  <div key={enrollment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div key={enrollment.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
                     <div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         {enrollment.course.title}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         Matriculado em {format(new Date(enrollment.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                       </div>
                     </div>
                     
                     <div className="text-right">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         {enrollment.progress}% concluído
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {enrollment.status}
                       </div>
                     </div>
@@ -412,7 +412,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
                 Nenhum curso encontrado
               </p>
             )}

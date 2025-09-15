@@ -271,17 +271,27 @@ export function LoginForm({
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password.message}</p>
-                )}
               </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
+            {/* Forgot password link */}
+            <div className="flex justify-end -mt-2 mb-2">
+              <a
+                href="/auth/forgot-password"
+                className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              >
+                Esqueci minha senha
+              </a>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entrando...
                   </>
                 ) : (
                   "Entrar"

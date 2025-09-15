@@ -74,7 +74,7 @@ export function CourseFilters() {
   }
 
   return (
-    <section className="py-12 bg-white border-b">
+    <section className="py-12 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4">
         {/* Search and Quick Actions */}
         <div className="flex flex-col lg:flex-row gap-4 mb-8">
@@ -85,7 +85,7 @@ export function CourseFilters() {
               placeholder="Busque por cursos, temas ou instrutores..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 pr-4 py-3 text-lg border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+              className="pl-12 pr-4 py-3 text-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:border-purple-500 focus:ring-purple-500"
             />
           </div>
 
@@ -109,7 +109,7 @@ export function CourseFilters() {
               <Button
                 variant="ghost"
                 onClick={clearAllFilters}
-                className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-gray-900"
+                className="flex items-center gap-2 px-4 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
               >
                 <X className="w-4 h-4" />
                 Limpar
@@ -130,7 +130,7 @@ export function CourseFilters() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   selectedCategory === category.id
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
                 {category.name}
@@ -149,19 +149,19 @@ export function CourseFilters() {
             transition={{ duration: 0.3 }}
             className="mb-8"
           >
-            <Card>
+            <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Level Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Nível
                     </label>
                     <div className="relative">
                       <select
                         value={selectedLevel}
                         onChange={(e) => setSelectedLevel(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white"
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
                       >
                         {levels.map((level) => (
                           <option key={level.id} value={level.id}>
@@ -169,20 +169,20 @@ export function CourseFilters() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Duration Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Duração
                     </label>
                     <div className="relative">
                       <select
                         value={selectedDuration}
                         onChange={(e) => setSelectedDuration(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white"
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
                       >
                         {durations.map((duration) => (
                           <option key={duration.id} value={duration.id}>
@@ -190,20 +190,20 @@ export function CourseFilters() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Price Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Preço
                     </label>
                     <div className="relative">
                       <select
                         value={selectedPrice}
                         onChange={(e) => setSelectedPrice(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white"
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
                       >
                         {prices.map((price) => (
                           <option key={price.id} value={price.id}>
@@ -211,20 +211,20 @@ export function CourseFilters() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Sort Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Ordenar por
                     </label>
                     <div className="relative">
                       <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white"
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:border-purple-500 focus:ring-purple-500 appearance-none bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
                       >
                         {sortOptions.map((option) => (
                           <option key={option.id} value={option.id}>
@@ -232,7 +232,7 @@ export function CourseFilters() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -242,13 +242,13 @@ export function CourseFilters() {
         )}
 
         {/* Results Summary */}
-        <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
           <div>
-            Mostrando <span className="font-semibold text-gray-900">150 cursos</span> encontrados
+            Mostrando <span className="font-semibold text-gray-900 dark:text-gray-100">150 cursos</span> encontrados
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4" />
-            Ordenado por: <span className="font-semibold text-gray-900">{sortOptions.find(opt => opt.id === sortBy)?.name}</span>
+            Ordenado por: <span className="font-semibold text-gray-900 dark:text-gray-100">{sortOptions.find(opt => opt.id === sortBy)?.name}</span>
           </div>
         </div>
       </div>
