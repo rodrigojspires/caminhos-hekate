@@ -21,9 +21,8 @@ interface User {
   id: string
   name: string | null
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   createdAt: string
   updatedAt: string
   _count: {
@@ -83,18 +82,12 @@ export function UserTable({
   // Renderizar badge de role
   const renderRoleBadge = (role: string) => {
     const configMap: Record<string, { icon: any; className: string; label: string }> = {
-      ADMIN: {
-        icon: Shield,
-        className: 'bg-red-100 text-red-800',
-        label: 'Admin'
-      },
-      USER: {
-        icon: User,
-        className: 'bg-gray-100 text-gray-800',
-        label: 'Usuário'
-      }
+      ADMIN: { icon: Shield, className: 'bg-red-100 text-red-800', label: 'Admin' },
+      EDITOR: { icon: Shield, className: 'bg-orange-100 text-orange-800', label: 'Editor' },
+      MEMBER: { icon: User, className: 'bg-gray-100 text-gray-800', label: 'Membro' },
+      VISITOR: { icon: User, className: 'bg-gray-100 text-gray-800', label: 'Visitante' },
     }
-    const config = configMap[role] || configMap.USER
+    const config = configMap[role] || configMap.MEMBER
 
     const Icon = config.icon
 
@@ -107,25 +100,14 @@ export function UserTable({
   }
 
   // Renderizar badge de assinatura
-  const renderSubscriptionBadge = (subscription: string) => {
+  const renderSubscriptionBadge = (tier: string) => {
     const configMap: Record<string, { icon: any; className: string; label: string }> = {
-      VIP: {
-        icon: Crown,
-        className: 'bg-yellow-100 text-yellow-800',
-        label: 'VIP'
-      },
-      PREMIUM: {
-        icon: Crown,
-        className: 'bg-purple-100 text-purple-800',
-        label: 'Premium'
-      },
-      FREE: {
-        icon: User,
-        className: 'bg-gray-100 text-gray-800',
-        label: 'Gratuito'
-      }
+      FREE: { icon: User, className: 'bg-gray-100 text-gray-800', label: 'Gratuito' },
+      INICIADO: { icon: Crown, className: 'bg-purple-100 text-purple-800', label: 'Iniciado' },
+      ADEPTO: { icon: Crown, className: 'bg-violet-100 text-violet-800', label: 'Adepto' },
+      SACERDOCIO: { icon: Crown, className: 'bg-yellow-100 text-yellow-800', label: 'Sacerdócio' },
     }
-    const config = configMap[subscription] || configMap.FREE
+    const config = configMap[tier] || configMap.FREE
 
     const Icon = config.icon
 
@@ -137,36 +119,7 @@ export function UserTable({
     )
   }
 
-  // Renderizar badge de status
-  const renderStatusBadge = (status: string) => {
-    const configMap: Record<string, { icon: any; className: string; label: string }> = {
-      ACTIVE: {
-        icon: CheckCircle,
-        className: 'bg-green-100 text-green-800',
-        label: 'Ativo'
-      },
-      INACTIVE: {
-        icon: XCircle,
-        className: 'bg-gray-100 text-gray-800',
-        label: 'Inativo'
-      },
-      SUSPENDED: {
-        icon: AlertCircle,
-        className: 'bg-red-100 text-red-800',
-        label: 'Suspenso'
-      }
-    }
-    const config = configMap[status] || configMap.INACTIVE
-
-    const Icon = config.icon
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    )
-  }
+  // Status removido (não existe no modelo atual)
 
   // Selecionar/deselecionar usuário
   const toggleUserSelection = (userId: string) => {
@@ -189,7 +142,7 @@ export function UserTable({
       {/* Tabela */}
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <tr>
               <th className="w-12 px-4 py-3">
                 <input
@@ -221,25 +174,22 @@ export function UserTable({
               </th>
               
               <th className="px-4 py-3 text-left">
-                <span className="text-sm font-medium text-gray-700">Role</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Role</span>
               </th>
               
               <th className="px-4 py-3 text-left">
-                <span className="text-sm font-medium text-gray-700">Assinatura</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Assinatura</span>
               </th>
+
               
               <th className="px-4 py-3 text-left">
-                <span className="text-sm font-medium text-gray-700">Status</span>
-              </th>
-              
-              <th className="px-4 py-3 text-left">
-                <span className="text-sm font-medium text-gray-700">Atividade</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Atividade</span>
               </th>
               
               <th className="px-4 py-3 text-left">
                 <button
                   onClick={() => handleSort('createdAt')}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
                 >
                   Criado em
                   {renderSortIcon('createdAt')}
@@ -252,9 +202,9 @@ export function UserTable({
             </tr>
           </thead>
           
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
+              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                 <td className="px-4 py-4">
                   <input
                     type="checkbox"
@@ -272,13 +222,13 @@ export function UserTable({
                       </span>
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900">{user.name || 'Sem nome'}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{user.name || 'Sem nome'}</div>
                     </div>
                   </div>
                 </td>
                 
                 <td className="px-4 py-4">
-                  <div className="text-sm text-gray-900">{user.email}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{user.email}</div>
                 </td>
                 
                 <td className="px-4 py-4">
@@ -286,22 +236,18 @@ export function UserTable({
                 </td>
                 
                 <td className="px-4 py-4">
-                  {renderSubscriptionBadge(user.subscription)}
+                  {renderSubscriptionBadge(user.subscriptionTier)}
                 </td>
                 
                 <td className="px-4 py-4">
-                  {renderStatusBadge(user.status)}
-                </td>
-                
-                <td className="px-4 py-4">
-                  <div className="text-sm text-gray-900">
+                  <div className="text-sm text-gray-900 dark:text-gray-100">
                     <div>{user._count.orders} pedidos</div>
-                    <div className="text-gray-500">{user._count.enrollments} cursos</div>
+                    <div className="text-gray-500 dark:text-gray-400">{user._count.enrollments} cursos</div>
                   </div>
                 </td>
                 
                 <td className="px-4 py-4">
-                  <div className="text-sm text-gray-900">
+                  <div className="text-sm text-gray-900 dark:text-gray-100">
                     {formatDistanceToNow(new Date(user.createdAt), {
                       addSuffix: true,
                       locale: ptBR

@@ -89,14 +89,14 @@ export default function CourseStats() {
     },
     {
       title: 'Receita Total',
-      value: `R$ ${stats.totalRevenue.toFixed(2)}`,
+      value: `R$ ${Number(stats.totalRevenue || 0).toFixed(2)}`,
       icon: DollarSign,
       color: 'yellow',
       description: 'Faturamento total'
     },
     {
       title: 'Preço Médio',
-      value: `R$ ${stats.averagePrice.toFixed(2)}`,
+      value: `R$ ${Number(stats.averagePrice || 0).toFixed(2)}`,
       icon: TrendingUp,
       color: 'purple',
       description: 'Por curso'

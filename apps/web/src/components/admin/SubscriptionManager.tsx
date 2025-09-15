@@ -11,7 +11,7 @@ interface User {
   id: string
   name: string
   email: string
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   subscriptionExpiresAt?: string | null
   subscriptionStartedAt?: string | null
 }
@@ -22,7 +22,7 @@ interface SubscriptionManagerProps {
 }
 
 interface SubscriptionPlan {
-  id: 'FREE' | 'PREMIUM' | 'VIP'
+  id: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   name: string
   description: string
   price: number
@@ -48,48 +48,59 @@ const subscriptionPlans: SubscriptionPlan[] = [
     bgColor: 'bg-gray-100'
   },
   {
-    id: 'PREMIUM',
-    name: 'Premium',
-    description: 'Acesso completo aos cursos',
+    id: 'INICIADO',
+    name: 'Iniciado',
+    description: 'Acesso a cursos iniciais e recursos extras',
     price: 97,
     features: [
-      'Todos os cursos disponíveis',
+      'Cursos iniciais',
       'Certificados de conclusão',
-      'Suporte prioritário',
-      'Acesso à comunidade premium'
+      'Suporte prioritário'
     ],
     icon: <Crown className="w-5 h-5" />,
     color: 'text-purple-600',
     bgColor: 'bg-purple-100'
   },
   {
-    id: 'VIP',
-    name: 'VIP',
-    description: 'Experiência completa e exclusiva',
+    id: 'ADEPTO',
+    name: 'Adepto',
+    description: 'Acesso completo aos cursos',
     price: 197,
     features: [
-      'Tudo do Premium',
-      'Mentorias individuais',
+      'Todos os cursos disponíveis',
       'Acesso antecipado a novos cursos',
-      'Grupo VIP exclusivo',
       'Suporte 24/7'
     ],
     icon: <Zap className="w-5 h-5" />,
     color: 'text-amber-600',
     bgColor: 'bg-amber-100'
+  },
+  {
+    id: 'SACERDOCIO',
+    name: 'Sacerdócio',
+    description: 'Nível avançado com conteúdos e benefícios exclusivos',
+    price: 297,
+    features: [
+      'Conteúdos exclusivos',
+      'Mentorias e grupos avançados',
+      'Benefícios especiais'
+    ],
+    icon: <Crown className="w-5 h-5" />,
+    color: 'text-yellow-700',
+    bgColor: 'bg-yellow-100'
   }
 ]
 
 export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps) {
   const [loading, setLoading] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<'FREE' | 'PREMIUM' | 'VIP'>(user.subscription)
+  const [selectedPlan, setSelectedPlan] = useState<'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'>(user.subscriptionTier)
   const [duration, setDuration] = useState<'monthly' | 'yearly'>('monthly')
 
-  const currentPlan = subscriptionPlans.find(plan => plan.id === user.subscription)
+  const currentPlan = subscriptionPlans.find(plan => plan.id === user.subscriptionTier)
   const newPlan = subscriptionPlans.find(plan => plan.id === selectedPlan)
 
   // Calcular data de expiração
-  const calculateExpirationDate = (plan: 'FREE' | 'PREMIUM' | 'VIP', duration: 'monthly' | 'yearly') => {
+  const calculateExpirationDate = (plan: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO', duration: 'monthly' | 'yearly') => {
     if (plan === 'FREE') return null
     
     const now = new Date()
@@ -98,7 +109,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
 
   // Atualizar assinatura
   const handleUpdateSubscription = async () => {
-    if (selectedPlan === user.subscription) {
+    if (selectedPlan === user.subscriptionTier) {
       toast.info('Nenhuma alteração foi feita')
       return
     }
@@ -114,7 +125,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          subscription: selectedPlan,
+          subscriptionTier: selectedPlan,
           subscriptionExpiresAt: expirationDate?.toISOString() || null,
           subscriptionStartedAt: selectedPlan !== 'FREE' ? new Date().toISOString() : null
         })
@@ -289,7 +300,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
         )}
         
         {/* Resumo da alteração */}
-        {selectedPlan !== user.subscription && (
+        {selectedPlan !== user.subscriptionTier && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -321,7 +332,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
         <div className="flex items-center gap-3">
           <button
             onClick={handleUpdateSubscription}
-            disabled={loading || selectedPlan === user.subscription}
+            disabled={loading || selectedPlan === user.subscriptionTier}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
@@ -332,7 +343,7 @@ export function SubscriptionManager({ user, onUpdate }: SubscriptionManagerProps
             Atualizar Assinatura
           </button>
           
-          {user.subscription !== 'FREE' && (
+          {user.subscriptionTier !== 'FREE' && (
             <button
               onClick={handleCancelSubscription}
               disabled={loading}

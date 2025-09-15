@@ -98,7 +98,7 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Analytics da Minha Escola</h1>
           <p className="text-muted-foreground">
             Acompanhe métricas e eventos em tempo real
           </p>

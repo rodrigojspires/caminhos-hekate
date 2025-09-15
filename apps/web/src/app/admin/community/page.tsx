@@ -318,8 +318,8 @@ export default function CommunityPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats.mostActiveMembers.length > 0 ? (
-              stats.mostActiveMembers.slice(0, 5).map((member, index) => (
+            {(stats.mostActiveMembers?.length || 0) > 0 ? (
+              (stats.mostActiveMembers || []).slice(0, 5).map((member, index) => (
                 <div key={member.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full text-sm font-medium">
                     #{index + 1}
@@ -354,8 +354,8 @@ export default function CommunityPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats.mostPopularPosts.length > 0 ? (
-              stats.mostPopularPosts.slice(0, 5).map((post) => (
+            {(stats.mostPopularPosts?.length || 0) > 0 ? (
+              (stats.mostPopularPosts || []).slice(0, 5).map((post) => (
                 <div key={post.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <div className="p-2 bg-green-100 rounded-full">
                     <MessageSquare className="h-4 w-4 text-green-600" />

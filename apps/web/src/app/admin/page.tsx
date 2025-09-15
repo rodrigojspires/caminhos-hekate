@@ -84,14 +84,26 @@ export default function AdminDashboard() {
   // Map events to activities format
   useEffect(() => {
     if (recentEvents && recentEvents.length > 0) {
-      const mappedActivities = recentEvents.map((event: any) => ({
-        id: event.id,
-        type: event.eventType || 'system',
-        description: event.description || `${event.eventType} event`,
-        timestamp: event.createdAt || event.timestamp,
-        user: event.userId ? { name: `User ${event.userId}` } : undefined
-      }))
+      const mappedActivities = recentEvents.map((event: any) => {
+        const type = (event.category === 'order' || event.category === 'user' || event.category === 'course')
+          ? event.category
+          : 'system'
+        const title = event.name || event.action || 'Atividade'
+        const description = [event.category, event.action].filter(Boolean).join(' • ')
+        const timestamp = event.timestamp || event.createdAt
+        const user = event.user ? { name: event.user.name || event.user.email || 'Usuário' } : undefined
+        return {
+          id: event.id,
+          type,
+          title,
+          description,
+          timestamp,
+          user,
+        }
+      })
       setRecentActivities(mappedActivities)
+    } else {
+      setRecentActivities([])
     }
   }, [recentEvents])
 

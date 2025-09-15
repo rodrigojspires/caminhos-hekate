@@ -266,7 +266,7 @@ Caminhos de Hekate
         
         <div style="text-align: center; margin: 30px 0;">
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="background: #7c3aed; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-            Acessar Dashboard
+            Acessar Minha Escola
           </a>
         </div>
         

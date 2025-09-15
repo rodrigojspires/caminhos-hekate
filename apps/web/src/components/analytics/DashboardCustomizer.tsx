@@ -158,14 +158,14 @@ export default function DashboardCustomizer({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Settings className="h-4 w-4 mr-2" />
-          Personalizar Dashboard
+          Personalizar Minha Escola
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Personalizar Dashboard</DialogTitle>
+          <DialogTitle>Personalizar Minha Escola</DialogTitle>
           <DialogDescription>
-            Configure quais widgets exibir e como organizá-los no seu dashboard.
+            Configure quais widgets exibir e como organizá-los na sua área "Minha Escola".
           </DialogDescription>
         </DialogHeader>
         

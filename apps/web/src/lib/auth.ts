@@ -34,6 +34,7 @@ export const authOptions: NextAuthOptions = {
             name: true,
             password: true,
             role: true,
+            emailVerified: true,
             twoFactorEnabled: true,
             twoFactorSecret: true,
             twoFactorBackupCodes: true
@@ -51,6 +52,11 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) {
           return null
+        }
+
+        // Bloquear login caso email não verificado
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED")
         }
 
         // Verificar se o usuário tem 2FA ativado

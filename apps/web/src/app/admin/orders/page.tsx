@@ -370,12 +370,12 @@ export default function OrdersPage() {
               />
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || 'ALL'} onValueChange={(v) => setStatusFilter(v === 'ALL' ? '' : v)}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
+                <SelectItem value="ALL">Todos os status</SelectItem>
                 <SelectItem value="PENDING">Pendente</SelectItem>
                 <SelectItem value="PROCESSING">Processando</SelectItem>
                 <SelectItem value="SHIPPED">Enviado</SelectItem>
@@ -384,12 +384,12 @@ export default function OrdersPage() {
               </SelectContent>
             </Select>
 
-            <Select value={dateFilter} onValueChange={setDateFilter}>
+            <Select value={dateFilter || 'ALL'} onValueChange={(v) => setDateFilter(v === 'ALL' ? '' : v)}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os períodos</SelectItem>
+                <SelectItem value="ALL">Todos os períodos</SelectItem>
                 <SelectItem value="7d">Últimos 7 dias</SelectItem>
                 <SelectItem value="30d">Últimos 30 dias</SelectItem>
                 <SelectItem value="90d">Últimos 90 dias</SelectItem>

@@ -8,7 +8,7 @@ import { CourseProgress } from '@/components/dashboard/courses/CourseProgress'
 import { CoursesClient } from '@/components/dashboard/courses/CoursesClient'
 
 export const metadata: Metadata = {
-  title: 'Meus Cursos | Dashboard',
+  title: 'Meus Cursos | Minha Escola',
   description: 'Gerencie seus cursos e acompanhe seu progresso de aprendizado'
 }
 

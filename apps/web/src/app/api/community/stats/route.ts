@@ -1,272 +1,103 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@hekate/database';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@hekate/database'
 
-export async function GET(request: NextRequest) {
+function startOfToday() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+export async function GET(_req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      );
-    }
+    const today = startOfToday()
 
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || '30'; // dias
-    const periodDays = parseInt(period);
+    const [
+      totalMembers,
+      totalPosts,
+      totalComments,
+      totalTopics,
+      totalLikes,
+      newMembersToday,
+      newPostsToday,
+      newCommentsToday,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.post.count(),
+      prisma.comment.count(),
+      prisma.topic.count(),
+      prisma.reaction.count(),
+      prisma.user.count({ where: { createdAt: { gte: today } } }),
+      prisma.post.count({ where: { createdAt: { gte: today } } }),
+      prisma.comment.count({ where: { createdAt: { gte: today } } }),
+    ])
 
-    const now = new Date();
-    const startDate = new Date(now.getTime() - (periodDays * 24 * 60 * 60 * 1000));
-
-    // Estatísticas gerais da comunidade
-    const totalMembers = await prisma.user.count({
-      where: {
-        emailVerified: { not: null }
-      }
-    });
-
-    const totalPosts = await prisma.post.count();
-    const totalComments = await prisma.comment.count();
-    const totalTopics = await prisma.topic.count();
-
-    // Estatísticas do período
-    const newMembersInPeriod = await prisma.user.count({
-      where: {
-        createdAt: { gte: startDate },
-        emailVerified: { not: null }
-      }
-    });
-
-    const newPostsInPeriod = await prisma.post.count({
-      where: {
-        createdAt: { gte: startDate }
-      }
-    });
-
-    const newCommentsInPeriod = await prisma.comment.count({
-      where: {
-        createdAt: { gte: startDate }
-      }
-    });
-
-    // Membros mais ativos (por posts e comentários)
     const mostActiveMembers = await prisma.user.findMany({
       select: {
-          id: true,
-          name: true,
-          image: true,
-        _count: {
-          select: {
-            posts: {
-              where: {
-                createdAt: { gte: startDate }
-              }
-            },
-            comments: {
-              where: {
-                createdAt: { gte: startDate }
-              }
-            }
-          }
-        }
+        id: true,
+        name: true,
+        image: true,
+        _count: { select: { posts: true, comments: true } },
       },
       orderBy: [
-        {
-          posts: {
-            _count: 'desc'
-          }
-        },
-        {
-          comments: {
-            _count: 'desc'
-          }
-        }
+        { posts: { _count: 'desc' } },
+        { comments: { _count: 'desc' } },
       ],
-      take: 10
-    });
+      take: 5,
+    })
 
-    // Posts mais populares (por likes e comentários)
-    const popularPosts = await prisma.post.findMany({
-      where: {
-        createdAt: { gte: startDate }
+    const mostPopularPosts = await prisma.post.findMany({
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        author: { select: { name: true } },
+        _count: { select: { reactions: true, comments: true } },
       },
-      include: {
-        author: {
-          select: {
-            name: true,
-            image: true
-          }
-        },
-        topic: {
-          select: {
-            name: true
-          }
-        },
-        _count: {
-          select: {
-            comments: true,
-            reactions: true
-          }
-        }
-      },
-      orderBy: [
-        { reactions: { _count: 'desc' } },
-        { comments: { _count: 'desc' } }
-      ],
-      take: 5
-    });
+      orderBy: [{ reactions: { _count: 'desc' } }, { comments: { _count: 'desc' } }],
+      take: 5,
+    })
 
-    // Tópicos mais ativos
-    const activeTopics = await prisma.topic.findMany({
-      include: {
-        _count: {
-          select: {
-            posts: {
-              where: {
-                createdAt: { gte: startDate }
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        posts: {
-          _count: 'desc'
-        }
-      },
-      take: 10
-    });
+    const mostActiveTopics = await prisma.topic.findMany({
+      select: { id: true, name: true, _count: { select: { posts: true } } },
+      orderBy: { posts: { _count: 'desc' } },
+      take: 5,
+    })
 
-    // Atividade diária (últimos 30 dias)
-    const dailyActivity = [];
-    for (let i = 29; i >= 0; i--) {
-      const dayStart = new Date(now);
-      dayStart.setDate(now.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
-      
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const dayPosts = await prisma.post.count({
-        where: {
-          createdAt: {
-            gte: dayStart,
-            lte: dayEnd
-          }
-        }
-      });
-
-      const dayComments = await prisma.comment.count({
-        where: {
-          createdAt: {
-            gte: dayStart,
-            lte: dayEnd
-          }
-        }
-      });
-
-      dailyActivity.push({
-        date: dayStart.toISOString().split('T')[0],
-        posts: dayPosts,
-        comments: dayComments,
-        total: dayPosts + dayComments
-      });
-    }
-
-    // Estatísticas de engajamento
-    const avgCommentsPerPost = totalPosts > 0 ? Math.round((totalComments / totalPosts) * 100) / 100 : 0;
-    
-    const totalLikes = await prisma.reaction.count({ where: { type: 'LIKE' } });
-    const avgLikesPerPost = totalPosts > 0 ? Math.round((totalLikes / totalPosts) * 100) / 100 : 0;
-
-    // Crescimento mensal (últimos 6 meses)
-    const monthlyGrowth = [];
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-
-      const monthlyMembers = await prisma.user.count({
-        where: {
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd
-          },
-          emailVerified: { not: null }
-        }
-      });
-
-      const monthlyPosts = await prisma.post.count({
-        where: {
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        }
-      });
-
-      monthlyGrowth.push({
-        month: monthNames[monthStart.getMonth()],
-        members: monthlyMembers,
-        posts: monthlyPosts
-      });
-    }
-
-    const stats = {
-      overview: {
-        totalMembers,
-        totalPosts,
-        totalComments,
-        totalTopics,
-        totalLikes,
-        avgCommentsPerPost,
-        avgLikesPerPost
-      },
-      period: {
-        days: periodDays,
-        newMembers: newMembersInPeriod,
-        newPosts: newPostsInPeriod,
-        newComments: newCommentsInPeriod
-      },
-      mostActiveMembers: mostActiveMembers.map(member => ({
-        id: member.id,
-        name: member.name,
-        image: member.image,
-        postsCount: member._count.posts,
-        commentsCount: member._count.comments,
-        totalActivity: member._count.posts + member._count.comments
+    return NextResponse.json({
+      totalMembers,
+      totalPosts,
+      totalComments,
+      totalTopics,
+      totalLikes,
+      newMembersToday,
+      newPostsToday,
+      newCommentsToday,
+      mostActiveMembers: mostActiveMembers.map((u) => ({
+        id: u.id,
+        name: u.name || 'Usuário',
+        avatar: u.image || undefined,
+        postsCount: u._count.posts,
+        commentsCount: u._count.comments,
       })),
-      popularPosts: popularPosts.map(post => ({
-        id: post.id,
-        title: post.title,
-        author: post.author.name,
-        authorImage: post.author.image,
-        topic: post.topic?.name || 'Sem tópico',
-        likesCount: post._count.reactions,
-        commentsCount: post._count.comments,
-        createdAt: post.createdAt
+      mostPopularPosts: mostPopularPosts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        author: p.author?.name || 'Usuário',
+        likesCount: p._count.reactions,
+        commentsCount: p._count.comments,
+        createdAt: p.createdAt.toISOString(),
       })),
-      activeTopics: activeTopics.map(topic => ({
-        id: topic.id,
-        name: topic.name,
-        description: topic.description,
-        postsCount: topic._count.posts,
-        color: topic.color
+      mostActiveTopics: mostActiveTopics.map((t) => ({
+        id: t.id,
+        name: t.name,
+        postsCount: t._count.posts,
+        membersCount: t._count.posts, // aproximação
       })),
-      dailyActivity,
-      monthlyGrowth
-    };
-
-    return NextResponse.json(stats);
-  } catch (error) {
-    console.error('Erro ao buscar estatísticas da comunidade:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+      dailyActivity: [],
+      monthlyGrowth: [],
+    })
+  } catch (e) {
+    console.error('GET /api/community/stats error', e)
+    return NextResponse.json({ error: 'Erro ao obter estatísticas' }, { status: 500 })
   }
 }
+

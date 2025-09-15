@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 // Schema de validação para atualização de assinatura
 const updateSubscriptionSchema = z.object({
-  subscription: z.enum(['FREE', 'PREMIUM', 'VIP']),
+  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']),
   subscriptionExpiresAt: z.string().nullable().optional(),
   subscriptionStartedAt: z.string().nullable().optional()
 })
@@ -28,21 +28,9 @@ export async function PUT(
     const body = await request.json()
     const validatedData = updateSubscriptionSchema.parse(body)
 
-    // Simular atualização no banco de dados
-    // Em um projeto real, você faria:
-    // const updatedUser = await prisma.user.update({
-    //   where: { id: params.id },
-    //   data: {
-    //     subscription: validatedData.subscription,
-    //     subscriptionExpiresAt: validatedData.subscriptionExpiresAt ? new Date(validatedData.subscriptionExpiresAt) : null,
-    //     subscriptionStartedAt: validatedData.subscriptionStartedAt ? new Date(validatedData.subscriptionStartedAt) : null,
-    //     updatedAt: new Date()
-    //   }
-    // })
-
     const updatedUser = {
       id: params.id,
-      subscription: validatedData.subscription,
+      subscriptionTier: validatedData.subscriptionTier,
       subscriptionExpiresAt: validatedData.subscriptionExpiresAt,
       subscriptionStartedAt: validatedData.subscriptionStartedAt,
       updatedAt: new Date().toISOString()
@@ -51,7 +39,7 @@ export async function PUT(
     // Log da ação para auditoria
     console.log(`Admin ${session.user.email} updated subscription for user ${params.id}:`, {
       from: 'CURRENT_SUBSCRIPTION', // Em um projeto real, buscar do banco
-      to: validatedData.subscription,
+      to: validatedData.subscriptionTier,
       expiresAt: validatedData.subscriptionExpiresAt,
       timestamp: new Date().toISOString()
     })
@@ -110,7 +98,7 @@ export async function DELETE(
 
     const updatedUser = {
       id: params.id,
-      subscription: 'FREE',
+      subscriptionTier: 'FREE' as const,
       subscriptionExpiresAt: null,
       subscriptionStartedAt: null,
       updatedAt: new Date().toISOString()
@@ -163,9 +151,9 @@ export async function GET(
       {
         id: '1',
         userId: params.id,
-        subscription: 'PREMIUM',
+        subscriptionTier: 'ADEPTO',
         action: 'UPGRADED',
-        previousSubscription: 'FREE',
+        previousSubscriptionTier: 'FREE',
         createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias atrás
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias no futuro
         adminId: session.user.id,
@@ -174,9 +162,9 @@ export async function GET(
       {
         id: '2',
         userId: params.id,
-        subscription: 'FREE',
+        subscriptionTier: 'FREE',
         action: 'CREATED',
-        previousSubscription: null,
+        previousSubscriptionTier: null,
         createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 dias atrás
         expiresAt: null,
         adminId: null,

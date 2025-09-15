@@ -122,7 +122,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
               className="object-contain"
             />
           </div>
-          <span className="font-semibold text-lg">Dashboard</span>
+          <span className="font-semibold text-lg">Minha Escola</span>
         </Link>
         
         {onClose && (

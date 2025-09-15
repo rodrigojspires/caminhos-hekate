@@ -217,7 +217,7 @@ export default function GroupDetailsPage() {
                 <Link href="/grupos">Explorar Grupos</Link>
               </Button>
               <Button variant="outline" asChild className="w-full">
-                <Link href="/dashboard">Voltar ao Dashboard</Link>
+                <Link href="/dashboard">Voltar à Minha Escola</Link>
               </Button>
             </div>
           </CardContent>

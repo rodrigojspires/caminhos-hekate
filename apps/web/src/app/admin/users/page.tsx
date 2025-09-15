@@ -12,12 +12,10 @@ interface User {
   id: string
   name: string | null
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   createdAt: string
   updatedAt: string
-  subscriptionExpiresAt: string | null
   _count: {
     orders: number
     enrollments: number
@@ -38,16 +36,15 @@ interface UsersResponse {
 
 interface UserStats {
   totalUsers: number
-  activeUsers: number
   newUsers: number
   premiumUsers: number
+  activeUsers: number
 }
 
 interface UserFilters {
   search: string
   role: string
-  subscription: string
-  status: string
+  subscriptionTier: string
   sortBy: string
   sortOrder: 'asc' | 'desc'
 }
@@ -57,13 +54,11 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [stats, setStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     role: '',
-    subscription: '',
-    status: '',
+    subscriptionTier: '',
     sortBy: 'createdAt',
     sortOrder: 'desc'
   })
@@ -82,8 +77,8 @@ export default function UsersPage() {
         )
       })
       
-      if (searchTerm) {
-        params.append('search', searchTerm)
+      if (filters.search) {
+        params.append('search', filters.search)
       }
 
       const response = await fetch(`/api/admin/users?${params}`)
@@ -99,12 +94,29 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [filters, searchTerm])
+  }, [filters])
 
   // Aplicar filtros
   const handleFiltersChange = (newFilters: Partial<UserFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }))
   }
+
+  // Buscar estatísticas
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/users/stats')
+      if (!response.ok) throw new Error('Erro ao buscar estatísticas')
+      const data = await response.json()
+      setStats({
+        totalUsers: data.overview.totalUsers,
+        activeUsers: data.overview.activeUsers,
+        newUsers: data.overview.newUsers,
+        premiumUsers: data.overview.premiumUsers,
+      })
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas de usuários:', error)
+    }
+  }, [])
 
   // Exportar usuários
   const handleExport = async () => {
@@ -165,15 +177,16 @@ export default function UsersPage() {
   // Efeitos
   useEffect(() => {
     fetchUsers()
-  }, [fetchUsers])
+    fetchStats()
+  }, [fetchUsers, fetchStats])
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-gray-600">Gerencie todos os usuários da plataforma</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Usuários</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie todos os usuários da plataforma</p>
         </div>
         
         <button
@@ -186,7 +199,7 @@ export default function UsersPage() {
       </div>
 
       {/* Barra de busca e filtros */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Busca */}
           <div className="flex-1 relative">
@@ -196,7 +209,7 @@ export default function UsersPage() {
               placeholder="Buscar por nome ou email..."
               value={filters.search}
               onChange={(e) => handleFiltersChange({ search: e.target.value })}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           
@@ -206,7 +219,7 @@ export default function UsersPage() {
             className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
               showFilters
                 ? 'bg-purple-50 border-purple-200 text-purple-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -227,42 +240,37 @@ export default function UsersPage() {
 
       {/* Estatísticas rápidas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-600">Total de Usuários</div>
-          <div className="text-2xl font-bold text-gray-900">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Total de Usuários</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
             {stats?.totalUsers?.toLocaleString() || '0'}
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-600">Usuários Ativos</div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Usuários Ativos (30 dias)</div>
           <div className="text-2xl font-bold text-green-600">
-            {users.filter(u => u.status === 'ACTIVE').length}
+            {stats?.activeUsers?.toLocaleString() || '0'}
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-600">Usuários Premium</div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Usuários Premium</div>
           <div className="text-2xl font-bold text-purple-600">
-            {users.filter(u => ['PREMIUM', 'VIP'].includes(u.subscription)).length}
+            {stats?.premiumUsers?.toLocaleString() || '0'}
           </div>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-600">Novos (30 dias)</div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Novos (30 dias)</div>
           <div className="text-2xl font-bold text-blue-600">
-            {users.filter(u => {
-              const createdAt = new Date(u.createdAt)
-              const thirtyDaysAgo = new Date()
-              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-              return createdAt >= thirtyDaysAgo
-            }).length}
+            {stats?.newUsers?.toLocaleString() || '0'}
           </div>
         </div>
       </div>
 
       {/* Tabela de usuários */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner />

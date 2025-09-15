@@ -162,7 +162,7 @@ export default function GroupInvitePage() {
                 <Link href="/dashboard/grupos">Ver Meus Grupos</Link>
               </Button>
               <Button variant="outline" asChild className="w-full">
-                <Link href="/dashboard">Voltar ao Dashboard</Link>
+                <Link href="/dashboard">Voltar à Minha Escola</Link>
               </Button>
             </div>
           </CardContent>

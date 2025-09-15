@@ -335,12 +335,12 @@ export default function ProductsPage() {
               />
             </div>
             
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter || 'ALL'} onValueChange={(v) => setCategoryFilter(v === 'ALL' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="ALL">Todas as categorias</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
@@ -349,24 +349,24 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || 'ALL'} onValueChange={(v) => setStatusFilter(v === 'ALL' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
+                <SelectItem value="ALL">Todos os status</SelectItem>
                 <SelectItem value="ACTIVE">Ativo</SelectItem>
                 <SelectItem value="INACTIVE">Inativo</SelectItem>
                 <SelectItem value="OUT_OF_STOCK">Fora de Estoque</SelectItem>
               </SelectContent>
             </Select>
             
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter || 'ALL'} onValueChange={(v) => setTypeFilter(v === 'ALL' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os tipos</SelectItem>
+                <SelectItem value="ALL">Todos os tipos</SelectItem>
                 <SelectItem value="PHYSICAL">Físico</SelectItem>
                 <SelectItem value="DIGITAL">Digital</SelectItem>
                 <SelectItem value="SERVICE">Serviço</SelectItem>

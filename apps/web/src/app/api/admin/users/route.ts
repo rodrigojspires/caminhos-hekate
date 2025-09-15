@@ -8,7 +8,7 @@ import { z } from 'zod'
 const createUserSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  role: z.enum(['ADMIN', 'VISITOR']).default('VISITOR'),
+  role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).default('VISITOR'),
   subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).default('FREE')
 })
 
@@ -16,7 +16,7 @@ const createUserSchema = z.object({
 const updateUserSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').optional(),
   email: z.string().email('Email inválido').optional(),
-  role: z.enum(['ADMIN', 'VISITOR']).optional(),
+  role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).optional(),
   subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional()
 })
 

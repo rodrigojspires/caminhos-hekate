@@ -379,6 +379,13 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
             Gerencie os posts da comunidade ({pagination.total} posts)
           </p>
         </div>
+        <div>
+          <Button asChild>
+            <Link href="/admin/community/posts/new">
+              <Plus className="h-4 w-4 mr-2" /> Novo Post
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}

@@ -4,6 +4,9 @@ import { Features } from '@/components/public/Features'
 import { Testimonials } from '@/components/public/Testimonials'
 import { CoursePreview } from '@/components/public/CoursePreview'
 import { CTA } from '@/components/public/CTA'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Caminhos de Hekate - Transforme sua vida através do autoconhecimento',
@@ -16,7 +19,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Se o usuário estiver logado, redirecionar para o painel adequado
+  const session = await getServerSession(authOptions)
+  const role = session?.user?.role
+  if (session?.user) {
+    if (role === 'ADMIN') {
+      redirect('/admin')
+    }
+    redirect('/dashboard')
+  }
+
   return (
     <main className="min-h-screen">
       <Hero />

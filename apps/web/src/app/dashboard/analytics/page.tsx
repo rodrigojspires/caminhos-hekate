@@ -2,8 +2,8 @@ import { Metadata } from 'next'
 import { AnalyticsDashboard } from '@/components/analytics'
 
 export const metadata: Metadata = {
-  title: 'Analytics | Dashboard',
-  description: 'Dashboard de analytics com métricas em tempo real e relatórios detalhados',
+  title: 'Analytics | Minha Escola',
+  description: 'Analytics da Minha Escola com métricas em tempo real e relatórios detalhados',
 }
 
 export default function AnalyticsPage() {

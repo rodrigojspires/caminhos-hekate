@@ -39,7 +39,7 @@ export function withAuth<P extends object>(
       }
 
       // If email verification is required but user email is not verified
-      if (requireVerification && session && !session.user.email) {
+      if (requireVerification && session && !session.user.emailVerified) {
         router.push("/auth/verify-email")
         return
       }
@@ -78,7 +78,7 @@ export function withAuth<P extends object>(
     }
 
     // If email verification is required but user email is not verified
-    if (requireVerification && session && !session.user.email) {
+    if (requireVerification && session && !session.user.emailVerified) {
       return null // Will redirect in useEffect
     }
 
@@ -112,5 +112,5 @@ export function isAdmin(session: any): boolean {
 
 // Utility function to check if user is editor or admin
 export function isEditor(session: any): boolean {
-  return hasRole(session, ["ADMIN", "VISITOR"])
+  return hasRole(session, ["ADMIN", "EDITOR"])
 }

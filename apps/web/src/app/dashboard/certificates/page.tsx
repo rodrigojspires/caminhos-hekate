@@ -8,7 +8,7 @@ import CertificateStats from '@/components/dashboard/certificates/CertificateSta
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export const metadata: Metadata = {
-  title: 'Certificados | Dashboard | Caminhos de Hekate',
+  title: 'Certificados | Minha Escola | Caminhos de Hekate',
   description: 'Visualize e gerencie seus certificados conquistados'
 }
 

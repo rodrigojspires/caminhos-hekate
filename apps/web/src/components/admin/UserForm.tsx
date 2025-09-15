@@ -8,17 +8,15 @@ interface User {
   id: string
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
 
 interface UserFormData {
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
 
 interface UserFormProps {
@@ -32,9 +30,8 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
   const [formData, setFormData] = useState<UserFormData>({
     name: user?.name || '',
     email: user?.email || '',
-    role: user?.role || 'USER',
-    subscription: user?.subscription || 'FREE',
-    status: user?.status || 'ACTIVE'
+    role: (user?.role as any) || 'VISITOR',
+    subscriptionTier: (user?.subscriptionTier as any) || 'FREE'
   })
   
   const [errors, setErrors] = useState<Partial<UserFormData>>({})
@@ -46,9 +43,8 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
       setFormData({
         name: user.name,
         email: user.email,
-        role: user.role,
-        subscription: user.subscription,
-        status: user.status
+        role: user.role as any,
+        subscriptionTier: user.subscriptionTier as any
       })
       setHasChanges(false)
     }
@@ -105,7 +101,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Nome */}
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           <User className="w-4 h-4 inline mr-2" />
           Nome completo
         </label>
@@ -115,8 +111,8 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-            errors.name ? 'border-red-300' : 'border-gray-300'
-          }`}
+            errors.name ? 'border-red-300' : 'border-gray-300 dark:border-gray-700'
+          } bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
           placeholder="Digite o nome completo"
           disabled={loading}
         />
@@ -127,7 +123,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
 
       {/* Email */}
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           <Mail className="w-4 h-4 inline mr-2" />
           Email
         </label>
@@ -137,8 +133,8 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
           value={formData.email}
           onChange={(e) => handleChange('email', e.target.value)}
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-            errors.email ? 'border-red-300' : 'border-gray-300'
-          }`}
+            errors.email ? 'border-red-300' : 'border-gray-300 dark:border-gray-700'
+          } bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
           placeholder="Digite o email"
           disabled={loading}
         />
@@ -149,63 +145,47 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
 
       {/* Role */}
       <div>
-        <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           <Shield className="w-4 h-4 inline mr-2" />
           Função
         </label>
         <select
           id="role"
           value={formData.role}
-          onChange={(e) => handleChange('role', e.target.value as 'USER' | 'ADMIN')}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          onChange={(e) => handleChange('role', e.target.value as any)}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           disabled={loading}
         >
-          <option value="USER">Usuário</option>
+          <option value="VISITOR">Visitante</option>
+          <option value="MEMBER">Membro</option>
+          <option value="EDITOR">Editor</option>
           <option value="ADMIN">Administrador</option>
         </select>
       </div>
 
-      {/* Subscription */}
+      {/* Subscription Tier */}
       <div>
-        <label htmlFor="subscription" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="subscriptionTier" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           <Crown className="w-4 h-4 inline mr-2" />
           Assinatura
         </label>
         <select
-          id="subscription"
-          value={formData.subscription}
-          onChange={(e) => handleChange('subscription', e.target.value as 'FREE' | 'PREMIUM' | 'VIP')}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          id="subscriptionTier"
+          value={formData.subscriptionTier}
+          onChange={(e) => handleChange('subscriptionTier', e.target.value as any)}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           disabled={loading}
         >
           <option value="FREE">Gratuito</option>
-          <option value="PREMIUM">Premium</option>
-          <option value="VIP">VIP</option>
-        </select>
-      </div>
-
-      {/* Status */}
-      <div>
-        <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-          <Activity className="w-4 h-4 inline mr-2" />
-          Status
-        </label>
-        <select
-          id="status"
-          value={formData.status}
-          onChange={(e) => handleChange('status', e.target.value as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED')}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          disabled={loading}
-        >
-          <option value="ACTIVE">Ativo</option>
-          <option value="INACTIVE">Inativo</option>
-          <option value="SUSPENDED">Suspenso</option>
+          <option value="INICIADO">Iniciado</option>
+          <option value="ADEPTO">Adepto</option>
+          <option value="SACERDOCIO">Sacerdócio</option>
         </select>
       </div>
 
       {/* Botões */}
-      <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-        <div className="text-sm text-gray-500">
+      <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           {hasChanges && !isCreating && (
             <span className="text-amber-600">
               • Alterações não salvas

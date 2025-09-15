@@ -14,9 +14,8 @@ interface User {
   id: string
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   emailVerified: string | null
   createdAt: string
   updatedAt: string
@@ -45,9 +44,8 @@ interface User {
 interface UserFormData {
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
-  subscription: 'FREE' | 'PREMIUM' | 'VIP'
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
+  subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
@@ -133,26 +131,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
     }
   }
 
-  // Renderizar badge de status
-  const renderStatusBadge = (status: string) => {
-    const config = {
-      ACTIVE: 'bg-green-100 text-green-800',
-      INACTIVE: 'bg-gray-100 text-gray-800',
-      SUSPENDED: 'bg-red-100 text-red-800'
-    }[status] || 'bg-gray-100 text-gray-800'
-
-    const label = {
-      ACTIVE: 'Ativo',
-      INACTIVE: 'Inativo',
-      SUSPENDED: 'Suspenso'
-    }[status] || 'Desconhecido'
-
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config}`}>
-        {label}
-      </span>
-    )
-  }
+  // Status removido (não existe no modelo atual)
 
   useEffect(() => {
     fetchUser()
@@ -181,17 +160,15 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-            <p className="text-gray-600">{user.email}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
           </div>
-          
-          {renderStatusBadge(user.status)}
         </div>
         
         <div className="flex items-center gap-3">
@@ -259,8 +236,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Formulário de edição */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Informações do Usuário
               </h2>
               
@@ -275,8 +252,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           {/* Informações adicionais */}
           <div className="space-y-6">
             {/* Estatísticas */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Estatísticas
               </h3>
               
@@ -284,10 +261,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <div className="flex items-center gap-3">
                   <ShoppingBag className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       {user._count.orders} pedidos
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       Total de compras
                     </div>
                   </div>
@@ -296,10 +273,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <div className="flex items-center gap-3">
                   <BookOpen className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       {user._count.enrollments} cursos
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       Matrículas ativas
                     </div>
                   </div>
@@ -308,8 +285,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             </div>
             
             {/* Informações da conta */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Informações da Conta
               </h3>
               
@@ -317,10 +294,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       Email {user.emailVerified ? 'verificado' : 'não verificado'}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {user.emailVerified 
                         ? format(new Date(user.emailVerified), 'dd/MM/yyyy', { locale: ptBR })
                         : 'Verificação pendente'
@@ -332,10 +309,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <div className="flex items-center gap-3">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       Membro desde
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {format(new Date(user.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                       {' '}({formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: ptBR })})
                     </div>
@@ -345,10 +322,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <div className="flex items-center gap-3">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       Última atualização
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {formatDistanceToNow(new Date(user.updatedAt), { addSuffix: true, locale: ptBR })}
                     </div>
                   </div>
@@ -445,7 +422,12 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       
       {activeTab === 'subscription' && (
         <SubscriptionManager
-          user={user}
+          user={{
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            subscriptionTier: user.subscriptionTier,
+          }}
           onUpdate={fetchUser}
         />
       )}

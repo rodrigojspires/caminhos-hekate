@@ -1,137 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { checkAdminPermission } from '@/lib/auth'
 
-// GET - Estatísticas de usuários
+// GET /api/admin/users/stats - Estatísticas de usuários
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Acesso negado' },
-        { status: 403 }
-      )
+    const authCheck = await checkAdminPermission()
+    if (authCheck) {
+      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status })
     }
 
     const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || '30' // dias
-    const periodDays = parseInt(period)
-    
+    const periodDays = Number(searchParams.get('period') || 30)
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - periodDays)
+    startDate.setDate(startDate.getDate() - (isFinite(periodDays) ? periodDays : 30))
 
-    // Estatísticas gerais
-    const [totalUsers, newUsers, premiumUsers] = await Promise.all([
-      // Total de usuários
+    // Totais básicos
+    const [totalUsers, newUsers, premiumUsersByTier, activeUsersGroup] = await Promise.all([
       prisma.user.count(),
-      
-      // Novos usuários no período
-      prisma.user.count({
-        where: {
-          createdAt: {
-            gte: startDate
-          }
-        }
+      prisma.user.count({ where: { createdAt: { gte: startDate } } }),
+      prisma.user.groupBy({
+        by: ['subscriptionTier'],
+        _count: { _all: true },
       }),
-      
-      // Usuários premium
-      prisma.user.count({
-        where: {
-          subscriptionTier: {
-            in: ['INICIADO', 'ADEPTO', 'SACERDOCIO']
-          }
-        }
+      // Usuários ativos: com histórico de login nos últimos N dias
+      prisma.loginHistory.groupBy({
+        by: ['userId'],
+        where: { createdAt: { gte: startDate } },
+        _count: { userId: true },
       })
     ])
 
-    // Distribuição por tipo de assinatura
-    const subscriptionStats = await prisma.user.groupBy({
-      by: ['subscriptionTier'],
-      _count: {
-        subscriptionTier: true
-      }
-    })
+    // Premium = qualquer tier diferente de FREE
+    const premiumUsers = premiumUsersByTier
+      .filter((t) => t.subscriptionTier !== 'FREE')
+      .reduce((sum, t) => sum + (t._count?._all || 0), 0)
 
-    // Usuários por mês (últimos 12 meses)
-    const monthlyStats = await prisma.$queryRaw`
-      SELECT 
-        DATE_TRUNC('month', "createdAt") as month,
-        COUNT(*)::int as count
-      FROM "User"
-      WHERE "createdAt" >= NOW() - INTERVAL '12 months'
-      GROUP BY DATE_TRUNC('month', "createdAt")
-      ORDER BY month ASC
-    ` as Array<{ month: Date; count: number }>
-
-    // Top usuários por pedidos
-    const topUsersByOrders = await prisma.user.findMany({
-      take: 10,
-      orderBy: {
-        orders: {
-          _count: 'desc'
-        }
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        _count: {
-          select: {
-            orders: true
-          }
-        }
-      }
-    })
-
-    // Usuários recentes
-    const recentUsers = await prisma.user.findMany({
-      take: 10,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        subscriptionTier: true,
-        createdAt: true
-      }
-    })
-
-    // Taxa de conversão (usuários que fizeram pelo menos um pedido)
-    const usersWithOrders = await prisma.user.count({
-      where: {
-        orders: {
-          some: {}
-        }
-      }
-    })
-
-    const conversionRate = totalUsers > 0 ? (usersWithOrders / totalUsers) * 100 : 0
+    const conversionRate = totalUsers > 0 ? (premiumUsers / totalUsers) * 100 : 0
 
     return NextResponse.json({
       overview: {
         totalUsers,
         newUsers,
         premiumUsers,
-        conversionRate: Math.round(conversionRate * 100) / 100
+        conversionRate,
+        activeUsers: activeUsersGroup.filter(g => g.userId !== null).length,
       },
       distribution: {
-        subscription: subscriptionStats.map(stat => ({
-          type: stat.subscriptionTier,
-          count: stat._count.subscriptionTier
-        }))
+        subscription: premiumUsersByTier.map((t) => ({
+          type: t.subscriptionTier,
+          count: t._count?._all || 0,
+        })),
       },
-      trends: {
-        monthly: monthlyStats.map(stat => ({
-          month: stat.month.toISOString().slice(0, 7), // YYYY-MM format
-          count: stat.count
-        }))
-      },
-      topUsers: topUsersByOrders,
-      recentUsers
+      period: periodDays,
     })
   } catch (error) {
     console.error('Erro ao buscar estatísticas de usuários:', error)

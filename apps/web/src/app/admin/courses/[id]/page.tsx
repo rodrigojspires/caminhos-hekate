@@ -353,7 +353,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
             <span className="text-sm font-medium text-gray-600">Preço</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 mt-1">
-            R$ {course.price.toFixed(2)}
+            R$ {Number(course.price ?? 0).toFixed(2)}
           </p>
         </div>
         

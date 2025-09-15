@@ -67,11 +67,12 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url)
+    // Normalize null values from URLSearchParams to undefined for optional schema fields
     const filters = reportFiltersSchema.parse({
-      startDate: searchParams.get('startDate'),
-      endDate: searchParams.get('endDate'),
-      status: searchParams.get('status'),
-      period: searchParams.get('period') || '30d',
+      startDate: searchParams.get('startDate') ?? undefined,
+      endDate: searchParams.get('endDate') ?? undefined,
+      status: searchParams.get('status') ?? undefined,
+      period: searchParams.get('period') ?? undefined,
     })
     
     const { start, end } = getDateRange(filters.period, filters.startDate, filters.endDate)

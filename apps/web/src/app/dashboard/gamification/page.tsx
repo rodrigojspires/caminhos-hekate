@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { GamificationDashboard } from '@/components/gamification/dashboard/GamificationDashboard';
 
 export const metadata: Metadata = {
-  title: 'Gamificação | Dashboard',
+  title: 'Gamificação | Minha Escola',
   description: 'Acompanhe seu progresso, conquistas e ranking no sistema de gamificação.'
 };
 
