@@ -99,19 +99,17 @@ export default function VerifyEmailPage() {
   // Verification in progress
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-[url('/images/mystical-bg.jpg')] bg-cover bg-center opacity-10"></div>
-        
-        <div className="relative w-full max-w-md">
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
+        <div className="w-full max-w-md">
+          <Card>
             <CardHeader className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-4 mx-auto">
-                <div className="w-8 h-8 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin"></div>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4 mx-auto">
+                <div className="w-8 h-8 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
               </div>
-              <CardTitle className="text-2xl font-bold text-white">
+              <CardTitle className="text-2xl font-bold">
                 Verificando email...
               </CardTitle>
-              <CardDescription className="text-purple-200">
+              <CardDescription>
                 Aguarde enquanto verificamos seu email
               </CardDescription>
             </CardHeader>
@@ -124,31 +122,30 @@ export default function VerifyEmailPage() {
   // Email verified successfully
   if (isVerified) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-[url('/images/mystical-bg.jpg')] bg-cover bg-center opacity-10"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
         
-        <div className="relative w-full max-w-md">
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+        <div className="w-full max-w-md">
+          <Card>
             <CardHeader className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600/20 rounded-full mb-4 mx-auto">
-                <CheckCircle className="w-8 h-8 text-green-300" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4 mx-auto">
+                <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl font-bold text-white">
+              <CardTitle className="text-2xl font-bold">
                 Email verificado!
               </CardTitle>
-              <CardDescription className="text-purple-200">
+              <CardDescription>
                 Sua conta foi ativada com sucesso
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6 text-center">
-              <p className="text-purple-200">
+              <p>
                 Parabéns! Seu email foi verificado e sua conta está ativa.
                 Você será redirecionado para o login em alguns segundos...
               </p>
 
               <Link href="/auth/login">
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
+                <Button className="w-full">
                   Ir para login
                 </Button>
               </Link>
@@ -162,32 +159,31 @@ export default function VerifyEmailPage() {
   // Verification error
   if (isError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-[url('/images/mystical-bg.jpg')] bg-cover bg-center opacity-10"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
         
-        <div className="relative w-full max-w-md">
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+        <div className="w-full max-w-md">
+          <Card>
             <CardHeader className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600/20 rounded-full mb-4 mx-auto">
-                <AlertCircle className="w-8 h-8 text-red-300" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4 mx-auto">
+                <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
-              <CardTitle className="text-2xl font-bold text-white">
+              <CardTitle className="text-2xl font-bold">
                 Erro na verificação
               </CardTitle>
-              <CardDescription className="text-purple-200">
+              <CardDescription>
                 Não foi possível verificar seu email
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6 text-center">
               <div className="space-y-4">
-                <p className="text-purple-200">
+                <p>
                   {errorMessage || "O link de verificação é inválido ou expirou."}
                 </p>
                 
                 {email && (
-                  <p className="text-sm text-purple-300">
-                    Email: <span className="text-white font-medium">{email}</span>
+                  <p className="text-sm text-muted-foreground">
+                    Email: <span className="font-medium">{email}</span>
                   </p>
                 )}
               </div>
@@ -197,7 +193,7 @@ export default function VerifyEmailPage() {
                   <Button
                     onClick={handleResendVerification}
                     disabled={isResending}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    className="w-full"
                   >
                     {isResending ? (
                       <div className="flex items-center justify-center space-x-2">
@@ -211,19 +207,13 @@ export default function VerifyEmailPage() {
                 )}
                 
                 <Link href="/auth/register">
-                  <Button 
-                    variant="outline"
-                    className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  >
+                  <Button variant="outline" className="w-full">
                     Criar nova conta
                   </Button>
                 </Link>
                 
                 <Link href="/auth/login">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full text-purple-300 hover:text-white hover:bg-white/10"
-                  >
+                  <Button variant="ghost" className="w-full">
                     Voltar ao login
                   </Button>
                 </Link>
@@ -235,49 +225,91 @@ export default function VerifyEmailPage() {
     )
   }
 
+  // Pending verification (no token, email provided)
+  if (!token && email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-100 rounded-full mb-4 mx-auto">
+                <Mail className="w-8 h-8 text-yellow-700" />
+              </div>
+              <CardTitle className="text-2xl font-bold">
+                Confirme seu email
+              </CardTitle>
+              <CardDescription>
+                Enviamos um link para {email}. Não recebeu? Reenvie abaixo.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6 text-center">
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Verifique sua caixa de entrada e a pasta de spam.</p>
+              </div>
+
+              <div className="space-y-3">
+                <Button onClick={handleResendVerification} disabled={isResending} className="w-full">
+                  {isResending ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Reenviando...</span>
+                    </div>
+                  ) : (
+                    "Reenviar email de verificação"
+                  )}
+                </Button>
+
+                <Link href="/auth/login">
+                  <Button variant="ghost" className="w-full">Voltar ao login</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   // Default state - no token provided
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[url('/images/mystical-bg.jpg')] bg-cover bg-center opacity-10"></div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
       
-      <div className="relative w-full max-w-md">
-        <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+      <div className="w-full max-w-md">
+        <Card>
           <CardHeader className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600/20 rounded-full mb-4 mx-auto">
-              <Mail className="w-8 h-8 text-purple-300" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4 mx-auto">
+              <Mail className="w-8 h-8 text-purple-700" />
             </div>
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-2xl font-bold">
               Verificar email
             </CardTitle>
-            <CardDescription className="text-purple-200">
+            <CardDescription>
               Verifique sua caixa de entrada
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6 text-center">
             <div className="space-y-4">
-              <p className="text-purple-200">
+              <p>
                 Enviamos um email de verificação para sua caixa de entrada.
                 Clique no link do email para ativar sua conta.
               </p>
               
-              <p className="text-sm text-purple-300">
+              <p className="text-sm text-muted-foreground">
                 Se você não receber o email em alguns minutos, verifique sua pasta de spam.
               </p>
             </div>
 
             <div className="space-y-3">
               <Link href="/auth/register">
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
+                <Button className="w-full">
                   Criar conta
                 </Button>
               </Link>
               
               <Link href="/auth/login">
-                <Button 
-                  variant="ghost" 
-                  className="w-full text-purple-300 hover:text-white hover:bg-white/10"
-                >
+                <Button variant="ghost" className="w-full">
                   Já tenho uma conta
                 </Button>
               </Link>

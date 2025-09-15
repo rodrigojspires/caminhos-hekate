@@ -59,6 +59,9 @@ export function LoginForm({
           setRequires2FA(true)
           setLoginData(data)
           toast.info("Digite o código de verificação do seu app autenticador")
+        } else if (result.error === "EMAIL_NOT_VERIFIED") {
+          toast.info("Seu email ainda não foi verificado. Você pode reenviar as instruções.")
+          router.push(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
         } else {
           toast.error("Email ou senha incorretos")
         }

@@ -648,7 +648,7 @@ class EmailService {
       const host = process.env.SMTP_HOST
       const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
       const user = process.env.SMTP_USER
-      const pass = process.env.SMTP_PASS
+      const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD
       if (!host || !user || !pass) return null
 
       // Import dinâmico para evitar require e problemas de ESLint em build

@@ -44,7 +44,14 @@ class ResendEmailService {
       // Verificar se Resend está configurado
       const client = getResendClient()
       if (!client) {
-        console.warn('RESEND_API_KEY não configurado, simulando envio de email')
+        // Fallback: tentar SMTP se configurado
+        const smtpHost = process.env.SMTP_HOST
+        const smtpUser = process.env.SMTP_USER
+        const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD
+        if (smtpHost && smtpUser && smtpPass) {
+          return this.sendViaSmtp(validatedData)
+        }
+        console.warn('RESEND_API_KEY não configurado e SMTP incompleto; simulando envio de email')
         return this.simulateEmailSend(validatedData)
       }
 
@@ -79,6 +86,44 @@ class ResendEmailService {
       console.error('Erro no serviço de email:', error)
       throw error
     }
+  }
+
+  /**
+   * Envia email usando SMTP (nodemailer)
+   */
+  private async sendViaSmtp(data: SendEmailInput): Promise<{ id: string; success: boolean }> {
+    const host = process.env.SMTP_HOST!
+    const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
+    const user = process.env.SMTP_USER!
+    const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD!
+    const secure = String(port) === '465'
+
+    const fromEmail = data.from || this.defaultFrom
+    const fromName = data.fromName || this.defaultFromName
+    const from = `${fromName} <${fromEmail}>`
+
+    const { createTransport } = await import('nodemailer') as any
+    const transporter = createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    })
+
+    const info = await transporter.sendMail({
+      from,
+      to: data.to,
+      subject: data.subject,
+      html: data.html,
+      text: data.text,
+      replyTo: data.replyTo,
+    })
+
+    if (data.trackingId) {
+      await this.trackEmailSent(data.trackingId, info.messageId || 'smtp')
+    }
+
+    return { id: info.messageId || 'smtp', success: true }
   }
 
   /**
