@@ -47,7 +47,7 @@ services:
       - "127.0.0.1:3001:3000"
     restart: unless-stopped
 
-    worker-email:
+  worker-email:
     build:
       context: .
       dockerfile: Dockerfile
