@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { Worker } from 'bullmq'
-import { queues } from '../src/lib/queues/bull'
+import { connection } from '../src/lib/queues/bull'
 import { prisma } from '@hekate/database'
 
 async function runReminderWorker() {
@@ -28,7 +28,7 @@ async function runReminderWorker() {
         throw e
       }
     },
-    { connection: (queues as any).reminders.client }
+    { connection }
   )
 }
 

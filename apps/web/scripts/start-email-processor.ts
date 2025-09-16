@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq'
-import { queues } from '../src/lib/queues/bull'
+import { connection } from '../src/lib/queues/bull'
 import { emailService } from '@/lib/email'
 
 async function runEmailWorkers() {
@@ -21,7 +21,7 @@ async function runEmailWorkers() {
         throw e
       }
     },
-    { connection: (queues as any).email.client }
+    { connection }
   )
 }
 
