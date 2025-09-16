@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Eye, EyeOff, Lock, Loader2, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -30,12 +31,21 @@ export function ResetPasswordForm({
   const [resetSuccess, setResetSuccess] = useState(false)
   const router = useRouter()
 
+  // Local schema for the form (do not require token here; token comes via props)
+  const ResetPasswordFormSchema = z.object({
+    password: ResetPasswordSchema.shape.password,
+    confirmPassword: ResetPasswordSchema.shape.confirmPassword,
+  }).refine(data => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword']
+  })
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ResetPasswordInput>({
-    resolver: zodResolver(ResetPasswordSchema),
+  } = useForm<Pick<ResetPasswordInput, 'password' | 'confirmPassword'>>({
+    resolver: zodResolver(ResetPasswordFormSchema),
   })
 
   useEffect(() => {
@@ -66,7 +76,7 @@ export function ResetPasswordForm({
     validateToken()
   }, [token])
 
-  const onSubmit = async (data: ResetPasswordInput) => {
+  const onSubmit = async (data: { password: string; confirmPassword: string }) => {
     try {
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
