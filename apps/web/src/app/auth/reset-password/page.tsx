@@ -5,7 +5,7 @@ import { ResetPasswordForm } from "@/components/forms/ResetPasswordForm"
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
-  const token = searchParams.get("token") || ""
+  const token = (searchParams && typeof searchParams.get === 'function' ? searchParams.get("token") : null) || ""
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4 dark:from-gray-950 dark:to-gray-900">
@@ -13,4 +13,3 @@ export default function ResetPasswordPage() {
     </div>
   )
 }
-
