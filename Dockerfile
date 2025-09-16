@@ -74,7 +74,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps ./apps
 COPY packages ./packages
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prod=false
+    pnpm install --no-frozen-lockfile --prod=false
 ENV NODE_ENV=production
 # Gera Prisma Client dentro da imagem do worker (evita erro @prisma/client)
 RUN cd packages/database && pnpm exec prisma generate
