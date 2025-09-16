@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import IORedis from 'ioredis'
 
-const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
+const redis = new IORedis(process.env.REDIS_URL || 'redis://redis:6379')
 
 export async function POST(req: NextRequest) {
   try {

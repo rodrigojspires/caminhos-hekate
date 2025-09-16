@@ -1,7 +1,7 @@
 import { Queue, Worker, QueueEvents, JobsOptions } from 'bullmq'
 import IORedis from 'ioredis'
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379')
+const connection = new IORedis(process.env.REDIS_URL || 'redis://redis:6379')
 
 export const queues = {
   email: new Queue('email', { connection }),

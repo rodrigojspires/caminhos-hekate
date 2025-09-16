@@ -559,7 +559,7 @@ export function getThemeService(): ThemeService {
       const { Redis } = require('ioredis')
       
       const db = new PrismaClient()
-      const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+      const redis = new Redis(process.env.REDIS_URL || 'redis://redis:6379')
       
       themeService = new ThemeService(db, redis)
     } else {
