@@ -1,25 +1,33 @@
 # Production Dockerfile for Next.js (apps/web) with standalone output
 # Multi-stage build using pnpm workspaces
 
+# syntax = docker/dockerfile:1.4
 FROM node:20-alpine AS base
 ENV PNPM_HOME=/root/.pnpm-store \
     NODE_ENV=production
 RUN apk add --no-cache libc6-compat openssl
 SHELL ["/bin/sh","-lc"]
 
-# --- Dependencies layer ---
-FROM base AS deps
+# --- Prune layer (Turbo) ---
+FROM base AS pruner
 WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/web/package.json apps/web/package.json
-COPY packages ./packages
 RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
-RUN pnpm install --frozen-lockfile --prod=false
+COPY . .
+RUN pnpm dlx turbo@1.13.4 prune --scope=@hekate/web --docker
+
+# --- Dependencies layer (PRUNED for web) ---
+FROM base AS deps-web
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
+COPY --from=pruner /app/out/json/ ./
+# Cache pnpm store between builds
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod=false
 
 # --- Build layer ---
-FROM deps AS build
+FROM deps-web AS build
 WORKDIR /app
-COPY . .
+COPY --from=pruner /app/out/full/ ./
 ENV NODE_ENV=production
 # Gera Prisma client antes do build do Next
 RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
@@ -50,10 +58,15 @@ USER nextjs
 CMD ["node", "apps/web/server.js"]
 
 # --- Worker layer (JOBS/QUEUES) ---
-FROM deps AS worker
+FROM base AS worker
 WORKDIR /app
-# Copia todo repo (scripts, pacotes, etc.)
-COPY . .
+RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
+# Copia repo completo para workers (precisam de scripts e deps fora do escopo do web)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps ./apps
+COPY packages ./packages
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod=false
 ENV NODE_ENV=production
 # Gera Prisma Client dentro da imagem do worker (evita erro @prisma/client)
 RUN cd packages/database && pnpm exec prisma generate

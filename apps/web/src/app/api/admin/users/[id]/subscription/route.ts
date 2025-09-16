@@ -112,8 +112,8 @@ export async function DELETE(
 
     // Cancelar assinaturas ativas e ajustar usuário para FREE
     await prisma.userSubscription.updateMany({
-      where: { userId: params.id, status: { not: 'CANCELED' } },
-      data: { status: 'CANCELED', cancelAtPeriodEnd: true, canceledAt: new Date() }
+      where: { userId: params.id, status: { not: 'CANCELLED' } },
+      data: { status: 'CANCELLED', cancelAtPeriodEnd: true, canceledAt: new Date() }
     })
     const updated = await prisma.user.update({ where: { id: params.id }, data: { subscriptionTier: 'FREE' } })
 

@@ -67,7 +67,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","cd packages/database && pnpm exec prisma generate && exec pnpm exec tsx /app/apps/web/scripts/start-email-processor.ts"]
+    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-email-processor.ts"]
     restart: unless-stopped
 
   worker-reminders:
@@ -88,7 +88,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","cd packages/database && pnpm exec prisma generate && exec pnpm exec tsx /app/apps/web/scripts/start-reminder-processor.ts"]
+    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
 
   # One-off utility container for DB tasks (migrations/seed)
