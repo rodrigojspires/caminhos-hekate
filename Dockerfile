@@ -22,7 +22,7 @@ RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
 COPY --from=pruner /app/out/json/ ./
 # Cache pnpm store between builds
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prod=false
+    pnpm install --no-frozen-lockfile --prod=false
 
 # --- Build layer ---
 FROM deps-web AS build
