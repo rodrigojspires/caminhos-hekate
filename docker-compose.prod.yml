@@ -96,7 +96,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: deps
+      target: worker
     env_file:
       - .env
     environment:
