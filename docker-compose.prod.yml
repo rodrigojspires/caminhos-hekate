@@ -53,6 +53,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: worker        # <<< usa a nova stage
+    user: "root"
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,6 +80,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    user: "root"
     env_file:
       - .env
     environment:
