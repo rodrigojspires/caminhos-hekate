@@ -52,7 +52,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: deps         # <— garante node_modules disponível
+      target: worker
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +72,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: deps
+      target: worker
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,6 +87,7 @@ services:
     working_dir: /app
     command: ["sh","-lc","pnpm exec tsx apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
+
 
 
   # One-off utility container for DB tasks (migrations/seed)
