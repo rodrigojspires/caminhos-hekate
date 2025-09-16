@@ -87,6 +87,11 @@ const menuItems = [
     icon: BarChart3,
   },
   {
+    title: "Faturas",
+    href: "/admin/invoices",
+    icon: DollarSign,
+  },
+  {
     title: "Planos",
     href: "/admin/subscriptions/plans",
     icon: DollarSign,

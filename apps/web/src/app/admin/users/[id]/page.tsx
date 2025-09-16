@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Trash2, Mail, Phone, Calendar, ShoppingBag, BookOpen }
 import { UserForm } from '@/components/admin/UserForm'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
+import React from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -421,16 +422,80 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       )}
       
       {activeTab === 'subscription' && (
-        <SubscriptionManager
-          user={{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            subscriptionTier: user.subscriptionTier,
-          }}
-          onUpdate={fetchUser}
-        />
+        <div className="space-y-6">
+          <SubscriptionManager
+            user={{
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              subscriptionTier: user.subscriptionTier,
+            }}
+            onUpdate={fetchUser}
+          />
+
+          {/* Histórico de Faturas */}
+          <UserInvoices userId={user.id} />
+        </div>
       )}
+    </div>
+  )
+}
+
+function UserInvoices({ userId }: { userId: string }) {
+  const [invoices, setInvoices] = React.useState<any[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch(`/api/admin/users/${userId}/invoices`)
+        const data = await res.json()
+        if (res.ok) setInvoices(data.invoices || [])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [userId])
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Histórico de Faturas</h2>
+      </div>
+      <div className="p-6 overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="text-gray-600 dark:text-gray-300">
+            <tr>
+              <th className="px-4 py-2 text-left">ID</th>
+              <th className="px-4 py-2 text-left">Plano</th>
+              <th className="px-4 py-2 text-left">Valor</th>
+              <th className="px-4 py-2 text-left">Status</th>
+              <th className="px-4 py-2 text-left">Pago em</th>
+              <th className="px-4 py-2 text-left">Criado em</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {loading ? (
+              <tr><td colSpan={6} className="px-4 py-6">Carregando...</td></tr>
+            ) : invoices.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-6">Nenhuma fatura encontrada</td></tr>
+            ) : (
+              invoices.map((inv) => (
+                <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                  <td className="px-4 py-2">{inv.id.slice(-8)}</td>
+                  <td className="px-4 py-2">{inv.subscription?.plan?.name || '-'}</td>
+                  <td className="px-4 py-2">R$ {Number(inv.amount).toFixed(2)}</td>
+                  <td className="px-4 py-2">{inv.status}</td>
+                  <td className="px-4 py-2">{inv.paidAt ? new Date(inv.paidAt).toLocaleString('pt-BR') : '-'}</td>
+                  <td className="px-4 py-2">{new Date(inv.createdAt).toLocaleString('pt-BR')}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@hekate/database'
 import { z } from 'zod'
 
 // Schema de validação para atualização de assinatura
@@ -28,25 +29,50 @@ export async function PUT(
     const body = await request.json()
     const validatedData = updateSubscriptionSchema.parse(body)
 
-    const updatedUser = {
-      id: params.id,
-      subscriptionTier: validatedData.subscriptionTier,
-      subscriptionExpiresAt: validatedData.subscriptionExpiresAt,
-      subscriptionStartedAt: validatedData.subscriptionStartedAt,
-      updatedAt: new Date().toISOString()
-    }
-
-    // Log da ação para auditoria
-    console.log(`Admin ${session.user.email} updated subscription for user ${params.id}:`, {
-      from: 'CURRENT_SUBSCRIPTION', // Em um projeto real, buscar do banco
-      to: validatedData.subscriptionTier,
-      expiresAt: validatedData.subscriptionExpiresAt,
-      timestamp: new Date().toISOString()
+    // Atualizar tier no usuário
+    const user = await prisma.user.update({
+      where: { id: params.id },
+      data: { subscriptionTier: validatedData.subscriptionTier }
     })
+
+    // Vincular/atualizar UserSubscription de acordo com o plano por tier
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { tier: validatedData.subscriptionTier as any } })
+    if (plan) {
+      const now = new Date()
+      const start = validatedData.subscriptionStartedAt ? new Date(validatedData.subscriptionStartedAt) : now
+      const end = validatedData.subscriptionExpiresAt ? new Date(validatedData.subscriptionExpiresAt) : new Date(now)
+      if (!validatedData.subscriptionExpiresAt) {
+        // Definir período padrão conforme interval no plano
+        if (plan.interval === 'YEARLY') {
+          end.setFullYear(end.getFullYear() + (plan.intervalCount || 1))
+        } else if (plan.interval === 'MONTHLY') {
+          end.setMonth(end.getMonth() + (plan.intervalCount || 1))
+        } else if (plan.interval === 'QUARTERLY') {
+          end.setMonth(end.getMonth() + 3 * (plan.intervalCount || 1))
+        }
+      }
+
+      // Cria um novo registro ativo de assinatura do usuário
+      await prisma.userSubscription.create({
+        data: {
+          userId: user.id,
+          planId: plan.id,
+          status: 'ACTIVE',
+          currentPeriodStart: start,
+          currentPeriodEnd: end,
+        }
+      })
+    }
 
     return NextResponse.json({
       message: 'Assinatura atualizada com sucesso',
-      user: updatedUser
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        subscriptionTier: user.subscriptionTier,
+        updatedAt: user.updatedAt
+      }
     })
 
   } catch (error) {
@@ -84,25 +110,12 @@ export async function DELETE(
       )
     }
 
-    // Simular cancelamento no banco de dados
-    // Em um projeto real, você faria:
-    // const updatedUser = await prisma.user.update({
-    //   where: { id: params.id },
-    //   data: {
-    //     subscription: 'FREE',
-    //     subscriptionExpiresAt: null,
-    //     subscriptionStartedAt: null,
-    //     updatedAt: new Date()
-    //   }
-    // })
-
-    const updatedUser = {
-      id: params.id,
-      subscriptionTier: 'FREE' as const,
-      subscriptionExpiresAt: null,
-      subscriptionStartedAt: null,
-      updatedAt: new Date().toISOString()
-    }
+    // Cancelar assinaturas ativas e ajustar usuário para FREE
+    await prisma.userSubscription.updateMany({
+      where: { userId: params.id, status: { not: 'CANCELED' } },
+      data: { status: 'CANCELED', cancelAtPeriodEnd: true, canceledAt: new Date() }
+    })
+    const updated = await prisma.user.update({ where: { id: params.id }, data: { subscriptionTier: 'FREE' } })
 
     // Log da ação para auditoria
     console.log(`Admin ${session.user.email} cancelled subscription for user ${params.id}:`, {
@@ -112,7 +125,7 @@ export async function DELETE(
 
     return NextResponse.json({
       message: 'Assinatura cancelada com sucesso',
-      user: updatedUser
+      user: { id: updated.id, email: updated.email, subscriptionTier: updated.subscriptionTier }
     })
 
   } catch (error) {
@@ -140,42 +153,16 @@ export async function GET(
       )
     }
 
-    // Simular busca do histórico no banco de dados
-    // Em um projeto real, você faria:
-    // const subscriptionHistory = await prisma.subscriptionHistory.findMany({
-    //   where: { userId: params.id },
-    //   orderBy: { createdAt: 'desc' }
-    // })
-
-    const subscriptionHistory = [
-      {
-        id: '1',
-        userId: params.id,
-        subscriptionTier: 'ADEPTO',
-        action: 'UPGRADED',
-        previousSubscriptionTier: 'FREE',
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias atrás
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias no futuro
-        adminId: session.user.id,
-        adminEmail: session.user.email
-      },
-      {
-        id: '2',
-        userId: params.id,
-        subscriptionTier: 'FREE',
-        action: 'CREATED',
-        previousSubscriptionTier: null,
-        createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 dias atrás
-        expiresAt: null,
-        adminId: null,
-        adminEmail: null
-      }
-    ]
-
-    return NextResponse.json({
-      history: subscriptionHistory,
-      total: subscriptionHistory.length
+    const subs = await prisma.userSubscription.findMany({
+      where: { userId: params.id },
+      orderBy: { createdAt: 'desc' },
+      include: { plan: true }
     })
+    const payments = await prisma.paymentTransaction.findMany({
+      where: { userId: params.id },
+      orderBy: { createdAt: 'desc' }
+    })
+    return NextResponse.json({ subscriptions: subs, payments })
 
   } catch (error) {
     console.error('Erro ao buscar histórico de assinaturas:', error)
