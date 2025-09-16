@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@hekate/database"
 import { VerifyEmailSchema } from "@/lib/validations/auth"
+import { verifyEmailToken } from "@/lib/tokens"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,43 +12,25 @@ export async function POST(request: NextRequest) {
     const validatedData = VerifyEmailSchema.parse(body)
     const { token } = validatedData
 
-    // Find verification token
-    const verificationToken = await prisma.verificationToken.findUnique({
-      where: { token },
-    })
+    // Use helper to verify and mark user as verified atomically
+    const result = await verifyEmailToken(token)
 
-    if (!verificationToken || verificationToken.expires < new Date()) {
+    if (!result.success) {
       return NextResponse.json(
-        { message: "Token de verificação inválido ou expirado" },
+        { message: result.error || "Token de verificação inválido ou expirado" },
         { status: 400 }
       )
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: verificationToken.identifier }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { message: "Usuário não encontrado" },
-        { status: 400 }
-      )
-    }
-
-    // Delete used verification token
-    await prisma.verificationToken.delete({
-      where: { token },
-    })
+    // Fetch the updated user for response (optional)
+    const user = await prisma.user.findUnique({ where: { email: result.email } })
 
     return NextResponse.json(
       {
         message: "Email verificado com sucesso",
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        user: user
+          ? { id: user.id, name: user.name, email: user.email }
+          : { id: null, name: null, email: result.email },
       },
       { status: 200 }
     )
