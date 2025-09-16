@@ -28,6 +28,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 FROM deps-web AS build
 WORKDIR /app
 COPY --from=pruner /app/out/full/ ./
+# Copia configuracoes de raiz necessárias para o Next/TS
+COPY --from=pruner /app/tsconfig.json ./tsconfig.json
+COPY --from=pruner /app/turbo.json ./turbo.json
 ENV NODE_ENV=production
 # Gera Prisma client antes do build do Next
 RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
