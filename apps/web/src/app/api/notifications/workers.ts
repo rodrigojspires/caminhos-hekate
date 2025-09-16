@@ -1,10 +1,13 @@
 import { startWhatsAppWorker } from './whatsapp/worker'
-import { Worker } from 'bullmq'
-import { queues } from '@/lib/queues/bull'
+import { Queue, Worker } from 'bullmq'
+import { getRedisConnection } from '@/lib/queues/bull'
 import { prisma } from '@hekate/database'
 import { emailService } from '@/lib/email'
 
 export function startAllWorkers() {
+  const conn = getRedisConnection()
+  const emailQueue = new Queue('email', { connection: conn })
+  const remindersQueue = new Queue('reminders', { connection: conn })
   // Email
   new Worker('email', async job => {
     const data: any = job.data
@@ -15,7 +18,7 @@ export function startAllWorkers() {
       await emailService.sendEmail(data)
     }
     return { ok: true }
-  }, { connection: (queues as any).email.client })
+  }, { connection: conn })
 
   // WhatsApp
   startWhatsAppWorker()
@@ -35,6 +38,5 @@ export function startAllWorkers() {
       },
     })
     return { ok: true }
-  }, { connection: (queues as any).reminders.client })
+  }, { connection: conn })
 }
-
