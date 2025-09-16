@@ -8,7 +8,8 @@ docker-compose -f docker-compose.prod.yml down --remove-orphans || { echo "❌ F
 
 echo "🚀 Subindo containers com nova build..."
 DOCKER_BUILDKIT=1 docker compose -f docker-compose.prod.yml build --parallel || { echo"❌ Falha no build paralelo"; exit 1; }
-docker-compose -f docker-compose.prod.yml up -d --no-deps web worker-email worker-reminders || { echo"❌ Falha ao subir containers"; exit 1; }
+docker-compose -f docker-compose.prod.yml up -d --no-deps web worker-email worker-reminders || { echo"❌ Falha ao subir containers web"; exit 1; }
+docker-compose -f docker-compose.prod.yml up -d || { echo"❌ Falha ao subir containers"; exit 1; }
 
 echo -e "\n=== Limpando containers parados ==="
 docker container prune -f

@@ -34,7 +34,8 @@ COPY --from=pruner /app/turbo.json ./turbo.json
 ENV NODE_ENV=production
 # Gera Prisma client antes do build do Next
 RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
-RUN pnpm -w build
+# Evita conexões externas (Redis) durante o build do Next
+RUN SKIP_REDIS=1 pnpm -w build
 
 # --- Runtime layer (WEB) ---
 FROM base AS runner
