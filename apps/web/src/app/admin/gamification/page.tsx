@@ -111,13 +111,13 @@ export default function GamificationAdminDashboard() {
     color: string
     change?: string
   }) => (
-    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
           {change && (
-            <p className={`text-sm ${change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-sm ${change.startsWith('+') ? 'text-green-600' : 'text-red-400'}`}>
               {change} vs mês anterior
             </p>
           )}
@@ -178,14 +178,14 @@ export default function GamificationAdminDashboard() {
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Eventos Recentes</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Eventos Recentes</h3>
           <div className="space-y-3">
             {events.slice(0, 5).map((event) => (
-              <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <div>
-                  <p className="font-medium text-gray-900">{event.title}</p>
-                  <p className="text-sm text-gray-600">{event.participantCount} participantes</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{event.title}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{event.participantCount} participantes</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   event.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
@@ -199,14 +199,14 @@ export default function GamificationAdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Conquistas Populares</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Conquistas Populares</h3>
           <div className="space-y-3">
             {achievements.slice(0, 5).map((achievement) => (
-              <div key={achievement.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={achievement.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <div>
-                  <p className="font-medium text-gray-900">{achievement.title}</p>
-                  <p className="text-sm text-gray-600">{achievement.unlockedCount} desbloqueios</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{achievement.title}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.unlockedCount} desbloqueios</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   achievement.rarity === 'LEGENDARY' ? 'bg-yellow-100 text-yellow-800' :
@@ -466,29 +466,29 @@ export default function GamificationAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando dashboard...</p>
+          <p className="text-gray-600 dark:text-gray-300">Carregando dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <Trophy className="w-8 h-8 text-blue-600" />
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Dashboard de Gamificação
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 text-gray-600 hover:text-gray-900">
+              <button className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -497,7 +497,7 @@ export default function GamificationAdminDashboard() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
@@ -512,7 +512,7 @@ export default function GamificationAdminDashboard() {
                 className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />

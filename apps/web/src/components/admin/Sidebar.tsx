@@ -70,6 +70,11 @@ const menuItems = [
     icon: MessageSquare,
   },
   {
+    title: "Grupos",
+    href: "/dashboard/grupos",
+    icon: Users,
+  },
+  {
     title: "Gamification",
     href: "/admin/gamification",
     icon: Trophy,

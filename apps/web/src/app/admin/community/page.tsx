@@ -160,6 +160,13 @@ export default function CommunityPage() {
     badge?: string
   }[] = [
     {
+      title: 'Gerenciar Grupos',
+      description: 'Criar, moderar e gerenciar grupos de usuários',
+      href: '/dashboard/grupos',
+      icon: Users,
+      color: 'bg-indigo-500'
+    },
+    {
       title: 'Gerenciar Tópicos',
       description: 'Criar, editar e organizar tópicos da comunidade',
       href: '/admin/community/topics',

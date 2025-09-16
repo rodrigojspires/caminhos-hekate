@@ -279,13 +279,13 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cursos</h1>
-          <p className="text-gray-600">Gerencie os cursos da plataforma</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Cursos</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie os cursos da plataforma</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleExport('csv')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             <Download className="w-4 h-4" />
             Exportar
@@ -317,8 +317,8 @@ export default function CoursesPage() {
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 border rounded-lg ${
               showFilters 
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -338,14 +338,14 @@ export default function CoursesPage() {
 
       {/* Ações em Lote */}
       {selectedCourses.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-blue-700">
+        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-lg">
+          <span className="text-blue-700 dark:text-blue-300">
             {selectedCourses.length} curso(s) selecionado(s)
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={handleBulkDelete}
-              className="flex items-center gap-2 px-3 py-1.5 text-red-700 bg-red-100 rounded hover:bg-red-200"
+              className="flex items-center gap-2 px-3 py-1.5 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
             >
               <Trash2 className="w-4 h-4" />
               Deletar
@@ -355,7 +355,7 @@ export default function CoursesPage() {
       )}
 
       {/* Tabela */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner />

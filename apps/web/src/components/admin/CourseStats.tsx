@@ -54,7 +54,7 @@ export default function CourseStats() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-white p-6 rounded-lg border border-gray-200">
+          <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-center h-20">
               <LoadingSpinner size="sm" />
             </div>
@@ -66,8 +66,8 @@ export default function CourseStats() {
 
   if (error || !stats) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">{error || 'Erro ao carregar estatísticas'}</p>
+      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-lg p-4">
+        <p className="text-red-700 dark:text-red-300">{error || 'Erro ao carregar estatísticas'}</p>
       </div>
     )
   }
@@ -120,14 +120,14 @@ export default function CourseStats() {
         {statCards.map((card, index) => {
           const Icon = card.icon
           return (
-            <div key={index} className="bg-white p-6 rounded-lg border border-gray-200">
+            <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{card.description}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{card.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{card.value}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.description}</p>
                 </div>
-                <div className={`p-3 rounded-lg ${getColorClasses(card.color)}`}>
+                <div className={`p-3 rounded-lg ${getColorClasses(card.color)} dark:opacity-90` }>
                   <Icon className="w-6 h-6" />
                 </div>
               </div>
@@ -139,42 +139,42 @@ export default function CourseStats() {
       {/* Distribuição por status e nível */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Por Status */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Cursos por Status</h3>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cursos por Status</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Publicados</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Publicados</span>
               <span className="font-medium text-green-600">{stats.coursesByStatus.PUBLISHED}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Rascunhos</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Rascunhos</span>
               <span className="font-medium text-yellow-600">{stats.coursesByStatus.DRAFT}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Arquivados</span>
-              <span className="font-medium text-gray-600">{stats.coursesByStatus.ARCHIVED}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Arquivados</span>
+              <span className="font-medium text-gray-600 dark:text-gray-300">{stats.coursesByStatus.ARCHIVED}</span>
             </div>
           </div>
         </div>
 
         {/* Por Nível */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Cursos por Nível</h3>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cursos por Nível</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Iniciante</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Iniciante</span>
               <span className="font-medium text-blue-600">{stats.coursesByLevel.BEGINNER}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Intermediário</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Intermediário</span>
               <span className="font-medium text-green-600">{stats.coursesByLevel.INTERMEDIATE}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Avançado</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Avançado</span>
               <span className="font-medium text-yellow-600">{stats.coursesByLevel.ADVANCED}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Especialista</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Especialista</span>
               <span className="font-medium text-purple-600">{stats.coursesByLevel.EXPERT}</span>
             </div>
           </div>
