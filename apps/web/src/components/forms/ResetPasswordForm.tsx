@@ -33,8 +33,17 @@ export function ResetPasswordForm({
 
   // Local schema for the form (do not require token here; token comes via props)
   const ResetPasswordFormSchema = z.object({
-    password: ResetPasswordSchema.shape.password,
-    confirmPassword: ResetPasswordSchema.shape.confirmPassword,
+    password: z
+      .string()
+      .min(1, 'Senha é obrigatória')
+      .min(8, 'Senha deve ter pelo menos 8 caracteres')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        'Senha deve conter pelo menos uma letra minúscula, uma maiúscula e um número'
+      ),
+    confirmPassword: z
+      .string()
+      .min(1, 'Confirmação de senha é obrigatória'),
   }).refine(data => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem',
     path: ['confirmPassword']
