@@ -108,6 +108,12 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                 Configurações
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/minhas-faturas">
+                <span className="mr-2 inline-block w-4" />
+                Minhas Faturas
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={(e) => {

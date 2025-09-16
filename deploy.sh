@@ -32,11 +32,11 @@ if [[ -n "${TURBO_TOKEN:-}" ]]; then BUILD_ARGS+=(--build-arg TURBO_TOKEN); fi
 if [[ -n "${TURBO_TEAM:-}" ]]; then BUILD_ARGS+=(--build-arg TURBO_TEAM); fi
 
 # Evita COMPOSE_DOCKER_CLI_BUILD=1 (ignora --parallel). Força BuildKit e paralelismo real do compose
-COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" build --parallel "${BUILD_ARGS[@]}" web worker-email worker-reminders || {
+COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" build --parallel "${BUILD_ARGS[@]}" web worker-email worker-reminders worker-subscriptions || {
   echo "❌ Falha no build paralelo"; exit 1; }
 
 echo "🚀 Subindo serviços (web e workers)..."
-$DC -f "$COMPOSE_FILE" up -d --no-deps web worker-email worker-reminders || { echo "❌ Falha ao subir containers web/workers"; exit 1; }
+$DC -f "$COMPOSE_FILE" up -d --no-deps web worker-email worker-reminders worker-subscriptions || { echo "❌ Falha ao subir containers web/workers"; exit 1; }
 
 # (Opcional) subir demais serviços declarados
 $DC -f "$COMPOSE_FILE" up -d || { echo "❌ Falha ao subir containers"; exit 1; }

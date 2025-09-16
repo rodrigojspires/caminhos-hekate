@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export interface ProductFormData {
   name: string
+  slug: string
   description: string
   shortDescription?: string
   sku: string
@@ -17,8 +18,11 @@ export interface ProductFormData {
   trackQuantity: boolean
   quantity: number
   allowBackorder: boolean
+  // Medidas para frete (variação padrão)
   weight?: number
-  dimensions?: string
+  height?: number
+  width?: number
+  length?: number
   categoryId: string
   type: 'PHYSICAL' | 'DIGITAL' | 'SERVICE'
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
@@ -27,6 +31,7 @@ export interface ProductFormData {
   seoDescription?: string
   tags?: string
   images?: string[]
+  imageUrl?: string
 }
 
 interface ProductFormProps {
@@ -44,6 +49,7 @@ export function ProductForm({
 }: ProductFormProps) {
   const [formData, setFormData] = useState<ProductFormData>({
     name: initialData?.name || '',
+    slug: (initialData as any)?.slug || '',
     description: initialData?.description || '',
     shortDescription: initialData?.shortDescription || '',
     sku: initialData?.sku || '',
@@ -53,8 +59,10 @@ export function ProductForm({
     trackQuantity: initialData?.trackQuantity ?? true,
     quantity: initialData?.quantity || 0,
     allowBackorder: initialData?.allowBackorder ?? false,
-    weight: initialData?.weight || undefined,
-    dimensions: initialData?.dimensions || '',
+    weight: (initialData as any)?.weight || undefined,
+    height: (initialData as any)?.height || undefined,
+    width: (initialData as any)?.width || undefined,
+    length: (initialData as any)?.length || undefined,
     categoryId: initialData?.categoryId || '',
     type: initialData?.type || 'PHYSICAL',
     status: initialData?.status || 'DRAFT',
@@ -63,6 +71,7 @@ export function ProductForm({
     seoDescription: initialData?.seoDescription || '',
     tags: initialData?.tags || '',
     images: initialData?.images || [],
+    imageUrl: (initialData as any)?.imageUrl || '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +101,17 @@ export function ProductForm({
                   required
                 />
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Slug *</label>
+                <Input
+                  value={formData.slug}
+                  onChange={(e) => handleInputChange('slug', e.target.value)}
+                  placeholder="minha-url-amigavel"
+                  required
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">SKU *</label>
                 <Input
@@ -158,6 +177,68 @@ export function ProductForm({
                   value={formData.quantity}
                   onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
                   placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">URL da Imagem Principal</label>
+                <Input
+                  value={formData.imageUrl || ''}
+                  onChange={(e) => {
+                    const url = e.target.value
+                    handleInputChange('imageUrl', url)
+                    handleInputChange('images', url ? [url] : [])
+                  }}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Peso (kg)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.weight ?? ''}
+                  onChange={(e) => handleInputChange('weight', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Altura (cm)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.height ?? ''}
+                  onChange={(e) => handleInputChange('height', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  placeholder="0.0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Largura (cm)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.width ?? ''}
+                  onChange={(e) => handleInputChange('width', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  placeholder="0.0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Comprimento (cm)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.length ?? ''}
+                  onChange={(e) => handleInputChange('length', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  placeholder="0.0"
                 />
               </div>
             </div>

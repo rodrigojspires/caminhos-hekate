@@ -11,15 +11,18 @@ const createProductSchema = z.object({
   shortDescription: z.string().optional(),
   type: z.enum(['PHYSICAL', 'DIGITAL']).default('PHYSICAL'),
   categoryId: z.string().nullable().optional(),
+  // Campos da variação padrão
   price: z.number().min(0, 'Preço deve ser maior ou igual a zero'),
   comparePrice: z.number().optional(),
   cost: z.number().optional(),
-  sku: z.string().optional(),
-  barcode: z.string().optional(),
+  sku: z.string().min(1, 'SKU é obrigatório'),
   trackQuantity: z.boolean().default(false),
   quantity: z.number().int().min(0).default(0),
   weight: z.number().optional(),
-  dimensions: z.string().optional(),
+  height: z.number().optional(),
+  width: z.number().optional(),
+  length: z.number().optional(),
+  // Status geral
   status: z.enum(['ACTIVE', 'INACTIVE', 'OUT_OF_STOCK']).default('ACTIVE'),
   featured: z.boolean().default(false),
   tags: z.array(z.string()).default([]),
@@ -155,25 +158,50 @@ export const POST = withAdminAuth(async (user, request: NextRequest) => {
       }
     }
     
-    // Criar produto
+    // Separa dados do produto e da variação padrão
+    const {
+      name, slug, description, shortDescription, type, categoryId, images,
+      featured, status, seoTitle, seoDescription,
+      // Variação
+      price, comparePrice, sku, trackQuantity, quantity, weight, height, width, length,
+    } = data as any
+
     const product = await prisma.product.create({
-      data,
+      data: {
+        name,
+        slug,
+        description,
+        shortDescription: shortDescription || null,
+        type,
+        categoryId: categoryId || null,
+        featured: !!featured,
+        active: status === 'ACTIVE',
+        images: images || [],
+        metaTitle: seoTitle || null,
+        metaDescription: seoDescription || null,
+      },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          }
-        },
+        category: { select: { id: true, name: true, slug: true } },
         variants: true,
+      },
+    })
+
+    // Cria variação padrão
+    await prisma.productVariant.create({
+      data: {
+        productId: product.id,
+        sku,
+        name: product.name,
+        price,
+        comparePrice: comparePrice ?? null,
+        stock: quantity ?? 0,
+        weight: weight ?? null,
+        dimensions: (height || width || length) ? { height, width, length } : null,
+        active: status === 'ACTIVE',
       }
     })
     
-    return NextResponse.json({
-      success: true,
-      product,
-    }, { status: 201 })
+    return NextResponse.json({ success: true, product }, { status: 201 })
     
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -21,6 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import VariantDigitalSettings from '@/components/admin/VariantDigitalSettings'
+import ProductVariantsEditor from '@/components/admin/ProductVariantsEditor'
 
 interface Product {
   id: string
@@ -79,7 +80,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
       }
 
       const data = await response.json()
-      setProduct(data)
+      // API retorna { product }
+      setProduct(data.product || data)
     } catch (error) {
       console.error('Erro ao carregar produto:', error)
       toast.error('Erro ao carregar produto')
@@ -110,7 +112,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
       }
 
       const updatedProduct = await response.json()
-      setProduct(updatedProduct)
+      setProduct(updatedProduct.product || updatedProduct)
       toast.success('Produto atualizado com sucesso!')
     } catch (error) {
       console.error('Erro ao atualizar produto:', error)
@@ -146,12 +148,30 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     if (!product) return
 
     try {
-      // Criar dados para duplicação removendo campos que não devem ser duplicados
-      const { id, createdAt, updatedAt, category, ...duplicateData } = {
-        ...product,
+      // Dados base do produto
+      const main = (product as any).variants?.[0]
+      const baseSlug = ((product as any).slug || product.name)
+      const newSlug = `${baseSlug.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')}-copy-${Date.now()}`
+
+      const duplicateData: any = {
         name: `${product.name} (Cópia)`,
-        sku: `${product.sku}-copy-${Date.now()}`,
-        status: 'DRAFT' as const,
+        slug: newSlug,
+        description: product.description || '',
+        shortDescription: product.shortDescription || '',
+        type: product.type,
+        categoryId: (product as any).categoryId || undefined,
+        images: (product as any).images || [],
+        featured: !!product.featured,
+        status: 'DRAFT',
+        // Variação padrão
+        sku: `${(main?.sku || 'SKU')}-copy-${Date.now()}`,
+        price: Number(main?.price ?? 0),
+        comparePrice: main?.comparePrice != null ? Number(main.comparePrice) : undefined,
+        quantity: main?.stock ?? 0,
+        weight: main?.weight ?? undefined,
+        height: (main?.dimensions as any)?.height ?? undefined,
+        width: (main?.dimensions as any)?.width ?? undefined,
+        length: (main?.dimensions as any)?.length ?? undefined,
       }
 
       const response = await fetch('/api/admin/products', {
@@ -247,7 +267,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           <div>
             <div className="flex items-center space-x-3 mb-2">
               <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
-              {getStatusBadge(product.status)}
+              {getStatusBadge(((product as any).active ? 'ACTIVE' : 'DRAFT') as string)}
               {getTypeBadge(product.type)}
               {product.featured && <Badge>Destaque</Badge>}
             </div>
@@ -265,10 +285,10 @@ export default function EditProductPage({ params }: EditProductPageProps) {
               Duplicar
             </Button>
             
-            {product.status === 'ACTIVE' && (
+            {(product as any).active && (
               <Button
                 variant="outline"
-                onClick={() => window.open(`/products/${product.id}`, '_blank')}
+                onClick={() => window.open(`/loja/${(product as any).slug}`, '_blank')}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Ver na Loja
@@ -315,14 +335,23 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Preço</p>
-              <p className="text-lg font-semibold">
-                R$ {product.price.toFixed(2)}
-              </p>
-              {product.compareAtPrice && (
-                <p className="text-sm text-muted-foreground line-through">
-                  R$ {product.compareAtPrice.toFixed(2)}
-                </p>
-              )}
+              {(() => {
+                const main = (product as any).variants?.[0]
+                const price = main?.price != null ? Number(main.price) : undefined
+                const compare = main?.comparePrice != null ? Number(main.comparePrice) : undefined
+                return (
+                  <>
+                    <p className="text-lg font-semibold">
+                      {price != null ? `R$ ${price.toFixed(2)}` : '—'}
+                    </p>
+                    {compare != null && (
+                      <p className="text-sm text-muted-foreground line-through">
+                        R$ {compare.toFixed(2)}
+                      </p>
+                    )}
+                  </>
+                )
+              })()}
             </div>
             
             {product.trackQuantity && (
@@ -367,6 +396,9 @@ export default function EditProductPage({ params }: EditProductPageProps) {
           />
         </CardContent>
       </Card>
+
+      {/* Edição de Variações */}
+      <ProductVariantsEditor productId={params.id} />
 
       {/* Configurações de Download por Variação (para produtos digitais) */}
       <VariantDigitalSettings productId={params.id} />

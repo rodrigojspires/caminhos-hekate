@@ -311,6 +311,13 @@ export function MobileMenu({
                   </Button>
                 </Link>
                 
+                <Link href="/minhas-faturas" onClick={handleItemClick}>
+                  <Button variant="ghost" className="w-full justify-start h-auto p-3">
+                    <span className="inline-block w-5 mr-3" />
+                    <span className="font-medium">Minhas Faturas</span>
+                  </Button>
+                </Link>
+                
                 <Button 
                   variant="ghost" 
                   onClick={handleSignOut}

@@ -91,6 +91,27 @@ services:
     command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
 
+  worker-subscriptions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    user: "root"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+    working_dir: /app
+    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-subscription-billing.ts"]
+    restart: unless-stopped
+
   # One-off utility container for DB tasks (migrations/seed)
   dbtools:
     build:

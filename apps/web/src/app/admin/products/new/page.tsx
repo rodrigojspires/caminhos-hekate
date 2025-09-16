@@ -28,7 +28,7 @@ export default function NewProductPage() {
         throw new Error(error.message || 'Erro ao criar produto')
       }
 
-      const product = await response.json()
+      const { product } = await response.json()
       toast.success('Produto criado com sucesso!')
       router.push(`/admin/products/${product.id}`)
     } catch (error) {

@@ -6,9 +6,16 @@ import { z } from 'zod'
 
 const updateSchema = z.object({
   name: z.string().optional(),
+  sku: z.string().optional(),
   price: z.number().optional(),
+  comparePrice: z.number().nullable().optional(),
   stock: z.number().int().optional(),
   active: z.boolean().optional(),
+  weight: z.number().nullable().optional(),
+  dimensions: z
+    .object({ height: z.number().optional(), width: z.number().optional(), length: z.number().optional() })
+    .partial()
+    .optional(),
   attributes: z.record(z.any()).optional(),
 })
 
@@ -40,7 +47,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const body = await req.json()
     const data = updateSchema.parse(body)
-    const variant = await prisma.productVariant.update({ where: { id: params.id }, data })
+    const updateData: any = {
+      name: data.name,
+      sku: data.sku,
+      price: data.price,
+      comparePrice: data.comparePrice ?? undefined,
+      stock: data.stock,
+      active: data.active,
+      weight: data.weight ?? undefined,
+      attributes: data.attributes,
+    }
+    if (data.dimensions && (data.dimensions.height || data.dimensions.width || data.dimensions.length)) {
+      updateData.dimensions = {
+        height: data.dimensions.height,
+        width: data.dimensions.width,
+        length: data.dimensions.length,
+      }
+    }
+    const variant = await prisma.productVariant.update({ where: { id: params.id }, data: updateData })
     return NextResponse.json({ success: true, variant })
   } catch (e: any) {
     if (e instanceof z.ZodError) {
@@ -50,4 +74,3 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
-
