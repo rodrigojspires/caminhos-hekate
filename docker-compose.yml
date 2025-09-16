@@ -13,7 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hekate"]
+      # Explicitly target the correct database to avoid defaulting to DB name = user (hekate)
+      test: ["CMD-SHELL", "pg_isready -U hekate -d hekate_db"]
       interval: 10s
       timeout: 5s
       retries: 5

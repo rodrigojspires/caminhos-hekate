@@ -20,7 +20,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-hekate} -d $${POSTGRES_DB:-hekate_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,10 +47,11 @@ services:
       - "127.0.0.1:3001:3000"
     restart: unless-stopped
 
-  worker-email:
+    worker-email:
     build:
       context: .
       dockerfile: Dockerfile
+      target: deps         # <— garante node_modules disponível
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,13 +63,15 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-    command: ["tsx", "apps/web/scripts/start-email-processor.ts"]
+    working_dir: /app
+    command: ["sh","-lc","pnpm exec tsx apps/web/scripts/start-email-processor.ts"]
     restart: unless-stopped
 
   worker-reminders:
     build:
       context: .
       dockerfile: Dockerfile
+      target: deps
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,8 +83,10 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-    command: ["tsx", "apps/web/scripts/start-reminder-processor.ts"]
+    working_dir: /app
+    command: ["sh","-lc","pnpm exec tsx apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
+
 
   # One-off utility container for DB tasks (migrations/seed)
   dbtools:
