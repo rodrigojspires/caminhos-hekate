@@ -31,7 +31,7 @@ const SendEmailSchema = z.object({
 export type SendEmailInput = z.input<typeof SendEmailSchema>
 
 class ResendEmailService {
-  private readonly defaultFrom = process.env.DEFAULT_FROM_EMAIL || 'noreply@caminhosdehekate.com.br'
+  private readonly defaultFrom = process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_FROM || 'noreply@caminhosdehekate.com.br'
   private readonly defaultFromName = process.env.DEFAULT_FROM_NAME || 'Caminhos de Hekate'
 
   /**
