@@ -34,6 +34,23 @@ FROM base AS runner
 WORKDIR /app
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
+# --- Worker layer (para jobs/queues) ---
+FROM deps AS worker
+WORKDIR /app
+
+# Copia TODO o repo (inclui apps/web/scripts e demais pacotes)
+COPY . .
+
+ENV NODE_ENV=production
+
+# Gera o Prisma Client durante o build (evita erro "@prisma/client did not initialize yet")
+RUN cd packages/database && pnpm exec prisma generate
+# (Opcional) se quiser, rode um build leve de libs compartilhadas aqui
+
+# O CMD é ignorado pelo docker-compose (usaremos "command" nele)
+CMD ["node", "-e", "console.log('worker image ready')"]
+    
+
 # Copy standalone output
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static

@@ -52,7 +52,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: worker
+      target: worker        # <<< usa a nova stage
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +65,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     working_dir: /app
-    command: ["sh","-lc","pnpm exec tsx apps/web/scripts/start-email-processor.ts"]
+    # garanta generate em runtime tbm (idempotente) e depois roda o TSX
+    command: ["sh","-lc","cd packages/database && pnpm exec prisma generate && pnpm exec tsx apps/web/scripts/start-email-processor.ts"]
     restart: unless-stopped
 
   worker-reminders:
@@ -85,10 +86,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     working_dir: /app
-    command: ["sh","-lc","pnpm exec tsx apps/web/scripts/start-reminder-processor.ts"]
+    command: ["sh","-lc","cd packages/database && pnpm exec prisma generate && pnpm exec tsx apps/web/scripts/start-reminder-processor.ts"]
     restart: unless-stopped
-
-
 
   # One-off utility container for DB tasks (migrations/seed)
   dbtools:
