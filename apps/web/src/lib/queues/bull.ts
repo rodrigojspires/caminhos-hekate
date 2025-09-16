@@ -1,7 +1,11 @@
 import { Queue, Worker, QueueEvents, JobsOptions } from 'bullmq'
 import IORedis from 'ioredis'
 
-export const connection = new IORedis(process.env.REDIS_URL || 'redis://redis:6379')
+// BullMQ requires maxRetriesPerRequest to be null for blocking commands
+const redisUrl = process.env.REDIS_URL || 'redis://redis:6379'
+export const connection = new IORedis(redisUrl, {
+  maxRetriesPerRequest: null,
+})
 
 export const queues = {
   email: new Queue('email', { connection }),
