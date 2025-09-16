@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { queues } from '@/lib/queues/bull'
+import { Queue } from 'bullmq'
+import { getRedisConnection } from '@/lib/queues/bull'
 
 export async function GET(_req: NextRequest) {
   try {
+    const conn = getRedisConnection()
+    const names = ['email','whatsapp','reminders'] as const
     const stats = await Promise.all(
-      (Object.keys(queues) as Array<keyof typeof queues>).map(async name => {
-        const q = queues[name]
+      names.map(async (name) => {
+        const q = new Queue(name, { connection: conn })
         const counts = await q.getJobCounts('waiting','active','completed','failed','delayed','paused')
         return { name, counts }
       })
@@ -20,4 +23,3 @@ export async function GET(_req: NextRequest) {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-

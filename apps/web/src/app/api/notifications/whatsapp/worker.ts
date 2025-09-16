@@ -1,9 +1,11 @@
-import { Worker } from 'bullmq'
-import { queues } from '@/lib/queues/bull'
+import { Queue, Worker } from 'bullmq'
+import { getRedisConnection } from '@/lib/queues/bull'
 import { prisma } from '@hekate/database'
 import { sendTemplateMessage } from '@/lib/whatsapp/evolution'
 
 export function startWhatsAppWorker() {
+  const conn = getRedisConnection()
+  const whatsappQueue = new Queue('whatsapp', { connection: conn })
   return new Worker(
     'whatsapp',
     async job => {
@@ -18,7 +20,7 @@ export function startWhatsAppWorker() {
         const inQuiet = hh >= start || hh <= end
         if (inQuiet) {
           // re-enqueue in 1h
-          await queues.whatsapp.add('send-whatsapp', data, { delay: 60 * 60 * 1000 })
+          await whatsappQueue.add('send-whatsapp', data, { delay: 60 * 60 * 1000 })
           return { deferred: true }
         }
       }
@@ -53,7 +55,6 @@ export function startWhatsAppWorker() {
         throw e
       }
     },
-    { connection: (queues as any).whatsapp.client }
+    { connection: conn }
   )
 }
-

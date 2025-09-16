@@ -31,6 +31,10 @@ COPY --from=pruner /app/out/full/ ./
 # Copia configuracoes de raiz necessárias para o Next/TS
 COPY --from=pruner /app/tsconfig.json ./tsconfig.json
 COPY --from=pruner /app/turbo.json ./turbo.json
+ARG TURBO_TOKEN
+ARG TURBO_TEAM
+ENV TURBO_TOKEN=$TURBO_TOKEN
+ENV TURBO_TEAM=$TURBO_TEAM
 ENV NODE_ENV=production
 # Gera Prisma client antes do build do Next
 RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)

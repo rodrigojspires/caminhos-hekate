@@ -1,26 +1,56 @@
 #!/bin/bash
+set -euo pipefail
+
+COMPOSE_FILE="docker-compose.prod.yml"
+
+# Detect docker compose command
+if command -v docker compose >/dev/null 2>&1; then
+  DC="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+  DC="docker-compose"
+else
+  echo "❌ docker compose/ docker-compose não encontrado"; exit 1
+fi
 
 echo "🔄 Atualizando repositório..."
 git pull || { echo "❌ Falha ao executar git pull"; exit 1; }
 
 echo "🧹 Parando e removendo containers existentes..."
-docker-compose -f docker-compose.prod.yml down --remove-orphans || { echo "❌ Falha ao parar containers"; exit 1; }
+$DC -f "$COMPOSE_FILE" down --remove-orphans || { echo "❌ Falha ao parar containers"; exit 1; }
 
-echo "🚀 Subindo containers com nova build..."
-DOCKER_BUILDKIT=1 docker compose -f docker-compose.prod.yml build --parallel || { echo"❌ Falha no build paralelo"; exit 1; }
-docker-compose -f docker-compose.prod.yml up -d --no-deps web worker-email worker-reminders || { echo"❌ Falha ao subir containers web"; exit 1; }
-docker-compose -f docker-compose.prod.yml up -d || { echo"❌ Falha ao subir containers"; exit 1; }
+# Optional DB migration on deploy
+if [[ "${MIGRATE_ON_DEPLOY:-}" == "1" ]]; then
+  echo "🗃  Aplicando migrações do banco (dbtools)..."
+  DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" run --rm dbtools --filter @hekate/database db:migrate:deploy || {
+    echo "❌ Falha ao aplicar migrações"; exit 1; }
+fi
+
+echo "🏗  Build das imagens (com BuildKit + paralelo)..."
+# Monta build-args para Turbo Remote Cache se disponíveis
+BUILD_ARGS=()
+if [[ -n "${TURBO_TOKEN:-}" ]]; then BUILD_ARGS+=(--build-arg TURBO_TOKEN); fi
+if [[ -n "${TURBO_TEAM:-}" ]]; then BUILD_ARGS+=(--build-arg TURBO_TEAM); fi
+
+# Evita COMPOSE_DOCKER_CLI_BUILD=1 (ignora --parallel). Força BuildKit e paralelismo real do compose
+COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" build --parallel "${BUILD_ARGS[@]}" web worker-email worker-reminders || {
+  echo "❌ Falha no build paralelo"; exit 1; }
+
+echo "🚀 Subindo serviços (web e workers)..."
+$DC -f "$COMPOSE_FILE" up -d --no-deps web worker-email worker-reminders || { echo "❌ Falha ao subir containers web/workers"; exit 1; }
+
+# (Opcional) subir demais serviços declarados
+$DC -f "$COMPOSE_FILE" up -d || { echo "❌ Falha ao subir containers"; exit 1; }
 
 echo -e "\n=== Limpando containers parados ==="
-docker container prune -f
+docker container prune -f >/dev/null 2>&1 || true
 
 echo -e "\n=== Limpando imagens dangling ==="
-docker image prune -f
+docker image prune -f >/dev/null 2>&1 || true
 
 echo -e "\n=== Limpando volumes órfãos ==="
-docker volume prune -f
+docker volume prune -f >/dev/null 2>&1 || true
 
 echo -e "\n=== Limpando redes não usadas ==="
-docker network prune -f
+docker network prune -f >/dev/null 2>&1 || true
 
 echo "✅ Deploy concluído com sucesso!"
