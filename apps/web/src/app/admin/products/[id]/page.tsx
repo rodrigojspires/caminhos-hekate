@@ -105,14 +105,18 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         },
         body: JSON.stringify(data),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Erro ao atualizar produto')
+      const text = await response.text()
+      let json: any
+      try {
+        json = text ? JSON.parse(text) : {}
+      } catch (e) {
+        // Resposta não-JSON (ex.: HTML). Exibir trecho para depuração.
+        throw new Error((text && text.slice(0, 200)) || 'Resposta inválida do servidor')
       }
-
-      const updatedProduct = await response.json()
-      setProduct(updatedProduct.product || updatedProduct)
+      if (!response.ok) {
+        throw new Error(json?.error || json?.message || 'Erro ao atualizar produto')
+      }
+      setProduct(json.product || json)
       toast.success('Produto atualizado com sucesso!')
     } catch (error) {
       console.error('Erro ao atualizar produto:', error)
@@ -158,11 +162,13 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         slug: newSlug,
         description: product.description || '',
         shortDescription: product.shortDescription || '',
-        type: product.type,
+        // API aceita apenas PHYSICAL/DIGITAL
+        type: (product.type === 'SERVICE' ? 'PHYSICAL' : product.type),
         categoryId: (product as any).categoryId || undefined,
         images: (product as any).images || [],
         featured: !!product.featured,
-        status: 'DRAFT',
+        // API de criação aceita ACTIVE/INACTIVE/OUT_OF_STOCK
+        status: 'INACTIVE',
         // Variação padrão
         sku: `${(main?.sku || 'SKU')}-copy-${Date.now()}`,
         price: Number(main?.price ?? 0),

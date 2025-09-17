@@ -32,7 +32,7 @@ export default function NewProductPage() {
         height: data.height != null ? Number(data.height) : undefined,
         width: data.width != null ? Number(data.width) : undefined,
         length: data.length != null ? Number(data.length) : undefined,
-        status: 'ACTIVE',
+        status: data.active ? 'ACTIVE' : 'INACTIVE',
         featured: !!data.featured,
         images: Array.isArray(data.images) ? data.images : [],
         seoTitle: data.seoTitle || undefined,

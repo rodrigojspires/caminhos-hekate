@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export interface ProductFormData {
   name: string
@@ -26,6 +28,7 @@ export interface ProductFormData {
   categoryId: string
   type: 'PHYSICAL' | 'DIGITAL' | 'SERVICE'
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
+  active?: boolean
   featured: boolean
   seoTitle?: string
   seoDescription?: string
@@ -62,15 +65,30 @@ export function ProductForm({
     height: (initialData as any)?.height || undefined,
     width: (initialData as any)?.width || undefined,
     length: (initialData as any)?.length || undefined,
-    categoryId: initialData?.categoryId || '',
+    categoryId: initialData?.categoryId || (initialData as any)?.category?.id || '',
     type: initialData?.type || 'PHYSICAL',
     status: initialData?.status || 'DRAFT',
+    active: (initialData as any)?.active ?? true,
     featured: initialData?.featured ?? false,
     seoTitle: initialData?.seoTitle || '',
     seoDescription: initialData?.seoDescription || '',
     tags: initialData?.tags || '',
     images: initialData?.images || [],
   })
+
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([])
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/products/categories?limit=100')
+        if (res.ok) {
+          const data = await res.json()
+          const items = Array.isArray(data?.categories) ? data.categories : (data?.data || [])
+          setCategories(items.map((c: any) => ({ id: c.id, name: c.name })))
+        }
+      } catch {}
+    })()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,6 +107,20 @@ export function ProductForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium">Destaque</label>
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => handleInputChange('featured', e.target.checked)}
+              />
+              <label className="text-sm font-medium">Ativo</label>
+              <input
+                type="checkbox"
+                checked={!!formData.active}
+                onChange={(e) => handleInputChange('active', e.target.checked)}
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Nome do Produto *</label>
@@ -118,6 +150,35 @@ export function ProductForm({
                   placeholder="Digite o SKU"
                   required
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Categoria</label>
+                <Select value={formData.categoryId || 'NONE'} onValueChange={(v) => handleInputChange('categoryId', v === 'NONE' ? '' : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Sem categoria</SelectItem>
+                    {categories.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Tipo</label>
+                <Select value={formData.type} onValueChange={(v) => handleInputChange('type', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PHYSICAL">Físico</SelectItem>
+                    <SelectItem value="DIGITAL">Digital</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

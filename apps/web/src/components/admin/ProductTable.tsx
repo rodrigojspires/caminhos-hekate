@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 interface ProductVariant {
   id: string
@@ -58,7 +59,7 @@ interface Product {
   // preços vêm da primeira variação
   variants: ProductVariant[]
   sku?: string
-  status: 'ACTIVE' | 'INACTIVE' | 'OUT_OF_STOCK'
+  active: boolean
   featured: boolean
   images: string[]
   category?: {
@@ -306,14 +307,28 @@ export function ProductTable({
                         
                         <TableCell>
                           {(() => {
-                            const cfg = statusConfig[product.status as keyof typeof statusConfig] || statusConfig.ACTIVE
+                            const cfg = product.active ? statusConfig.ACTIVE : statusConfig.INACTIVE
+                            const toggle = async () => {
+                              try {
+                                const res = await fetch(`/api/admin/products/${product.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ active: !product.active })
+                                })
+                                if (!res.ok) throw new Error('Falha ao atualizar status')
+                                toast.success(`Produto ${!product.active ? 'ativado' : 'desativado'}`)
+                                // Recarregar a página atual da listagem
+                                onPageChange(pagination.page)
+                              } catch (e) {
+                                toast.error('Não foi possível alterar o status')
+                              }
+                            }
                             return (
-                              <Badge 
-                                variant={cfg.variant}
-                                className={cfg.color}
-                              >
-                                {cfg.label}
-                              </Badge>
+                              <button onClick={toggle} title="Alternar ativo/inativo" className="cursor-pointer">
+                                <Badge variant={cfg.variant} className={cfg.color}>
+                                  {cfg.label}
+                                </Badge>
+                              </button>
                             )
                           })()}
                         </TableCell>

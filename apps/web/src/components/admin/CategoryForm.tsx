@@ -214,14 +214,14 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
               </div>
             ) : (
               <Select
-                value={watch('parentId') || ''}
-                onValueChange={(value) => setValue('parentId', value || null)}
+                value={(watch('parentId') ?? 'NONE') as string}
+                onValueChange={(value) => setValue('parentId', value === 'NONE' ? null : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria pai (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma (categoria raiz)</SelectItem>
+                  <SelectItem value="NONE">Nenhuma (categoria raiz)</SelectItem>
                   {buildCategoryOptions(categories)}
                 </SelectContent>
               </Select>

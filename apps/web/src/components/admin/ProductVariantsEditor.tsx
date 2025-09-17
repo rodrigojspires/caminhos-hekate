@@ -27,6 +27,8 @@ type Product = {
 export default function ProductVariantsEditor({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
   const [saving, setSaving] = useState<Record<string, boolean>>({})
+  const [adding, setAdding] = useState(false)
+  const [newVar, setNewVar] = useState<Partial<Variant & { dimensions?: { height?: number; width?: number; length?: number } }>>({ name: '', sku: '', price: 0, stock: 0, active: true })
 
   useEffect(() => {
     ;(async () => {
@@ -90,9 +92,94 @@ export default function ProductVariantsEditor({ productId }: { productId: string
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle>Variações do Produto</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Variações do Produto</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
+            {adding ? 'Cancelar' : 'Adicionar variação'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {adding && (
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end p-3 border rounded">
+            <div>
+              <label className="block text-sm mb-1">Nome</label>
+              <Input value={newVar.name || ''} onChange={e => setNewVar(v => ({ ...v, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">SKU</label>
+              <Input value={newVar.sku || ''} onChange={e => setNewVar(v => ({ ...v, sku: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Preço</label>
+              <Input type="number" step="0.01" value={newVar.price as any} onChange={e => setNewVar(v => ({ ...v, price: parseFloat(e.target.value) || 0 }))} />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Preço Comparativo</label>
+              <Input type="number" step="0.01" value={(newVar.comparePrice as any) ?? ''} onChange={e => setNewVar(v => ({ ...v, comparePrice: e.target.value ? parseFloat(e.target.value) : undefined }))} />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Estoque</label>
+              <Input type="number" value={(newVar.stock as any) ?? 0} onChange={e => setNewVar(v => ({ ...v, stock: parseInt(e.target.value) || 0 }))} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={!!newVar.active} onCheckedChange={(val) => setNewVar(v => ({ ...v, active: val }))} />
+              <span className="text-sm">Ativo</span>
+            </div>
+            <div className="md:col-span-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-sm mb-1">Peso (kg)</label>
+                <Input type="number" step="0.01" value={(newVar.weight as any) ?? ''} onChange={e => setNewVar(v => ({ ...v, weight: e.target.value ? parseFloat(e.target.value) : undefined }))} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Altura (cm)</label>
+                <Input type="number" step="0.1" value={(newVar.dimensions?.height as any) ?? ''} onChange={e => setNewVar(v => ({ ...v, dimensions: { ...(v.dimensions || {}), height: e.target.value ? parseFloat(e.target.value) : undefined } }))} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Largura (cm)</label>
+                <Input type="number" step="0.1" value={(newVar.dimensions?.width as any) ?? ''} onChange={e => setNewVar(v => ({ ...v, dimensions: { ...(v.dimensions || {}), width: e.target.value ? parseFloat(e.target.value) : undefined } }))} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Comprimento (cm)</label>
+                <Input type="number" step="0.1" value={(newVar.dimensions?.length as any) ?? ''} onChange={e => setNewVar(v => ({ ...v, dimensions: { ...(v.dimensions || {}), length: e.target.value ? parseFloat(e.target.value) : undefined } }))} />
+              </div>
+            </div>
+            <div className="md:col-span-6 flex justify-end">
+              <Button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/admin/variants', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        productId,
+                        sku: newVar.sku,
+                        name: newVar.name,
+                        price: Number(newVar.price || 0),
+                        comparePrice: newVar.comparePrice != null ? Number(newVar.comparePrice) : null,
+                        stock: Number(newVar.stock || 0),
+                        active: !!newVar.active,
+                        weight: newVar.weight != null ? Number(newVar.weight) : null,
+                        dimensions: newVar.dimensions,
+                      }),
+                    })
+                    if (!res.ok) throw new Error('Falha ao criar variação')
+                    // reload product
+                    const r2 = await fetch(`/api/admin/products/${productId}`)
+                    const d2 = await r2.json()
+                    setProduct(d2.product || d2)
+                    setAdding(false)
+                    setNewVar({ name: '', sku: '', price: 0, stock: 0, active: true })
+                    toast.success('Variação criada')
+                  } catch (e) {
+                    toast.error('Erro ao criar variação')
+                  }
+                }}
+              >Salvar variação</Button>
+            </div>
+          </div>
+        )}
+
         {product.variants?.length ? product.variants.map(v => (
           <div key={v.id} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <div>
@@ -150,4 +237,3 @@ export default function ProductVariantsEditor({ productId }: { productId: string
     </Card>
   )
 }
-
