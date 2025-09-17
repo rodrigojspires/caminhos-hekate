@@ -211,10 +211,15 @@ export default function CheckoutPage() {
         <div className="border rounded p-4 h-fit">
           <h2 className="font-semibold mb-3">Resumo</h2>
           <div className="flex justify-between"><span>Subtotal</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.subtotal)}</span></div>
-          <div className="flex justify-between"><span>Desconto</span><span>- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span></div>
+          <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span></div>
           <div className="flex justify-between"><span>Frete</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}</span></div>
           {cart.couponCode && (
-            <div className="flex justify-between mt-2 text-sm"><span>Cupom</span><span className="font-medium">{cart.couponCode}</span></div>
+            <div className="flex justify-between mt-2 text-sm items-center">
+              <span className="text-hekate-pearl/80">Cupom</span>
+              <span className="px-2 py-0.5 rounded border border-hekate-gold text-hekate-gold bg-hekate-gold/10 uppercase tracking-wide">
+                {String(cart.couponCode)}
+              </span>
+            </div>
           )}
           <div className="flex justify-between font-bold mt-2"><span>Total</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.total)}</span></div>
           <button disabled={loading || status !== 'authenticated'} onClick={submit} className="mt-4 w-full btn-mystic-enhanced disabled:opacity-60">{loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}</button>

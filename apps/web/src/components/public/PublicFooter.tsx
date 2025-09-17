@@ -6,28 +6,17 @@ import { TripleMoonIcon, StrophalosIcon } from '@/components/icons/Esoteric'
 
 const footerLinks = {
   company: [
-    { name: 'Sobre Nós', href: '/sobre' },
-    { name: 'Nossa Missão', href: '/sobre#missao' },
-    { name: 'Equipe', href: '/sobre#equipe' },
-    { name: 'Carreiras', href: '/carreiras' },
+    { name: 'Manifesto', href: '/sobre' },
   ],
   courses: [
     { name: 'Catálogo de Cursos', href: '/cursos' },
-    { name: 'Cursos Gratuitos', href: '/cursos?filter=free' },
-    { name: 'Certificações', href: '/certificacoes' },
-    { name: 'Trilhas de Aprendizado', href: '/trilhas' },
   ],
   community: [
     { name: 'Fórum', href: '/comunidade' },
     { name: 'Eventos', href: '/eventos' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'Podcast', href: '/podcast' },
   ],
   support: [
-    { name: 'Central de Ajuda', href: '/ajuda' },
     { name: 'Contato', href: '/contato' },
-    { name: 'FAQ', href: '/faq' },
-    { name: 'Status do Sistema', href: '/status' },
   ],
   legal: [
     { name: 'Termos de Uso', href: '/termos' },
@@ -87,7 +76,7 @@ export function PublicFooter() {
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
@@ -104,7 +93,7 @@ export function PublicFooter() {
             <ul className="space-y-2">
               {footerLinks.courses.map((link) => (
                 <li key={link.name}>
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
@@ -121,7 +110,7 @@ export function PublicFooter() {
             <ul className="space-y-2">
               {footerLinks.community.map((link) => (
                 <li key={link.name}>
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
@@ -138,7 +127,7 @@ export function PublicFooter() {
             <ul className="space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
@@ -191,7 +180,7 @@ export function PublicFooter() {
           {/* Legal Links */}
           <div className="flex flex-wrap justify-center md:justify-end space-x-4">
             {footerLinks.legal.map((link) => (
-              <Link
+              <Link prefetch={false}
                 key={link.name}
                 href={link.href}
                 className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
