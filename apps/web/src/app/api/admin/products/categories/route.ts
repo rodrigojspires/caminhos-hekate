@@ -7,10 +7,7 @@ import { z } from 'zod'
 // Schema de validação para criação de categoria
 const createCategorySchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  slug: z.string().min(1, 'Slug é obrigatório').regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'Slug deve conter apenas letras minúsculas, números e hífens'
-  ),
+  slug: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
   active: z.boolean().default(true),
@@ -59,6 +56,17 @@ async function generateUniqueSlug(baseSlug: string, excludeId?: string): Promise
     slug = `${baseSlug}-${counter}`
     counter++
   }
+}
+
+function slugify(input: string) {
+  return String(input || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
 }
 
 // GET /api/admin/products/categories - Listar categorias
@@ -162,16 +170,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = createCategorySchema.parse(body)
     
-    // Verificar se slug já existe
-    const uniqueSlug = await generateUniqueSlug(data.slug)
+    // Gerar slug base a partir do slug enviado ou do nome
+    const baseSlug = slugify(data.slug || data.name)
+    const uniqueSlug = await generateUniqueSlug(baseSlug)
     
     // Lógica de categoria pai removida - não implementada no schema atual
     
     // Criar categoria
     const category = await prisma.category.create({
       data: {
-        ...data,
+        name: data.name,
         slug: uniqueSlug,
+        description: data.description || '',
+        image: data.imageUrl || null,
+        active: data.active,
       },
       include: {
         _count: {

@@ -17,11 +17,34 @@ async function fetchProducts(searchParams: { q?: string; category?: string; page
   return res.json()
 }
 
+async function fetchCategories() {
+  const base = process.env.NEXT_PUBLIC_APP_URL
+  const url = base ? `${base}/api/shop/categories` : `/api/shop/categories`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) return { categories: [] as any[] }
+  return res.json()
+}
+
 export default async function ShopPage({ searchParams }: { searchParams: { q?: string; category?: string; page?: string } }) {
-  const { products } = await fetchProducts(searchParams)
+  const [{ products }, { categories }] = await Promise.all([
+    fetchProducts(searchParams),
+    fetchCategories(),
+  ])
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Loja</h1>
+      {categories?.length ? (
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
+          <Link href="/loja" className={`px-3 py-1.5 rounded-full border ${!searchParams.category ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+            Todos
+          </Link>
+          {categories.map((c: any) => (
+            <Link key={c.id} href={`/loja?category=${c.slug}`} className={`px-3 py-1.5 rounded-full border ${searchParams.category === c.slug ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
       <Suspense fallback={<div>Carregando...</div>}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((p: any) => (

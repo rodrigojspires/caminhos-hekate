@@ -92,6 +92,11 @@ const menuItems = [
     icon: DollarSign,
   },
   {
+    title: "Cupons",
+    href: "/admin/coupons",
+    icon: DollarSign,
+  },
+  {
     title: "Planos",
     href: "/admin/subscriptions/plans",
     icon: DollarSign,

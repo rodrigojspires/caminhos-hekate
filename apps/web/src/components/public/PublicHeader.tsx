@@ -20,6 +20,7 @@ import CommandPalette from '@/components/search/CommandPalette'
 const navigation = [
   { name: 'Início', href: '/' },
   { name: 'Sobre', href: '/sobre' },
+  { name: 'Loja', href: '/loja' },
   { name: 'Cursos', href: '/cursos' },
   { name: 'Comunidade', href: '/comunidade' },
   { name: 'Preços', href: '/precos' },
