@@ -4,22 +4,33 @@ import { calculateShippingViaMelhorEnvio } from '@/lib/shipping/melhor-envio'
 
 // Placeholder shipping calculator: flat table by region and weight
 export async function calculateShipping(cep: string, items: CartItem[]) {
-  // Se houver credenciais do Melhor Envio, tenta cotar por lá
+  // Determina quais itens são físicos (produto.type === 'PHYSICAL')
+  const detailed = await Promise.all(items.map(async (i) => {
+    const variant = await prisma.productVariant.findUnique({ where: { id: i.variantId }, include: { product: true } })
+    return { i, variant }
+  }))
+  const physical = detailed.filter(d => d.variant?.product?.type === 'PHYSICAL')
+
+  // Se não houver itens físicos, frete é zero
+  if (physical.length === 0) {
+    return { cep, price: 0, service: 'Digital (sem frete)' }
+  }
+
+  // Se houver credenciais do Melhor Envio, tenta cotar por lá com itens físicos
   if (process.env.MELHOR_ENVIO_TOKEN) {
     try {
-      const me = await calculateShippingViaMelhorEnvio(cep, items)
+      const me = await calculateShippingViaMelhorEnvio(cep, physical.map(d => d.i))
       if (me && typeof me.price === 'number') return me
     } catch (e) {
       console.warn('[shipping] Melhor Envio falhou, usando fallback:', e)
     }
   }
 
-  // Fallback interno simples baseado em peso total e região por CEP
+  // Fallback interno simples baseado em peso total e região por CEP (somente itens físicos)
   let totalWeight = 0 // kg
-  for (const item of items) {
-    const variant = await prisma.productVariant.findUnique({ where: { id: item.variantId } })
-    const weight = variant?.weight || 0.2
-    totalWeight += weight * item.quantity
+  for (const d of physical) {
+    const weight = d.variant?.weight || 0.2
+    totalWeight += weight * d.i.quantity
   }
   const region = regionFromCep(cep)
   const base = region === 'N' ? 29.9 : region === 'S' ? 19.9 : region === 'SE' ? 14.9 : 24.9

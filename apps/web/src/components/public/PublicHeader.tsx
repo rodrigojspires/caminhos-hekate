@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Moon, User, LogOut, Settings, BookOpen } from 'lucide-react'
+import { Menu, X, Moon, User, LogOut, Settings, BookOpen, ShoppingCart } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,32 @@ const navigation = [
 
 export function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
   const { data: session, status } = useSession()
+
+  // Fetch cart count (sum of quantities)
+  async function refreshCartCount() {
+    try {
+      const res = await fetch('/api/shop/cart', { cache: 'no-store' })
+      const data = await res.json()
+      const items = (data?.cart?.itemsDetailed || data?.cart?.items) || []
+      const count = items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)
+      setCartCount(isFinite(count) ? count : 0)
+    } catch {
+      setCartCount(0)
+    }
+  }
+
+  useEffect(() => {
+    refreshCartCount()
+    const onVisible = () => document.visibilityState === 'visible' && refreshCartCount()
+    const interval = setInterval(refreshCartCount, 30000)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
 
   return (
     <>
@@ -73,6 +98,15 @@ export function PublicHeader() {
             <span className="ml-2 text-xs text-muted-foreground">Ctrl+K</span>
           </button>
           <ThemeToggle variant="button" size="sm" />
+          {/* Cart Icon */}
+          <Link href="/carrinho" className="relative inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-muted">
+            <ShoppingCart className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
           {status === 'loading' ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           ) : session ? (
@@ -166,7 +200,19 @@ export function PublicHeader() {
                 {item.name}
               </Link>
             ))}
-            
+            {/* Cart shortcut on mobile */}
+            <Link href="/carrinho" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2">
+              <div className="relative inline-flex items-center justify-center h-9 w-9 rounded-md border">
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <span className="font-medium">Carrinho</span>
+            </Link>
+
             <div className="pt-4 border-t space-y-2">
               {session ? (
                 <>
