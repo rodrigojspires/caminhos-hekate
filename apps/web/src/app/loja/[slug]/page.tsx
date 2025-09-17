@@ -116,25 +116,62 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
         <div>
           <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
           <p className="text-muted-foreground mb-4">{product.shortDescription || product.description}</p>
-          <div className="mb-4">
-            <label className="text-sm block mb-1">Variação</label>
-            <select
-              value={variantId}
-              onChange={(e) => setVariantId(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
-            >
-              {product.variants.map((v: any) => (
-                <option key={v.id} value={v.id} disabled={!v.active || (v.stock ?? 0) <= 0}>
-                  {v.name} — {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v.price))}
-                  {(v.stock ?? 0) <= 0 ? ' (sem estoque)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="text-sm block mb-1">Quantidade</label>
-            <input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} className="border rounded px-3 py-2 w-24" />
-          </div>
+
+          {/* Linha com seleção/quantidade à esquerda e preço à direita */}
+          {(() => {
+            const price = Number(selectedVariant?.price || 0)
+            const compare = selectedVariant?.comparePrice != null ? Number(selectedVariant.comparePrice) : null
+            const hasDiscount = compare != null && compare > price
+            const discountPct = hasDiscount ? Math.round(((compare - price) / compare) * 100) : 0
+            const stock = selectedVariant?.stock ?? 0
+            const formatBRL = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+            const dec = () => setQty((q) => Math.max(1, q - 1))
+            const inc = () => setQty((q) => Math.max(1, Math.min(stock || 9999, q + 1)))
+
+            return (
+              <div className="flex items-start justify-between gap-6 mb-4">
+                {/* Esquerda: variação + stepper + estoque */}
+                <div className="flex-1 min-w-0">
+                  {Array.isArray(product.variants) && product.variants.length > 1 ? (
+                    <div className="mb-3">
+                      <label className="text-sm block mb-1">Variação</label>
+                      <select
+                        value={variantId}
+                        onChange={(e) => setVariantId(e.target.value)}
+                        className="border rounded px-3 py-2 w-full"
+                      >
+                        {product.variants.map((v: any) => (
+                          <option key={v.id} value={v.id} disabled={!v.active || (v.stock ?? 0) <= 0}>
+                            {v.name} — {formatBRL(Number(v.price))}{(v.stock ?? 0) <= 0 ? ' (sem estoque)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center border rounded-lg px-3 py-1.5 gap-6">
+                      <button className="text-xl" onClick={dec} aria-label="Diminuir">−</button>
+                      <div className="w-6 text-center select-none">{qty}</div>
+                      <button className="text-xl text-primary" onClick={inc} aria-label="Aumentar">+</button>
+                    </div>
+                    {typeof stock === 'number' && (
+                      <div className="text-sm text-muted-foreground">+{stock} disponíveis</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Direita: preço destacado */}
+                <div className="text-right w-44">
+                  {hasDiscount && (
+                    <div className="text-sm text-green-600">-{discountPct}% <span className="text-muted-foreground line-through">{formatBRL(compare!)}</span></div>
+                  )}
+                  <div className="text-3xl font-semibold">{formatBRL(price)}</div>
+                </div>
+              </div>
+            )
+          })()}
+
           <Button
             onClick={() => {
               // atualiza imagens quando troca variação (se tiver imagens da variação)

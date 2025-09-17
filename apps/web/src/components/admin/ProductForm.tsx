@@ -182,15 +182,17 @@ export function ProductForm({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">SKU *</label>
-                <Input
-                  value={formData.sku}
-                  onChange={(e) => handleInputChange('sku', e.target.value)}
-                  placeholder="Digite o SKU"
-                  required
-                />
-              </div>
+              {isCreate && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">SKU *</label>
+                  <Input
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                    placeholder="Digite o SKU"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -311,52 +313,54 @@ export function ProductForm({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Peso (kg)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.weight ?? ''}
-                  onChange={(e) => handleInputChange('weight', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="0.00"
-                />
+            {isCreate && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Peso (kg)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.weight ?? ''}
+                    onChange={(e) => handleInputChange('weight', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Altura (cm)</label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.height ?? ''}
+                    onChange={(e) => handleInputChange('height', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="0.0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Largura (cm)</label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.width ?? ''}
+                    onChange={(e) => handleInputChange('width', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="0.0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Comprimento (cm)</label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.length ?? ''}
+                    onChange={(e) => handleInputChange('length', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="0.0"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Altura (cm)</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.height ?? ''}
-                  onChange={(e) => handleInputChange('height', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="0.0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Largura (cm)</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.width ?? ''}
-                  onChange={(e) => handleInputChange('width', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="0.0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Comprimento (cm)</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.length ?? ''}
-                  onChange={(e) => handleInputChange('length', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="0.0"
-                />
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-end space-x-4">
               <Button type="submit" disabled={isLoading}>
