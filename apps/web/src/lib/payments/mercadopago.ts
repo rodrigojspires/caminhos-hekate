@@ -291,6 +291,7 @@ export class MercadoPagoService {
     description?: string
   }) {
     try {
+      const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) || 'https://caminhosdehekate.com.br'
       // Cria a transação vinculada ao pedido
       const tx = await prisma.paymentTransaction.create({
         data: {
@@ -316,7 +317,12 @@ export class MercadoPagoService {
             currency_id: 'BRL',
           })),
           external_reference: tx.id,
-          notification_url: `${process.env.NEXTAUTH_URL}/api/webhooks/mercadopago`,
+          notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+          back_urls: {
+            success: `${baseUrl}/checkout?status=success&order=${encodeURIComponent(order.orderId)}`,
+            failure: `${baseUrl}/checkout?status=failure&order=${encodeURIComponent(order.orderId)}`,
+            pending: `${baseUrl}/checkout?status=pending&order=${encodeURIComponent(order.orderId)}`,
+          },
           metadata: { transaction_id: tx.id, order_id: order.orderId },
           auto_return: 'approved' as const,
         },
@@ -327,7 +333,9 @@ export class MercadoPagoService {
         data: { providerPaymentId: preference.id },
       })
 
-      return { transaction: tx, preference, paymentUrl: preference.init_point }
+      // Alguns ambientes retornam sandbox_init_point; preferir init_point e fallback para sandbox
+      const paymentUrl = (preference as any).init_point || (preference as any).sandbox_init_point
+      return { transaction: tx, preference, paymentUrl }
     } catch (error) {
       console.error('Erro ao criar pagamento de pedido:', error)
       throw error
