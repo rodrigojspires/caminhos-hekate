@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
+import { useDropzone } from 'react-dropzone'
 
 type Variant = {
   id: string
@@ -330,7 +331,6 @@ export default function ProductVariantsEditor({ productId }: { productId: string
                       </button>
                     </div>
                   ))}
-import { useDropzone } from 'react-dropzone'
                 </div>
               )}
             </div>

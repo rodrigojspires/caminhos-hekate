@@ -45,6 +45,36 @@ export default function NewProductPage() {
       }
 
       const { product } = await response.json()
+      // Criar variação padrão automaticamente com os valores do formulário
+      try {
+        const variantRes = await fetch('/api/admin/variants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            name: data.name || 'Padrão',
+            sku: data.sku,
+            price: Number(data.price || 0),
+            comparePrice: data.compareAtPrice != null ? Number(data.compareAtPrice) : null,
+            stock: Number.isFinite(data.quantity) ? Number(data.quantity) : 0,
+            active: !!data.active,
+            weight: data.weight != null ? Number(data.weight) : null,
+            dimensions: (data.height != null || data.width != null || data.length != null)
+              ? {
+                  height: data.height != null ? Number(data.height) : undefined,
+                  width: data.width != null ? Number(data.width) : undefined,
+                  length: data.length != null ? Number(data.length) : undefined,
+                }
+              : undefined,
+          })
+        })
+        if (!variantRes.ok) {
+          const err = await variantRes.json().catch(() => ({}))
+          console.warn('Falha ao criar variação padrão', err)
+        }
+      } catch (e) {
+        console.warn('Erro ao criar variação padrão', e)
+      }
       toast.success('Produto criado com sucesso!')
       router.push(`/admin/products/${product.id}`)
     } catch (error) {
