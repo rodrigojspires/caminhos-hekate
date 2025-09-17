@@ -25,6 +25,9 @@ async function main() {
 
   // Limpar dados existentes
   await prisma.$transaction([
+    // Ordem importa para evitar violações de FK
+    prisma.paymentTransaction.deleteMany(),
+    prisma.userSubscription.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.quizAttempt.deleteMany(),

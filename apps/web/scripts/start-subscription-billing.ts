@@ -183,6 +183,21 @@ async function processSubscriptions() {
 }
 
 async function main() {
+  // Wait for DB to be ready
+  async function waitForDb(maxRetries = 20, delayMs = 3000) {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        await prisma.$queryRaw`SELECT 1` as any
+        return
+      } catch (e) {
+        console.warn(`[billing] DB not ready, retrying in ${delayMs}ms (${i + 1}/${maxRetries})`)
+        await new Promise(r => setTimeout(r, delayMs))
+      }
+    }
+    console.error('[billing] DB not reachable after retries; continuing and relying on next run')
+  }
+
+  await waitForDb().catch(() => {})
   // Run immediately on start, then every 24h
   await processSubscriptions().catch(e => console.error('[billing] error:', e))
   const DAY = 24 * 60 * 60 * 1000

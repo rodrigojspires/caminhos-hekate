@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq'
 import { getRedisConnection } from '../src/lib/queues/bull'
-import { emailService } from '@/lib/email'
+import { emailService } from '../src/lib/email'
 
 async function runEmailWorkers() {
   console.log('Starting BullMQ email worker...')
