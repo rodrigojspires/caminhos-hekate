@@ -6,13 +6,19 @@ import { prisma } from '@hekate/database'
 export async function GET() {
   const session = await getServerSession(authOptions as any)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true, email: true, name: true, phone: true, document: true,
-      addresses: { orderBy: { updatedAt: 'desc' }, take: 10 }
-    },
-  })
+  let user: any = null
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, email: true, name: true, phone: true as any, document: true as any, addresses: { orderBy: { updatedAt: 'desc' }, take: 10 } },
+    })
+  } catch (e: any) {
+    // Fallback para bancos que ainda não migraram phone/document
+    user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, email: true, name: true, addresses: { orderBy: { updatedAt: 'desc' }, take: 10 } },
+    })
+  }
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const billing = user.addresses.find(a => a.name?.toLowerCase().includes('cobran')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
   const shipping = user.addresses.find(a => a.name?.toLowerCase().includes('entrega')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
@@ -52,7 +58,11 @@ export async function PUT(request: NextRequest) {
   const { name, phone, document, billingAddress, shippingAddress } = body as any
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: session.user.id }, data: { name, phone, document } })
+    try {
+      await tx.user.update({ where: { id: session.user.id }, data: { name, phone, document } as any })
+    } catch {
+      await tx.user.update({ where: { id: session.user.id }, data: { name } })
+    }
     if (billingAddress) {
       const ex = await tx.address.findFirst({ where: { userId: session.user.id, name: { contains: 'Cobran', mode: 'insensitive' } } })
       if (ex) {
@@ -77,4 +87,3 @@ export async function PUT(request: NextRequest) {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-

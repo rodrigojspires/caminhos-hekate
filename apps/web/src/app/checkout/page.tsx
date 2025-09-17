@@ -17,6 +17,53 @@ export default function CheckoutPage() {
     shipping: { street: '', number: '', neighborhood: '', city: '', state: '', zipCode: '' },
   })
   const [sameAsBilling, setSameAsBilling] = useState(true)
+  const [queriedCep, setQueriedCep] = useState<{ billing?: string; shipping?: string }>({})
+
+  // Helpers: masks
+  function formatPhoneBR(v: string) {
+    // keep numbers only
+    const d = v.replace(/\D/g, '').slice(0, 11)
+    if (d.length <= 10) {
+      return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim()
+    }
+    return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim()
+  }
+  function formatDocumentBR(v: string) {
+    const d = v.replace(/\D/g, '').slice(0, 14)
+    if (d.length <= 11) {
+      // CPF 000.000.000-00
+      return d
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+    }
+    // CNPJ 00.000.000/0000-00
+    return d
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+  }
+
+  async function resolveCEP(kind: 'billing' | 'shipping', cepRaw: string) {
+    const cep = cepRaw.replace(/\D/g, '')
+    if (cep.length !== 8) return
+    try {
+      if ((kind === 'billing' && queriedCep.billing === cep) || (kind === 'shipping' && queriedCep.shipping === cep)) return
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      const data = await res.json()
+      if (data?.erro) return
+      const patch = {
+        street: data.logradouro || '',
+        neighborhood: data.bairro || '',
+        city: data.localidade || '',
+        state: data.uf || '',
+        zipCode: cep,
+      }
+      setForm(prev => ({ ...prev, [kind]: { ...prev[kind], ...patch } }))
+      setQueriedCep(q => ({ ...q, [kind]: cep }))
+    } catch {}
+  }
 
   const fetchCart = async () => {
     const res = await fetch('/api/shop/cart', { cache: 'no-store' })
@@ -60,6 +107,17 @@ export default function CheckoutPage() {
     setForm((prev) => ({ ...prev, shipping: { ...prev.shipping, ...prev.billing } }))
   }, [sameAsBilling, form.billing.street, form.billing.number, form.billing.neighborhood, form.billing.city, form.billing.state, form.billing.zipCode])
 
+  // CEP autocompletar
+  useEffect(() => {
+    const t = setTimeout(() => resolveCEP('billing', form.billing.zipCode), 500)
+    return () => clearTimeout(t)
+  }, [form.billing.zipCode])
+  useEffect(() => {
+    if (sameAsBilling) return
+    const t = setTimeout(() => resolveCEP('shipping', form.shipping.zipCode), 500)
+    return () => clearTimeout(t)
+  }, [form.shipping.zipCode, sameAsBilling])
+
   const submit = async () => {
     setLoading(true)
     // If logged in, update profile before creating order
@@ -83,7 +141,7 @@ export default function CheckoutPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        customer: { name: form.name, email: form.email, phone: form.phone, document: form.document, userId: session?.user?.id || null },
+        customer: { name: form.name, email: (session?.user?.email as string) || form.email, phone: form.phone, document: form.document, userId: session?.user?.id || null },
         billingAddress: form.billing,
         shippingAddress: sameAsBilling ? form.billing : form.shipping,
       }),
@@ -114,9 +172,11 @@ export default function CheckoutPage() {
             <h2 className="font-semibold mb-3">Dados do cliente</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input placeholder="Nome completo" className="border rounded px-3 py-2" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <input placeholder="E-mail" className="border rounded px-3 py-2" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <input placeholder="Telefone" className="border rounded px-3 py-2" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <input placeholder="CPF/CNPJ" className="border rounded px-3 py-2" value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} />
+              {status !== 'authenticated' && (
+                <input placeholder="E-mail" className="border rounded px-3 py-2" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              )}
+              <input placeholder="Telefone" className="border rounded px-3 py-2" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneBR(e.target.value) })} />
+              <input placeholder="CPF/CNPJ" className="border rounded px-3 py-2" value={form.document} onChange={(e) => setForm({ ...form, document: formatDocumentBR(e.target.value) })} />
             </div>
           </section>
           <section className="border rounded p-4">
@@ -153,8 +213,11 @@ export default function CheckoutPage() {
           <div className="flex justify-between"><span>Subtotal</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.subtotal)}</span></div>
           <div className="flex justify-between"><span>Desconto</span><span>- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span></div>
           <div className="flex justify-between"><span>Frete</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}</span></div>
+          {cart.couponCode && (
+            <div className="flex justify-between mt-2 text-sm"><span>Cupom</span><span className="font-medium">{cart.couponCode}</span></div>
+          )}
           <div className="flex justify-between font-bold mt-2"><span>Total</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.total)}</span></div>
-          <button disabled={loading || status !== 'authenticated'} onClick={submit} className="mt-4 w-full bg-primary text-white rounded px-4 py-2 disabled:opacity-60">{loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}</button>
+          <button disabled={loading || status !== 'authenticated'} onClick={submit} className="mt-4 w-full btn-mystic-enhanced disabled:opacity-60">{loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}</button>
         </div>
       </div>
     </div>
