@@ -240,24 +240,29 @@ export function ProductForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Imagem Principal</label>
+              <label className="block text-sm font-medium mb-2">Imagens do Produto</label>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  const reader = new FileReader()
-                  reader.onload = () => {
-                    const dataUrl = reader.result as string
-                    handleInputChange('images', [dataUrl])
-                  }
-                  reader.readAsDataURL(file)
+                  const files = Array.from(e.target.files || [])
+                  if (!files.length) return
+                  const readers = files.map(f => new Promise<string>((resolve) => {
+                    const r = new FileReader()
+                    r.onload = () => resolve(r.result as string)
+                    r.readAsDataURL(f)
+                  }))
+                  Promise.all(readers).then((dataUrls) => {
+                    handleInputChange('images', dataUrls)
+                  })
                 }}
               />
-              {formData.images && formData.images[0] && (
-                <div className="mt-2">
-                  <img src={formData.images[0]} alt="Prévia" className="h-24 w-24 object-cover rounded" />
+              {formData.images && formData.images.length > 0 && (
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {formData.images.map((src, i) => (
+                    <img key={i} src={src} alt={`Prévia ${i+1}`} className="h-20 w-20 object-cover rounded" />
+                  ))}
                 </div>
               )}
             </div>

@@ -1,11 +1,14 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const [product, setProduct] = useState<any>(null)
   const [variantId, setVariantId] = useState<string>('')
+  const [images, setImages] = useState<string[]>([])
+  const [imageIdx, setImageIdx] = useState(0)
   const [qty, setQty] = useState<number>(1)
   const router = useRouter()
 
@@ -13,10 +16,35 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     ;(async () => {
       const res = await fetch(`/api/shop/products/${params.slug}`)
       const data = await res.json()
-      setProduct(data.product)
-      setVariantId(data.product?.variants?.[0]?.id || '')
+      const p = data.product
+      setProduct(p)
+
+      // Escolhe variação inicial habilitada (ativa e com estoque)
+      const enabled = (p?.variants || []).find((v: any) => v.active && (v.stock ?? 0) > 0)
+      const initialVariantId = enabled?.id || p?.variants?.[0]?.id || ''
+      setVariantId(initialVariantId)
+
+      // Lista de imagens: prioriza imagens da variação (se houver em attributes.images)
+      const v0 = (p?.variants || []).find((v: any) => v.id === initialVariantId)
+      const variantImages = Array.isArray((v0?.attributes as any)?.images) ? (v0!.attributes as any).images : undefined
+      const imgs = Array.isArray(variantImages) && variantImages.length ? variantImages : (Array.isArray(p?.images) ? p.images : [])
+      setImages(imgs)
+      setImageIdx(0)
     })()
   }, [params.slug])
+
+  // Variedade selecionada
+  const selectedVariant = useMemo(() => (product?.variants || []).find((v: any) => v.id === variantId), [product, variantId])
+
+  // Atualiza galeria quando muda a variação
+  useEffect(() => {
+    if (!product) return
+    const v = (product?.variants || []).find((x: any) => x.id === variantId)
+    const varImgs = Array.isArray((v?.attributes as any)?.images) ? (v!.attributes as any).images : undefined
+    const imgs = Array.isArray(varImgs) && varImgs.length ? varImgs : (Array.isArray(product?.images) ? product.images : [])
+    setImages(imgs)
+    setImageIdx(0)
+  }, [variantId, product])
 
   const addToCart = async () => {
     if (!variantId) return
@@ -53,9 +81,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <div className="relative aspect-square bg-muted rounded overflow-hidden">
-            {Array.isArray(product.images) && product.images[0] ? (
+            {images[imageIdx] ? (
               <Image
-                src={product.images[0]}
+                src={images[imageIdx]}
                 alt={product.name}
                 fill
                 sizes="(min-width: 1024px) 50vw, 100vw"
@@ -64,6 +92,19 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               />
             ) : null}
           </div>
+          {images.length > 1 && (
+            <div className="mt-3 grid grid-cols-5 gap-2">
+              {images.map((src, i) => (
+                <button
+                  key={`${src}-${i}`}
+                  className={`relative aspect-square rounded overflow-hidden border ${i === imageIdx ? 'border-primary' : 'border-muted'}`}
+                  onClick={() => setImageIdx(i)}
+                >
+                  <Image src={src} alt={`thumb-${i}`} fill sizes="100px" className="object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
@@ -76,9 +117,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               className="border rounded px-3 py-2 w-full"
             >
               {product.variants.map((v: any) => (
-                <option key={v.id} value={v.id} disabled={!v.active || v.stock <= 0}>
+                <option key={v.id} value={v.id} disabled={!v.active || (v.stock ?? 0) <= 0}>
                   {v.name} — {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v.price))}
-                  {v.stock <= 0 ? ' (sem estoque)' : ''}
+                  {(v.stock ?? 0) <= 0 ? ' (sem estoque)' : ''}
                 </option>
               ))}
             </select>
@@ -87,7 +128,24 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             <label className="text-sm block mb-1">Quantidade</label>
             <input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} className="border rounded px-3 py-2 w-24" />
           </div>
-          <button onClick={addToCart} className="bg-primary text-white rounded px-4 py-2">Adicionar ao carrinho</button>
+          <Button
+            onClick={() => {
+              // atualiza imagens quando troca variação (se tiver imagens da variação)
+              const v = (product?.variants || []).find((x: any) => x.id === variantId)
+              const varImgs = Array.isArray((v?.attributes as any)?.images) ? (v!.attributes as any).images : undefined
+              if (Array.isArray(varImgs) && varImgs.length) {
+                setImages(varImgs)
+                setImageIdx(0)
+              } else if (Array.isArray(product?.images)) {
+                setImages(product.images)
+                setImageIdx(0)
+              }
+              addToCart()
+            }}
+            disabled={!variantId || !selectedVariant || !selectedVariant.active || (selectedVariant.stock ?? 0) <= 0}
+          >
+            Adicionar ao carrinho
+          </Button>
         </div>
       </div>
     </div>

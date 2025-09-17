@@ -98,6 +98,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
   const handleSubmit = async (data: any) => {
     setIsSaving(true)
     try {
+      // Atualiza dados do produto (SKU é tratado na variação principal em seguida)
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: 'PUT',
         headers: {
@@ -116,7 +117,31 @@ export default function EditProductPage({ params }: EditProductPageProps) {
       if (!response.ok) {
         throw new Error(json?.error || json?.message || 'Erro ao atualizar produto')
       }
-      setProduct(json.product || json)
+
+      // Se houver SKU no formulário, aplicar na variação principal
+      try {
+        const mainVariantId = (product as any)?.variants?.[0]?.id
+        if (data?.sku && mainVariantId) {
+          const resVar = await fetch(`/api/admin/variants/${mainVariantId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sku: String(data.sku) })
+          })
+          if (!resVar.ok) {
+            const t = await resVar.text();
+            console.warn('Falha ao atualizar SKU da variação:', t)
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao aplicar SKU na variação principal:', e)
+      }
+
+      // Recarrega o produto atualizado
+      try {
+        const r = await fetch(`/api/admin/products/${params.id}`)
+        const d = await r.json()
+        setProduct(d.product || d)
+      } catch {}
       toast.success('Produto atualizado com sucesso!')
     } catch (error) {
       console.error('Erro ao atualizar produto:', error)
@@ -395,7 +420,11 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         </CardHeader>
         <CardContent>
           <ProductForm
-            initialData={product}
+            initialData={{
+              ...(product as any),
+              // Preencher SKU no formulário a partir da variação principal
+              sku: (product as any)?.variants?.[0]?.sku || ''
+            }}
             onSubmit={handleSubmit}
             isLoading={isSaving}
             submitLabel="Atualizar Produto"

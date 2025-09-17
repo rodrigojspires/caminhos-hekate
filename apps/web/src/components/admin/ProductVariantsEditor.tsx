@@ -17,6 +17,7 @@ type Variant = {
   active: boolean
   weight?: number | null
   dimensions?: { height?: number; width?: number; length?: number } | null
+  attributes?: Record<string, any> | null
 }
 
 type Product = {
@@ -29,6 +30,7 @@ export default function ProductVariantsEditor({ productId }: { productId: string
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [adding, setAdding] = useState(false)
   const [newVar, setNewVar] = useState<Partial<Variant & { dimensions?: { height?: number; width?: number; length?: number } }>>({ name: '', sku: '', price: 0, stock: 0, active: true })
+  const [variantImages, setVariantImages] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     ;(async () => {
@@ -36,6 +38,12 @@ export default function ProductVariantsEditor({ productId }: { productId: string
         const res = await fetch(`/api/admin/products/${productId}`)
         const data = await res.json()
         setProduct(data.product || data)
+        const map: Record<string, string[]> = {}
+        for (const v of (data.product || data)?.variants || []) {
+          const imgs = Array.isArray(v.attributes?.images) ? v.attributes.images : []
+          if (imgs.length) map[v.id] = imgs
+        }
+        setVariantImages(map)
       } catch (e) {
         toast.error('Falha ao carregar variações')
       }
@@ -75,6 +83,10 @@ export default function ProductVariantsEditor({ productId }: { productId: string
             height: v.dimensions?.height != null ? Number(v.dimensions.height) : undefined,
             width: v.dimensions?.width != null ? Number(v.dimensions.width) : undefined,
             length: v.dimensions?.length != null ? Number(v.dimensions.length) : undefined,
+          },
+          attributes: {
+            ...(v.attributes || {}),
+            images: variantImages[v.id] || [],
           },
         }),
       })
@@ -224,6 +236,35 @@ export default function ProductVariantsEditor({ productId }: { productId: string
                 <label className="block text-sm mb-1">Comprimento (cm)</label>
                 <Input type="number" step="0.1" value={v.dimensions?.length ?? ''} onChange={e => updateLocal(v.id, 'length', e.target.value ? parseFloat(e.target.value) : undefined)} />
               </div>
+            </div>
+
+            {/* Imagens da variação */}
+            <div className="md:col-span-6">
+              <div className="text-sm font-medium mb-1">Imagens da variação</div>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  if (!files.length) return
+                  const readers = files.map(f => new Promise<string>((resolve) => {
+                    const r = new FileReader()
+                    r.onload = () => resolve(r.result as string)
+                    r.readAsDataURL(f)
+                  }))
+                  Promise.all(readers).then((dataUrls) => {
+                    setVariantImages(prev => ({ ...prev, [v.id]: dataUrls }))
+                  })
+                }}
+              />
+              {(variantImages[v.id]?.length ? variantImages[v.id] : (v.attributes?.images || [])).length > 0 && (
+                <div className="mt-2 grid grid-cols-6 gap-2">
+                  {(variantImages[v.id] || (v.attributes?.images || [])).map((src: string, i: number) => (
+                    <img key={i} src={src} alt={`var-${v.id}-${i}`} className="h-16 w-16 object-cover rounded" />
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-6 flex justify-end">
