@@ -1,10 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star, Quote } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { StrophalosIcon, TorchLeft, TorchRight } from '@/components/icons/Esoteric'
 
 const testimonials = [
   {
@@ -121,17 +122,13 @@ export function Testimonials() {
           className="text-center mb-16"
         >
           <Badge variant="secondary" className="mb-4">
-            Histórias de Transformação
+            Ecos da Travessia
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
-            O Que Nossos Estudantes
-            <span className="text-primary block">
-              Estão Dizendo
-            </span>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4 hekate-divider">
+            Vozes que ressoam no Templo
           </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Milhares de pessoas já transformaram suas vidas através dos nossos cursos. 
-            Veja alguns depoimentos reais de nossa comunidade.
+          <p className="text-lg text-hekate-pearl/80 max-w-3xl mx-auto">
+            Depoimentos de quem atravessou portais, acendeu tochas e fez do rito um caminho.
           </p>
         </motion.div>
 
@@ -145,12 +142,18 @@ export function Testimonials() {
         >
           {testimonials.map((testimonial) => (
             <motion.div key={testimonial.id} variants={itemVariants}>
-              <Card className="h-full hover:shadow-lg transition-all duration-300 group hover:-translate-y-1">
+              <Card className="card-mystic-ultimate h-full transition-all duration-300 group hover:-translate-y-1 relative overflow-hidden">
                 <CardContent className="p-6">
-                  {/* Quote Icon */}
+                  {/* Ritual frame */}
+                  <div className="absolute -top-3 left-4 opacity-70 text-hekate-gold"><TorchLeft size={16} /></div>
+                  <div className="absolute -top-3 right-4 opacity-70 text-hekate-gold"><TorchRight size={16} /></div>
+                  <div className="absolute -bottom-3 left-4 opacity-70 text-hekate-gold"><TorchLeft size={16} /></div>
+                  <div className="absolute -bottom-3 right-4 opacity-70 text-hekate-gold"><TorchRight size={16} /></div>
+
+                  {/* Symbol */}
                   <div className="flex justify-between items-start mb-4">
-                    <Quote className="h-8 w-8 text-primary/20 group-hover:text-primary/40 transition-colors" />
-                    <Badge variant="outline" className="text-xs">
+                    <StrophalosIcon className="h-8 w-8 text-hekate-gold/30 group-hover:text-hekate-gold/60 transition-colors" />
+                    <Badge variant="outline" className="text-xs border-hekate-gold/40 text-hekate-gold">
                       {testimonial.highlight}
                     </Badge>
                   </div>
@@ -158,7 +161,7 @@ export function Testimonials() {
                   {/* Rating */}
                   <div className="flex items-center space-x-1 mb-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <Star key={i} className="h-4 w-4 fill-hekate-gold text-hekate-gold" />
                     ))}
                     <span className="text-sm text-muted-foreground ml-2">
                       {testimonial.rating}.0
@@ -166,7 +169,7 @@ export function Testimonials() {
                   </div>
 
                   {/* Testimonial Text */}
-                  <blockquote className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                  <blockquote className="text-sm text-hekate-pearl/80 mb-6 leading-relaxed">
                     &ldquo;{testimonial.testimonial}&rdquo;
                   </blockquote>
 
@@ -186,13 +189,13 @@ export function Testimonials() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <div className="font-medium text-foreground text-sm">
+                      <div className="font-medium text-hekate-pearl text-sm">
                         {testimonial.name}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-hekate-pearl/70">
                         {testimonial.role} • {testimonial.location}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-hekate-pearl/60 mt-1">
                         {testimonial.completedCourses} cursos • Desde {testimonial.joinedDate}
                       </div>
                     </div>
@@ -209,46 +212,46 @@ export function Testimonials() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           viewport={{ once: true }}
-          className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8 md:p-12"
+          className="bg-gradient-to-r from-hekate-purple-900/40 to-hekate-purple-950/60 border border-hekate-gold/20 rounded-2xl p-8 md:p-12"
         >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center text-hekate-pearl">
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
                 4.9/5
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-hekate-pearl/70">
                 Avaliação Média
               </div>
               <div className="flex justify-center mt-2">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <Star key={i} className="h-4 w-4 fill-hekate-gold text-hekate-gold" />
                 ))}
               </div>
             </div>
             
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
                 10.000+
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-hekate-pearl/70">
                 Estudantes Ativos
               </div>
             </div>
             
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
                 5.000+
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-hekate-pearl/70">
                 Certificados Emitidos
               </div>
             </div>
             
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
                 98%
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-hekate-pearl/70">
                 Taxa de Satisfação
               </div>
             </div>

@@ -1,34 +1,30 @@
 import { Metadata } from 'next'
-import { AboutHero } from '@/components/public/about/AboutHero'
-import { Mission } from '@/components/public/about/Mission'
-import { Team } from '@/components/public/about/Team'
-import { Values } from '@/components/public/about/Values'
-import { Journey } from '@/components/public/about/Journey'
+import { Manifesto } from '@/components/public/about/Manifesto'
 import { CTA } from '@/components/public/CTA'
 
 export const metadata: Metadata = {
-  title: 'Sobre Nós | Caminhos de Hekate',
-  description: 'Conheça nossa missão de transformar vidas através do autoconhecimento e desenvolvimento pessoal. Descubra a história por trás da plataforma Caminhos de Hekate.',
+  title: 'Manifesto da Escola | Caminhos de Hekate',
+  description: 'A Escola Iniciática Caminhos de Hekate é templo vivo: cada encontro é rito, cada palavra é invocação, cada ciclo é travessia.',
   keywords: [
-    'sobre caminhos de hekate',
-    'missão',
-    'valores',
-    'equipe',
-    'história',
-    'desenvolvimento pessoal',
-    'autoconhecimento',
-    'transformação pessoal'
+    'manifesto',
+    'escola iniciática',
+    'templo',
+    'hekate',
+    'ritual',
+    'travessia',
+    'sabedoria',
+    'autoconhecimento'
   ],
   openGraph: {
-    title: 'Sobre Nós | Caminhos de Hekate',
-    description: 'Conheça nossa missão de transformar vidas através do autoconhecimento e desenvolvimento pessoal.',
+    title: 'Manifesto da Escola | Caminhos de Hekate',
+    description: 'Templo vivo, rito e travessia. A Escola Iniciática Caminhos de Hekate em palavras.',
     type: 'website',
     locale: 'pt_BR',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Sobre Nós | Caminhos de Hekate',
-    description: 'Conheça nossa missão de transformar vidas através do autoconhecimento e desenvolvimento pessoal.',
+    title: 'Manifesto da Escola | Caminhos de Hekate',
+    description: 'Templo vivo, rito e travessia. A Escola Iniciática Caminhos de Hekate em palavras.',
   },
   alternates: {
     canonical: '/sobre'
@@ -38,11 +34,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="min-h-screen">
-      <AboutHero />
-      <Mission />
-      <Values />
-      <Journey />
-      <Team />
+      <Manifesto />
       <CTA />
     </main>
   )

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Moon, User, LogOut, Settings, BookOpen, ShoppingCart } from 'lucide-react'
+import { Menu, X, User, LogOut, Settings, BookOpen, ShoppingCart } from 'lucide-react'
+import { TripleMoonIcon } from '@/components/icons/Esoteric'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +64,7 @@ export function PublicHeader() {
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
           <div className="relative">
-            <Moon className="h-8 w-8 text-primary" />
+            <TripleMoonIcon className="h-8 w-8 text-hekate-gold" />
           </div>
           <div className="flex flex-col">
             <span className="font-serif text-lg font-bold text-foreground">

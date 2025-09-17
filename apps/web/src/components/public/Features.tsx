@@ -1,84 +1,29 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { 
-  BookOpen, 
-  Users, 
-  Award, 
-  Play, 
-  MessageCircle, 
-  Sparkles,
-  Shield,
-  Clock,
-  Target
-} from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { KeyIcon, CrossroadsIcon, StrophalosIcon, TorchIcon } from '@/components/icons/Esoteric'
 
-const features = [
+const portais = [
   {
-    icon: BookOpen,
-    title: 'Cursos Exclusivos',
-    description: 'Conteúdo único desenvolvido por especialistas em desenvolvimento pessoal e espiritualidade.',
-    highlight: 'Mais de 50 cursos',
-    color: 'text-blue-500'
+    icon: KeyIcon,
+    title: 'Fundamentos',
+    description: 'As chaves do Templo: ética, ritos básicos, proteção e preparo. Onde a tocha é acesa e o caminho é traçado.',
+    marker: 'Porta I',
   },
   {
-    icon: Users,
-    title: 'Comunidade Ativa',
-    description: 'Conecte-se com pessoas que compartilham da mesma jornada de autoconhecimento.',
-    highlight: '10.000+ membros',
-    color: 'text-green-500'
+    icon: CrossroadsIcon,
+    title: 'Travessias',
+    description: 'Ciclos e encruzilhadas: práticas, jornadas guiadas e mistérios que se abrem a cada passo consciente.',
+    marker: 'Porta II',
   },
   {
-    icon: Award,
-    title: 'Certificações',
-    description: 'Receba certificados reconhecidos ao completar os cursos e trilhas de aprendizado.',
-    highlight: 'Certificado válido',
-    color: 'text-yellow-500'
+    icon: StrophalosIcon,
+    title: 'Iniciação',
+    description: 'A roda gira: integração de saberes, consagrações e o chamado à presença. Do rito, nasce a obra.',
+    marker: 'Porta III',
   },
-  {
-    icon: Play,
-    title: 'Aulas Interativas',
-    description: 'Vídeos de alta qualidade com exercícios práticos e materiais complementares.',
-    highlight: 'HD & 4K',
-    color: 'text-purple-500'
-  },
-  {
-    icon: MessageCircle,
-    title: 'Mentoria Personalizada',
-    description: 'Acesso direto aos instrutores e sessões de mentoria para acelerar seu crescimento.',
-    highlight: 'Suporte 1:1',
-    color: 'text-pink-500'
-  },
-  {
-    icon: Sparkles,
-    title: 'Gamificação',
-    description: 'Sistema de pontos, conquistas e níveis para tornar sua jornada mais engajante.',
-    highlight: 'XP & Badges',
-    color: 'text-orange-500'
-  },
-  {
-    icon: Shield,
-    title: 'Ambiente Seguro',
-    description: 'Espaço protegido e acolhedor para compartilhar experiências e crescer em comunidade.',
-    highlight: '100% Seguro',
-    color: 'text-emerald-500'
-  },
-  {
-    icon: Clock,
-    title: 'Acesso Vitalício',
-    description: 'Estude no seu ritmo com acesso permanente a todo o conteúdo adquirido.',
-    highlight: 'Para sempre',
-    color: 'text-indigo-500'
-  },
-  {
-    icon: Target,
-    title: 'Trilhas Personalizadas',
-    description: 'Caminhos de aprendizado adaptados aos seus objetivos e nível de conhecimento.',
-    highlight: 'Sob medida',
-    color: 'text-red-500'
-  }
 ]
 
 const containerVariants = {
@@ -104,7 +49,7 @@ const itemVariants = {
 
 export function Features() {
   return (
-    <section className="py-20 bg-muted/30">
+    <section id="portais" className="py-20 bg-transparent">
       <div className="container">
         {/* Header */}
         <motion.div
@@ -115,49 +60,45 @@ export function Features() {
           className="text-center mb-16"
         >
           <Badge variant="secondary" className="mb-4">
-            Por que escolher Caminhos de Hekate?
+            Portais da Escola
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
-            Uma Experiência Completa de
-            <span className="text-primary block">
-              Transformação Pessoal
-            </span>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4 hekate-divider">
+            O Templo se abre em três passagens
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Nossa plataforma oferece tudo que você precisa para uma jornada profunda 
-            de autoconhecimento, crescimento espiritual e desenvolvimento pessoal.
+            Fundamentos, Travessias, Iniciação — caminhos que evocam, sustentam e consagram a tua obra.
           </p>
         </motion.div>
 
-        {/* Features Grid */}
+        {/* Portais Grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
-          {features.map((feature, index) => {
-            const Icon = feature.icon
+          {portais.map((portal, index) => {
+            const Icon = portal.icon
             return (
-              <motion.div key={feature.title} variants={itemVariants}>
-                <Card className="h-full hover:shadow-lg transition-all duration-300 group hover:-translate-y-1">
+              <motion.div key={portal.title} variants={itemVariants}>
+                <Card className="card-mystic-3d h-full group">
                   <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className={`p-3 rounded-lg bg-muted group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className={`h-6 w-6 ${feature.color}`} />
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-lg bg-hekate-gold/10 group-hover:scale-110 transition-transform duration-300">
+                        <Icon className="h-7 w-7 text-hekate-gold" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                            {feature.title}
+                          <h3 className="font-serif text-xl font-semibold text-hekate-pearl group-hover:text-hekate-gold transition-colors">
+                            {portal.title}
                           </h3>
-                          <Badge variant="outline" className="text-xs">
-                            {feature.highlight}
+                          <Badge variant="outline" className="text-xs border-hekate-gold/40 text-hekate-gold">
+                            {portal.marker}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {feature.description}
+                        <p className="text-sm text-hekate-pearl/80 leading-relaxed">
+                          {portal.description}
                         </p>
                       </div>
                     </div>
@@ -176,29 +117,30 @@ export function Features() {
           viewport={{ once: true }}
           className="text-center mt-16"
         >
-          <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-8 md:p-12">
-            <h3 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-4">
-              Pronto para Transformar Sua Vida?
+          <div className="bg-gradient-to-r from-hekate-purple-900/40 to-hekate-purple-950/60 border border-hekate-gold/20 rounded-2xl p-8 md:p-12">
+            <h3 className="text-2xl md:text-3xl font-serif font-bold text-hekate-pearl mb-4">
+              Que portal te chama hoje?
             </h3>
-            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Junte-se a milhares de pessoas que já iniciaram sua jornada de autoconhecimento 
-              e descoberta do potencial interior.
+            <p className="text-hekate-pearl/80 mb-6 max-w-2xl mx-auto">
+              Atravessar é decisão. Permanecer, também. A presença é teu primeiro rito.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.button
+              <motion.a
+                href="/cursos"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                className="btn-mystic-enhanced"
               >
-                Começar Agora
-              </motion.button>
-              <motion.button
+                Ver Trilhas e Ritos
+              </motion.a>
+              <motion.a
+                href="/sobre"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="border border-primary text-primary px-8 py-3 rounded-lg font-medium hover:bg-primary/10 transition-colors"
+                className="border border-hekate-gold text-hekate-gold px-8 py-3 rounded-lg font-medium hover:bg-hekate-gold/10 transition-colors"
               >
-                Ver Demonstração
-              </motion.button>
+                Ler o Manifesto
+              </motion.a>
             </div>
           </div>
         </motion.div>

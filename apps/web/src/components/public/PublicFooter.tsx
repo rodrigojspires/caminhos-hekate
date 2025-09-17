@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { Moon, Mail, Phone, MapPin } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TripleMoonIcon } from '@/components/icons/Esoteric'
 
 const footerLinks = {
   company: [
@@ -38,29 +39,29 @@ const footerLinks = {
 
 export function PublicFooter() {
   return (
-    <footer className="bg-muted/50 border-t">
+    <footer className="bg-hekate-black border-t border-hekate-gold/20 relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-hekate-gold/60 to-transparent" />
       <div className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <Moon className="h-8 w-8 text-primary" />
+              <TripleMoonIcon className="h-8 w-8 text-hekate-gold" />
               <div className="flex flex-col">
-                <span className="font-serif text-lg font-bold text-foreground">
+                <span className="font-serif text-lg font-bold text-hekate-pearl">
                   Caminhos de Hekate
                 </span>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs text-hekate-pearl/70 uppercase tracking-wider">
                   Escola Iniciática
                 </span>
               </div>
             </Link>
-            <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-              Transforme sua vida através do autoconhecimento. Descubra cursos exclusivos 
-              de desenvolvimento pessoal e espiritualidade.
+            <p className="text-sm text-hekate-pearl/80 mb-4 max-w-sm">
+              Templo‑escola para ritos, estudos e travessias. Cada ciclo, uma passagem. Cada encontro, um chamado.
             </p>
             
             {/* Contact Info */}
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="space-y-2 text-sm text-hekate-pearl/70">
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
                 <span>contato@caminhosdehekate.com</span>
@@ -78,13 +79,13 @@ export function PublicFooter() {
 
           {/* Company Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Empresa</h3>
+            <h3 className="font-semibold text-hekate-pearl mb-4">Templo</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -95,13 +96,13 @@ export function PublicFooter() {
 
           {/* Courses Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Cursos</h3>
+            <h3 className="font-semibold text-hekate-pearl mb-4">Portais</h3>
             <ul className="space-y-2">
               {footerLinks.courses.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -112,13 +113,13 @@ export function PublicFooter() {
 
           {/* Community Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Comunidade</h3>
+            <h3 className="font-semibold text-hekate-pearl mb-4">Egrégora</h3>
             <ul className="space-y-2">
               {footerLinks.community.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -129,13 +130,13 @@ export function PublicFooter() {
 
           {/* Support Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Suporte</h3>
+            <h3 className="font-semibold text-hekate-pearl mb-4">Suporte</h3>
             <ul className="space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -146,13 +147,13 @@ export function PublicFooter() {
         </div>
 
         {/* Newsletter Section */}
-        <div className="mt-12 pt-8 border-t">
+        <div className="mt-12 pt-8 border-t border-hekate-gold/20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="font-semibold text-foreground mb-2">
+              <h3 className="font-semibold text-hekate-pearl mb-2">
                 Receba novidades e conteúdos exclusivos
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-hekate-pearl/70">
                 Inscreva-se em nossa newsletter e seja o primeiro a saber sobre novos cursos, 
                 eventos e conteúdos especiais.
               </p>
@@ -163,7 +164,7 @@ export function PublicFooter() {
                 placeholder="Seu melhor e-mail"
                 className="flex-1"
               />
-              <Button type="submit">
+              <Button type="submit" className="bg-hekate-gold text-hekate-black hover:bg-hekate-gold/90">
                 Inscrever-se
               </Button>
             </div>
@@ -171,8 +172,8 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-12 pt-8 border-t flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <div className="text-sm text-muted-foreground">
+        <div className="mt-12 pt-8 border-t border-hekate-gold/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <div className="text-sm text-hekate-pearl/80">
             © {new Date().getFullYear()} Caminhos de Hekate. Todos os direitos reservados.
           </div>
           
@@ -182,12 +183,19 @@ export function PublicFooter() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
               >
                 {link.name}
               </Link>
             ))}
           </div>
+        </div>
+
+        {/* Closing mantra */}
+        <div className="mt-8 text-center">
+          <p className="font-serif text-hekate-pearl/90">
+            “Hekate abre os portais. Permanecer ou atravessar é escolha tua.”
+          </p>
         </div>
       </div>
     </footer>

@@ -241,10 +241,10 @@ export default function CalendarioPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-transparent">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hekate-gold"></div>
           </div>
         </div>
       </div>
@@ -252,17 +252,17 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Calendário de Eventos
+              <h1 className="text-3xl font-bold text-hekate-pearl mb-2">
+                Calendário Sagrado
               </h1>
-              <p className="text-gray-600">
-                Visualize e gerencie todos os seus eventos em um só lugar
+              <p className="text-hekate-pearl/70">
+                Sabbaths, Deipnon, Jornadas — os ciclos e ritos do Templo
               </p>
             </div>
 
@@ -297,7 +297,7 @@ export default function CalendarioPage() {
 
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                className="flex items-center gap-2 bg-hekate-gold text-hekate-black hover:bg-hekate-gold/90"
               >
                 <Plus className="h-4 w-4" />
                 Novo Evento
@@ -318,7 +318,7 @@ export default function CalendarioPage() {
         </div>
 
         {/* Calendar Navigation */}
-        <Card className="mb-6">
+        <Card className="mb-6 card-mystic">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
@@ -330,7 +330,7 @@ export default function CalendarioPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-hekate-pearl">
                   {getViewTitle()}
                 </h2>
                 
