@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import VariantDigitalSettings from '@/components/admin/VariantDigitalSettings'
 import ProductVariantsEditor from '@/components/admin/ProductVariantsEditor'
+import VariantWizard from '@/components/admin/VariantWizard'
 
 interface Product {
   id: string
@@ -284,6 +285,13 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   return (
     <div className="container mx-auto py-6">
+      {/* Wizard para variação padrão se não houver variações */}
+      <VariantWizard
+        productId={params.id}
+        open={(product as any)?.variants?.length === 0}
+        onClose={() => { /* fecha apenas ao criar ou sair */ }}
+        onCreated={loadProduct}
+      />
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -420,11 +428,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         </CardHeader>
         <CardContent>
           <ProductForm
-            initialData={{
-              ...(product as any),
-              // Preencher SKU no formulário a partir da variação principal
-              sku: (product as any)?.variants?.[0]?.sku || ''
-            }}
+            initialData={product}
             onSubmit={handleSubmit}
             isLoading={isSaving}
             submitLabel="Atualizar Produto"

@@ -20,14 +20,18 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       setProduct(p)
 
       // Escolhe variação inicial habilitada (ativa e com estoque)
-      const enabled = (p?.variants || []).find((v: any) => v.active && (v.stock ?? 0) > 0)
+      const list: any[] = p?.variants || []
+      const preferred = list.find((v: any) => (v.attributes as any)?.primary && v.active && (v.stock ?? 0) > 0)
+      const enabled = preferred || list.find((v: any) => v.active && (v.stock ?? 0) > 0)
       const initialVariantId = enabled?.id || p?.variants?.[0]?.id || ''
       setVariantId(initialVariantId)
 
       // Lista de imagens: prioriza imagens da variação (se houver em attributes.images)
       const v0 = (p?.variants || []).find((v: any) => v.id === initialVariantId)
-      const variantImages = Array.isArray((v0?.attributes as any)?.images) ? (v0!.attributes as any).images : undefined
-      const imgs = Array.isArray(variantImages) && variantImages.length ? variantImages : (Array.isArray(p?.images) ? p.images : [])
+      const varImgs0 = Array.isArray((v0?.attributes as any)?.images) ? (v0!.attributes as any).images : []
+      const prodImgs0 = Array.isArray(p?.images) ? p.images : []
+      const seen0 = new Set<string>()
+      const imgs = [...varImgs0, ...prodImgs0].filter((src) => (src && !seen0.has(src) ? (seen0.add(src), true) : false))
       setImages(imgs)
       setImageIdx(0)
     })()
@@ -40,8 +44,11 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   useEffect(() => {
     if (!product) return
     const v = (product?.variants || []).find((x: any) => x.id === variantId)
-    const varImgs = Array.isArray((v?.attributes as any)?.images) ? (v!.attributes as any).images : undefined
-    const imgs = Array.isArray(varImgs) && varImgs.length ? varImgs : (Array.isArray(product?.images) ? product.images : [])
+    const varImgs = Array.isArray((v?.attributes as any)?.images) ? (v!.attributes as any).images : []
+    const prodImgs = Array.isArray(product?.images) ? product.images : []
+    // combinar variação + produto, removendo duplicados
+    const seen = new Set<string>()
+    const imgs = [...varImgs, ...prodImgs].filter((src) => (src && !seen.has(src) ? (seen.add(src), true) : false))
     setImages(imgs)
     setImageIdx(0)
   }, [variantId, product])

@@ -32,6 +32,21 @@ export default function ProductVariantsEditor({ productId }: { productId: string
   const [newVar, setNewVar] = useState<Partial<Variant & { dimensions?: { height?: number; width?: number; length?: number } }>>({ name: '', sku: '', price: 0, stock: 0, active: true })
   const [variantImages, setVariantImages] = useState<Record<string, string[]>>({})
 
+  async function fileToDataUrl(file: File): Promise<string> {
+    return await new Promise<string>((resolve) => {
+      const r = new FileReader(); r.onload = () => resolve(r.result as string); r.readAsDataURL(file)
+    })
+  }
+  async function compress(file: File, maxSize = 1024, quality = 0.8): Promise<string> {
+    const data = await fileToDataUrl(file)
+    const img = document.createElement('img'); img.src = data; await new Promise(r => { img.onload = () => r(null) })
+    const canvas = document.createElement('canvas')
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+    canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale)
+    const ctx = canvas.getContext('2d')!; ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', quality)
+  }
+
   useEffect(() => {
     ;(async () => {
       try {
@@ -238,31 +253,84 @@ export default function ProductVariantsEditor({ productId }: { productId: string
               </div>
             </div>
 
+            <div className="md:col-span-6 flex items-center justify-between">
+              <div className="text-sm">
+                {(v as any).attributes?.primary && (
+                  <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Variação principal</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/admin/variants/${v.id}/set-primary`, { method: 'POST' })
+                      if (!res.ok) throw new Error('Falha ao definir principal')
+                      // reload product to reflect flag
+                      const r2 = await fetch(`/api/admin/products/${productId}`)
+                      const d2 = await r2.json()
+                      setProduct(d2.product || d2)
+                      toast.success('Definida como variação principal')
+                    } catch (e) {
+                      toast.error('Erro ao definir principal')
+                    }
+                  }}
+                >Definir como principal</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      if (product.variants.length <= 1) {
+                        toast.error('Não é possível excluir a última variação')
+                        return
+                      }
+                      const res = await fetch(`/api/admin/variants/${v.id}`, { method: 'DELETE' })
+                      const data = await res.json().catch(() => ({}))
+                      if (!res.ok) throw new Error(data?.error || 'Falha ao excluir')
+                      const r2 = await fetch(`/api/admin/products/${productId}`)
+                      const d2 = await r2.json()
+                      setProduct(d2.product || d2)
+                      toast.success('Variação excluída')
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Erro ao excluir variação')
+                    }
+                  }}
+                >Excluir</Button>
+              </div>
+            </div>
+
             {/* Imagens da variação */}
             <div className="md:col-span-6">
               <div className="text-sm font-medium mb-1">Imagens da variação</div>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || [])
-                  if (!files.length) return
-                  const readers = files.map(f => new Promise<string>((resolve) => {
-                    const r = new FileReader()
-                    r.onload = () => resolve(r.result as string)
-                    r.readAsDataURL(f)
-                  }))
-                  Promise.all(readers).then((dataUrls) => {
-                    setVariantImages(prev => ({ ...prev, [v.id]: dataUrls }))
-                  })
-                }}
-              />
+              <VariantDropzone onAdd={async (files) => {
+                const MAX_MB = 2
+                const dataUrls: string[] = []
+                for (const f of files) {
+                  if (f.size > MAX_MB * 1024 * 1024) dataUrls.push(await compress(f))
+                  else dataUrls.push(await fileToDataUrl(f))
+                }
+                setVariantImages(prev => ({ ...prev, [v.id]: [...(prev[v.id] || []), ...dataUrls] }))
+              }} />
               {(variantImages[v.id]?.length ? variantImages[v.id] : (v.attributes?.images || [])).length > 0 && (
                 <div className="mt-2 grid grid-cols-6 gap-2">
                   {(variantImages[v.id] || (v.attributes?.images || [])).map((src: string, i: number) => (
-                    <img key={i} src={src} alt={`var-${v.id}-${i}`} className="h-16 w-16 object-cover rounded" />
+                    <div key={i} className="relative">
+                      <img src={src} alt={`var-${v.id}-${i}`} className="h-16 w-16 object-cover rounded" />
+                      <button
+                        type="button"
+                        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs"
+                        onClick={() => {
+                          const arr = [...(variantImages[v.id] || (v.attributes?.images || []))]
+                          arr.splice(i, 1)
+                          setVariantImages(prev => ({ ...prev, [v.id]: arr }))
+                        }}
+                        aria-label="Remover imagem"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
+import { useDropzone } from 'react-dropzone'
                 </div>
               )}
             </div>
@@ -276,5 +344,15 @@ export default function ProductVariantsEditor({ productId }: { productId: string
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function VariantDropzone({ onAdd }: { onAdd: (files: File[]) => void }) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ accept: { 'image/*': [] }, onDrop: onAdd })
+  return (
+    <div {...getRootProps()} className={`border-dashed border rounded p-3 text-center ${isDragActive ? 'bg-muted' : ''}`}>
+      <input {...getInputProps()} />
+      <p className="text-xs text-muted-foreground">Arraste e solte imagens aqui ou clique para selecionar</p>
+    </div>
   )
 }

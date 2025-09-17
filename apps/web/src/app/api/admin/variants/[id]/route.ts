@@ -74,3 +74,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const permissionError = await checkAdminPermission()
+  if (permissionError) return permissionError
+  try {
+    const variant = await prisma.productVariant.findUnique({ where: { id: params.id } })
+    if (!variant) return NextResponse.json({ error: 'Variação não encontrada' }, { status: 404 })
+    const count = await prisma.productVariant.count({ where: { productId: variant.productId } })
+    if (count <= 1) {
+      return NextResponse.json({ error: 'Não é possível excluir a última variação do produto' }, { status: 400 })
+    }
+    await prisma.productVariant.delete({ where: { id: params.id } })
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error('DELETE /api/admin/variants/[id] error', e)
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+  }
+}

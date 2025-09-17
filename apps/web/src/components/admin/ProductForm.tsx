@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useDropzone } from 'react-dropzone'
 
 export interface ProductFormData {
   name: string
@@ -40,13 +41,15 @@ interface ProductFormProps {
   onSubmit: (data: ProductFormData) => Promise<void>
   isLoading?: boolean
   submitLabel?: string
+  isCreate?: boolean
 }
 
 export function ProductForm({
   initialData,
   onSubmit,
   isLoading = false,
-  submitLabel = 'Salvar Produto'
+  submitLabel = 'Salvar Produto',
+  isCreate = false,
 }: ProductFormProps) {
   const [formData, setFormData] = useState<ProductFormData>({
     name: initialData?.name || '',
@@ -97,6 +100,44 @@ export function ProductForm({
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
+
+  // util: compressão simples via canvas
+  async function compressImage(file: File, maxSize = 1024, quality = 0.8): Promise<string> {
+    const img = document.createElement('img')
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    })
+    img.src = dataUrl
+    await new Promise(r => { img.onload = () => r(null) })
+    const canvas = document.createElement('canvas')
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+    canvas.width = Math.round(img.width * scale)
+    canvas.height = Math.round(img.height * scale)
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', quality)
+  }
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    const MAX_MB = 2
+    const imgs: string[] = []
+    for (const f of acceptedFiles) {
+      if (f.size > MAX_MB * 1024 * 1024) {
+        // compress
+        const c = await compressImage(f)
+        imgs.push(c)
+      } else {
+        const reader = new FileReader()
+        const p = new Promise<string>((resolve) => { reader.onload = () => resolve(reader.result as string) })
+        reader.readAsDataURL(f)
+        imgs.push(await p)
+      }
+    }
+    handleInputChange('images', [ ...(formData.images || []), ...imgs ])
+  }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': [] } })
 
   return (
     <div className="space-y-6">
@@ -201,67 +242,70 @@ export function ProductForm({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Preço de Venda *</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  required
-                />
+            {isCreate && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Preço de Venda *</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Preço Comparativo</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.compareAtPrice || ''}
+                    onChange={(e) => handleInputChange('compareAtPrice', parseFloat(e.target.value) || undefined)}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Quantidade</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.quantity}
+                    onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Preço Comparativo</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.compareAtPrice || ''}
-                  onChange={(e) => handleInputChange('compareAtPrice', parseFloat(e.target.value) || undefined)}
-                  placeholder="0.00"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Quantidade</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.quantity}
-                  onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-2">Imagens do Produto</label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || [])
-                  if (!files.length) return
-                  const readers = files.map(f => new Promise<string>((resolve) => {
-                    const r = new FileReader()
-                    r.onload = () => resolve(r.result as string)
-                    r.readAsDataURL(f)
-                  }))
-                  Promise.all(readers).then((dataUrls) => {
-                    handleInputChange('images', dataUrls)
-                  })
-                }}
-              />
+              <div {...getRootProps()} className={`border-dashed border rounded p-4 text-center ${isDragActive ? 'bg-muted' : ''}`}>
+                <input {...getInputProps()} />
+                <p className="text-sm text-muted-foreground">Arraste e solte imagens aqui ou clique para selecionar</p>
+              </div>
               {formData.images && formData.images.length > 0 && (
                 <div className="mt-2 grid grid-cols-4 gap-2">
                   {formData.images.map((src, i) => (
-                    <img key={i} src={src} alt={`Prévia ${i+1}`} className="h-20 w-20 object-cover rounded" />
+                    <div key={i} className="relative">
+                      <img src={src} alt={`Prévia ${i+1}`} className="h-20 w-20 object-cover rounded" />
+                      <button
+                        type="button"
+                        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs"
+                        onClick={() => {
+                          const next = [...formData.images]
+                          next.splice(i, 1)
+                          handleInputChange('images', next)
+                        }}
+                        aria-label="Remover imagem"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

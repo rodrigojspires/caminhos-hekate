@@ -3,7 +3,7 @@ import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { withAdminAuth } from '@/lib/auth-middleware'
 
-// Schema de validação para criação de produto
+// Schema de validação para criação de produto (sem variação)
 const createProductSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   slug: z.string().min(1, 'Slug é obrigatório'),
@@ -11,17 +11,6 @@ const createProductSchema = z.object({
   shortDescription: z.string().optional(),
   type: z.enum(['PHYSICAL', 'DIGITAL']).default('PHYSICAL'),
   categoryId: z.string().nullable().optional(),
-  // Campos da variação padrão
-  price: z.number().min(0, 'Preço deve ser maior ou igual a zero'),
-  comparePrice: z.number().optional(),
-  cost: z.number().optional(),
-  sku: z.string().min(1, 'SKU é obrigatório'),
-  trackQuantity: z.boolean().default(false),
-  quantity: z.number().int().min(0).default(0),
-  weight: z.number().optional(),
-  height: z.number().optional(),
-  width: z.number().optional(),
-  length: z.number().optional(),
   // Status geral
   status: z.enum(['ACTIVE', 'INACTIVE', 'OUT_OF_STOCK']).default('ACTIVE'),
   featured: z.boolean().default(false),
@@ -159,12 +148,9 @@ export const POST = withAdminAuth(async (user, request: NextRequest) => {
       }
     }
     
-    // Separa dados do produto e da variação padrão
     const {
       name, slug, description, shortDescription, type, categoryId, images,
       featured, status, seoTitle, seoDescription,
-      // Variação
-      price, comparePrice, sku, trackQuantity, quantity, weight, height, width, length,
     } = data as any
 
     const product = await prisma.product.create({
@@ -185,21 +171,6 @@ export const POST = withAdminAuth(async (user, request: NextRequest) => {
         category: { select: { id: true, name: true, slug: true } },
         variants: true,
       },
-    })
-
-    // Cria variação padrão
-    await prisma.productVariant.create({
-      data: {
-        productId: product.id,
-        sku,
-        name: product.name,
-        price,
-        comparePrice: comparePrice ?? null,
-        stock: quantity ?? 0,
-        weight: weight ?? null,
-        dimensions: (height || width || length) ? { height, width, length } : null,
-        active: status === 'ACTIVE',
-      }
     })
     
     return NextResponse.json({ success: true, product }, { status: 201 })

@@ -23,15 +23,6 @@ export default function NewProductPage() {
         shortDescription: data.shortDescription || undefined,
         type: data.type === 'SERVICE' ? 'PHYSICAL' : data.type,
         categoryId: data.categoryId || undefined,
-        price: Number(data.price || 0),
-        comparePrice: data.compareAtPrice != null ? Number(data.compareAtPrice) : undefined,
-        sku: data.sku,
-        trackQuantity: !!data.trackQuantity,
-        quantity: Number.isFinite(data.quantity) ? Number(data.quantity) : 0,
-        weight: data.weight != null ? Number(data.weight) : undefined,
-        height: data.height != null ? Number(data.height) : undefined,
-        width: data.width != null ? Number(data.width) : undefined,
-        length: data.length != null ? Number(data.length) : undefined,
         status: data.active ? 'ACTIVE' : 'INACTIVE',
         featured: !!data.featured,
         images: Array.isArray(data.images) ? data.images : [],
@@ -95,6 +86,7 @@ export default function NewProductPage() {
             onSubmit={handleSubmit}
             isLoading={isLoading}
             submitLabel="Criar Produto"
+            isCreate
           />
         </CardContent>
       </Card>

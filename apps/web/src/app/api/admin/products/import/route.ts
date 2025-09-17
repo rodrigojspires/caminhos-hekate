@@ -15,12 +15,51 @@ const ProductImportSchema = z.object({
   featured: z.boolean().default(false),
   active: z.boolean().default(true),
   categorySlug: z.string().optional(),
+  // Dimensões/peso (variação padrão)
+  weight: z.number().optional(),
+  height: z.number().optional(),
+  width: z.number().optional(),
+  length: z.number().optional(),
 })
 
 const ImportRequestSchema = z.object({
   products: z.array(ProductImportSchema),
   validateOnly: z.boolean().default(false),
 })
+
+function normalizeNumber(val: any): number | undefined {
+  if (val === null || val === undefined) return undefined
+  if (typeof val === 'number') return val
+  if (typeof val === 'string') {
+    const s = val.trim().replace(/\./g, '').replace(',', '.')
+    const n = Number(s)
+    return isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
+function normalizeProductAliases(p: any) {
+  const out: any = { ...p }
+  const map: Record<string, keyof any> = {
+    'altura': 'height',
+    'largura': 'width',
+    'comprimento': 'length',
+    'peso': 'weight',
+  }
+  for (const [k, v] of Object.entries(p)) {
+    const keyNorm = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '')
+    if (map[keyNorm as keyof typeof map]) {
+      const target = map[keyNorm as keyof typeof map]
+      out[target] = normalizeNumber(v)
+    }
+  }
+  // coerção numérica se vier string
+  out.weight = normalizeNumber(out.weight)
+  out.height = normalizeNumber(out.height)
+  out.width = normalizeNumber(out.width)
+  out.length = normalizeNumber(out.length)
+  return out
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,8 +72,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json()
-    const { products, validateOnly } = ImportRequestSchema.parse(body)
+    const raw = await request.json()
+    const normalized = Array.isArray(raw?.products) ? raw.products.map((p: any) => normalizeProductAliases(p)) : []
+    const { products, validateOnly } = ImportRequestSchema.parse({ ...raw, products: normalized })
     
     const results = {
       success: 0,
@@ -124,15 +164,21 @@ export async function POST(request: NextRequest) {
               categoryId,
               images: [],
               variants: {
-                 create: {
-                   name: 'Padrão',
-                   price: productData.price,
-                   comparePrice: productData.comparePrice,
-                   sku: productData.sku || `${productData.slug}-default`,
-                   stock: 0,
-                   active: true,
-                 }
-               }
+                create: {
+                  name: 'Padrão',
+                  price: productData.price,
+                  comparePrice: productData.comparePrice,
+                  sku: productData.sku || `${productData.slug}-default`,
+                  stock: 0,
+                  weight: productData.weight ?? null,
+                  dimensions: (productData.height || productData.width || productData.length) ? {
+                    height: productData.height,
+                    width: productData.width,
+                    length: productData.length,
+                  } : null,
+                  active: true,
+                }
+              }
             },
           })
           

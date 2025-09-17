@@ -287,7 +287,8 @@ export function ProductTable({
                         
                         <TableCell>
                           {(() => {
-                            const main = (product.variants && product.variants.length) ? product.variants[0] : undefined
+                            const list = product.variants || []
+                            const main = list.find((v: any) => (v as any).attributes?.primary) || list[0]
                             const price = main?.price != null ? Number(main.price) : undefined
                             const compare = main?.comparePrice != null ? Number(main.comparePrice) : undefined
                             return (
