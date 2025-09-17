@@ -4,7 +4,7 @@ import { prisma } from '@hekate/database'
 export async function GET() {
   try {
     const cats = await prisma.category.findMany({
-      where: { active: true, products: { some: { active: true } } },
+      where: { products: { some: { active: true } } },
       select: { id: true, name: true, slug: true },
       orderBy: { name: 'asc' },
     })
@@ -18,4 +18,3 @@ export async function GET() {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
