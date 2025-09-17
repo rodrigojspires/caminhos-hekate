@@ -31,7 +31,6 @@ export interface ProductFormData {
   seoDescription?: string
   tags?: string
   images?: string[]
-  imageUrl?: string
 }
 
 interface ProductFormProps {
@@ -71,7 +70,6 @@ export function ProductForm({
     seoDescription: initialData?.seoDescription || '',
     tags: initialData?.tags || '',
     images: initialData?.images || [],
-    imageUrl: (initialData as any)?.imageUrl || '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,19 +179,27 @@ export function ProductForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">URL da Imagem Principal</label>
-                <Input
-                  value={formData.imageUrl || ''}
-                  onChange={(e) => {
-                    const url = e.target.value
-                    handleInputChange('imageUrl', url)
-                    handleInputChange('images', url ? [url] : [])
-                  }}
-                  placeholder="https://..."
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Imagem Principal</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    const dataUrl = reader.result as string
+                    handleInputChange('images', [dataUrl])
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+              {formData.images && formData.images[0] && (
+                <div className="mt-2">
+                  <img src={formData.images[0]} alt="Prévia" className="h-24 w-24 object-cover rounded" />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

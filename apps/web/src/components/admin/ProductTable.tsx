@@ -40,14 +40,23 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 
+interface ProductVariant {
+  id: string
+  name: string
+  price: number
+  comparePrice?: number | null
+  stock: number
+  active: boolean
+}
+
 interface Product {
   id: string
   name: string
   slug: string
   description?: string
   type: 'PHYSICAL' | 'DIGITAL' | 'SERVICE'
-  price: number
-  comparePrice?: number
+  // preços vêm da primeira variação
+  variants: ProductVariant[]
   sku?: string
   status: 'ACTIVE' | 'INACTIVE' | 'OUT_OF_STOCK'
   featured: boolean
@@ -276,16 +285,23 @@ export function ProductTable({
                         </TableCell>
                         
                         <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium">
-                              {formatPrice(product.price)}
-                            </p>
-                            {product.comparePrice && product.comparePrice > product.price && (
-                              <p className="text-sm text-muted-foreground line-through">
-                                {formatPrice(product.comparePrice)}
-                              </p>
-                            )}
-                          </div>
+                          {(() => {
+                            const main = (product.variants && product.variants.length) ? product.variants[0] : undefined
+                            const price = main?.price != null ? Number(main.price) : undefined
+                            const compare = main?.comparePrice != null ? Number(main.comparePrice) : undefined
+                            return (
+                              <div className="space-y-1">
+                                <p className="font-medium">
+                                  {price != null ? formatPrice(price) : '—'}
+                                </p>
+                                {compare != null && price != null && compare > price && (
+                                  <p className="text-sm text-muted-foreground line-through">
+                                    {formatPrice(compare)}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </TableCell>
                         
                         <TableCell>
@@ -334,10 +350,10 @@ export function ProductTable({
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuItem
-                                onClick={() => window.open(`/products/${product.slug}`, '_blank')}
+                                onClick={() => window.open(`/loja/${product.slug}`, '_blank')}
                               >
                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                Ver no site
+                                Ver na Loja
                               </DropdownMenuItem>
                               
                               <DropdownMenuItem

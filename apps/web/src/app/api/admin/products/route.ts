@@ -94,6 +94,7 @@ export const GET = withAdminAuth(async (user, request: NextRequest) => {
             id: true,
             name: true,
             price: true,
+            comparePrice: true,
             stock: true,
             active: true,
           }

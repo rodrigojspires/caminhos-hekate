@@ -15,12 +15,37 @@ export default function NewProductPage() {
   const handleSubmit = async (data: any) => {
     setIsLoading(true)
     try {
+      // Mapear dados do formulário para o schema da API (variação padrão)
+      const payload = {
+        name: data.name,
+        slug: data.slug,
+        description: data.description,
+        shortDescription: data.shortDescription || undefined,
+        type: data.type === 'SERVICE' ? 'PHYSICAL' : data.type,
+        categoryId: data.categoryId || undefined,
+        price: Number(data.price || 0),
+        comparePrice: data.compareAtPrice != null ? Number(data.compareAtPrice) : undefined,
+        sku: data.sku,
+        trackQuantity: !!data.trackQuantity,
+        quantity: Number.isFinite(data.quantity) ? Number(data.quantity) : 0,
+        weight: data.weight != null ? Number(data.weight) : undefined,
+        height: data.height != null ? Number(data.height) : undefined,
+        width: data.width != null ? Number(data.width) : undefined,
+        length: data.length != null ? Number(data.length) : undefined,
+        status: 'ACTIVE',
+        featured: !!data.featured,
+        images: Array.isArray(data.images) ? data.images : [],
+        seoTitle: data.seoTitle || undefined,
+        seoDescription: data.seoDescription || undefined,
+        tags: data.tags ? String(data.tags).split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+      }
+
       const response = await fetch('/api/admin/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {

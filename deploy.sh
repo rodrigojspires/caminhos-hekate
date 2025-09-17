@@ -35,6 +35,13 @@ if [[ -n "${TURBO_TEAM:-}" ]]; then BUILD_ARGS+=(--build-arg TURBO_TEAM); fi
 COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" build --parallel "${BUILD_ARGS[@]}" web worker-email worker-reminders worker-subscriptions || {
   echo "❌ Falha no build paralelo"; exit 1; }
 
+# Optional DB seed on deploy (sempre com serviços parados)
+if [[ "${SEED_ON_DEPLOY:-}" == "1" ]]; then
+  echo "🌱 Rodando seed do banco (dbtools)..."
+  DOCKER_BUILDKIT=1 $DC -f "$COMPOSE_FILE" run --rm dbtools || {
+    echo "❌ Falha ao rodar seed"; exit 1; }
+fi
+
 echo "🚀 Subindo serviços (web e workers)..."
 $DC -f "$COMPOSE_FILE" up -d --no-deps web worker-email worker-reminders worker-subscriptions || { echo "❌ Falha ao subir containers web/workers"; exit 1; }
 
