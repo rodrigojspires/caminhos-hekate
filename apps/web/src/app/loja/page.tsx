@@ -28,24 +28,32 @@ async function fetchCategories() {
   return res.json()
 }
 
+async function fetchBanners() {
+  const base = process.env.NEXT_PUBLIC_APP_URL
+  const url = base ? `${base}/api/shop/banners` : `/api/shop/banners`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) return { banners: [] as any[] }
+  return res.json()
+}
+
 export default async function ShopPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const [{ products }, { categories }, { products: featured }] = await Promise.all([
+  const [{ products }, { categories }, { banners }] = await Promise.all([
     fetchProducts(searchParams),
     fetchCategories(),
-    fetchProducts({ limit: '5', featured: 'true' }),
+    fetchBanners(),
   ])
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto py-6 lg:py-8 space-y-6">
-        <h1 className="text-3xl font-serif font-bold text-hekate-pearl mb-2">Loja</h1>
-        {/* Banner com destaques */}
-        <ShopBanner items={featured} />
-      </div>
-
-      {/* Categorias fixas */}
+      {/* Categorias fixas sempre visíveis */}
       {categories?.length ? (
         <ShopCategoryNav categories={categories} activeSlug={searchParams.category as string | undefined} />
       ) : null}
+
+      <div className="container mx-auto py-6 lg:py-8 space-y-6">
+        <h1 className="text-3xl font-serif font-bold text-hekate-pearl mb-2">Loja</h1>
+        {/* Banner com destaques (cadastro próprio) */}
+        <ShopBanner items={banners} />
+      </div>
 
       <div className="container mx-auto py-6 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

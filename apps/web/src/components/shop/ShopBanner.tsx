@@ -6,14 +6,15 @@ import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 
-type BannerProduct = {
+type BannerItem = {
   id: string
-  name: string
-  slug: string
-  image: string | null
+  title: string
+  subtitle?: string | null
+  imageUrl: string | null
+  linkUrl?: string | null
 }
 
-export default function ShopBanner({ items }: { items: BannerProduct[] }) {
+export default function ShopBanner({ items }: { items: BannerItem[] }) {
   const [index, setIndex] = useState(0)
   const total = items.length
 
@@ -40,10 +41,10 @@ export default function ShopBanner({ items }: { items: BannerProduct[] }) {
             transition={{ duration: 0.8 }}
             className="absolute inset-0"
           >
-            {current.image && (
+            {current.imageUrl && (
               <Image
-                src={current.image}
-                alt={current.name}
+                src={current.imageUrl}
+                alt={current.title}
                 fill
                 className="object-cover"
                 sizes="100vw"
@@ -63,11 +64,16 @@ export default function ShopBanner({ items }: { items: BannerProduct[] }) {
             transition={{ duration: 0.6 }}
             className="font-serif text-3xl md:text-4xl font-bold text-hekate-pearl mb-4"
           >
-            {current.name}
+            {current.title}
           </motion.h2>
-          <Button asChild className="btn-mystic-enhanced">
-            <Link href={`/loja/${current.slug}`}>Comprar Agora</Link>
-          </Button>
+          {current.subtitle && (
+            <p className="text-hekate-pearl/80 mb-4 max-w-lg">{current.subtitle}</p>
+          )}
+          {current.linkUrl && (
+            <Button asChild className="btn-mystic-enhanced">
+              <Link href={current.linkUrl}>Comprar Agora</Link>
+            </Button>
+          )}
         </div>
       </div>
       {/* Dots */}
@@ -86,4 +92,3 @@ export default function ShopBanner({ items }: { items: BannerProduct[] }) {
     </div>
   )
 }
-
