@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCartFromCookie, setCartToCookie, validateAndNormalizeItems, computeTotals } from '@/lib/shop/cart'
 import { prisma } from '@hekate/database'
+import { calculateShipping } from '@/lib/shop/shipping'
 
 async function enrich(cart: any) {
   const items = await Promise.all(
@@ -30,6 +31,14 @@ import type { CartItem } from '@/lib/shop/types'
 
 export async function GET() {
   const cart = getCartFromCookie()
+  if (cart.shipping?.cep) {
+    try {
+      cart.shipping = await calculateShipping(cart.shipping.cep, cart.items)
+      setCartToCookie(cart)
+    } catch (error) {
+      console.error('GET /api/shop/cart shipping recalculation failed', error)
+    }
+  }
   const totals = await computeTotals(cart)
   const withDetails = await enrich(cart)
   return NextResponse.json({ cart: withDetails, totals })
