@@ -23,6 +23,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { CreateEventModal } from '@/components/events/CreateEventModal';
 import { CalendarFilters } from '@/components/events/CalendarFilters';
 import { useEventsStore } from '@/stores/eventsStore';
+import SacredTimeline from '@/components/calendar/SacredTimeline';
 import { CalendarEvent, EventFilters, EventType } from '@/types/events';
 import { toast } from 'sonner';
 
@@ -302,7 +303,13 @@ export default function CalendarioPage() {
                 <Plus className="h-4 w-4" />
                 Novo Evento
               </Button>
+              <a href="#calendario-completo" className="btn-mystic-enhanced whitespace-nowrap">Ver calendário completo</a>
             </div>
+          </div>
+
+          {/* Sacred Timeline */}
+          <div className="mt-6">
+            <SacredTimeline />
           </div>
 
           {/* Filters */}
@@ -318,7 +325,7 @@ export default function CalendarioPage() {
         </div>
 
         {/* Calendar Navigation */}
-        <Card className="mb-6 card-mystic">
+        <Card id="calendario-completo" className="mb-6 card-mystic">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">

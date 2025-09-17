@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Mail, Phone, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TripleMoonIcon } from '@/components/icons/Esoteric'
+import { TripleMoonIcon, StrophalosIcon } from '@/components/icons/Esoteric'
 
 const footerLinks = {
   company: [
@@ -41,7 +41,11 @@ export function PublicFooter() {
   return (
     <footer className="bg-hekate-black border-t border-hekate-gold/20 relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-hekate-gold/60 to-transparent" />
-      <div className="container py-12">
+      {/* subtle ritual wheel in background */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
+        <StrophalosIcon className="w-[36rem] h-[36rem] text-hekate-gold" />
+      </div>
+      <div className="container py-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
@@ -85,7 +89,7 @@ export function PublicFooter() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
+                    className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -102,7 +106,7 @@ export function PublicFooter() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
+                    className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -119,7 +123,7 @@ export function PublicFooter() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
+                    className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -136,7 +140,7 @@ export function PublicFooter() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
+                    className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -171,8 +175,15 @@ export function PublicFooter() {
           </div>
         </div>
 
+        {/* Closing mantra */}
+        <div className="mt-12 text-center">
+          <p className="font-serif text-hekate-pearl/90">
+            “Hekate abre os portais. Permanecer ou atravessar é escolha tua.”
+          </p>
+        </div>
+
         {/* Bottom Section */}
-        <div className="mt-12 pt-8 border-t border-hekate-gold/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <div className="mt-8 pt-8 border-t border-hekate-gold/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div className="text-sm text-hekate-pearl/80">
             © {new Date().getFullYear()} Caminhos de Hekate. Todos os direitos reservados.
           </div>
@@ -183,19 +194,12 @@ export function PublicFooter() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm text-hekate-pearl/70 hover:text-hekate-pearl transition-colors"
+                className="text-sm text-hekate-pearl/80 hover:text-hekate-gold transition-colors"
               >
                 {link.name}
               </Link>
             ))}
           </div>
-        </div>
-
-        {/* Closing mantra */}
-        <div className="mt-8 text-center">
-          <p className="font-serif text-hekate-pearl/90">
-            “Hekate abre os portais. Permanecer ou atravessar é escolha tua.”
-          </p>
         </div>
       </div>
     </footer>

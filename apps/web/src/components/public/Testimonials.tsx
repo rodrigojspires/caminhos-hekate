@@ -111,8 +111,11 @@ const itemVariants = {
 
 export function Testimonials() {
   return (
-    <section className="py-20">
-      <div className="container">
+    <section className="py-20 relative overflow-hidden">
+      {/* Subtle purple glow background */}
+      <div className="absolute inset-0 bg-gradient-radial from-hekate-purple-950/40 via-transparent to-transparent opacity-60" />
+      <div className="absolute inset-0 bg-gradient-conic from-hekate-purple-900/15 via-transparent to-transparent" />
+      <div className="container relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -121,12 +124,13 @@ export function Testimonials() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <Badge variant="secondary" className="mb-4">
+          <Badge variant="secondary" className="mb-3">
             Ecos da Travessia
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4 hekate-divider">
-            Vozes que ressoam no Templo
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-hekate-gold mb-2">
+            Vozes que atravessaram
           </h2>
+          <div className="h-px w-48 mx-auto bg-gradient-to-r from-transparent via-hekate-gold to-transparent" />
           <p className="text-lg text-hekate-pearl/80 max-w-3xl mx-auto">
             Depoimentos de quem atravessou portais, acendeu tochas e fez do rito um caminho.
           </p>

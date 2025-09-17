@@ -4,13 +4,16 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { TripleMoonIcon } from '@/components/icons/Esoteric'
+import { StrophalosIcon } from '@/components/icons/Esoteric'
 
 export function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Deep mystical background */}
       <div className="absolute inset-0 bg-gradient-mystic" />
+      {/* Subtle ritual texture overlays */}
+      <div className="absolute inset-0 bg-gradient-radial from-hekate-purple-950/40 via-transparent to-transparent opacity-40" />
+      <div className="absolute inset-0 bg-gradient-conic from-hekate-gold/10 via-transparent to-transparent opacity-20" />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-hekate-gold/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-hekate-purple-800/20 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -45,7 +48,7 @@ export function Hero() {
             <div className="flex flex-col sm:flex-row gap-4 mb-4 justify-center lg:justify-start">
               <Button size="lg" className="btn-mystic-enhanced" asChild>
                 <Link href="/auth/register">
-                  Atravessar o Portal
+                  Entrar na Escola
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-hekate-gold text-hekate-gold hover:bg-hekate-gold/10" asChild>
@@ -74,7 +77,7 @@ export function Hero() {
                 <div className="absolute inset-8 rounded-full bg-gradient-to-br from-hekate-purple-900/30 to-hekate-purple-950/50 backdrop-blur-sm flex items-center justify-center">
                   <div className="text-center">
                     <div className="mb-4 flex items-center justify-center">
-                      <TripleMoonIcon size={80} className="text-hekate-gold animate-glow" />
+                      <StrophalosIcon size={92} className="text-hekate-gold animate-glow" />
                     </div>
                     <div className="font-serif text-lg font-semibold text-gradient-gold">
                       Templo‑Escola
