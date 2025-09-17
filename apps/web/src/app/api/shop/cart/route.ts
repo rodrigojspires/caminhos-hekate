@@ -13,6 +13,8 @@ async function enrich(cart: any) {
         ...i,
         variantName: variant?.name,
         price: variant ? Number(variant.price) : 0,
+        comparePrice: variant?.comparePrice != null ? Number(variant.comparePrice) : null,
+        stock: variant?.stock ?? 0,
         product: variant?.product ? {
           id: variant.product.id,
           name: variant.product.name,

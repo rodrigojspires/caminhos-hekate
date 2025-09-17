@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function CartPage() {
   const [cart, setCart] = useState<any>(null)
@@ -51,26 +52,72 @@ export default function CartPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-4">
-            {(cart.itemsDetailed || cart.items).map((i: any) => (
-              <div key={i.variantId} className="border rounded p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative h-16 w-16 rounded overflow-hidden bg-muted">
-                    {i.product?.images?.[0] && (
-                      <Image src={i.product.images[0]} alt={i.product?.name || 'Produto'} fill sizes="64px" className="object-cover" />
+            {(cart.itemsDetailed || cart.items).map((i: any) => {
+              const price = Number(i.price || 0)
+              const compare = i.comparePrice != null ? Number(i.comparePrice) : null
+              const hasDiscount = compare != null && compare > price
+              const discountPct = hasDiscount ? Math.round(((compare - price) / compare) * 100) : 0
+              const formatBRL = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+              const dec = () => updateQty(i.variantId, Math.max(1, Number(i.quantity) - 1))
+              const inc = () => updateQty(i.variantId, Math.max(1, Math.min((i.stock ?? 9999), Number(i.quantity) + 1)))
+
+              return (
+                <div key={i.variantId} className="border rounded p-4 flex items-center justify-between gap-4">
+                  {/* Left: checkbox + thumbnail + info */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    {i.product?.images?.[0] ? (
+                      i.product?.slug ? (
+                        <Link href={`/loja/${i.product.slug}`} target="_blank" rel="noopener noreferrer" className="block flex-shrink-0">
+                          <div className="relative h-20 w-20 rounded overflow-hidden bg-muted">
+                            <Image src={i.product.images[0]} alt={i.product?.name || 'Produto'} fill sizes="80px" className="object-cover" />
+                          </div>
+                        </Link>
+                      ) : (
+                        <div className="relative h-20 w-20 rounded overflow-hidden bg-muted flex-shrink-0">
+                          <Image src={i.product.images[0]} alt={i.product?.name || 'Produto'} fill sizes="80px" className="object-cover" />
+                        </div>
+                      )
+                    ) : (
+                      <div className="relative h-20 w-20 rounded overflow-hidden bg-muted flex-shrink-0" />
                     )}
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate text-lg">
+                        {i.product?.slug ? (
+                          <Link href={`/loja/${i.product.slug}`} className="hover:underline">
+                            {i.product?.name || 'Produto'}
+                          </Link>
+                        ) : (
+                          i.product?.name || 'Produto'
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate">{i.variantName || i.variantId.slice(0, 8)}</div>
+                      <button className="text-sm text-blue-600 hover:underline" onClick={() => removeItem(i.variantId)}>Excluir</button>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">{i.product?.name || 'Produto'}</div>
-                    <div className="text-sm text-muted-foreground">{i.variantName || i.variantId.slice(0, 8)}</div>
-                    <div className="text-sm text-muted-foreground">Quantidade</div>
-                    <input type="number" min={1} value={i.quantity} onChange={(e) => updateQty(i.variantId, Number(e.target.value))} className="border rounded px-2 py-1 w-24" />
-                    <div className="mt-1 text-sm">Preço: {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.price ?? 0)}</div>
-                    <div className="mt-1 text-sm font-medium">Subtotal: {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((i.price ?? 0) * i.quantity)}</div>
+
+                  {/* Middle: quantity stepper + availability */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center border rounded-lg px-3 py-1.5 gap-6">
+                      <button className="text-xl" onClick={dec} aria-label="Diminuir">−</button>
+                      <div className="w-6 text-center select-none">{i.quantity}</div>
+                      <button className="text-xl text-primary" onClick={inc} aria-label="Aumentar">+</button>
+                    </div>
+                    {typeof i.stock === 'number' && (
+                      <div className="text-sm text-muted-foreground">+{i.stock} disponíveis</div>
+                    )}
+                    <div className="text-sm text-muted-foreground">Subtotal: {formatBRL(price * Number(i.quantity || 1))}</div>
+                  </div>
+
+                  {/* Right: price */}
+                  <div className="text-right w-40">
+                    {hasDiscount && (
+                      <div className="text-sm text-green-600">-{discountPct}% <span className="text-muted-foreground line-through">{formatBRL(compare!)}</span></div>
+                    )}
+                    <div className="text-2xl font-semibold">{formatBRL(price)}</div>
                   </div>
                 </div>
-                <Button variant="destructive" onClick={() => removeItem(i.variantId)}>Remover</Button>
-              </div>
-            ))}
+              )
+            })}
             <div className="border rounded p-4 flex gap-2">
               <input placeholder="Cupom" value={coupon} onChange={(e) => setCoupon(e.target.value)} className="border rounded px-3 py-2 flex-1" />
               <Button onClick={applyCoupon}>Aplicar</Button>
