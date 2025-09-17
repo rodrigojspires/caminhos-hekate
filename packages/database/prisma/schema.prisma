@@ -19,6 +19,8 @@ model User {
   name                 String?
   image                String?
   bio                  String?
+  phone                String?
+  document             String?
   role                 Role                    @default(VISITOR)
   subscriptionTier     SubscriptionTier        @default(FREE)
   twoFactorEnabled     Boolean                 @default(false)
