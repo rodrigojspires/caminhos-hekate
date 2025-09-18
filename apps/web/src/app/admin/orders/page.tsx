@@ -69,7 +69,7 @@ import { SearchInput } from '@/components/admin/SearchInput'
 interface Order {
   id: string
   total: number
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'PAID'
   createdAt: string
   updatedAt: string
   user: {
@@ -78,18 +78,18 @@ interface Order {
     email: string
     image?: string
   }
-  orderItems: {
+  items: {
     id: string
     quantity: number
     price: number
     product: {
       id: string
       name: string
-      sku: string
+      sku?: string | null
     }
   }[]
   _count?: {
-    orderItems: number
+    items: number
   }
 }
 
@@ -107,6 +107,7 @@ const statusColors = {
   SHIPPED: 'bg-purple-100 text-purple-800',
   DELIVERED: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800',
+  PAID: 'bg-emerald-100 text-emerald-800',
 }
 
 const statusLabels = {
@@ -115,6 +116,7 @@ const statusLabels = {
   SHIPPED: 'Enviado',
   DELIVERED: 'Entregue',
   CANCELLED: 'Cancelado',
+  PAID: 'Pago',
 }
 
 export default function OrdersPage() {
@@ -237,7 +239,7 @@ export default function OrdersPage() {
           order.user.email,
           statusLabels[order.status],
           order.total.toFixed(2),
-          order.orderItems.length,
+          (order.items?.length || 0),
           new Date(order.createdAt).toLocaleDateString('pt-BR'),
         ].join(','))
       ].join('\n')
@@ -474,7 +476,7 @@ export default function OrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {order.orderItems.length} {order.orderItems.length === 1 ? 'item' : 'itens'}
+                        {order.items?.length || 0} {(order.items?.length || 0) === 1 ? 'item' : 'itens'}
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatCurrency(order.total)}

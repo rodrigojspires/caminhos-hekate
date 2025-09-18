@@ -11,6 +11,7 @@ import {
   Calendar,
   Home,
   Palette,
+  ShoppingBag,
   Settings,
   TrendingUp,
   User,
@@ -53,6 +54,11 @@ const navigation = [
     name: 'Calendário',
     href: '/dashboard/calendar',
     icon: Calendar,
+  },
+  {
+    name: 'Pedidos da Loja',
+    href: '/dashboard/orders',
+    icon: ShoppingBag,
   },
   {
     name: 'Ferramentas: Horas Planetárias',

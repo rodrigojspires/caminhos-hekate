@@ -1,0 +1,264 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { Loader2, Receipt, ShoppingBag } from 'lucide-react'
+
+export type OrderStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'PAID'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+
+type PaymentStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+
+type TransactionStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+
+type OrderItem = {
+  id: string
+  name: string
+  quantity: number
+  price: number
+  total: number
+}
+
+export interface OrderRow {
+  id: string
+  orderNumber: string
+  status: OrderStatus
+  subtotal: number
+  shipping: number
+  discount: number
+  total: number
+  createdAt: string
+  updatedAt: string
+  items: OrderItem[]
+  payment: {
+    id: string
+    status: PaymentStatus
+    method: string | null
+    paidAt: string | null
+    createdAt: string
+  } | null
+  transaction: {
+    id: string
+    status: TransactionStatus
+    provider: string
+    providerStatus: string | null
+    paymentMethod: string | null
+    createdAt: string
+    paidAt: string | null
+  } | null
+}
+
+interface OrdersTableProps {
+  orders: OrderRow[]
+}
+
+const orderStatusConfig: Record<OrderStatus, { label: string; className: string }> = {
+  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  PROCESSING: { label: 'Processando', className: 'bg-sky-100 text-sky-800 border-sky-200' },
+  PAID: { label: 'Pago', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  SHIPPED: { label: 'Enviado', className: 'bg-violet-100 text-violet-800 border-violet-200' },
+  DELIVERED: { label: 'Entregue', className: 'bg-green-100 text-green-800 border-green-200' },
+  CANCELLED: { label: 'Cancelado', className: 'bg-rose-100 text-rose-800 border-rose-200' },
+  REFUNDED: { label: 'Reembolsado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+}
+
+const paymentStatusConfig: Record<PaymentStatus, { label: string; className: string }> = {
+  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  APPROVED: { label: 'Aprovado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  REJECTED: { label: 'Recusado', className: 'bg-rose-100 text-rose-800 border-rose-200' },
+  CANCELLED: { label: 'Cancelado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+  REFUNDED: { label: 'Reembolsado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+}
+
+const transactionStatusConfig: Record<TransactionStatus, { label: string; className: string }> = {
+  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  PROCESSING: { label: 'Processando', className: 'bg-sky-100 text-sky-800 border-sky-200' },
+  COMPLETED: { label: 'Concluída', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  FAILED: { label: 'Falhou', className: 'bg-rose-100 text-rose-800 border-rose-200' },
+  CANCELED: { label: 'Cancelada', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+  REFUNDED: { label: 'Reembolsada', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+  PARTIALLY_REFUNDED: { label: 'Reemb. parcial', className: 'bg-slate-100 text-slate-700 border-slate-200' },
+}
+
+export function OrdersTable({ orders }: OrdersTableProps) {
+  const router = useRouter()
+  const [payingId, setPayingId] = useState<string | null>(null)
+
+  const handlePay = async (orderId: string) => {
+    try {
+      setPayingId(orderId)
+      const response = await fetch(`/api/user/orders/${orderId}/pay`, { method: 'POST' })
+      const data = await response.json()
+
+      if (!response.ok) {
+        const message = data?.error || 'Não foi possível iniciar o pagamento'
+        toast.error(message)
+        return
+      }
+
+      toast.success('Link de pagamento gerado. Abrindo em uma nova aba…')
+      if (data.paymentUrl) {
+        window.open(data.paymentUrl, '_blank')
+      }
+      router.refresh()
+    } catch (error) {
+      toast.error('Erro ao iniciar pagamento')
+    } finally {
+      setPayingId(null)
+    }
+  }
+
+  const canPay = (status: OrderStatus) => ['PENDING', 'PROCESSING'].includes(status)
+
+  if (!orders.length) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+        <ShoppingBag className="h-10 w-10 text-muted-foreground" />
+        <div>
+          Você ainda não possui pedidos na loja.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Pedido</TableHead>
+            <TableHead>Itens</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Pagamento</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {orders.map((order) => {
+            const statusCfg = orderStatusConfig[order.status] || orderStatusConfig.PENDING
+            const paymentCfg = order.payment
+              ? paymentStatusConfig[order.payment.status]
+              : order.transaction
+              ? transactionStatusConfig[order.transaction.status]
+              : null
+            const paymentMethod = order.payment?.method ?? order.transaction?.paymentMethod ?? null
+            const paidAt = order.payment?.paidAt ?? order.transaction?.paidAt ?? null
+            const itemNames = order.items.map((item) => item.name)
+            const maxPreviewItems = 2
+            const preview = itemNames.slice(0, maxPreviewItems).join(', ')
+            const remainingItems = Math.max(0, itemNames.length - maxPreviewItems)
+            const itemsSummary = itemNames.length === 0
+              ? 'Nenhum item registrado'
+              : remainingItems > 0
+              ? `${preview} e +${remainingItems}`
+              : preview
+
+            return (
+              <TableRow key={order.id}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{order.orderNumber}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(order.createdAt)}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    <span className="font-medium">{order.items.length} item(s)</span>
+                    <div className="text-xs text-muted-foreground">{itemsSummary}</div>
+                  </div>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {formatCurrency(order.total)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className={statusCfg.className}>
+                    {statusCfg.label}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {paymentCfg ? (
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="secondary" className={paymentCfg.className}>
+                        {paymentCfg.label}
+                      </Badge>
+                      {paymentMethod && (
+                        <span className="text-xs text-muted-foreground">
+                          Método: {paymentMethod}
+                        </span>
+                      )}
+                      {paidAt && (
+                        <span className="text-xs text-muted-foreground">
+                          Pago em {formatDateTime(paidAt)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Aguardando tentativa de pagamento</span>
+                  )}
+                </TableCell>
+                <TableCell className="flex items-center justify-end gap-2">
+                  {canPay(order.status) && (
+                    <Button
+                      size="sm"
+                      onClick={() => handlePay(order.id)}
+                      disabled={payingId === order.id}
+                    >
+                      {payingId === order.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Gerando…
+                        </>
+                      ) : (
+                        'Pagar agora'
+                      )}
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/pedido/${order.id}/recibo`}>
+                      <Receipt className="mr-2 h-4 w-4" />
+                      Ver recibo
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
