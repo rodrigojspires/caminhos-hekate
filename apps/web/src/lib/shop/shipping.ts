@@ -61,22 +61,42 @@ export async function calculateShipping(
   const base = region === 'N' ? 29.9 : region === 'S' ? 19.9 : region === 'SE' ? 14.9 : 24.9
   const extra = Math.max(0, totalWeight - 1) * 5
   const price = Number((base + extra).toFixed(2))
-  const option: ShippingOption = {
-    id: `fallback-${region}`,
-    service: `Envio padrão (${region})`,
-    price,
-    carrier: 'Correios',
-    deliveryDays: null,
-  }
+  const options: ShippingOption[] = [
+    {
+      id: `pac-${region}`,
+      service: 'PAC - Correios',
+      price: Number(price.toFixed(2)),
+      carrier: 'Correios',
+      deliveryDays: 6,
+    },
+    {
+      id: `sedex-${region}`,
+      service: 'SEDEX - Correios',
+      price: Number((price + 12 + extra * 0.5).toFixed(2)),
+      carrier: 'Correios',
+      deliveryDays: 3,
+    },
+    {
+      id: `express-${region}`,
+      service: 'Jadlog Expresso',
+      price: Number((price + 8 + extra * 0.3).toFixed(2)),
+      carrier: 'Jadlog',
+      deliveryDays: 5,
+    },
+  ]
+
+  const selected = preferredServiceId
+    ? options.find((opt) => opt.id === preferredServiceId) || options[0]
+    : options[0]
 
   return {
     cep,
-    serviceId: option.id,
-    service: option.service,
-    price: option.price,
-    carrier: option.carrier,
-    deliveryDays: option.deliveryDays,
-    options: [option],
+    serviceId: selected.id,
+    service: selected.service,
+    price: selected.price,
+    carrier: selected.carrier,
+    deliveryDays: selected.deliveryDays,
+    options,
   }
 }
 

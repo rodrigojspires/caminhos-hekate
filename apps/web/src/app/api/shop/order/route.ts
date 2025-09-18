@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
 
     const totals = await computeTotals(cart)
 
+    if (totals.total <= 0) {
+      return NextResponse.json({ error: 'Total do pedido inválido.' }, { status: 400 })
+    }
+
     const itemDetails = await Promise.all(
       cart.items.map(async (i) => {
         const variant = await prisma.productVariant.findUnique({
@@ -180,6 +184,7 @@ export async function POST(request: NextRequest) {
           shippingAddressId: shippingRecord?.id || null,
           notes: notes || null,
           metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+          couponCode: couponRecord?.code ?? null,
           items: {
             create: itemsToCreate,
           },

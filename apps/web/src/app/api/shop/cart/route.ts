@@ -1,34 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCartFromCookie, setCartToCookie, validateAndNormalizeItems, computeTotals } from '@/lib/shop/cart'
-import { prisma } from '@hekate/database'
 import { calculateShipping } from '@/lib/shop/shipping'
-
-async function enrich(cart: any) {
-  const items = await Promise.all(
-    cart.items.map(async (i: any) => {
-      const variant = await prisma.productVariant.findUnique({
-        where: { id: i.variantId },
-        include: { product: true },
-      })
-      return {
-        ...i,
-        variantName: variant?.name,
-        price: variant ? Number(variant.price) : 0,
-        comparePrice: variant?.comparePrice != null ? Number(variant.comparePrice) : null,
-        stock: variant?.stock ?? 0,
-        product: variant?.product ? {
-          id: variant.product.id,
-          name: variant.product.name,
-          slug: variant.product.slug,
-          images: Array.isArray(variant.product.images) ? variant.product.images : [],
-          type: variant.product.type,
-        } : null,
-      }
-    })
-  )
-  return { ...cart, itemsDetailed: items }
-}
 import type { CartItem } from '@/lib/shop/types'
+import { enrichCartWithDetails } from '@/lib/shop/enrich-cart'
 
 export async function GET() {
   const cart = getCartFromCookie()
@@ -45,7 +19,7 @@ export async function GET() {
     }
   }
   const totals = await computeTotals(cart)
-  const withDetails = await enrich(cart)
+  const withDetails = await enrichCartWithDetails(cart)
   return NextResponse.json({ cart: withDetails, totals })
 }
 
@@ -76,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
-    const withDetails = await enrich(cart)
+    const withDetails = await enrichCartWithDetails(cart)
     return NextResponse.json({ cart: withDetails, totals })
   } catch (error) {
     console.error('POST /api/shop/cart error', error)
@@ -103,7 +77,7 @@ export async function PUT(request: NextRequest) {
     }
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
-    const withDetails = await enrich(cart)
+    const withDetails = await enrichCartWithDetails(cart)
     return NextResponse.json({ cart: withDetails, totals })
   } catch (error) {
     console.error('PUT /api/shop/cart error', error)
@@ -130,7 +104,7 @@ export async function DELETE(request: NextRequest) {
 
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
-    const withDetails = await enrich(cart)
+    const withDetails = await enrichCartWithDetails(cart)
     return NextResponse.json({ cart: withDetails, totals })
   } catch (error) {
     console.error('DELETE /api/shop/cart error', error)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCartFromCookie, setCartToCookie, computeTotals } from '@/lib/shop/cart'
 import { calculateShipping } from '@/lib/shop/shipping'
+import { enrichCartWithDetails } from '@/lib/shop/enrich-cart'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
     cart.shipping = shipping
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
-    return NextResponse.json({ cart, totals })
+    const withDetails = await enrichCartWithDetails(cart)
+    return NextResponse.json({ cart: withDetails, totals })
   } catch (error) {
     console.error('POST /api/shop/shipping error', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

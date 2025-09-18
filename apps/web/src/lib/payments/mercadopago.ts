@@ -311,15 +311,26 @@ export class MercadoPagoService {
       })
 
       const roundCurrency = (value: number) => Math.round(value * 100) / 100
+      const totalAmount = roundCurrency(order.totalAmount)
+
+      if (totalAmount <= 0) {
+        throw new Error('Valor total inválido para pagamento')
+      }
+
+      const shippingAmount = typeof order.shippingAmount === 'number' ? roundCurrency(order.shippingAmount) : 0
+      const discountAmount = typeof order.discountAmount === 'number' ? roundCurrency(order.discountAmount) : 0
 
       const preferenceBody: Record<string, any> = {
-        items: order.items.map((i) => ({
-          id: i.id,
-          title: i.title,
-          quantity: i.quantity,
-          unit_price: roundCurrency(i.unit_price),
-          currency_id: 'BRL',
-        })),
+        items: [
+          {
+            id: order.orderId,
+            title: order.description || `Pedido ${order.orderId}`,
+            quantity: 1,
+            unit_price: totalAmount,
+            currency_id: 'BRL',
+            description: order.description || `Pedido ${order.orderId}`,
+          },
+        ],
         external_reference: tx.id,
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
         back_urls: {
@@ -327,24 +338,15 @@ export class MercadoPagoService {
           failure: `${baseUrl}/checkout?status=failure&order=${encodeURIComponent(order.orderId)}`,
           pending: `${baseUrl}/checkout?status=pending&order=${encodeURIComponent(order.orderId)}`,
         },
-        metadata: { transaction_id: tx.id, order_id: order.orderId },
+        metadata: {
+          transaction_id: tx.id,
+          order_id: order.orderId,
+          shippingAmount,
+          discountAmount,
+          couponCode: order.couponCode ?? null,
+          items: order.items,
+        },
         auto_return: 'approved' as const,
-      }
-
-      const shippingAmount = typeof order.shippingAmount === 'number' ? roundCurrency(order.shippingAmount) : 0
-      if (shippingAmount > 0) {
-        preferenceBody.shipments = {
-          cost: shippingAmount,
-          mode: 'custom',
-        }
-      }
-
-      const discountAmount = typeof order.discountAmount === 'number' ? roundCurrency(order.discountAmount) : 0
-      if (discountAmount > 0) {
-        preferenceBody.coupon_amount = discountAmount
-        if (order.couponCode) {
-          preferenceBody.coupon_code = order.couponCode
-        }
       }
 
       const preference = await this.preference.create({

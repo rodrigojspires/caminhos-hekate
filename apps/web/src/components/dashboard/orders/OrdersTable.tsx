@@ -101,24 +101,6 @@ const orderStatusConfig: Record<OrderStatus, { label: string; className: string 
   REFUNDED: { label: 'Reembolsado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
 }
 
-const paymentStatusConfig: Record<PaymentStatus, { label: string; className: string }> = {
-  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  APPROVED: { label: 'Aprovado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  REJECTED: { label: 'Recusado', className: 'bg-rose-100 text-rose-800 border-rose-200' },
-  CANCELLED: { label: 'Cancelado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-  REFUNDED: { label: 'Reembolsado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-}
-
-const transactionStatusConfig: Record<TransactionStatus, { label: string; className: string }> = {
-  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  PROCESSING: { label: 'Processando', className: 'bg-sky-100 text-sky-800 border-sky-200' },
-  COMPLETED: { label: 'Concluída', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  FAILED: { label: 'Falhou', className: 'bg-rose-100 text-rose-800 border-rose-200' },
-  CANCELED: { label: 'Cancelada', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-  REFUNDED: { label: 'Reembolsada', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-  PARTIALLY_REFUNDED: { label: 'Reemb. parcial', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-}
-
 export function OrdersTable({ orders }: OrdersTableProps) {
   const router = useRouter()
   const [payingId, setPayingId] = useState<string | null>(null)
@@ -172,20 +154,12 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             <TableHead>Itens</TableHead>
             <TableHead>Total</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Pagamento</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => {
             const statusCfg = orderStatusConfig[order.status] || orderStatusConfig.PENDING
-            const paymentCfg = order.payment
-              ? paymentStatusConfig[order.payment.status]
-              : order.transaction
-              ? transactionStatusConfig[order.transaction.status]
-              : null
-            const paymentMethod = order.payment?.method ?? order.transaction?.paymentMethod ?? null
-            const paidAt = order.payment?.paidAt ?? order.transaction?.paidAt ?? null
             const itemNames = order.items.map((item) => item.name)
             const maxPreviewItems = 2
             const preview = itemNames.slice(0, maxPreviewItems).join(', ')
@@ -219,27 +193,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   <Badge variant="secondary" className={statusCfg.className}>
                     {statusCfg.label}
                   </Badge>
-                </TableCell>
-                <TableCell>
-                  {paymentCfg ? (
-                    <div className="flex flex-col gap-1">
-                      <Badge variant="secondary" className={paymentCfg.className}>
-                        {paymentCfg.label}
-                      </Badge>
-                      {paymentMethod && (
-                        <span className="text-xs text-muted-foreground">
-                          Método: {paymentMethod}
-                        </span>
-                      )}
-                      {paidAt && (
-                        <span className="text-xs text-muted-foreground">
-                          Pago em {formatDateTime(paidAt)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Aguardando tentativa de pagamento</span>
-                  )}
                 </TableCell>
                 <TableCell className="flex items-center justify-end gap-2">
                   {canPay(order.status) && (

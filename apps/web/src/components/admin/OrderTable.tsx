@@ -14,6 +14,7 @@ import {
   User,
   Calendar,
   DollarSign,
+  XCircle,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -80,13 +81,13 @@ interface Order {
     | 'REFUNDED'
   createdAt: string
   updatedAt: string
-  user: {
+  user?: {
     id: string
     name: string
     email: string
     image?: string
     subscription?: string | null
-  }
+  } | null
   orderItems: OrderItem[]
   _count: {
     orderItems: number
@@ -137,6 +138,7 @@ export function OrderTable({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const canCancel = (status: Order['status']) => !['CANCELLED', 'DELIVERED', 'REFUNDED'].includes(status)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -213,8 +215,12 @@ export function OrderTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
+            {orders.map((order) => {
+              const customerName = order.user?.name ?? 'Cliente'
+              const customerEmail = order.user?.email ?? '—'
+
+              return (
+                <TableRow key={order.id}>
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium font-mono text-sm">
@@ -229,15 +235,23 @@ export function OrderTable({
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={order.user.image} alt={order.user.name || 'Usuário'} />
+                      {order.user?.image ? (
+                        <AvatarImage src={order.user.image} alt={customerName} />
+                      ) : null}
                       <AvatarFallback className="text-xs">
-                        {order.user.name.split(' ').map(n => n[0]).join('')}
+                        {customerName
+                          .split(' ')
+                          .filter(Boolean)
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase() || 'C'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="space-y-1">
-                      <div className="font-medium text-sm">{order.user.name}</div>
+                      <div className="font-medium text-sm">{customerName}</div>
                       <div className="text-xs text-muted-foreground">
-                        {order.user.email}
+                        {customerEmail}
                       </div>
                     </div>
                   </div>
@@ -318,13 +332,27 @@ export function OrderTable({
                           Ver detalhes
                         </Link>
                       </DropdownMenuItem>
-                      
-                      <DropdownMenuItem asChild>
-                        <Link href={`/admin/users/${order.user.id}`}>
-                          <User className="mr-2 h-4 w-4" />
-                          Ver cliente
-                        </Link>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!canCancel(order.status)) return
+                          const confirmed = window.confirm('Tem certeza que deseja cancelar este pedido?')
+                          if (!confirmed) return
+                          handleStatusUpdate(order, 'CANCELLED')
+                        }}
+                        disabled={updatingStatus === order.id || !canCancel(order.status)}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Cancelar pedido
                       </DropdownMenuItem>
+                      
+                      {order.user?.id ? (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/users/${order.user.id}`}>
+                            <User className="mr-2 h-4 w-4" />
+                            Ver cliente
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : null}
                       
                       <DropdownMenuSeparator />
                       
@@ -334,15 +362,15 @@ export function OrderTable({
                             ['ID', 'Cliente', 'Email', 'Status', 'Total', 'Itens', 'Data'].join(','),
                             [
                               order.id,
-                              `"${order.user.name}"`,
-                              order.user.email,
+                              `"${customerName}"`,
+                              customerEmail,
                               statusLabels[order.status],
                               order.total.toFixed(2),
                               getTotalItems(order),
-                              formatDate(order.createdAt)
-                            ].join(',')
+                              formatDate(order.createdAt),
+                            ].join(','),
                           ].join('\n')
-                          
+
                           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
                           const link = document.createElement('a')
                           link.href = URL.createObjectURL(blob)
@@ -367,8 +395,9 @@ export function OrderTable({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
-            ))}
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>

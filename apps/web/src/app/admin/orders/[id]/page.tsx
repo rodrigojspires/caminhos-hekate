@@ -88,14 +88,16 @@ interface Order {
   createdAt: string
   updatedAt: string
   trackingInfo?: string | null
-  user: {
+  user?: {
     id: string
     name: string
     email: string
     image?: string
     subscriptionTier?: string | null
     createdAt: string
-  }
+  } | null
+  customerName?: string | null
+  customerEmail?: string | null
   items: OrderItem[]
   stats: {
     totalItems: number
@@ -160,6 +162,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
     return {
       ...rawOrder,
+      user: rawOrder.user ?? null,
       items,
       stats,
     }
@@ -280,8 +283,8 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
     const csvContent = [
       ['Campo', 'Valor'].join(','),
       ['ID do Pedido', order.id],
-      ['Cliente', `"${order.user.name}"`],
-      ['Email', order.user.email],
+      ['Cliente', `"${order.user?.name ?? order.customerName ?? 'Cliente'}"`],
+      ['Email', order.user?.email ?? order.customerEmail ?? ''],
       ['Status', statusLabels[order.status]],
       ['Total', order.total.toFixed(2)],
       ['Data do Pedido', new Date(order.createdAt).toLocaleDateString('pt-BR')],
@@ -597,39 +600,51 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar>
-                <AvatarImage src={order.user.image} />
+                {order.user?.image ? <AvatarImage src={order.user.image} /> : null}
                 <AvatarFallback>
-                  {order.user.name.split(' ').map(n => n[0]).join('')}
+                  {(order.user?.name ?? order.customerName ?? 'C')
+                    .split(' ')
+                    .filter(Boolean)
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase() || 'C'}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-medium">{order.user.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  Cliente desde {new Date(order.user.createdAt).toLocaleDateString('pt-BR')}
-                </div>
+                <div className="font-medium">{order.user?.name ?? order.customerName ?? 'Cliente'}</div>
+                {order.user?.createdAt ? (
+                  <div className="text-sm text-muted-foreground">
+                    Cliente desde {new Date(order.user.createdAt).toLocaleDateString('pt-BR')}
+                  </div>
+                ) : null}
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{order.user.email}</span>
+                <span className="text-sm">{order.user?.email ?? order.customerEmail ?? '—'}</span>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm capitalize">{order.user.subscriptionTier || 'Sem assinatura'}</span>
-              </div>
+
+              {order.user?.subscriptionTier && (
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm capitalize">{order.user.subscriptionTier}</span>
+                </div>
+              )}
             </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => router.push(`/admin/users/${order.user.id}`)}
-            >
-              Ver perfil do cliente
-            </Button>
+
+            {order.user?.id ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => router.push(`/admin/users/${order.user!.id}`)}
+              >
+                Ver perfil do cliente
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -681,7 +696,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {item.product.category.name}
+                      {item.product?.category?.name ?? '—'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

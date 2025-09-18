@@ -30,8 +30,16 @@ export default function CartPage() {
     const detailedItems = Array.isArray(cartData?.itemsDetailed)
       ? cartData.itemsDetailed
       : cartData?.items || []
-    const hasPhysical = detailedItems.some((item: any) => item?.product?.type === 'PHYSICAL')
+    const hasPhysical = detailedItems.length
+      ? detailedItems.some((item: any) => (item?.product?.type ?? 'PHYSICAL') !== 'DIGITAL')
+      : (cartData?.items?.length ?? 0) > 0
     setRequiresShipping(hasPhysical)
+
+    const resolvedServiceId = cartData?.shipping?.serviceId
+      || (Array.isArray(cartData?.shipping?.options) && cartData.shipping.options.length > 0
+        ? cartData.shipping.options[0].id
+        : null)
+    setSelectedShippingId(resolvedServiceId)
 
     broadcastCartUpdate(cartData)
   }, [])
@@ -366,14 +374,15 @@ export default function CartPage() {
               <span>Total</span>
               <span>{formatCurrency(totals.total)}</span>
             </div>
-            <Link href="/checkout" className="mt-2 block">
-              <Button
-                className="w-full"
-                disabled={requiresShipping && (!selectedShippingId || shippingLoading)}
-              >
+            {(!requiresShipping || (!shippingLoading && selectedShippingId)) ? (
+              <Button asChild className="mt-2 w-full">
+                <Link href="/checkout">Ir para o checkout</Link>
+              </Button>
+            ) : (
+              <Button className="mt-2 w-full" disabled>
                 Ir para o checkout
               </Button>
-            </Link>
+            )}
             {requiresShipping && !selectedShippingId && (
               <p className="mt-1 text-xs text-red-500">
                 Informe o CEP e selecione uma modalidade de entrega antes de prosseguir.

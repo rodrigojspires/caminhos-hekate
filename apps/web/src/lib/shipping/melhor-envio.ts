@@ -26,7 +26,7 @@ export async function calculateShippingViaMelhorEnvio(
     const length = Number(dims?.length || 16)
     const weight = Math.max(0.05, Number(variant.weight || 0.2)) // kg mínimos
     const price = Number(variant.price || 0)
-    payloadItems.push({ height, width, length, weight, insurance_value: price, quantity: ci.quantity })
+    payloadItems.push({ height, width, length, weight, insurance_value: price * ci.quantity, quantity: ci.quantity })
   }
 
   if (!payloadItems.length) return { cep, price: 0, service: 'Sem itens' }
