@@ -169,29 +169,43 @@ export async function POST(request: NextRequest) {
 
       const orderData: any = {
         orderNumber,
-          status: 'PENDING',
-          subtotal: totals.subtotal,
-          shipping: totals.shipping,
-          discount: totals.discount,
-          total: totals.total,
-          customerEmail: customer.email,
-          customerName: customer.name,
-          customerPhone: customer.phone || null,
-          customerDocument: customer.document || null,
-          billingAddressId: billingRecord?.id || null,
-          shippingAddressId: shippingRecord?.id || null,
-          notes: notes || null,
-          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-          couponCode: couponRecord?.code ?? null,
-          items: {
-            create: itemsToCreate,
-          },
+        status: 'PENDING',
+        subtotal: totals.subtotal,
+        shipping: totals.shipping,
+        discount: totals.discount,
+        total: totals.total,
+        customerEmail: customer.email,
+        customerName: customer.name,
+        customerPhone: customer.phone || null,
+        customerDocument: customer.document || null,
+        notes: notes || null,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+        couponCode: couponRecord?.code ?? null,
+        items: {
+          create: itemsToCreate,
+        },
       }
 
       if (customer.userId) {
         orderData.user = {
           connect: {
             id: customer.userId,
+          },
+        }
+      }
+
+      if (billingRecord) {
+        orderData.billingAddress = {
+          connect: {
+            id: billingRecord.id,
+          },
+        }
+      }
+
+      if (shippingRecord) {
+        orderData.shippingAddress = {
+          connect: {
+            id: shippingRecord.id,
           },
         }
       }
