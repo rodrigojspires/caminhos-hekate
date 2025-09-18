@@ -87,13 +87,18 @@ export async function calculateShippingViaMelhorEnvio(
   if (!Array.isArray(quotes) || quotes.length === 0) throw new Error('Sem cotações do Melhor Envio')
 
   const options = quotes
-    .filter((q) => typeof q?.price === 'number')
     .map((q) => {
+      const rawPrice = q?.price ?? q?.custom_price ?? q?.final_price
+      const priceNumber = Number(rawPrice)
+      if (!Number.isFinite(priceNumber) || priceNumber <= 0) {
+        return null
+      }
+
       const id = String(q.id ?? q.service_id ?? `${q.company?.name || 'ME'}-${q.name || 'serviço'}`)
       return {
         id,
         service: `${q.company?.name || 'Transportadora'} - ${q.name || 'Serviço'}`,
-        price: Number(q.price),
+        price: priceNumber,
         carrier: q.company?.name ?? null,
         deliveryDays: typeof q.delivery_time?.days === 'number'
           ? q.delivery_time.days
@@ -102,6 +107,7 @@ export async function calculateShippingViaMelhorEnvio(
             : null,
       }
     })
+    .filter((option): option is NonNullable<typeof option> => option !== null)
     .sort((a, b) => a.price - b.price)
 
   if (options.length === 0) {
