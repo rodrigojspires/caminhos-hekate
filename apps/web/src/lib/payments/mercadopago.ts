@@ -289,6 +289,9 @@ export class MercadoPagoService {
     items: Array<{ id: string; title: string; quantity: number; unit_price: number }>
     totalAmount: number
     description?: string
+    shippingAmount?: number
+    discountAmount?: number
+    couponCode?: string | null
   }) {
     try {
       const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) || 'https://caminhosdehekate.com.br'
@@ -307,25 +310,45 @@ export class MercadoPagoService {
         },
       })
 
-      const preference = await this.preference.create({
-        body: {
-          items: order.items.map((i) => ({
-            id: i.id,
-            title: i.title,
-            quantity: i.quantity,
-            unit_price: i.unit_price,
-            currency_id: 'BRL',
-          })),
-          external_reference: tx.id,
-          notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-          back_urls: {
-            success: `${baseUrl}/checkout?status=success&order=${encodeURIComponent(order.orderId)}`,
-            failure: `${baseUrl}/checkout?status=failure&order=${encodeURIComponent(order.orderId)}`,
-            pending: `${baseUrl}/checkout?status=pending&order=${encodeURIComponent(order.orderId)}`,
-          },
-          metadata: { transaction_id: tx.id, order_id: order.orderId },
-          auto_return: 'approved' as const,
+      const roundCurrency = (value: number) => Math.round(value * 100) / 100
+
+      const preferenceBody: Record<string, any> = {
+        items: order.items.map((i) => ({
+          id: i.id,
+          title: i.title,
+          quantity: i.quantity,
+          unit_price: roundCurrency(i.unit_price),
+          currency_id: 'BRL',
+        })),
+        external_reference: tx.id,
+        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+        back_urls: {
+          success: `${baseUrl}/checkout?status=success&order=${encodeURIComponent(order.orderId)}`,
+          failure: `${baseUrl}/checkout?status=failure&order=${encodeURIComponent(order.orderId)}`,
+          pending: `${baseUrl}/checkout?status=pending&order=${encodeURIComponent(order.orderId)}`,
         },
+        metadata: { transaction_id: tx.id, order_id: order.orderId },
+        auto_return: 'approved' as const,
+      }
+
+      const shippingAmount = typeof order.shippingAmount === 'number' ? roundCurrency(order.shippingAmount) : 0
+      if (shippingAmount > 0) {
+        preferenceBody.shipments = {
+          cost: shippingAmount,
+          mode: 'custom',
+        }
+      }
+
+      const discountAmount = typeof order.discountAmount === 'number' ? roundCurrency(order.discountAmount) : 0
+      if (discountAmount > 0) {
+        preferenceBody.coupon_amount = discountAmount
+        if (order.couponCode) {
+          preferenceBody.coupon_code = order.couponCode
+        }
+      }
+
+      const preference = await this.preference.create({
+        body: preferenceBody,
       })
 
       await prisma.paymentTransaction.update({

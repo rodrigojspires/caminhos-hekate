@@ -133,6 +133,9 @@ export async function POST(request: NextRequest) {
       userId: customer.userId || null,
       totalAmount: totals.total,
       description: `Pedido ${order.orderNumber}`,
+      shippingAmount: totals.shipping,
+      discountAmount: totals.discount,
+      couponCode: cart.couponCode || null,
       items: order.items.map((it) => ({
         id: it.productId,
         title: it.name,
