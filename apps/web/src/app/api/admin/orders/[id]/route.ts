@@ -186,8 +186,10 @@ export async function PUT(
                 name: true,
                 description: true,
                 images: true,
-                sku: true,
                 price: true,
+                slug: true,
+                shortDescription: true,
+                type: true,
                 category: {
                   select: {
                     id: true,
@@ -249,7 +251,8 @@ export async function DELETE(
     const existingOrder = await prisma.order.findUnique({
       where: { id },
       include: {
-        items: true
+        items: true,
+        couponUsages: true,
       }
     })
     
@@ -268,9 +271,37 @@ export async function DELETE(
       )
     }
     
-    // Deletar pedido (os itens serão deletados automaticamente devido ao cascade)
-    await prisma.order.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      if (existingOrder.couponUsages.length > 0) {
+        const couponIds = existingOrder.couponUsages.reduce<Record<string, number>>((acc, usage) => {
+          acc[usage.couponId] = (acc[usage.couponId] || 0) + 1
+          return acc
+        }, {})
+
+        await tx.couponUsage.deleteMany({ where: { orderId: id } })
+
+        for (const [couponId, count] of Object.entries(couponIds)) {
+          const updated = await tx.coupon.update({
+            where: { id: couponId },
+            data: {
+              usageCount: {
+                decrement: count,
+              },
+            },
+          })
+
+          if (updated.usageCount < 0) {
+            await tx.coupon.update({
+              where: { id: couponId },
+              data: { usageCount: 0 },
+            })
+          }
+        }
+      }
+
+      await tx.order.delete({
+        where: { id },
+      })
     })
     
     return NextResponse.json({

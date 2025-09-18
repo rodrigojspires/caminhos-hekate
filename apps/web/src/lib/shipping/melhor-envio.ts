@@ -51,6 +51,12 @@ export async function calculateShippingViaMelhorEnvio(
     services: services.length ? services : undefined,
   }
 
+  const debugLogs = process.env.MELHOR_ENVIO_DEBUG === '1' || process.env.NODE_ENV !== 'production'
+
+  if (debugLogs) {
+    console.log('[melhor-envio] request body:', JSON.stringify(body, null, 2))
+  }
+
   const res = await fetch(`${endpointBase}/api/v2/me/shipment/calculate`, {
     method: 'POST',
     headers: {
@@ -61,12 +67,23 @@ export async function calculateShippingViaMelhorEnvio(
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) {
-    const txt = await res.text()
-    throw new Error(`MelhorEnvio ${res.status}: ${txt}`)
+  const rawResponse = await res.text()
+
+  if (debugLogs) {
+    console.log('[melhor-envio] response status:', res.status)
+    console.log('[melhor-envio] response body:', rawResponse)
   }
 
-  const quotes: any[] = await res.json()
+  if (!res.ok) {
+    throw new Error(`MelhorEnvio ${res.status}: ${rawResponse}`)
+  }
+
+  let quotes: any[]
+  try {
+    quotes = JSON.parse(rawResponse)
+  } catch (error) {
+    throw new Error(`Não foi possível interpretar a resposta do Melhor Envio: ${rawResponse}`)
+  }
   if (!Array.isArray(quotes) || quotes.length === 0) throw new Error('Sem cotações do Melhor Envio')
 
   const options = quotes

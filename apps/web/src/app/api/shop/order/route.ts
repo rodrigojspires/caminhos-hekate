@@ -167,10 +167,8 @@ export async function POST(request: NextRequest) {
           })
         : null
 
-      const createdOrder = await tx.order.create({
-        data: {
-          orderNumber,
-          userId: customer.userId || undefined,
+      const orderData: any = {
+        orderNumber,
           status: 'PENDING',
           subtotal: totals.subtotal,
           shipping: totals.shipping,
@@ -188,7 +186,18 @@ export async function POST(request: NextRequest) {
           items: {
             create: itemsToCreate,
           },
-        },
+      }
+
+      if (customer.userId) {
+        orderData.user = {
+          connect: {
+            id: customer.userId,
+          },
+        }
+      }
+
+      const createdOrder = await tx.order.create({
+        data: orderData,
         include: { items: true },
       })
 
