@@ -1,9 +1,13 @@
-import type { CartItem } from './types'
+import type { CartItem, CartShipping, ShippingOption } from './types'
 import { prisma } from '@hekate/database'
 import { calculateShippingViaMelhorEnvio } from '@/lib/shipping/melhor-envio'
 
 // Placeholder shipping calculator: flat table by region and weight
-export async function calculateShipping(cep: string, items: CartItem[]) {
+export async function calculateShipping(
+  cep: string,
+  items: CartItem[],
+  preferredServiceId?: string | null,
+): Promise<CartShipping> {
   // Determina quais itens são físicos (produto.type === 'PHYSICAL')
   const detailed = await Promise.all(items.map(async (i) => {
     const variant = await prisma.productVariant.findUnique({ where: { id: i.variantId }, include: { product: true } })
@@ -13,14 +17,35 @@ export async function calculateShipping(cep: string, items: CartItem[]) {
 
   // Se não houver itens físicos, frete é zero
   if (physical.length === 0) {
-    return { cep, price: 0, service: 'Digital (sem frete)' }
+    const digitalOption: ShippingOption = {
+      id: 'digital',
+      service: 'Digital (sem frete)',
+      price: 0,
+      carrier: null,
+      deliveryDays: null,
+    }
+    return {
+      cep,
+      serviceId: digitalOption.id,
+      service: digitalOption.service,
+      price: digitalOption.price,
+      carrier: digitalOption.carrier,
+      deliveryDays: digitalOption.deliveryDays,
+      options: [digitalOption],
+    }
   }
 
   // Se houver credenciais do Melhor Envio, tenta cotar por lá com itens físicos
   if (process.env.MELHOR_ENVIO_TOKEN) {
     try {
-      const me = await calculateShippingViaMelhorEnvio(cep, physical.map(d => d.i))
-      if (me && typeof me.price === 'number') return me
+      const me = await calculateShippingViaMelhorEnvio(
+        cep,
+        physical.map(d => d.i),
+        preferredServiceId,
+      )
+      if (me && typeof me.price === 'number') {
+        return me
+      }
     } catch (e) {
       console.warn('[shipping] Melhor Envio falhou, usando fallback:', e)
     }
@@ -36,7 +61,23 @@ export async function calculateShipping(cep: string, items: CartItem[]) {
   const base = region === 'N' ? 29.9 : region === 'S' ? 19.9 : region === 'SE' ? 14.9 : 24.9
   const extra = Math.max(0, totalWeight - 1) * 5
   const price = Number((base + extra).toFixed(2))
-  return { cep, price, service: `Envio padrão (${region})` }
+  const option: ShippingOption = {
+    id: `fallback-${region}`,
+    service: `Envio padrão (${region})`,
+    price,
+    carrier: 'Correios',
+    deliveryDays: null,
+  }
+
+  return {
+    cep,
+    serviceId: option.id,
+    service: option.service,
+    price: option.price,
+    carrier: option.carrier,
+    deliveryDays: option.deliveryDays,
+    options: [option],
+  }
 }
 
 function regionFromCep(cep: string) {

@@ -6,14 +6,10 @@ import { toast } from 'sonner'
 import {
   Package,
   Search,
-  Filter,
   Download,
   RefreshCw,
   Eye,
-  Edit,
   Trash2,
-  Plus,
-  Calendar,
   DollarSign,
   ShoppingCart,
   TrendingUp,
@@ -69,9 +65,10 @@ import { SearchInput } from '@/components/admin/SearchInput'
 interface Order {
   id: string
   total: number
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'PAID'
+  status: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED'
   createdAt: string
   updatedAt: string
+  trackingInfo?: string | null
   user: {
     id: string
     name: string
@@ -103,21 +100,23 @@ interface OrderStats {
 
 const statusColors = {
   PENDING: 'bg-yellow-100 text-yellow-800',
+  PAID: 'bg-emerald-100 text-emerald-800',
   PROCESSING: 'bg-blue-100 text-blue-800',
   SHIPPED: 'bg-purple-100 text-purple-800',
   DELIVERED: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800',
-  PAID: 'bg-emerald-100 text-emerald-800',
-}
+  REFUNDED: 'bg-slate-100 text-slate-800',
+} as const
 
 const statusLabels = {
-  PENDING: 'Pendente',
-  PROCESSING: 'Processando',
+  PENDING: 'Aguardando pagamento',
+  PAID: 'Pagamento efetuado',
+  PROCESSING: 'Aguardando envio',
   SHIPPED: 'Enviado',
-  DELIVERED: 'Entregue',
+  DELIVERED: 'Concluído',
   CANCELLED: 'Cancelado',
-  PAID: 'Pago',
-}
+  REFUNDED: 'Reembolsado',
+} as const
 
 export default function OrdersPage() {
   const router = useRouter()
@@ -378,11 +377,13 @@ export default function OrdersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos os status</SelectItem>
-                <SelectItem value="PENDING">Pendente</SelectItem>
-                <SelectItem value="PROCESSING">Processando</SelectItem>
+                <SelectItem value="PENDING">Aguardando pagamento</SelectItem>
+                <SelectItem value="PAID">Pagamento efetuado</SelectItem>
+                <SelectItem value="PROCESSING">Aguardando envio</SelectItem>
                 <SelectItem value="SHIPPED">Enviado</SelectItem>
-                <SelectItem value="DELIVERED">Entregue</SelectItem>
+                <SelectItem value="DELIVERED">Concluído</SelectItem>
                 <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                <SelectItem value="REFUNDED">Reembolsado</SelectItem>
               </SelectContent>
             </Select>
 

@@ -1,8 +1,10 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { Loader2 } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
 
 export default function CartPage() {
@@ -11,20 +13,38 @@ export default function CartPage() {
   const [coupon, setCoupon] = useState<string>('')
   const [cep, setCep] = useState<string>('')
   const [clearing, setClearing] = useState(false)
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [shippingLoading, setShippingLoading] = useState(false)
+  const [selectedShippingId, setSelectedShippingId] = useState<string | null>(null)
+  const [requiresShipping, setRequiresShipping] = useState(false)
 
-  const fetchCart = async () => {
+  const hydrateCart = useCallback((data: { cart: any; totals: any }) => {
+    const cartData = data.cart
+    const totalsData = data.totals
+    setCart(cartData)
+    setTotals(totalsData)
+    setCoupon(cartData?.couponCode || '')
+    setCep(cartData?.shipping?.cep || '')
+    setSelectedShippingId(cartData?.shipping?.serviceId || null)
+
+    const detailedItems = Array.isArray(cartData?.itemsDetailed)
+      ? cartData.itemsDetailed
+      : cartData?.items || []
+    const hasPhysical = detailedItems.some((item: any) => item?.product?.type === 'PHYSICAL')
+    setRequiresShipping(hasPhysical)
+
+    broadcastCartUpdate(cartData)
+  }, [])
+
+  const fetchCart = useCallback(async () => {
     const res = await fetch('/api/shop/cart', { cache: 'no-store' })
     const data = await res.json()
-    setCart(data.cart)
-    setTotals(data.totals)
-    setCoupon(data?.cart?.couponCode || '')
-    setCep(data?.cart?.shipping?.cep || '')
-    broadcastCartUpdate(data?.cart)
-  }
+    hydrateCart(data)
+  }, [hydrateCart])
 
   useEffect(() => {
     fetchCart()
-  }, [])
+  }, [fetchCart])
 
   const removeItem = async (variantId: string) => {
     await fetch('/api/shop/cart', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantId }) })
@@ -38,14 +58,73 @@ export default function CartPage() {
   }
 
   const applyCoupon = async () => {
-    const res = await fetch('/api/shop/coupon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: coupon }) })
-    if (res.ok) fetchCart()
+    if (!coupon) return
+    setCouponLoading(true)
+    try {
+      const res = await fetch('/api/shop/coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: coupon.trim() }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        window.alert(data?.error || 'Não foi possível aplicar o cupom.')
+        return
+      }
+      if (!data) {
+        window.alert('Resposta inválida do servidor ao aplicar o cupom.')
+        return
+      }
+      hydrateCart(data)
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const requestShipping = async (serviceId: string | null): Promise<boolean> => {
+    if (!cep) {
+      window.alert('Informe o CEP para calcular o frete.')
+      return false
+    }
+    setShippingLoading(true)
+    try {
+      const res = await fetch('/api/shop/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cep, serviceId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        window.alert(data?.error || 'Não foi possível calcular o frete.')
+        return false
+      }
+      if (!data) {
+        window.alert('Resposta inválida do servidor ao calcular o frete.')
+        return false
+      }
+      hydrateCart(data)
+      return true
+    } finally {
+      setShippingLoading(false)
+    }
   }
 
   const calcShipping = async () => {
-    const res = await fetch('/api/shop/shipping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cep }) })
-    if (res.ok) fetchCart()
+    await requestShipping(selectedShippingId)
   }
+
+  const selectShippingOption = async (serviceId: string) => {
+    if (serviceId === selectedShippingId) return
+    const previous = selectedShippingId
+    setSelectedShippingId(serviceId)
+    const success = await requestShipping(serviceId)
+    if (!success) {
+      setSelectedShippingId(previous)
+    }
+  }
+
+  const formatCurrency = (value: number) =>
+    Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
   const clearCart = async () => {
     if (!cart?.items?.length || clearing) return
@@ -94,7 +173,6 @@ export default function CartPage() {
               const compare = i.comparePrice != null ? Number(i.comparePrice) : null
               const hasDiscount = compare != null && compare > price
               const discountPct = hasDiscount ? Math.round(((compare - price) / compare) * 100) : 0
-              const formatBRL = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
               const dec = () => updateQty(i.variantId, Math.max(1, Number(i.quantity) - 1))
               const inc = () => updateQty(i.variantId, Math.max(1, Math.min((i.stock ?? 9999), Number(i.quantity) + 1)))
 
@@ -142,54 +220,133 @@ export default function CartPage() {
                     {typeof i.stock === 'number' && (
                       <div className="text-sm text-muted-foreground">+{i.stock} disponíveis</div>
                     )}
-                    <div className="text-sm text-muted-foreground">Subtotal: {formatBRL(price * Number(i.quantity || 1))}</div>
+                    <div className="text-sm text-muted-foreground">Subtotal: {formatCurrency(price * Number(i.quantity || 1))}</div>
                   </div>
 
                   {/* Right: price */}
                   <div className="text-right w-40">
                     {hasDiscount && (
-                      <div className="text-sm text-green-600">-{discountPct}% <span className="text-muted-foreground line-through">{formatBRL(compare!)}</span></div>
+                      <div className="text-sm text-green-600">-{discountPct}% <span className="text-muted-foreground line-through">{formatCurrency(compare!)}</span></div>
                     )}
-                    <div className="text-2xl font-semibold">{formatBRL(price)}</div>
+                    <div className="text-2xl font-semibold">{formatCurrency(price)}</div>
                   </div>
                 </div>
               )
             })}
             <div className="border rounded p-4 flex gap-2">
               <input placeholder="Cupom" value={coupon} onChange={(e) => setCoupon(e.target.value)} className="border rounded px-3 py-2 flex-1" />
-              <Button onClick={applyCoupon}>Aplicar</Button>
+              <Button onClick={applyCoupon} disabled={couponLoading} className="min-w-[110px] justify-center">
+                {couponLoading ? (
+                  <span className="flex items-center gap-2 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Aplicando...
+                  </span>
+                ) : (
+                  'Aplicar'
+                )}
+              </Button>
             </div>
             {cart.couponCode && (
               <div className="text-sm text-hekate-gold flex items-center gap-2 border border-hekate-gold/50 rounded px-3 py-2 bg-hekate-gold/5 uppercase tracking-wide">
                 Cupom aplicado: <span className="font-semibold">{cart.couponCode}</span>
               </div>
             )}
-            <div className="border rounded p-4 flex gap-2">
-              <input placeholder="CEP" value={cep} onChange={(e) => setCep(e.target.value)} className="border rounded px-3 py-2 flex-1" />
-              <Button onClick={calcShipping}>Calcular frete</Button>
-            </div>
-            {cart.shipping?.cep && (
-              <div className="text-sm border rounded px-3 py-2 bg-muted/50">
-                <div>CEP salvo: <span className="font-semibold">{cart.shipping.cep}</span></div>
-                {cart.shipping.service && (
-                  <div className="text-muted-foreground">Serviço: {cart.shipping.service}</div>
-                )}
+            <div className="border rounded p-4 space-y-3">
+              <div className="flex gap-2">
+                <input
+                  placeholder="CEP"
+                  value={cep}
+                  onChange={(e) => setCep(e.target.value)}
+                  className="border rounded px-3 py-2 flex-1"
+                  maxLength={9}
+                />
+                <Button onClick={calcShipping} disabled={shippingLoading} className="min-w-[140px] justify-center">
+                  {shippingLoading ? (
+                    <span className="flex items-center gap-2 text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Calculando...
+                    </span>
+                  ) : (
+                    'Calcular frete'
+                  )}
+                </Button>
               </div>
-            )}
+
+              {requiresShipping && cart.shipping?.options?.length ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Selecione a modalidade de entrega:</p>
+                  <div className="space-y-2">
+                    {cart.shipping.options.map((option: any) => {
+                      const isSelected = selectedShippingId === option.id
+                      return (
+                        <label
+                          key={option.id}
+                          className={`flex items-center justify-between rounded border px-3 py-2 text-sm transition ${
+                            isSelected ? 'border-primary bg-primary/5' : 'border-muted'
+                          } ${shippingLoading ? 'opacity-70' : ''}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="shipping-option"
+                              value={option.id}
+                              checked={isSelected}
+                              onChange={() => selectShippingOption(option.id)}
+                              disabled={shippingLoading}
+                              className="h-4 w-4"
+                            />
+                            <div>
+                              <div className="font-medium text-sm">{option.service}</div>
+                              {option.deliveryDays ? (
+                                <div className="text-xs text-muted-foreground">
+                                  Prazo estimado: {option.deliveryDays} dia(s)
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="font-semibold">
+                            {formatCurrency(Number(option.price) || 0)}
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {requiresShipping && (!cart.shipping?.options || cart.shipping.options.length === 0) && (
+                <p className="text-xs text-muted-foreground">
+                  Informe o CEP para visualizar as opções de entrega disponíveis.
+                </p>
+              )}
+
+              {cart.shipping?.cep && (
+                <div className="text-sm border rounded px-3 py-2 bg-muted/50">
+                  <div>
+                    CEP salvo: <span className="font-semibold">{cart.shipping.cep}</span>
+                  </div>
+                  {cart.shipping.service && (
+                    <div className="text-muted-foreground">
+                      Modalidade selecionada: {cart.shipping.service} · {formatCurrency(Number(cart.shipping.price) || 0)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="border rounded p-4 h-fit space-y-2">
             <h2 className="font-semibold mb-3">Resumo</h2>
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
-              <span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.subtotal)}</span>
+              <span>{formatCurrency(totals.subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm text-red-400 font-medium">
               <span>Desconto</span>
-              <span>- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span>
+              <span>- {formatCurrency(totals.discount)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Frete</span>
-              <span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}</span>
+              <span>{formatCurrency(totals.shipping)}</span>
             </div>
             {cart.shipping?.service && (
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -207,11 +364,21 @@ export default function CartPage() {
             )}
             <div className="flex justify-between font-bold pt-2">
               <span>Total</span>
-              <span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.total)}</span>
+              <span>{formatCurrency(totals.total)}</span>
             </div>
             <Link href="/checkout" className="mt-2 block">
-              <Button className="w-full">Ir para o checkout</Button>
+              <Button
+                className="w-full"
+                disabled={requiresShipping && (!selectedShippingId || shippingLoading)}
+              >
+                Ir para o checkout
+              </Button>
             </Link>
+            {requiresShipping && !selectedShippingId && (
+              <p className="mt-1 text-xs text-red-500">
+                Informe o CEP e selecione uma modalidade de entrega antes de prosseguir.
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -8,7 +8,7 @@ import { z } from 'zod'
 const reportFiltersSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED']).optional(),
   period: z.enum(['7d', '30d', '90d', '1y', 'all']).optional().default('30d'),
 })
 

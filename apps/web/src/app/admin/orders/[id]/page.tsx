@@ -9,17 +9,14 @@ import {
   Package,
   User,
   Calendar,
-  DollarSign,
-  MapPin,
-  Phone,
   Mail,
-  Edit,
   Trash2,
   Download,
   RefreshCw,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
@@ -66,7 +63,7 @@ interface OrderItem {
     id: string
     name: string
     description: string
-    images: string[]
+    images?: string[]
     sku: string
     price: number
     category: {
@@ -80,18 +77,26 @@ interface OrderItem {
 interface Order {
   id: string
   total: number
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  status:
+    | 'PENDING'
+    | 'PAID'
+    | 'PROCESSING'
+    | 'SHIPPED'
+    | 'DELIVERED'
+    | 'CANCELLED'
+    | 'REFUNDED'
   createdAt: string
   updatedAt: string
+  trackingInfo?: string | null
   user: {
     id: string
     name: string
     email: string
     image?: string
-    subscription: string
+    subscriptionTier?: string | null
     createdAt: string
   }
-  orderItems: OrderItem[]
+  items: OrderItem[]
   stats: {
     totalItems: number
     totalProducts: number
@@ -101,19 +106,31 @@ interface Order {
 
 const statusColors = {
   PENDING: 'bg-yellow-100 text-yellow-800',
+  PAID: 'bg-emerald-100 text-emerald-800',
   PROCESSING: 'bg-blue-100 text-blue-800',
   SHIPPED: 'bg-purple-100 text-purple-800',
   DELIVERED: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800',
-}
+  REFUNDED: 'bg-slate-100 text-slate-800',
+} as const
 
 const statusLabels = {
-  PENDING: 'Pendente',
-  PROCESSING: 'Processando',
+  PENDING: 'Aguardando pagamento',
+  PAID: 'Pagamento efetuado',
+  PROCESSING: 'Aguardando envio',
   SHIPPED: 'Enviado',
-  DELIVERED: 'Entregue',
+  DELIVERED: 'Concluído',
   CANCELLED: 'Cancelado',
-}
+  REFUNDED: 'Reembolsado',
+} as const
+
+const ORDER_STATUS_FLOW: Array<keyof typeof statusLabels> = [
+  'PENDING',
+  'PAID',
+  'PROCESSING',
+  'SHIPPED',
+  'DELIVERED',
+]
 
 interface OrderDetailsPageProps {
   params: {
@@ -127,6 +144,26 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [savingTracking, setSavingTracking] = useState(false)
+  const [trackingInput, setTrackingInput] = useState('')
+
+  const normalizeOrder = (rawOrder: any): Order => {
+    const items: OrderItem[] = rawOrder.items ?? rawOrder.orderItems ?? []
+
+    const stats = rawOrder.stats ?? {
+      totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
+      totalProducts: items.length,
+      averageItemPrice: items.length > 0
+        ? items.reduce((sum, item) => sum + Number(item.price), 0) / items.length
+        : 0,
+    }
+
+    return {
+      ...rawOrder,
+      items,
+      stats,
+    }
+  }
 
   // Buscar detalhes do pedido
   const fetchOrder = useCallback(async () => {
@@ -139,7 +176,9 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
         throw new Error(data.error || 'Erro ao carregar pedido')
       }
 
-      setOrder(data.order)
+      const normalized = normalizeOrder(data.order)
+      setOrder(normalized)
+      setTrackingInput(normalized.trackingInfo ?? '')
     } catch (error) {
       console.error('Erro ao buscar pedido:', error)
       toast.error('Erro ao carregar pedido')
@@ -150,33 +189,65 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   }, [params.id, router])
 
   // Atualizar status do pedido
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleOrderUpdate = async (
+    payload: Record<string, any>,
+    messages: { success: string; error: string },
+  ) => {
     if (!order) return
 
     try {
-      setUpdating(true)
+      if (payload.status !== undefined) {
+        setUpdating(true)
+      } else {
+        setSavingTracking(true)
+      }
+
       const response = await fetch(`/api/admin/orders/${order.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(payload),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao atualizar status')
+        throw new Error(data.error || messages.error)
       }
 
-      setOrder(data.order)
-      toast.success('Status atualizado com sucesso')
+      const normalized = normalizeOrder(data.order)
+      setOrder(normalized)
+      setTrackingInput(normalized.trackingInfo ?? '')
+      toast.success(messages.success)
     } catch (error) {
-      console.error('Erro ao atualizar status:', error)
-      toast.error('Erro ao atualizar status')
+      console.error(messages.error, error)
+      toast.error(messages.error)
     } finally {
       setUpdating(false)
+      setSavingTracking(false)
     }
+  }
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    await handleOrderUpdate(
+      { status: newStatus },
+      {
+        success: 'Status atualizado com sucesso',
+        error: 'Erro ao atualizar status',
+      },
+    )
+  }
+
+  const handleTrackingSave = async () => {
+    const trimmed = trackingInput.trim()
+    await handleOrderUpdate(
+      { trackingInfo: trimmed.length > 0 ? trimmed : null },
+      {
+        success: 'Informações de rastreio salvas',
+        error: 'Erro ao salvar rastreio',
+      },
+    )
   }
 
   // Deletar pedido
@@ -218,7 +289,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       [''],
       ['Itens do Pedido'],
       ['Produto', 'SKU', 'Quantidade', 'Preço Unitário', 'Subtotal'].join(','),
-      ...order.orderItems.map(item => [
+      ...order.items.map(item => [
         `"${item.product.name}"`,
         item.product.sku,
         item.quantity,
@@ -350,7 +421,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
               Informações do Pedido
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -364,16 +435,18 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PENDING">Pendente</SelectItem>
-                      <SelectItem value="PROCESSING">Processando</SelectItem>
+                      <SelectItem value="PENDING">Aguardando pagamento</SelectItem>
+                      <SelectItem value="PAID">Pagamento efetuado</SelectItem>
+                      <SelectItem value="PROCESSING">Aguardando envio</SelectItem>
                       <SelectItem value="SHIPPED">Enviado</SelectItem>
-                      <SelectItem value="DELIVERED">Entregue</SelectItem>
+                      <SelectItem value="DELIVERED">Concluído</SelectItem>
                       <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                      <SelectItem value="REFUNDED">Reembolsado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Total</label>
                 <div className="mt-1 text-2xl font-bold">
@@ -381,7 +454,94 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                 </div>
               </div>
             </div>
-            
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Fluxo de status</label>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {ORDER_STATUS_FLOW.map((status, index) => {
+                  const currentIndex = ORDER_STATUS_FLOW.indexOf(order.status as keyof typeof statusLabels)
+                  const isCurrent = currentIndex === index
+                  const isCompleted = currentIndex !== -1 && currentIndex > index
+
+                  return (
+                    <div key={status} className="flex items-center gap-2">
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold ${
+                          isCurrent
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : isCompleted
+                              ? 'border-primary/50 bg-primary/10 text-primary'
+                              : 'border-muted bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+                      <span className={isCurrent ? 'font-semibold' : 'text-muted-foreground'}>
+                        {statusLabels[status]}
+                      </span>
+                    </div>
+                  )
+                })}
+
+                {order.status === 'CANCELLED' && (
+                  <Badge variant="destructive">{statusLabels.CANCELLED}</Badge>
+                )}
+
+                {order.status === 'REFUNDED' && (
+                  <Badge variant="outline" className="border-slate-400 text-slate-700">
+                    {statusLabels.REFUNDED}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Informações de rastreio</label>
+                <div className="mt-1 flex flex-col gap-2 md:flex-row">
+                  <Input
+                    value={trackingInput}
+                    onChange={(event) => setTrackingInput(event.target.value)}
+                    placeholder="Ex: NL123456789BR ou https://..."
+                    aria-label="Informações de rastreio"
+                    disabled={savingTracking}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={savingTracking}
+                    onClick={handleTrackingSave}
+                  >
+                    {savingTracking ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </div>
+                {order.trackingInfo && (
+                  <p className="mt-1 break-all text-sm text-muted-foreground">
+                    {order.trackingInfo.startsWith('http') ? (
+                      <a
+                        href={order.trackingInfo}
+                        className="text-primary underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Acessar link de rastreio
+                      </a>
+                    ) : (
+                      <>Código atual: {order.trackingInfo}</>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Última atualização</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {formatDate(order.updatedAt)}
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Total de Itens</label>
@@ -389,14 +549,14 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                   {order.stats.totalItems}
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Produtos Únicos</label>
                 <div className="mt-1 text-lg font-semibold">
                   {order.stats.totalProducts}
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Preço Médio</label>
                 <div className="mt-1 text-lg font-semibold">
@@ -404,7 +564,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                 </div>
               </div>
             </div>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Data do Pedido</label>
@@ -413,12 +573,13 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                   {formatDate(order.createdAt)}
                 </div>
               </div>
-              
+
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Última Atualização</label>
-                <div className="mt-1 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  {formatDate(order.updatedAt)}
+                <label className="text-sm font-medium text-muted-foreground">Status atual</label>
+                <div className="mt-1">
+                  <Badge className={statusColors[order.status] ?? 'bg-muted text-muted-foreground'}>
+                    {statusLabels[order.status] ?? order.status}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -457,7 +618,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
               
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm capitalize">{order.user.subscription}</span>
+                <span className="text-sm capitalize">{order.user.subscriptionTier || 'Sem assinatura'}</span>
               </div>
             </div>
             
@@ -478,7 +639,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
         <CardHeader>
           <CardTitle>Itens do Pedido</CardTitle>
           <CardDescription>
-            {order.orderItems.length} {order.orderItems.length === 1 ? 'item' : 'itens'} neste pedido
+            {order.items.length} {order.items.length === 1 ? 'item' : 'itens'} neste pedido
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -494,11 +655,11 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {order.orderItems.map((item) => (
+              {order.items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      {item.product.images.length > 0 && (
+                      {item.product.images && item.product.images.length > 0 && (
                         <Image
                           src={item.product.images[0]}
                           alt={item.product.name}

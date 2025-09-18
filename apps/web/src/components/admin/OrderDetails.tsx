@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Tag,
   Clock,
+  History,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -68,9 +69,17 @@ interface OrderItem {
 interface Order {
   id: string
   total: number
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  status:
+    | 'PENDING'
+    | 'PAID'
+    | 'PROCESSING'
+    | 'SHIPPED'
+    | 'DELIVERED'
+    | 'CANCELLED'
+    | 'REFUNDED'
   createdAt: string
   updatedAt: string
+  trackingInfo?: string | null
   user: {
     id: string
     name: string
@@ -97,27 +106,33 @@ interface OrderDetailsProps {
 
 const statusColors = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  PAID: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   PROCESSING: 'bg-blue-100 text-blue-800 border-blue-200',
   SHIPPED: 'bg-purple-100 text-purple-800 border-purple-200',
   DELIVERED: 'bg-green-100 text-green-800 border-green-200',
   CANCELLED: 'bg-red-100 text-red-800 border-red-200',
-}
+  REFUNDED: 'bg-slate-100 text-slate-700 border-slate-200',
+} as const
 
 const statusLabels = {
-  PENDING: 'Pendente',
-  PROCESSING: 'Processando',
+  PENDING: 'Aguardando pagamento',
+  PAID: 'Pagamento efetuado',
+  PROCESSING: 'Aguardando envio',
   SHIPPED: 'Enviado',
-  DELIVERED: 'Entregue',
+  DELIVERED: 'Concluído',
   CANCELLED: 'Cancelado',
-}
+  REFUNDED: 'Reembolsado',
+} as const
 
 const statusIcons = {
   PENDING: Clock,
+  PAID: Package,
   PROCESSING: RefreshCw,
   SHIPPED: Package,
   DELIVERED: Package,
   CANCELLED: Package,
-}
+  REFUNDED: History,
+} as const
 
 export function OrderDetails({
   order,

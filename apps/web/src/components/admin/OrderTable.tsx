@@ -70,7 +70,14 @@ interface OrderItem {
 interface Order {
   id: string
   total: number
-  status: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  status:
+    | 'PENDING'
+    | 'PAID'
+    | 'PROCESSING'
+    | 'SHIPPED'
+    | 'DELIVERED'
+    | 'CANCELLED'
+    | 'REFUNDED'
   createdAt: string
   updatedAt: string
   user: {
@@ -78,7 +85,7 @@ interface Order {
     name: string
     email: string
     image?: string
-    subscription: string
+    subscription?: string | null
   }
   orderItems: OrderItem[]
   _count: {
@@ -99,19 +106,23 @@ interface OrderTableProps {
 
 const statusColors = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  PAID: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   PROCESSING: 'bg-blue-100 text-blue-800 border-blue-200',
   SHIPPED: 'bg-purple-100 text-purple-800 border-purple-200',
   DELIVERED: 'bg-green-100 text-green-800 border-green-200',
   CANCELLED: 'bg-red-100 text-red-800 border-red-200',
-}
+  REFUNDED: 'bg-slate-100 text-slate-700 border-slate-200',
+} as const
 
 const statusLabels = {
-  PENDING: 'Pendente',
-  PROCESSING: 'Processando',
+  PENDING: 'Aguardando pagamento',
+  PAID: 'Pagamento efetuado',
+  PROCESSING: 'Aguardando envio',
   SHIPPED: 'Enviado',
-  DELIVERED: 'Entregue',
+  DELIVERED: 'Concluído',
   CANCELLED: 'Cancelado',
-}
+  REFUNDED: 'Reembolsado',
+} as const
 
 export function OrderTable({
   orders,
@@ -249,11 +260,13 @@ export function OrderTable({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PENDING">Pendente</SelectItem>
-                      <SelectItem value="PROCESSING">Processando</SelectItem>
+                      <SelectItem value="PENDING">Aguardando pagamento</SelectItem>
+                      <SelectItem value="PAID">Pagamento efetuado</SelectItem>
+                      <SelectItem value="PROCESSING">Aguardando envio</SelectItem>
                       <SelectItem value="SHIPPED">Enviado</SelectItem>
-                      <SelectItem value="DELIVERED">Entregue</SelectItem>
+                      <SelectItem value="DELIVERED">Concluído</SelectItem>
                       <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                      <SelectItem value="REFUNDED">Reembolsado</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>

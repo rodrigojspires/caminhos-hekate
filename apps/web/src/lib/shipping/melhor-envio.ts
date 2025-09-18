@@ -5,13 +5,16 @@ import { prisma } from '@hekate/database'
 // Requer envs: MELHOR_ENVIO_TOKEN, MELHOR_ENVIO_FROM_CEP
 // Opcional: MELHOR_ENVIO_SERVICE_IDS (csv de IDs de serviço), MELHOR_ENVIO_SANDBOX="1"
 
-export async function calculateShippingViaMelhorEnvio(cep: string, items: CartItem[]) {
+export async function calculateShippingViaMelhorEnvio(
+  cep: string,
+  items: CartItem[],
+  preferredServiceId?: string | null,
+) {
   const token = process.env.MELHOR_ENVIO_TOKEN
   const fromCep = process.env.MELHOR_ENVIO_FROM_CEP
   if (!token || !fromCep) throw new Error('MELHOR_ENVIO_TOKEN/MELHOR_ENVIO_FROM_CEP ausentes')
 
   // Montar pacotes simples: 1 pacote por item (aproximação)
-  const packages: Array<{ height: number; width: number; length: number; weight: number; insurance_value: number; quantity: number }>[] = []
   const payloadItems: any[] = []
 
   for (const ci of items) {
@@ -65,8 +68,42 @@ export async function calculateShippingViaMelhorEnvio(cep: string, items: CartIt
 
   const quotes: any[] = await res.json()
   if (!Array.isArray(quotes) || quotes.length === 0) throw new Error('Sem cotações do Melhor Envio')
-  // Pega a menor cotação
-  const best = quotes.reduce((min, q) => (q.price < min.price ? q : min), quotes[0])
-  return { cep, price: Number(best.price), service: `${best.company?.name || 'ME'} - ${best.name || 'serviço'}` }
-}
 
+  const options = quotes
+    .filter((q) => typeof q?.price === 'number')
+    .map((q) => {
+      const id = String(q.id ?? q.service_id ?? `${q.company?.name || 'ME'}-${q.name || 'serviço'}`)
+      return {
+        id,
+        service: `${q.company?.name || 'Transportadora'} - ${q.name || 'Serviço'}`,
+        price: Number(q.price),
+        carrier: q.company?.name ?? null,
+        deliveryDays: typeof q.delivery_time?.days === 'number'
+          ? q.delivery_time.days
+          : typeof q.delivery_time === 'number'
+            ? q.delivery_time
+            : null,
+      }
+    })
+    .sort((a, b) => a.price - b.price)
+
+  if (options.length === 0) {
+    throw new Error('Sem cotações válidas do Melhor Envio')
+  }
+
+  let selected = options[0]
+  if (preferredServiceId) {
+    const match = options.find((o) => o.id === preferredServiceId)
+    if (match) selected = match
+  }
+
+  return {
+    cep,
+    serviceId: selected.id,
+    service: selected.service,
+    price: selected.price,
+    carrier: selected.carrier,
+    deliveryDays: selected.deliveryDays,
+    options,
+  }
+}

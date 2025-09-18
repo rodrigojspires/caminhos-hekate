@@ -7,11 +7,7 @@ export type CartItem = {
 export type CartState = {
   items: CartItem[]
   couponCode?: string | null
-  shipping?: {
-    cep: string
-    price: number
-    service: string
-  } | null
+  shipping?: CartShipping | null
 }
 
 export type CartTotals = {
@@ -19,6 +15,24 @@ export type CartTotals = {
   discount: number
   shipping: number
   total: number
+}
+
+export type ShippingOption = {
+  id: string
+  service: string
+  price: number
+  carrier?: string | null
+  deliveryDays?: number | null
+}
+
+export type CartShipping = {
+  cep: string
+  serviceId: string
+  service: string
+  price: number
+  carrier?: string | null
+  deliveryDays?: number | null
+  options?: ShippingOption[]
 }
 
 export type ProductSummary = {
@@ -29,4 +43,3 @@ export type ProductSummary = {
   priceRange: { min: number; max: number }
   category?: { id: string; name: string; slug: string } | null
 }
-

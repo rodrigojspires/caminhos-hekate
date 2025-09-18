@@ -97,8 +97,8 @@ export async function GET(_request: NextRequest) {
     const stats = {
       totalOrders: formatted.length,
       pendingOrders: formatted.filter((o) => o.status === 'PENDING').length,
-      awaitingPayment: formatted.filter((o) => ['PENDING', 'PROCESSING'].includes(o.status)).length,
-      completedOrders: formatted.filter((o) => ['PAID', 'SHIPPED', 'DELIVERED'].includes(o.status)).length,
+      awaitingPayment: formatted.filter((o) => o.status === 'PENDING').length,
+      completedOrders: formatted.filter((o) => o.status === 'DELIVERED').length,
       lastOrderAt: formatted[0]?.createdAt ?? null,
     }
 

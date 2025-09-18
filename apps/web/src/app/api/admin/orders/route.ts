@@ -8,7 +8,7 @@ const querySchema = z.object({
   page: z.string().transform(val => parseInt(val) || 1),
   limit: z.string().transform(val => Math.min(parseInt(val) || 20, 100)),
   search: z.string().optional(),
-  status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED']).optional(),
   userId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -20,7 +20,7 @@ const querySchema = z.object({
 
 // Schema de validação para atualização de status
 const updateStatusSchema = z.object({
-  status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED']),
 })
 
 // GET /api/admin/orders - Listar pedidos

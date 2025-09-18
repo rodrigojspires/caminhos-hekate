@@ -11,6 +11,12 @@ export async function POST(request: NextRequest) {
     if (!coupon || !coupon.active || coupon.validFrom > now || coupon.validUntil < now) {
       return NextResponse.json({ error: 'Cupom inválido' }, { status: 400 })
     }
+    if (coupon.usageLimit != null) {
+      const usageCount = await prisma.couponUsage.count({ where: { couponId: coupon.id } })
+      if (usageCount >= coupon.usageLimit) {
+        return NextResponse.json({ error: 'Cupom atingiu o limite de uso' }, { status: 400 })
+      }
+    }
     const cart = getCartFromCookie()
     cart.couponCode = code
     setCartToCookie(cart)

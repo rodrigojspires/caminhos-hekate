@@ -279,6 +279,7 @@ model Order {
   billingAddressId  String?
   shippingAddressId String?
   notes             String?
+  trackingInfo      String?
   metadata          Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt

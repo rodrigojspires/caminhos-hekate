@@ -12,6 +12,7 @@ import {
   AlertCircle,
   History,
   Save,
+  CreditCard,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -49,7 +50,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+type OrderStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'REFUNDED'
 
 interface OrderStatusUpdateProps {
   orderId: string
@@ -62,49 +70,67 @@ interface OrderStatusUpdateProps {
 
 const statusConfig = {
   PENDING: {
-    label: 'Pendente',
+    label: 'Aguardando pagamento',
     icon: Clock,
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    description: 'Pedido aguardando processamento',
+    description: 'Pedido aguardando confirmação do pagamento.',
+  },
+  PAID: {
+    label: 'Pagamento efetuado',
+    icon: CreditCard,
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    description: 'Pagamento confirmado. Pedido aguardando preparação.',
   },
   PROCESSING: {
-    label: 'Processando',
+    label: 'Aguardando envio',
     icon: RefreshCw,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'Pedido sendo preparado',
+    description: 'Pedido sendo preparado para envio.',
   },
   SHIPPED: {
     label: 'Enviado',
     icon: Truck,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
-    description: 'Pedido enviado para entrega',
+    description: 'Pedido enviado e em transporte.',
   },
   DELIVERED: {
-    label: 'Entregue',
+    label: 'Concluído',
     icon: CheckCircle,
     color: 'bg-green-100 text-green-800 border-green-200',
-    description: 'Pedido entregue com sucesso',
+    description: 'Pedido entregue ao cliente.',
   },
   CANCELLED: {
     label: 'Cancelado',
     icon: XCircle,
     color: 'bg-red-100 text-red-800 border-red-200',
-    description: 'Pedido cancelado',
+    description: 'Pedido cancelado.',
   },
-}
+  REFUNDED: {
+    label: 'Reembolsado',
+    icon: History,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    description: 'Valor devolvido ao cliente.',
+  },
+} as const
 
 const statusFlow: Record<OrderStatus, OrderStatus[]> = {
-  PENDING: ['PROCESSING', 'CANCELLED'],
+  PENDING: ['PAID', 'CANCELLED'],
+  PAID: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
   PROCESSING: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED', 'CANCELLED'],
-  DELIVERED: [], // Status final
-  CANCELLED: [], // Status final
+  SHIPPED: ['DELIVERED', 'CANCELLED', 'REFUNDED'],
+  DELIVERED: ['REFUNDED'],
+  CANCELLED: [],
+  REFUNDED: [],
 }
 
 const statusWarnings: Record<string, string> = {
-  'DELIVERED->CANCELLED': 'Atenção: Cancelar um pedido já entregue pode gerar problemas de estorno.',
-  'SHIPPED->CANCELLED': 'Atenção: Cancelar um pedido já enviado pode gerar custos de logística reversa.',
+  'PAID->CANCELLED': 'Confirme que o estorno do pagamento será realizado.',
   'PROCESSING->CANCELLED': 'Confirme se o pedido pode ser cancelado sem custos adicionais.',
+  'SHIPPED->CANCELLED': 'Cancelar um pedido enviado pode gerar custos de logística reversa.',
+  'DELIVERED->CANCELLED': 'Cancelar após entrega pode exigir logística reversa e estorno.',
+  'PAID->REFUNDED': 'Garanta que o reembolso foi processado junto ao meio de pagamento.',
+  'SHIPPED->REFUNDED': 'Confirme a devolução dos produtos antes do reembolso.',
+  'DELIVERED->REFUNDED': 'Certifique-se de que o cliente devolveu o produto antes do reembolso.',
 }
 
 export function OrderStatusUpdate({
@@ -173,10 +199,18 @@ export function OrderStatusUpdate({
     }
   }
 
+  const progressStatuses: OrderStatus[] = ['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED']
+
   const getStatusProgress = () => {
-    const statuses: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED']
-    const currentIndex = statuses.indexOf(currentStatus)
-    return currentStatus === 'CANCELLED' ? -1 : currentIndex
+    if (currentStatus === 'CANCELLED') {
+      return -1
+    }
+
+    if (currentStatus === 'REFUNDED') {
+      return progressStatuses.length
+    }
+
+    return progressStatuses.indexOf(currentStatus)
   }
 
   if (compact) {
@@ -251,7 +285,7 @@ export function OrderStatusUpdate({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Progresso do Pedido</Label>
             <div className="flex items-center gap-2">
-              {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].map((status, index) => {
+              {progressStatuses.map((status, index) => {
                 const config = statusConfig[status as OrderStatus]
                 const Icon = config.icon
                 const isActive = index <= getStatusProgress()
@@ -273,7 +307,7 @@ export function OrderStatusUpdate({
                           >
                             <Icon className="h-4 w-4" />
                           </div>
-                          {index < 3 && (
+                          {index < progressStatuses.length - 1 && (
                             <div
                               className={`w-8 h-0.5 ${
                                 index < getStatusProgress()
@@ -360,6 +394,15 @@ export function OrderStatusUpdate({
                 <XCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-red-800">
                   Cancelar este pedido pode afetar métricas de vendas e satisfação do cliente.
+                </div>
+              </div>
+            )}
+
+            {selectedStatus === 'REFUNDED' && currentStatus !== 'REFUNDED' && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <History className="h-5 w-5 text-slate-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-slate-800">
+                  Certifique-se de registrar o reembolso no gateway de pagamento e notificar o cliente.
                 </div>
               </div>
             )}

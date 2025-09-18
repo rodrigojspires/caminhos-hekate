@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { getCartFromCookie, computeTotals, clearCart } from '@/lib/shop/cart'
+import { calculateShipping } from '@/lib/shop/shipping'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 
 function generateOrderNumber() {
@@ -33,12 +34,103 @@ export async function POST(request: NextRequest) {
 
     const cart = getCartFromCookie()
     if (!cart.items.length) return NextResponse.json({ error: 'Carrinho vazio' }, { status: 400 })
+
+    if (cart.shipping?.cep) {
+      try {
+        cart.shipping = await calculateShipping(
+          cart.shipping.cep,
+          cart.items,
+          cart.shipping.serviceId,
+        )
+      } catch (error) {
+        console.error('Erro ao recalcular frete antes do pedido:', error)
+      }
+    }
+
     const totals = await computeTotals(cart)
 
-    // Create addresses if provided
-    const [billing, shipping] = await Promise.all([
-      billingAddress
-        ? prisma.address.create({
+    const itemDetails = await Promise.all(
+      cart.items.map(async (i) => {
+        const variant = await prisma.productVariant.findUnique({
+          include: { product: true },
+          where: { id: i.variantId },
+        })
+        if (!variant) {
+          throw new Error('Variante inválida')
+        }
+        return { item: i, variant }
+      })
+    )
+
+    if (itemDetails.length === 0) {
+      return NextResponse.json({ error: 'Carrinho inválido' }, { status: 400 })
+    }
+
+    const hasPhysicalItems = itemDetails.some(({ variant }) => variant.product.type === 'PHYSICAL')
+
+    if (hasPhysicalItems) {
+      if (!cart.shipping?.serviceId) {
+        return NextResponse.json({ error: 'Calcule e selecione o frete antes de finalizar a compra.' }, { status: 400 })
+      }
+    }
+
+    let couponRecord: { id: string; code: string } | null = null
+    if (cart.couponCode) {
+      const coupon = await prisma.coupon.findUnique({ where: { code: cart.couponCode } })
+      const now = new Date()
+      if (
+        coupon &&
+        coupon.active &&
+        coupon.validFrom <= now &&
+        coupon.validUntil >= now
+      ) {
+        if (coupon.usageLimit != null) {
+          const usageCount = await prisma.couponUsage.count({ where: { couponId: coupon.id } })
+          if (usageCount >= coupon.usageLimit) {
+            return NextResponse.json({ error: 'Cupom atingiu o limite de uso.' }, { status: 400 })
+          }
+        }
+        couponRecord = { id: coupon.id, code: coupon.code }
+      } else {
+        return NextResponse.json({ error: 'Cupom inválido.' }, { status: 400 })
+      }
+    }
+
+    if (couponRecord && totals.discount <= 0) {
+      return NextResponse.json({ error: 'Cupom não se aplica ao carrinho atual.' }, { status: 400 })
+    }
+
+    const orderNumber = generateOrderNumber()
+
+    const itemsToCreate = itemDetails.map(({ item, variant }) => {
+      const lineTotal = Number(variant.price) * item.quantity
+      return {
+        productId: variant.productId,
+        variantId: variant.id,
+        name: `${variant.product.name}${variant.name ? ` - ${variant.name}` : ''}`,
+        price: variant.price,
+        quantity: item.quantity,
+        total: lineTotal,
+      }
+    })
+
+    const metadata: Record<string, any> = {}
+    if (enrollCourseIds && Array.isArray(enrollCourseIds) && enrollCourseIds.length > 0) {
+      metadata.enrollCourseIds = enrollCourseIds
+    }
+    if (cart.shipping?.serviceId) {
+      metadata.shippingOption = {
+        serviceId: cart.shipping.serviceId,
+        service: cart.shipping.service,
+        carrier: cart.shipping.carrier ?? null,
+        deliveryDays: cart.shipping.deliveryDays ?? null,
+        price: cart.shipping.price,
+      }
+    }
+
+    const { order } = await prisma.$transaction(async (tx) => {
+      const billingRecord = billingAddress
+        ? await tx.address.create({
             data: {
               userId: customer.userId || undefined,
               name: 'Cobrança',
@@ -52,9 +144,10 @@ export async function POST(request: NextRequest) {
               country: 'BR',
             },
           })
-        : null,
-      shippingAddress
-        ? prisma.address.create({
+        : null
+
+      const shippingRecord = shippingAddress
+        ? await tx.address.create({
             data: {
               userId: customer.userId || undefined,
               name: 'Entrega',
@@ -68,48 +161,47 @@ export async function POST(request: NextRequest) {
               country: 'BR',
             },
           })
-        : null,
-    ])
+        : null
 
-    const orderNumber = generateOrderNumber()
-
-    // Create order and items
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: customer.userId || undefined,
-        status: 'PENDING',
-        subtotal: totals.subtotal,
-        shipping: totals.shipping,
-        discount: totals.discount,
-        total: totals.total,
-        customerEmail: customer.email,
-        customerName: customer.name,
-        customerPhone: customer.phone || null,
-        customerDocument: customer.document || null,
-        billingAddressId: billing?.id || null,
-        shippingAddressId: shipping?.id || null,
-        notes: notes || null,
-        metadata: enrollCourseIds && Array.isArray(enrollCourseIds) && enrollCourseIds.length > 0 ? { enrollCourseIds } : undefined,
-        items: {
-          create: await Promise.all(
-            cart.items.map(async (i) => {
-              const variant = await prisma.productVariant.findUnique({ include: { product: true }, where: { id: i.variantId } })
-              if (!variant) throw new Error('Variante inválida')
-              const lineTotal = Number(variant.price) * i.quantity
-              return {
-                productId: variant.productId,
-                variantId: variant.id,
-                name: `${variant.product.name} - ${variant.name}`,
-                price: variant.price,
-                quantity: i.quantity,
-                total: lineTotal,
-              }
-            })
-          ),
+      const createdOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          userId: customer.userId || undefined,
+          status: 'PENDING',
+          subtotal: totals.subtotal,
+          shipping: totals.shipping,
+          discount: totals.discount,
+          total: totals.total,
+          customerEmail: customer.email,
+          customerName: customer.name,
+          customerPhone: customer.phone || null,
+          customerDocument: customer.document || null,
+          billingAddressId: billingRecord?.id || null,
+          shippingAddressId: shippingRecord?.id || null,
+          notes: notes || null,
+          metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+          items: {
+            create: itemsToCreate,
+          },
         },
-      },
-      include: { items: true },
+        include: { items: true },
+      })
+
+      if (couponRecord && totals.discount > 0) {
+        await tx.couponUsage.create({
+          data: {
+            couponId: couponRecord.id,
+            orderId: createdOrder.id,
+            discount: totals.discount,
+          },
+        })
+        await tx.coupon.update({
+          where: { id: couponRecord.id },
+          data: { usageCount: { increment: 1 } },
+        })
+      }
+
+      return { order: createdOrder }
     })
 
     // E-mail: pedido criado

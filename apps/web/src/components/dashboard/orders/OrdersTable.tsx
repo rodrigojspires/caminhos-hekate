@@ -7,6 +7,14 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { Loader2, Receipt, ShoppingBag } from 'lucide-react'
+import { Loader2, PackageSearch, Receipt, ShoppingBag } from 'lucide-react'
 
 export type OrderStatus =
   | 'PENDING'
@@ -84,11 +92,11 @@ interface OrdersTableProps {
 }
 
 const orderStatusConfig: Record<OrderStatus, { label: string; className: string }> = {
-  PENDING: { label: 'Pendente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  PROCESSING: { label: 'Processando', className: 'bg-sky-100 text-sky-800 border-sky-200' },
-  PAID: { label: 'Pago', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  PENDING: { label: 'Aguardando pagamento', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  PAID: { label: 'Pagamento efetuado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  PROCESSING: { label: 'Aguardando envio', className: 'bg-sky-100 text-sky-800 border-sky-200' },
   SHIPPED: { label: 'Enviado', className: 'bg-violet-100 text-violet-800 border-violet-200' },
-  DELIVERED: { label: 'Entregue', className: 'bg-green-100 text-green-800 border-green-200' },
+  DELIVERED: { label: 'Concluído', className: 'bg-green-100 text-green-800 border-green-200' },
   CANCELLED: { label: 'Cancelado', className: 'bg-rose-100 text-rose-800 border-rose-200' },
   REFUNDED: { label: 'Reembolsado', className: 'bg-slate-100 text-slate-700 border-slate-200' },
 }
@@ -114,6 +122,8 @@ const transactionStatusConfig: Record<TransactionStatus, { label: string; classN
 export function OrdersTable({ orders }: OrdersTableProps) {
   const router = useRouter()
   const [payingId, setPayingId] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsOrder, setDetailsOrder] = useState<OrderRow | null>(null)
 
   const handlePay = async (orderId: string) => {
     try {
@@ -139,7 +149,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
     }
   }
 
-  const canPay = (status: OrderStatus) => ['PENDING', 'PROCESSING'].includes(status)
+  const canPay = (status: OrderStatus) => status === 'PENDING'
 
   if (!orders.length) {
     return (
@@ -153,8 +163,9 @@ export function OrdersTable({ orders }: OrdersTableProps) {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <>
+      <div className="rounded-md border">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Pedido</TableHead>
@@ -247,6 +258,17 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                       )}
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDetailsOrder(order)
+                      setDetailsOpen(true)
+                    }}
+                  >
+                    <PackageSearch className="mr-2 h-4 w-4" />
+                    Itens
+                  </Button>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/pedido/${order.id}/recibo`}>
                       <Receipt className="mr-2 h-4 w-4" />
@@ -258,7 +280,73 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             )
           })}
         </TableBody>
-      </Table>
-    </div>
+        </Table>
+      </div>
+
+      <Dialog
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open)
+          if (!open) {
+            setDetailsOrder(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {detailsOrder ? `Itens do pedido ${detailsOrder.orderNumber}` : 'Itens do pedido'}
+            </DialogTitle>
+            {detailsOrder && (
+              <DialogDescription>
+                Realizado em {formatDateTime(detailsOrder.createdAt)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {detailsOrder ? (
+            <div className="space-y-4">
+              <ScrollArea className="max-h-64 pr-2">
+                <div className="space-y-3 text-sm">
+                  {detailsOrder.items.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-4 rounded border p-3">
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.quantity}x {formatCurrency(item.price)}
+                        </div>
+                      </div>
+                      <div className="font-semibold">{formatCurrency(item.total)}</div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(detailsOrder.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Frete</span>
+                  <span>{formatCurrency(detailsOrder.shipping)}</span>
+                </div>
+                {detailsOrder.discount > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Desconto</span>
+                    <span>- {formatCurrency(detailsOrder.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-2 font-semibold">
+                  <span>Total</span>
+                  <span>{formatCurrency(detailsOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Selecione um pedido para visualizar os itens.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

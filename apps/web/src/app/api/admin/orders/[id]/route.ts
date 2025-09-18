@@ -6,7 +6,13 @@ import { z } from 'zod'
 
 // Schema de validação para atualização de pedido
 const updateOrderSchema = z.object({
-  status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED']).optional(),
+  trackingInfo: z
+    .union([
+      z.string().trim().max(255, 'O rastreio deve ter no máximo 255 caracteres'),
+      z.literal(null),
+    ])
+    .optional(),
 })
 
 // Verificar se usuário tem permissão de admin
@@ -115,6 +121,34 @@ export async function PUT(
     }
     
     const data = updateOrderSchema.parse(body)
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhum dado foi enviado para atualização' },
+        { status: 400 }
+      )
+    }
+
+    const updatePayload: Record<string, unknown> = {}
+
+    if (data.status) {
+      updatePayload.status = data.status
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'trackingInfo')) {
+      if (typeof data.trackingInfo === 'string') {
+        updatePayload.trackingInfo = data.trackingInfo.length > 0 ? data.trackingInfo : null
+      } else {
+        updatePayload.trackingInfo = null
+      }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhum dado válido foi enviado para atualização' },
+        { status: 400 }
+      )
+    }
     
     // Verificar se o pedido existe
     const existingOrder = await prisma.order.findUnique({
@@ -132,8 +166,7 @@ export async function PUT(
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
-        ...data,
-        updatedAt: new Date()
+        ...updatePayload,
       },
       include: {
         user: {
@@ -142,6 +175,7 @@ export async function PUT(
             name: true,
             email: true,
             image: true,
+            subscriptionTier: true,
           }
         },
         items: {
@@ -150,6 +184,17 @@ export async function PUT(
               select: {
                 id: true,
                 name: true,
+                description: true,
+                images: true,
+                sku: true,
+                price: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  }
+                },
               }
             }
           }
@@ -157,9 +202,20 @@ export async function PUT(
       }
     })
     
+    const stats = {
+      totalItems: updatedOrder.items.reduce((sum, item) => sum + item.quantity, 0),
+      totalProducts: updatedOrder.items.length,
+      averageItemPrice: updatedOrder.items.length > 0
+        ? updatedOrder.items.reduce((sum, item) => sum + Number(item.price), 0) / updatedOrder.items.length
+        : 0,
+    }
+    
     return NextResponse.json({
       message: 'Pedido atualizado com sucesso',
-      order: updatedOrder
+      order: {
+        ...updatedOrder,
+        stats,
+      }
     })
     
   } catch (error) {

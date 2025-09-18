@@ -21,6 +21,7 @@ async function enrich(cart: any) {
           name: variant.product.name,
           slug: variant.product.slug,
           images: Array.isArray(variant.product.images) ? variant.product.images : [],
+          type: variant.product.type,
         } : null,
       }
     })
@@ -33,7 +34,11 @@ export async function GET() {
   const cart = getCartFromCookie()
   if (cart.shipping?.cep) {
     try {
-      cart.shipping = await calculateShipping(cart.shipping.cep, cart.items)
+      cart.shipping = await calculateShipping(
+        cart.shipping.cep,
+        cart.items,
+        cart.shipping.serviceId,
+      )
       setCartToCookie(cart)
     } catch (error) {
       console.error('GET /api/shop/cart shipping recalculation failed', error)
@@ -58,6 +63,17 @@ export async function POST(request: NextRequest) {
     if (existing) existing.quantity += Number(quantity)
     else cart.items.push({ productId, variantId, quantity: Number(quantity) })
     cart.items = await validateAndNormalizeItems(cart.items)
+    if (cart.shipping?.cep) {
+      try {
+        cart.shipping = await calculateShipping(
+          cart.shipping.cep,
+          cart.items,
+          cart.shipping.serviceId,
+        )
+      } catch (error) {
+        console.error('POST /api/shop/cart shipping recalculation failed', error)
+      }
+    }
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
     const withDetails = await enrich(cart)
@@ -74,6 +90,17 @@ export async function PUT(request: NextRequest) {
     const { items } = body as { items: CartItem[] }
     const cart = getCartFromCookie()
     cart.items = await validateAndNormalizeItems(items || [])
+    if (cart.shipping?.cep) {
+      try {
+        cart.shipping = await calculateShipping(
+          cart.shipping.cep,
+          cart.items,
+          cart.shipping.serviceId,
+        )
+      } catch (error) {
+        console.error('PUT /api/shop/cart shipping recalculation failed', error)
+      }
+    }
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
     const withDetails = await enrich(cart)
