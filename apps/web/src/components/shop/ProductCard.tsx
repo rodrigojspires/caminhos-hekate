@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
 
 type Product = {
   id: string
@@ -31,12 +32,16 @@ export default function ProductCard({ product }: { product: Product }) {
       const variants = (full?.variants || []).filter((v: any) => v.active)
       if (!variants.length) return
       const chosen = variants.find((v: any) => v.stock > 0) || variants[0]
-      await fetch('/api/shop/cart', {
+      const cartRes = await fetch('/api/shop/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: full.id, variantId: chosen.id, quantity: 1 }),
       })
-      setAdded(true)
+      if (cartRes.ok) {
+        const payload = await cartRes.json().catch(() => null)
+        if (payload?.cart) broadcastCartUpdate(payload.cart)
+        setAdded(true)
+      }
     } finally {
       setAdding(false)
       setTimeout(() => setAdded(false), 2000)
@@ -74,4 +79,3 @@ export default function ProductCard({ product }: { product: Product }) {
     </div>
   )
 }
-

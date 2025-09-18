@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import CommandPalette from '@/components/search/CommandPalette'
+import { CART_UPDATED_EVENT } from '@/lib/shop/client/cartEvents'
 
 const navigation = [
   { name: 'Início', href: '/' },
@@ -51,9 +52,19 @@ export function PublicHeader() {
     const onVisible = () => document.visibilityState === 'visible' && refreshCartCount()
     const interval = setInterval(refreshCartCount, 30000)
     document.addEventListener('visibilitychange', onVisible)
+    const onCartUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ count?: number }>).detail
+      if (detail?.count !== undefined) {
+        setCartCount(detail.count)
+      } else {
+        refreshCartCount()
+      }
+    }
+    window.addEventListener(CART_UPDATED_EVENT, onCartUpdated as EventListener)
     return () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener(CART_UPDATED_EVENT, onCartUpdated as EventListener)
     }
   }, [])
 

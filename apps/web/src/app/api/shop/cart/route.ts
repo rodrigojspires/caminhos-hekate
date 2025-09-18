@@ -86,9 +86,21 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { variantId } = await request.json()
+    const body = await request
+      .json()
+      .catch(() => ({}) as { variantId?: string; clear?: boolean })
+
+    const { variantId, clear } = body || {}
     const cart = getCartFromCookie()
-    cart.items = cart.items.filter((i) => i.variantId !== variantId)
+
+    if (clear || !variantId) {
+      cart.items = []
+      cart.couponCode = null
+      cart.shipping = null
+    } else {
+      cart.items = cart.items.filter((i) => i.variantId !== variantId)
+    }
+
     setCartToCookie(cart)
     const totals = await computeTotals(cart)
     const withDetails = await enrich(cart)

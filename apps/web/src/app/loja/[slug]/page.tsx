@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const [product, setProduct] = useState<any>(null)
@@ -55,11 +56,15 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   const addToCart = async () => {
     if (!variantId) return
-    await fetch('/api/shop/cart', {
+    const cartRes = await fetch('/api/shop/cart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId: product.id, variantId, quantity: qty }),
     })
+    if (cartRes.ok) {
+      const payload = await cartRes.json().catch(() => null)
+      if (payload?.cart) broadcastCartUpdate(payload.cart)
+    }
     router.push('/carrinho')
   }
 
