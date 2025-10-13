@@ -131,6 +131,9 @@ export async function POST(request: NextRequest) {
         price: cart.shipping.price,
       }
     }
+    if (couponRecord) {
+      metadata.couponCode = couponRecord.code
+    }
 
     const { order } = await prisma.$transaction(async (tx) => {
       const billingRecord = billingAddress
@@ -180,7 +183,6 @@ export async function POST(request: NextRequest) {
         customerDocument: customer.document || null,
         notes: notes || null,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-        couponCode: couponRecord?.code ?? null,
         items: {
           create: itemsToCreate,
         },
