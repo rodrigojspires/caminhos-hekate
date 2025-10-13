@@ -11,9 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { Menu, Search, Settings, User, LogOut } from 'lucide-react'
+import { Menu, Search, Settings, User, LogOut, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { useAdminSession } from '@/hooks/use-admin-session'
@@ -63,8 +61,13 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Theme Toggle */}
-        <ThemeToggle variant="button" size="sm" />
+        {/* Store Shortcut */}
+        <Button variant="secondary" size="sm" asChild>
+          <Link href="/loja" className="flex items-center gap-2">
+            <ShoppingBag className="h-4 w-4" />
+            Loja
+          </Link>
+        </Button>
         
         {/* Go to Admin Panel (only for admins/editors) */}
         {hasAdminAccess && (

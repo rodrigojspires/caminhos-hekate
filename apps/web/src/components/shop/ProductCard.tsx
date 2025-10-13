@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
+import { Badge } from '@/components/ui/badge'
 
 type Product = {
   id: string
@@ -13,6 +14,7 @@ type Product = {
   priceRange: { min: number; max: number }
   inStock?: boolean
   badge?: string | null
+  type: 'DIGITAL' | 'PHYSICAL'
 }
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -48,6 +50,17 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   }
 
+  const typeMeta =
+    product.type === 'DIGITAL'
+      ? {
+          label: 'Produto Digital',
+          className: 'border-indigo-400/40 bg-indigo-500/10 text-indigo-200',
+        }
+      : {
+          label: 'Produto Físico',
+          className: 'border-amber-400/40 bg-amber-500/10 text-amber-100',
+        }
+
   return (
     <div className="card-mystic-3d p-4 h-full flex flex-col">
       <div className="relative aspect-square bg-hekate-gray-900 rounded mb-3 overflow-hidden">
@@ -63,6 +76,11 @@ export default function ProductCard({ product }: { product: Product }) {
       <Link href={`/loja/${product.slug}`} className="font-medium text-hekate-pearl hover:text-hekate-gold transition-colors line-clamp-2">
         {product.name}
       </Link>
+      <div className="mt-2">
+        <Badge variant="outline" className={`uppercase tracking-wide ${typeMeta.className}`}>
+          {typeMeta.label}
+        </Badge>
+      </div>
       <div className="mt-1 text-hekate-gold font-semibold">{priceLabel}</div>
       <div className="mt-3 flex gap-2">
         <button

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Menu, X, User, LogOut, Settings, BookOpen, ShoppingCart } from 'lucide-react'
+import { Menu, X, User, LogOut, Settings, BookOpen, ShoppingCart, ShoppingBag } from 'lucide-react'
 import { TripleMoonIcon } from '@/components/icons/Esoteric'
 import {
   DropdownMenu,
@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 import CommandPalette from '@/components/search/CommandPalette'
 import { CART_UPDATED_EVENT } from '@/lib/shop/client/cartEvents'
 
@@ -110,7 +109,12 @@ export function PublicHeader() {
             Buscar
             <span className="ml-2 text-xs text-muted-foreground">Ctrl+K</span>
           </button>
-          <ThemeToggle variant="button" size="sm" />
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/loja" className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4" />
+              Loja
+            </Link>
+          </Button>
           {/* Cart Icon */}
           <Link href="/carrinho" className="relative inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-muted">
             <ShoppingCart className="h-5 w-5" />

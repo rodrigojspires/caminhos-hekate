@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
@@ -70,6 +71,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   if (!product) return <div className="container mx-auto py-8">Carregando...</div>
 
+  const typeMeta =
+    product?.type === 'DIGITAL'
+      ? {
+          label: 'Produto Digital',
+          className: 'border-indigo-400/40 bg-indigo-500/10 text-indigo-200',
+        }
+      : {
+          label: 'Produto Físico',
+          className: 'border-amber-400/40 bg-amber-500/10 text-amber-100',
+        }
+
   return (
     <div className="container mx-auto py-8">
       {/* JSON-LD Product */}
@@ -119,7 +131,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           )}
         </div>
         <div>
-          <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold">{product.name}</h1>
+            <Badge variant="outline" className={`uppercase tracking-wide ${typeMeta.className}`}>
+              {typeMeta.label}
+            </Badge>
+          </div>
           <p className="text-muted-foreground mb-4">{product.shortDescription || product.description}</p>
 
           {/* Linha com seleção/quantidade à esquerda e preço à direita */}
