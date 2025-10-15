@@ -74,7 +74,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Record<
             </Suspense>
             {/* Ritual footer */}
             <div className="mt-12 text-center">
-              <p className="font-serif text-hekate-pearl/80">“Cada produto é um portal. Escolha com consciência.”</p>
+    <p className="font-serif text-hekate-pearl/80">“Cada produto é feito com toda energia e consagração”</p>
             </div>
           </section>
         </div>

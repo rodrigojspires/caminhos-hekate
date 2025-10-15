@@ -68,6 +68,7 @@ export interface OrderRow {
   total: number
   createdAt: string
   updatedAt: string
+  trackingInfo?: string | null
   items: OrderItem[]
   payment: {
     id: string
@@ -193,6 +194,22 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   <Badge variant="secondary" className={statusCfg.className}>
                     {statusCfg.label}
                   </Badge>
+                  {order.trackingInfo ? (
+                    <div className="mt-1 text-xs text-muted-foreground break-all">
+                      {order.trackingInfo.startsWith('http') ? (
+                        <a
+                          href={order.trackingInfo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Acompanhar envio
+                        </a>
+                      ) : (
+                        <>Rastreio: {order.trackingInfo}</>
+                      )}
+                    </div>
+                  ) : null}
                 </TableCell>
                 <TableCell className="flex items-center justify-end gap-2">
                   {canPay(order.status) && (
@@ -273,6 +290,24 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   ))}
                 </div>
               </ScrollArea>
+
+              {detailsOrder.trackingInfo ? (
+                <div className="rounded border border-dashed px-3 py-2 text-xs">
+                  <span className="font-semibold text-muted-foreground">Rastreamento:</span>{' '}
+                  {detailsOrder.trackingInfo.startsWith('http') ? (
+                    <a
+                      href={detailsOrder.trackingInfo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      Acompanhar envio
+                    </a>
+                  ) : (
+                    <span className="font-mono">{detailsOrder.trackingInfo}</span>
+                  )}
+                </div>
+              ) : null}
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">

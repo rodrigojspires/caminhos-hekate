@@ -64,6 +64,7 @@ export async function GET(_request: NextRequest) {
         total: Number(order.total),
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),
+        trackingInfo: order.trackingInfo ?? null,
         items: order.items.map((item) => ({
           id: item.id,
           name: item.name,

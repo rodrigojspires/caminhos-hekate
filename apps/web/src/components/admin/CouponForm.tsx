@@ -19,20 +19,48 @@ export type Coupon = {
   active: boolean
 }
 
+function formatDateTimeLocal(value?: string | Date) {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+function toISOStringOrUndefined(value?: string) {
+  if (!value) return undefined
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
+}
+
 export default function CouponForm({ initial, onSubmit, onCancel }: { initial?: Partial<Coupon>; onSubmit: (c: Partial<Coupon>) => Promise<void>; onCancel: () => void }) {
   const [form, setForm] = useState<Partial<Coupon>>({
     code: initial?.code || '',
     description: initial?.description || '',
     discountType: (initial?.discountType as any) || 'PERCENT',
-    discountValue: initial?.discountValue ?? 0,
-    minPurchase: initial?.minPurchase ?? undefined,
-    maxDiscount: initial?.maxDiscount ?? undefined,
-    usageLimit: initial?.usageLimit ?? undefined,
-    validFrom: initial?.validFrom || new Date().toISOString().slice(0, 16),
-    validUntil: initial?.validUntil || new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    discountValue: initial?.discountValue != null ? Number(initial.discountValue) : 0,
+    minPurchase: initial?.minPurchase != null ? Number(initial.minPurchase) : undefined,
+    maxDiscount: initial?.maxDiscount != null ? Number(initial.maxDiscount) : undefined,
+    usageLimit: initial?.usageLimit != null ? Number(initial.usageLimit) : undefined,
+    validFrom: formatDateTimeLocal(initial?.validFrom || new Date()),
+    validUntil: formatDateTimeLocal(initial?.validUntil || new Date(Date.now() + 86400000)),
     active: initial?.active ?? true,
   })
   const set = (k: keyof Coupon, v: any) => setForm(prev => ({ ...prev, [k]: v }))
+
+  const handleSubmit = () => {
+    const payload: Partial<Coupon> = {
+      ...form,
+      discountValue: form.discountValue != null ? Number(form.discountValue) : 0,
+      minPurchase: form.minPurchase === undefined ? undefined : Number(form.minPurchase),
+      maxDiscount: form.maxDiscount === undefined ? undefined : Number(form.maxDiscount),
+      usageLimit: form.usageLimit === undefined ? undefined : Number(form.usageLimit),
+      validFrom: toISOStringOrUndefined(form.validFrom),
+      validUntil: toISOStringOrUndefined(form.validUntil),
+    }
+    onSubmit(payload)
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -80,9 +108,8 @@ export default function CouponForm({ initial, onSubmit, onCancel }: { initial?: 
       </div>
       <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-2">
         <Button variant="outline" onClick={onCancel}>Cancelar</Button>
-        <Button onClick={() => onSubmit(form)}>Salvar</Button>
+        <Button onClick={handleSubmit}>Salvar</Button>
       </div>
     </div>
   )
 }
-

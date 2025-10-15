@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
@@ -104,6 +104,10 @@ interface Order {
     totalProducts: number
     averageItemPrice: number
   }
+  subtotal?: number | null
+  shipping?: number | null
+  discount?: number | null
+  metadata?: Record<string, any> | null
 }
 
 const statusColors = {
@@ -149,8 +153,25 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const [savingTracking, setSavingTracking] = useState(false)
   const [trackingInput, setTrackingInput] = useState('')
 
+  const parseNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0
+    if (typeof value === 'number') return value
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
   const normalizeOrder = (rawOrder: any): Order => {
-    const items: OrderItem[] = rawOrder.items ?? rawOrder.orderItems ?? []
+    const items: OrderItem[] = (rawOrder.items ?? rawOrder.orderItems ?? []).map((item: any) => ({
+      ...item,
+      price: parseNumber(item.price),
+      quantity: Number(item.quantity ?? 0),
+      product: item.product
+        ? {
+            ...item.product,
+            price: parseNumber(item.product.price),
+          }
+        : item.product,
+    }))
 
     const stats = rawOrder.stats ?? {
       totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
@@ -162,6 +183,11 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
     return {
       ...rawOrder,
+      total: parseNumber(rawOrder.total),
+      subtotal: rawOrder.subtotal != null ? parseNumber(rawOrder.subtotal) : null,
+      shipping: rawOrder.shipping != null ? parseNumber(rawOrder.shipping) : null,
+      discount: rawOrder.discount != null ? parseNumber(rawOrder.discount) : null,
+      metadata: rawOrder.metadata ?? null,
       user: rawOrder.user ?? null,
       items,
       stats,
@@ -330,6 +356,20 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       minute: '2-digit',
     })
   }
+
+  const shippingOption = useMemo(() => {
+    if (!order?.metadata || typeof order.metadata !== 'object') return null
+    const metadata = order.metadata as Record<string, any>
+    const option = metadata.shippingOption
+    if (!option || typeof option !== 'object') return null
+    return option as {
+      serviceId?: string
+      service?: string
+      carrier?: string | null
+      deliveryDays?: number | null
+      price?: number | string | null
+    }
+  }, [order?.metadata, order?.shipping])
 
   if (loading) {
     return (
@@ -542,6 +582,53 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   {formatDate(order.updatedAt)}
                 </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Modalidade de frete</label>
+              <div className="mt-2 rounded-md border border-dashed border-muted-foreground/20 bg-muted/20 p-3">
+                {shippingOption ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="font-medium">
+                      {shippingOption.service || 'Serviço não informado'}
+                      {shippingOption.carrier ? (
+                        <span className="text-muted-foreground"> • {shippingOption.carrier}</span>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-1">
+                      {shippingOption.serviceId ? (
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Código do serviço</span>
+                          <span className="font-mono text-xs">{shippingOption.serviceId}</span>
+                        </div>
+                      ) : null}
+                      {shippingOption.deliveryDays != null ? (
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Prazo estimado</span>
+                          <span>
+                            {shippingOption.deliveryDays}{' '}
+                            {shippingOption.deliveryDays === 1 ? 'dia útil' : 'dias úteis'}
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">Valor</span>
+                        <span className="font-semibold">
+                          {formatCurrency(
+                            shippingOption.price != null
+                              ? parseNumber(shippingOption.price)
+                              : parseNumber(order?.shipping ?? 0)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma modalidade de frete registrada para este pedido.
+                  </p>
+                )}
               </div>
             </div>
 
