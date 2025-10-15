@@ -1,4 +1,5 @@
-import { prisma } from '@hekate/database'
+import { notificationService } from '@/lib/notifications/notification-service'
+import { NotificationPriority, NotificationType } from '@prisma/client'
 
 // Função para notificar usuários (para uso interno)
 export async function notifyUsers(notification: {
@@ -13,17 +14,19 @@ export async function notifyUsers(notification: {
   // Por enquanto, apenas salva no banco - o polling pegará automaticamente
   
   if (notification.userId) {
-    await prisma.notification.create({
-      data: {
+    try {
+      await notificationService.createNotification({
         userId: notification.userId,
-        type: notification.type as any,
+        type: (notification.type as NotificationType) ?? 'SYSTEM_ANNOUNCEMENT',
         title: notification.title,
-        content: notification.content,
-        status: 'sent',
-        channel: 'EMAIL',
-        metadata: notification.metadata || {}
-      }
-    })
+        message: notification.content,
+        data: notification.metadata || {},
+        priority: NotificationPriority.MEDIUM,
+        isPush: false,
+      })
+    } catch (error) {
+      console.error('notifyUsers: failed to create notification', error)
+    }
   }
 }
 

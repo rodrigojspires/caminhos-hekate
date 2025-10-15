@@ -220,10 +220,14 @@ export async function PUT(
     const hasTrackingAfterUpdate = typeof updatedOrder.trackingInfo === 'string' && updatedOrder.trackingInfo.trim().length > 0
     const statusForNotifications = (data.status as OrderStatus) || (updatedOrder.status as OrderStatus)
 
-    const shouldSendStatusEmail = statusChanged && data.status
-      ? !(data.status === 'SHIPPED' && !hasTrackingAfterUpdate)
+    const shouldNotifyStatus = statusChanged && !!data.status
+    const shouldNotifyTracking = !statusChanged && trackingProvided && hasTrackingAfterUpdate && updatedOrder.status === 'SHIPPED'
+    const shouldNotify = shouldNotifyStatus || shouldNotifyTracking
+
+    const shouldSendStatusEmail = shouldNotifyStatus
+      ? !(statusForNotifications === 'SHIPPED' && !hasTrackingAfterUpdate)
       : false
-    const shouldSendTrackingEmail = !statusChanged && trackingProvided && hasTrackingAfterUpdate && updatedOrder.status === 'SHIPPED'
+    const shouldSendTrackingEmail = shouldNotifyTracking
     const shouldSendEmail = shouldSendStatusEmail || shouldSendTrackingEmail
 
     if (shouldSendEmail) {
@@ -250,29 +254,35 @@ export async function PUT(
         }
       }
 
-      if (updatedOrder.user?.id) {
-        const statusLabel = ORDER_STATUS_LABELS[statusForNotifications] || statusForNotifications
-        const trackingSnippet = hasTrackingAfterUpdate
-          ? updatedOrder.trackingInfo!.startsWith('http')
-            ? ` Acompanhe em ${updatedOrder.trackingInfo}.`
-            : ` Código de rastreio: ${updatedOrder.trackingInfo}.`
-          : ''
-        try {
-          await notifyUsers({
-            userId: updatedOrder.user.id,
-            type: 'ORDER_STATUS',
-            title: `Status do pedido ${updatedOrder.orderNumber}`,
-            content: `Seu pedido agora está em "${statusLabel}".${trackingSnippet}`,
-            metadata: {
-              orderId: updatedOrder.id,
-              orderNumber: updatedOrder.orderNumber,
-              status: statusForNotifications,
-              trackingInfo: updatedOrder.trackingInfo ?? null,
-            },
-          })
-        } catch (notificationError) {
-          console.error('Erro ao criar notificação de status de pedido:', notificationError)
-        }
+    }
+
+    if (shouldNotify && updatedOrder.user?.id) {
+      const statusLabel = ORDER_STATUS_LABELS[statusForNotifications] || statusForNotifications
+      const trackingSnippet = hasTrackingAfterUpdate
+        ? updatedOrder.trackingInfo!.startsWith('http')
+          ? ` Acompanhe em ${updatedOrder.trackingInfo}.`
+          : ` Código de rastreio: ${updatedOrder.trackingInfo}.`
+        : ''
+      const baseMessage = shouldNotifyStatus
+        ? `Seu pedido agora está em "${statusLabel}".`
+        : 'Atualizamos as informações de rastreamento do seu pedido.'
+      const notificationContent = `${baseMessage}${trackingSnippet}`
+
+      try {
+        await notifyUsers({
+          userId: updatedOrder.user.id,
+          type: 'ORDER_STATUS',
+          title: `Status do pedido ${updatedOrder.orderNumber}`,
+          content: notificationContent,
+          metadata: {
+            orderId: updatedOrder.id,
+            orderNumber: updatedOrder.orderNumber,
+            status: statusForNotifications,
+            trackingInfo: updatedOrder.trackingInfo ?? null,
+          },
+        })
+      } catch (notificationError) {
+        console.error('Erro ao criar notificação de status de pedido:', notificationError)
       }
     }
     

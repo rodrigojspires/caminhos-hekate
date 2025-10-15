@@ -3,6 +3,8 @@ import { prisma } from '@hekate/database'
 import { getCartFromCookie, computeTotals, clearCart } from '@/lib/shop/cart'
 import { calculateShipping } from '@/lib/shop/shipping'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
+import { notifyUsers } from '@/lib/notifications'
+import { ORDER_STATUS_LABELS } from '@/lib/shop/orderStatusNotifications'
 
 function generateOrderNumber() {
   const d = new Date()
@@ -246,6 +248,25 @@ export async function POST(request: NextRequest) {
       } as any)
     } catch (e) {
       console.error('Erro ao enviar e-mail de pedido criado:', e)
+    }
+
+    if (customer.userId) {
+      try {
+        await notifyUsers({
+          userId: customer.userId,
+          type: 'ORDER_STATUS',
+          title: `Pedido ${order.orderNumber} criado`,
+          content: `Recebemos seu pedido e ele está em "${ORDER_STATUS_LABELS.PENDING}". Avisaremos sobre novas atualizações aqui mesmo.`,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: 'PENDING',
+            trackingInfo: null,
+          },
+        })
+      } catch (error) {
+        console.error('Erro ao criar notificação inicial do pedido:', error)
+      }
     }
 
     // Create payment preference on MercadoPago
