@@ -43,23 +43,10 @@ const statusMessages: Record<OrderStatus, { title: string; description: (params:
   },
   SHIPPED: {
     title: 'pedido enviado',
-    description: ({ trackingInfo }) => {
-      const hasLink = !!trackingInfo && trackingInfo.startsWith('http')
-      const trackingHtml = trackingInfo
-        ? hasLink
-          ? ` Você pode acompanhar em <a href="${trackingInfo}" target="_blank" rel="noopener noreferrer">${trackingInfo}</a>.`
-          : ` Código de rastreio: <strong>${trackingInfo}</strong>.`
-        : ''
-      const trackingText = trackingInfo
-        ? hasLink
-          ? ` Você pode acompanhar em ${trackingInfo}.`
-          : ` Código de rastreio: ${trackingInfo}.`
-        : ''
-      return {
-        html: `Seu pedido foi despachado e já está a caminho.${trackingHtml}`,
-        text: `Seu pedido foi despachado e já está a caminho.${trackingText}`,
-      }
-    },
+    description: () => ({
+      html: 'Seu pedido foi despachado e já está a caminho.',
+      text: 'Seu pedido foi despachado e já está a caminho.',
+    }),
   },
   DELIVERED: {
     title: 'pedido entregue',
@@ -92,19 +79,33 @@ export function buildOrderStatusEmail(status: OrderStatus, params: StatusEmailPa
   const introHtml = `<p>${displayName},</p>`
   const introText = `${displayName},`
 
-  const { html, text } = template.description(params)
+  const { html: baseHtml, text: baseText } = template.description(params)
+
+  let trackingHtml = ''
+  let trackingText = ''
+  if (params.trackingInfo) {
+    const isLink = params.trackingInfo.startsWith('http')
+    if (isLink) {
+      trackingHtml = `<p>Você pode acompanhar o envio em <a href="${params.trackingInfo}" target="_blank" rel="noopener noreferrer">${params.trackingInfo}</a>.</p>`
+      trackingText = `\nVocê pode acompanhar o envio em ${params.trackingInfo}.`
+    } else {
+      trackingHtml = `<p>Código de rastreio: <strong>${params.trackingInfo}</strong>.</p>`
+      trackingText = `\nCódigo de rastreio: ${params.trackingInfo}.`
+    }
+  }
 
   const subject = `Atualização do pedido ${params.orderNumber} • ${template.title}`
   const htmlContent = `${introHtml}
     <p>Atualizamos o status do seu pedido <strong>${params.orderNumber}</strong> para <strong>${template.title}</strong>.</p>
-    <p>${html}</p>
+    <p>${baseHtml}</p>
+    ${trackingHtml}
     <p>Caso precise de suporte, estamos à disposição.</p>
     <p>Equipe Caminhos de Hekate</p>`
 
   const textContent = `${introText}
 
 Atualizamos o status do seu pedido ${params.orderNumber} para ${template.title}.
-${text}
+${baseText}${trackingText}
 
 Caso precise de suporte, estamos à disposição.
 
