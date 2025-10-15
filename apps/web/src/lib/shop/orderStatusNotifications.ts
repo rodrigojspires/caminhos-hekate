@@ -19,6 +19,16 @@ interface StatusEmailContent {
   textContent: string
 }
 
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: 'Aguardando pagamento',
+  PAID: 'Pagamento confirmado',
+  PROCESSING: 'Pedido em preparação',
+  SHIPPED: 'Pedido enviado',
+  DELIVERED: 'Pedido entregue',
+  CANCELLED: 'Pedido cancelado',
+  REFUNDED: 'Pedido reembolsado',
+}
+
 const statusMessages: Record<OrderStatus, { title: string; description: (params: StatusEmailParams) => { html: string; text: string } }> = {
   PENDING: {
     title: 'pedido aguardando pagamento',

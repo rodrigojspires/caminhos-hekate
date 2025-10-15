@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { withAdminAuth } from '@/lib/auth-middleware'
-import { buildOrderStatusEmail, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
+import { buildOrderStatusEmail, ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
+import { notifyUsers } from '@/lib/notifications'
 
 // Schema de validação para filtros
 const querySchema = z.object({
@@ -165,6 +166,7 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
       },
       select: {
         id: true,
+        userId: true,
         orderNumber: true,
         status: true,
         customerEmail: true,
@@ -172,6 +174,7 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
         trackingInfo: true,
         user: {
           select: {
+            id: true,
             email: true,
             name: true,
           },
@@ -194,31 +197,60 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
     
     const ordersToNotify = ordersBeforeUpdate.filter((order) => order.status !== statusToApply)
     if (ordersToNotify.length > 0) {
+      let sendEmailFn: ((params: any) => Promise<any>) | null = null
       try {
         const { sendEmail } = await import('@/lib/email')
-        for (const order of ordersToNotify) {
-          const recipient = order.user?.email ?? order.customerEmail
-          if (!recipient) continue
-          const emailContent = buildOrderStatusEmail(statusToApply, {
-            orderNumber: order.orderNumber,
-            customerName: order.customerName ?? order.user?.name ?? null,
-            trackingInfo: order.trackingInfo,
-          })
-          if (!emailContent) continue
+        sendEmailFn = sendEmail
+      } catch (error) {
+        console.error('Erro ao preparar módulo de e-mail para atualização de pedidos:', error)
+      }
+
+      for (const order of ordersToNotify) {
+        if (order.userId) {
+          const statusLabel = ORDER_STATUS_LABELS[statusToApply] || statusToApply
+          const trackingSnippet = order.trackingInfo
+            ? order.trackingInfo.startsWith('http')
+              ? ` Acompanhe em ${order.trackingInfo}.`
+              : ` Código de rastreio: ${order.trackingInfo}.`
+            : ''
           try {
-            await sendEmail({
-              toEmail: recipient,
-              subject: emailContent.subject,
-              htmlContent: emailContent.htmlContent,
-              textContent: emailContent.textContent,
-              priority: 'NORMAL',
-            } as any)
-          } catch (emailError) {
-            console.error(`Erro ao enviar e-mail de atualização para o pedido ${order.id}:`, emailError)
+            await notifyUsers({
+              userId: order.userId,
+              type: 'ORDER_STATUS',
+              title: `Status do pedido ${order.orderNumber}`,
+              content: `Seu pedido agora está em "${statusLabel}".${trackingSnippet}`,
+              metadata: {
+                orderId: order.id,
+                orderNumber: order.orderNumber,
+                status: statusToApply,
+                trackingInfo: order.trackingInfo ?? null,
+              },
+            })
+          } catch (notificationError) {
+            console.error(`Erro ao criar notificação de status para o pedido ${order.id}:`, notificationError)
           }
         }
-      } catch (error) {
-        console.error('Erro ao preparar envio de e-mails de atualização de pedidos:', error)
+
+        if (!sendEmailFn) continue
+        const recipient = order.user?.email ?? order.customerEmail
+        if (!recipient) continue
+        const emailContent = buildOrderStatusEmail(statusToApply, {
+          orderNumber: order.orderNumber,
+          customerName: order.customerName ?? order.user?.name ?? null,
+          trackingInfo: order.trackingInfo,
+        })
+        if (!emailContent) continue
+        try {
+          await sendEmailFn({
+            toEmail: recipient,
+            subject: emailContent.subject,
+            htmlContent: emailContent.htmlContent,
+            textContent: emailContent.textContent,
+            priority: 'NORMAL',
+          } as any)
+        } catch (emailError) {
+          console.error(`Erro ao enviar e-mail de atualização para o pedido ${order.id}:`, emailError)
+        }
       }
     }
     

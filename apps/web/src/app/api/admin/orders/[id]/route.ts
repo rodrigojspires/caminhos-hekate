@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { buildOrderStatusEmail, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
+import { buildOrderStatusEmail, ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
+import { notifyUsers } from '@/lib/notifications'
 
 // Schema de validação para atualização de pedido
 const updateOrderSchema = z.object({
@@ -164,6 +165,8 @@ export async function PUT(
     }
     
     const statusChanged = data.status && data.status !== existingOrder.status
+    const trackingProvided = Object.prototype.hasOwnProperty.call(data, 'trackingInfo')
+
     
     // Atualizar pedido
     const updatedOrder = await prisma.order.update({
@@ -214,10 +217,19 @@ export async function PUT(
         : 0,
     }
     
-    if (statusChanged && data.status) {
+    const hasTrackingAfterUpdate = typeof updatedOrder.trackingInfo === 'string' && updatedOrder.trackingInfo.trim().length > 0
+    const statusForNotifications = (data.status as OrderStatus) || (updatedOrder.status as OrderStatus)
+
+    const shouldSendStatusEmail = statusChanged && data.status
+      ? !(data.status === 'SHIPPED' && !hasTrackingAfterUpdate)
+      : false
+    const shouldSendTrackingEmail = !statusChanged && trackingProvided && hasTrackingAfterUpdate && updatedOrder.status === 'SHIPPED'
+    const shouldSendEmail = shouldSendStatusEmail || shouldSendTrackingEmail
+
+    if (shouldSendEmail) {
       const recipient = updatedOrder.user?.email ?? updatedOrder.customerEmail
       if (recipient) {
-        const emailContent = buildOrderStatusEmail(data.status as OrderStatus, {
+        const emailContent = buildOrderStatusEmail(statusForNotifications, {
           orderNumber: updatedOrder.orderNumber,
           customerName: updatedOrder.customerName ?? updatedOrder.user?.name ?? null,
           trackingInfo: updatedOrder.trackingInfo,
@@ -235,6 +247,31 @@ export async function PUT(
           } catch (error) {
             console.error('Erro ao enviar e-mail de atualização de pedido:', error)
           }
+        }
+      }
+
+      if (updatedOrder.user?.id) {
+        const statusLabel = ORDER_STATUS_LABELS[statusForNotifications] || statusForNotifications
+        const trackingSnippet = hasTrackingAfterUpdate
+          ? updatedOrder.trackingInfo!.startsWith('http')
+            ? ` Acompanhe em ${updatedOrder.trackingInfo}.`
+            : ` Código de rastreio: ${updatedOrder.trackingInfo}.`
+          : ''
+        try {
+          await notifyUsers({
+            userId: updatedOrder.user.id,
+            type: 'ORDER_STATUS',
+            title: `Status do pedido ${updatedOrder.orderNumber}`,
+            content: `Seu pedido agora está em "${statusLabel}".${trackingSnippet}`,
+            metadata: {
+              orderId: updatedOrder.id,
+              orderNumber: updatedOrder.orderNumber,
+              status: statusForNotifications,
+              trackingInfo: updatedOrder.trackingInfo ?? null,
+            },
+          })
+        } catch (notificationError) {
+          console.error('Erro ao criar notificação de status de pedido:', notificationError)
         }
       }
     }
