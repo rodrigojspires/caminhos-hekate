@@ -186,7 +186,6 @@ export async function PUT(
                 name: true,
                 description: true,
                 images: true,
-                price: true,
                 slug: true,
                 shortDescription: true,
                 type: true,
