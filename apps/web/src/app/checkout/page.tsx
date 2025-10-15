@@ -2,12 +2,23 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
   const [cart, setCart] = useState<any>(null)
   const [totals, setTotals] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [shippingModalOpen, setShippingModalOpen] = useState(false)
+  const [shippingModalLoading, setShippingModalLoading] = useState(false)
+  const [selectedShippingId, setSelectedShippingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -70,9 +81,22 @@ export default function CheckoutPage() {
     const data = await res.json()
     setCart(data.cart)
     setTotals(data.totals)
+    if (data.cart?.shipping?.serviceId) {
+      setSelectedShippingId(data.cart.shipping.serviceId)
+    }
   }
 
   useEffect(() => { fetchCart() }, [])
+  useEffect(() => {
+    if (cart?.shipping?.serviceId) {
+      setSelectedShippingId(cart.shipping.serviceId)
+    }
+  }, [cart?.shipping?.serviceId])
+  useEffect(() => {
+    if (shippingModalOpen && cart?.shipping?.serviceId) {
+      setSelectedShippingId(cart.shipping.serviceId)
+    }
+  }, [shippingModalOpen, cart?.shipping?.serviceId])
 
   // Prefill from user profile when logged in
   useEffect(() => {
@@ -118,6 +142,29 @@ export default function CheckoutPage() {
     return () => clearTimeout(t)
   }, [form.shipping.zipCode, sameAsBilling])
 
+  const updateShippingOption = async () => {
+    if (!cart?.shipping?.cep || !selectedShippingId) return
+    setShippingModalLoading(true)
+    try {
+      const response = await fetch('/api/shop/shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cep: cart.shipping.cep, serviceId: selectedShippingId }),
+      })
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar frete')
+      }
+      const data = await response.json()
+      setCart(data.cart)
+      setTotals(data.totals)
+      setShippingModalOpen(false)
+    } catch (error) {
+      console.error('Erro ao atualizar modalidade de frete:', error)
+    } finally {
+      setShippingModalLoading(false)
+    }
+  }
+
   const submit = async () => {
     setLoading(true)
     // If logged in, update profile before creating order
@@ -155,6 +202,7 @@ export default function CheckoutPage() {
   if (!cart || !totals) return <div className="container mx-auto py-8">Carregando...</div>
 
   return (
+    <>
     <div className="container mx-auto py-8">
       <h1 className="text-2xl font-bold mb-4">Checkout</h1>
       {status !== 'authenticated' && (
@@ -212,7 +260,43 @@ export default function CheckoutPage() {
           <h2 className="font-semibold mb-3">Resumo</h2>
           <div className="flex justify-between"><span>Subtotal</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.subtotal)}</span></div>
           <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span></div>
-          <div className="flex justify-between"><span>Frete</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}</span></div>
+          <div className="mt-3 rounded border border-dashed border-muted-foreground/30 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="font-medium block">Frete</span>
+                {cart?.shipping ? (
+                  <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                    <div>{cart.shipping.service}{cart.shipping.carrier ? ` • ${cart.shipping.carrier}` : ''}</div>
+                    {typeof cart.shipping.deliveryDays === 'number' && (
+                      <div>
+                        Prazo estimado: {cart.shipping.deliveryDays}{' '}
+                        {cart.shipping.deliveryDays === 1 ? 'dia útil' : 'dias úteis'}
+                      </div>
+                    )}
+                    <div>Destino: CEP {cart.shipping.cep}</div>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground block mt-1">
+                    Informe o CEP para calcular o frete.
+                  </span>
+                )}
+              </div>
+              <div className="text-right">
+                <div className="font-semibold">
+                  {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}
+                </div>
+                {cart?.shipping?.options?.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setShippingModalOpen(true)}
+                    className="mt-1 text-xs text-hekate-gold hover:underline transition"
+                  >
+                    Alterar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
           {cart.couponCode && (
             <div className="flex justify-between mt-2 text-sm items-center">
               <span className="text-hekate-pearl/80">Cupom</span>
@@ -226,5 +310,74 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    <Dialog open={shippingModalOpen} onOpenChange={setShippingModalOpen}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Escolher modalidade de frete</DialogTitle>
+          <DialogDescription>
+            Selecione a opção de envio que deseja utilizar para este pedido.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {cart?.shipping?.options?.length ? (
+            cart.shipping.options.map((option: any) => {
+              const isSelected = selectedShippingId === option.id
+              return (
+                <label
+                  key={option.id}
+                  className={`flex cursor-pointer items-center justify-between gap-4 rounded border p-3 transition ${isSelected ? 'border-hekate-gold bg-hekate-gold/5' : 'border-muted-foreground/30 hover:border-hekate-gold/60'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="shipping-option"
+                      value={option.id}
+                      checked={isSelected}
+                      onChange={() => setSelectedShippingId(option.id)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="font-medium">{option.service}{option.carrier ? ` • ${option.carrier}` : ''}</div>
+                      {typeof option.deliveryDays === 'number' && (
+                        <div className="text-xs text-muted-foreground">
+                          Prazo estimado: {option.deliveryDays}{' '}
+                          {option.deliveryDays === 1 ? 'dia útil' : 'dias úteis'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold">
+                    {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(option.price)}
+                  </div>
+                </label>
+              )
+            })
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma opção de frete disponível. Verifique os itens do carrinho ou informe um CEP válido.
+            </p>
+          )}
+        </div>
+        <DialogFooter className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShippingModalOpen(false)}
+            className="px-4 py-2 border rounded"
+            disabled={shippingModalLoading}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={updateShippingOption}
+            className="px-4 py-2 btn-mystic-enhanced disabled:opacity-60"
+            disabled={shippingModalLoading || !selectedShippingId || !cart?.shipping?.options?.length}
+          >
+            {shippingModalLoading ? 'Atualizando...' : 'Confirmar frete'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

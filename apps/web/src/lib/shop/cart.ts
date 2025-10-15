@@ -131,8 +131,9 @@ export async function computeTotals(cart: CartState): Promise<CartTotals> {
   }
 
   const shipping = cart.shipping?.price ? Number(cart.shipping.price) : 0
-  const total = Math.max(0, subtotal - discount + shipping)
-  return { subtotal, discount, shipping, total }
+  const appliedDiscount = Math.min(discount, subtotal)
+  const total = Math.max(0, subtotal - appliedDiscount + shipping)
+  return { subtotal, discount: appliedDiscount, shipping, total }
 }
 
 export function clearCart() {
