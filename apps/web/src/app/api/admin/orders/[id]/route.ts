@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
+import { buildOrderStatusEmail, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
 
 // Schema de validação para atualização de pedido
 const updateOrderSchema = z.object({
@@ -162,6 +163,8 @@ export async function PUT(
       )
     }
     
+    const statusChanged = data.status && data.status !== existingOrder.status
+    
     // Atualizar pedido
     const updatedOrder = await prisma.order.update({
       where: { id },
@@ -209,6 +212,31 @@ export async function PUT(
       averageItemPrice: updatedOrder.items.length > 0
         ? updatedOrder.items.reduce((sum, item) => sum + Number(item.price), 0) / updatedOrder.items.length
         : 0,
+    }
+    
+    if (statusChanged && data.status) {
+      const recipient = updatedOrder.user?.email ?? updatedOrder.customerEmail
+      if (recipient) {
+        const emailContent = buildOrderStatusEmail(data.status as OrderStatus, {
+          orderNumber: updatedOrder.orderNumber,
+          customerName: updatedOrder.customerName ?? updatedOrder.user?.name ?? null,
+          trackingInfo: updatedOrder.trackingInfo,
+        })
+        if (emailContent) {
+          try {
+            const { sendEmail } = await import('@/lib/email')
+            await sendEmail({
+              toEmail: recipient,
+              subject: emailContent.subject,
+              htmlContent: emailContent.htmlContent,
+              textContent: emailContent.textContent,
+              priority: 'NORMAL',
+            } as any)
+          } catch (error) {
+            console.error('Erro ao enviar e-mail de atualização de pedido:', error)
+          }
+        }
+      }
     }
     
     return NextResponse.json({

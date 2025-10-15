@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { withAdminAuth } from '@/lib/auth-middleware'
+import { buildOrderStatusEmail, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
 
 // Schema de validação para filtros
 const querySchema = z.object({
@@ -154,6 +155,29 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
     }
     
     const statusData = updateStatusSchema.parse({ status })
+    const statusToApply = statusData.status as OrderStatus
+    
+    const ordersBeforeUpdate = await prisma.order.findMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        customerEmail: true,
+        customerName: true,
+        trackingInfo: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+      },
+    })
     
     // Atualizar status dos pedidos
     const updatedOrders = await prisma.order.updateMany({
@@ -163,10 +187,40 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
         }
       },
       data: {
-        status: statusData.status,
+        status: statusToApply,
         updatedAt: new Date()
       }
     })
+    
+    const ordersToNotify = ordersBeforeUpdate.filter((order) => order.status !== statusToApply)
+    if (ordersToNotify.length > 0) {
+      try {
+        const { sendEmail } = await import('@/lib/email')
+        for (const order of ordersToNotify) {
+          const recipient = order.user?.email ?? order.customerEmail
+          if (!recipient) continue
+          const emailContent = buildOrderStatusEmail(statusToApply, {
+            orderNumber: order.orderNumber,
+            customerName: order.customerName ?? order.user?.name ?? null,
+            trackingInfo: order.trackingInfo,
+          })
+          if (!emailContent) continue
+          try {
+            await sendEmail({
+              toEmail: recipient,
+              subject: emailContent.subject,
+              htmlContent: emailContent.htmlContent,
+              textContent: emailContent.textContent,
+              priority: 'NORMAL',
+            } as any)
+          } catch (emailError) {
+            console.error(`Erro ao enviar e-mail de atualização para o pedido ${order.id}:`, emailError)
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao preparar envio de e-mails de atualização de pedidos:', error)
+      }
+    }
     
     return NextResponse.json({
       message: `${updatedOrders.count} pedidos atualizados com sucesso`,

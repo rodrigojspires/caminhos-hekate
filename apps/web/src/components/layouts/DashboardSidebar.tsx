@@ -56,7 +56,7 @@ const navigation = [
     icon: Calendar,
   },
   {
-    name: 'Pedidos da Loja',
+    name: 'Meus Pedidos',
     href: '/dashboard/orders',
     icon: ShoppingBag,
   },

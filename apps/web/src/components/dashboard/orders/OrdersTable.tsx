@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { Loader2, PackageSearch, Receipt, ShoppingBag } from 'lucide-react'
+import { Loader2, PackageSearch, ShoppingBag } from 'lucide-react'
 
 export type OrderStatus =
   | 'PENDING'
@@ -238,12 +237,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   >
                     <PackageSearch className="mr-2 h-4 w-4" />
                     Itens
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/pedido/${order.id}/recibo`}>
-                      <Receipt className="mr-2 h-4 w-4" />
-                      Ver recibo
-                    </Link>
                   </Button>
                 </TableCell>
               </TableRow>
