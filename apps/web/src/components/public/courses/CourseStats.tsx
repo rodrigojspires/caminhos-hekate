@@ -3,10 +3,19 @@
 import { ComponentType } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
-import { Star } from 'lucide-react'
+import { BookOpen, Users, Clock, Video, Star } from 'lucide-react'
+
+const ICON_MAP = {
+  book: BookOpen,
+  users: Users,
+  clock: Clock,
+  video: Video,
+} satisfies Record<string, ComponentType<{ className?: string }>>
+
+export type CourseStatIcon = keyof typeof ICON_MAP
 
 export interface CourseStatItem {
-  icon: ComponentType<{ className?: string }>
+  icon: CourseStatIcon
   value: string
   label: string
   description?: string
@@ -71,7 +80,7 @@ export function CourseStats({ stats }: CourseStatsProps) {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           {stats.map((stat, index) => {
-            const Icon = stat.icon
+            const Icon = ICON_MAP[stat.icon]
             return (
               <motion.div key={stat.label} variants={itemVariants}>
                 <Card className="group hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900">

@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
 import { prisma, CourseStatus, CourseLevel } from '@hekate/database'
-import { BookOpen, Users, Clock, Video } from 'lucide-react'
 import { CoursesHero } from '@/components/public/courses/CoursesHero'
 import { CourseStats, type CourseStatItem } from '@/components/public/courses/CourseStats'
 import { CoursesExplorer, type PublicCourse } from '@/components/public/courses/CoursesExplorer'
@@ -38,24 +37,30 @@ export const metadata: Metadata = {
 }
 
 export default async function CoursesPage() {
-  const courses = await prisma.course.findMany({
-    where: { status: CourseStatus.PUBLISHED },
-    include: {
-      modules: {
-        include: {
-          lessons: {
-            select: { id: true }
+  let courses: Awaited<ReturnType<typeof prisma.course.findMany>> = []
+
+  try {
+    courses = await prisma.course.findMany({
+      where: { status: CourseStatus.PUBLISHED },
+      include: {
+        modules: {
+          include: {
+            lessons: {
+              select: { id: true }
+            }
+          }
+        },
+        _count: {
+          select: {
+            enrollments: true
           }
         }
       },
-      _count: {
-        select: {
-          enrollments: true
-        }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  })
+      orderBy: { createdAt: 'desc' }
+    })
+  } catch (error) {
+    console.warn('[Cursos] Falha ao carregar cursos publicados durante o build.', error)
+  }
 
   const publicCourses: PublicCourse[] = courses.map((course) => {
     const tags = Array.isArray(course.tags)
@@ -83,38 +88,44 @@ export default async function CoursesPage() {
     }
   })
 
-  const categories = Array.from(new Set(publicCourses.flatMap((course) => course.tags))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  const levels = Array.from(new Set(publicCourses.map((course) => course.level ?? CourseLevel.BEGINNER))).map((level) => level)
+  const categories = publicCourses.length
+    ? Array.from(new Set(publicCourses.flatMap((course) => course.tags))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    : []
+
+  const levels = publicCourses.length
+    ? Array.from(new Set(publicCourses.map((course) => course.level ?? CourseLevel.BEGINNER)))
+    : [CourseLevel.BEGINNER]
 
   const totalLessons = publicCourses.reduce((total, course) => total + course.lessons, 0)
   const totalHours = publicCourses.reduce((total, course) => total + (course.duration ?? 0), 0)
   const totalStudents = publicCourses.reduce((total, course) => total + course.students, 0)
-  const freeCourses = publicCourses.filter((course) => (course.price ?? 0) === 0).length
+
+  const primaryStatsAvailable = publicCourses.length > 0
 
   const stats: CourseStatItem[] = [
     {
-      icon: BookOpen,
+      icon: 'book',
       value: `${publicCourses.length}`,
       label: 'Cursos Disponíveis',
-      description: 'Conteúdo atualizado e publicado',
+      description: primaryStatsAvailable ? 'Conteúdo atualizado e publicado' : 'Nenhum curso publicado no momento',
       color: 'from-purple-500 to-indigo-500'
     },
     {
-      icon: Users,
+      icon: 'users',
       value: totalStudents.toLocaleString('pt-BR'),
       label: 'Alunos Inscritos',
-      description: 'Comunidade ativa aprendendo com a Hekate',
+      description: primaryStatsAvailable ? 'Comunidade ativa aprendendo com a Hekate' : 'Seja o primeiro a se inscrever',
       color: 'from-blue-500 to-cyan-500'
     },
     {
-      icon: Clock,
+      icon: 'clock',
       value: `${totalHours}h`,
       label: 'Horas de conteúdo',
-      description: 'Duração total somada dos cursos publicados',
+      description: primaryStatsAvailable ? 'Duração total somada dos cursos publicados' : 'Conteúdo será divulgado em breve',
       color: 'from-green-500 to-emerald-500'
     },
     {
-      icon: Video,
+      icon: 'video',
       value: `${totalLessons}`,
       label: 'Aulas disponíveis',
       description: 'Aulas organizadas em módulos com materiais exclusivos',
