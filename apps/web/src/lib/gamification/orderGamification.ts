@@ -39,6 +39,12 @@ const ORDER_CREATED_POINTS = 20
 const ORDER_PAID_POINTS = 30
 const ORDER_COMPLETED_POINTS = 80
 
+const EVENT_REASON_LABELS: Record<string, string> = {
+  ORDER_CREATED: 'Pedido criado',
+  ORDER_PAID: 'Pagamento confirmado',
+  ORDER_COMPLETED: 'Pedido concluído',
+}
+
 export interface OrderGamificationResult {
   pointsAwarded: number
   achievementsUnlocked: string[]
@@ -56,6 +62,8 @@ export async function handleOrderCreated(params: {
     orderId: params.orderId,
     orderNumber: params.orderNumber,
     totalAmount: params.totalAmount,
+    eventType: 'ORDER_CREATED',
+    reasonLabel: EVENT_REASON_LABELS.ORDER_CREATED,
   }
 
   await GamificationEngine.processEvent({
@@ -108,7 +116,11 @@ export async function handleOrderStatusChange(options: {
       userId: options.userId,
       type: event.type,
       points: event.points,
-      metadata,
+      metadata: {
+        ...metadata,
+        eventType: event.type,
+        reasonLabel: EVENT_REASON_LABELS[event.type] ?? event.type,
+      },
     })
     result.pointsAwarded += event.points
   }

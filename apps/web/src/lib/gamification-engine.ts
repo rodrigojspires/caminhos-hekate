@@ -89,16 +89,21 @@ export class GamificationEngine {
       await this.awardLevelUpAchievement(userId, newLevel)
     }
 
+    const reasonLabel = metadata?.reasonLabel ?? reason
+    const eventType = metadata?.eventType ?? reason
+
     // Create transaction record
     await prisma.pointTransaction.create({
       data: {
         userId: userId,
         type: 'EARNED',
         points: finalPoints,
-        reason: reason,
-        description: `Pontos ganhos: ${reason}`,
+        reason: reasonLabel,
+        description: `Pontos ganhos: ${reasonLabel}`,
         metadata: {
           ...metadata,
+          eventType,
+          originalReason: reason,
           originalPoints: points,
           multiplier: multiplierUsed
         }
