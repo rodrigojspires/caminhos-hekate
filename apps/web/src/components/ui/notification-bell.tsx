@@ -212,7 +212,7 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
                 <button
                   type="button"
                   onClick={markAllAsRead}
-                  className="inline-flex items-center gap-1 text-gold-500 hover:text-gold-400 transition"
+                  className="inline-flex items-center gap-1 text-[#d1a438] hover:text-[#f3c860] transition"
                 >
                   <Check className="h-3 w-3" /> Marcar todas
                 </button>
@@ -221,7 +221,7 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
               <button
                 type="button"
                 onClick={clearAll}
-                className="inline-flex items-center gap-1 text-gold-500 hover:text-gold-400 transition"
+                className="inline-flex items-center gap-1 text-[#d1a438] hover:text-[#f3c860] transition"
               >
                 <Trash2 className="h-3 w-3" /> Limpar
               </button>

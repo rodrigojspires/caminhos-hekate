@@ -11,11 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Menu, Search, Settings, User, LogOut, ShoppingBag } from 'lucide-react'
+import { Menu, Search, Settings, User, LogOut, ShoppingBag, Star } from 'lucide-react'
 import Link from 'next/link'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { useAdminSession } from '@/hooks/use-admin-session'
 import { useSession, signOut } from 'next-auth/react'
+import { useGamificationStore } from '@/stores/gamificationStore'
+import { useEffect, useMemo } from 'react'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -26,6 +28,17 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const { data: session } = useSession()
   const user = session?.user
   const { hasAdminAccess } = useAdminSession()
+  const { userPoints, isLoadingPoints, fetchUserPoints } = useGamificationStore()
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    if (!userPoints && !isLoadingPoints) {
+      fetchUserPoints()
+    }
+  }, [session?.user?.id, userPoints, isLoadingPoints, fetchUserPoints])
+
+  const totalPoints = useMemo(() => userPoints?.totalPoints ?? 0, [userPoints])
+
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -68,13 +81,23 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             Loja
           </Link>
         </Button>
-        
+
         {/* Go to Admin Panel (only for admins/editors) */}
         {hasAdminAccess && (
           <Button variant="secondary" size="sm" asChild>
             <Link href="/admin">Painel Admin</Link>
           </Button>
         )}
+
+        <div className="hidden md:flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-sm shadow-sm">
+          <Star className="h-4 w-4 text-yellow-500" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs text-muted-foreground">Seus pontos</span>
+            <span className="font-semibold">
+              {isLoadingPoints ? '…' : totalPoints.toLocaleString('pt-BR')}
+            </span>
+          </div>
+        </div>
 
         {/* Notifications */}
         <NotificationBell />

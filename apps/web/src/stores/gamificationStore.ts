@@ -124,7 +124,7 @@ export const useGamificationStore = create<GamificationState>()(devtools(
         const data = await response.json();
         set({
           userPoints: data.userPoints,
-          recentTransactions: data.transactions || [],
+          recentTransactions: data.recentTransactions || data.transactions || [],
           isLoadingPoints: false,
         });
       } catch (error) {
