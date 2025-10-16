@@ -22,6 +22,41 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const billing = user.addresses.find(a => a.name?.toLowerCase().includes('cobran')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
   const shipping = user.addresses.find(a => a.name?.toLowerCase().includes('entrega')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
+
+  const addresses = user.addresses.map((address) => ({
+    id: address.id,
+    name: address.name,
+    street: address.street,
+    number: address.number,
+    complement: address.complement,
+    neighborhood: address.neighborhood,
+    city: address.city,
+    state: address.state,
+    zipCode: address.zipCode,
+    country: address.country,
+    phone: address.phone,
+    isDefault: address.isDefault,
+    createdAt: address.createdAt,
+    updatedAt: address.updatedAt,
+  }))
+  const uniqueAddressMap = new Map<string, (typeof addresses)[number]>()
+  for (const entry of addresses) {
+    const key = [
+      entry.street?.trim().toLowerCase() ?? '',
+      entry.number?.trim().toLowerCase() ?? '',
+      entry.complement?.trim().toLowerCase() ?? '',
+      entry.neighborhood?.trim().toLowerCase() ?? '',
+      entry.city?.trim().toLowerCase() ?? '',
+      entry.state?.trim().toLowerCase() ?? '',
+      entry.zipCode?.trim().toLowerCase() ?? '',
+    ].join('|')
+
+    if (!uniqueAddressMap.has(key)) {
+      uniqueAddressMap.set(key, entry)
+    }
+  }
+  const uniqueAddresses = Array.from(uniqueAddressMap.values())
+
   return NextResponse.json({
     user: {
       id: user.id,
@@ -30,6 +65,9 @@ export async function GET() {
       phone: user.phone,
       document: user.document,
     },
+    addresses: uniqueAddresses,
+    billingAddressId: billing?.id ?? null,
+    shippingAddressId: shipping?.id ?? null,
     billingAddress: billing ? {
       street: billing.street,
       number: billing.number,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
+import { Prisma } from '@prisma/client'
 import { getCartFromCookie, computeTotals, clearCart } from '@/lib/shop/cart'
 import { calculateShipping } from '@/lib/shop/shipping'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
@@ -20,13 +21,17 @@ export async function POST(request: NextRequest) {
     const {
       customer,
       billingAddress,
+      billingAddressId,
       shippingAddress,
+      shippingAddressId,
       notes,
       enrollCourseIds,
     } = body as {
       customer: { name: string; email: string; phone?: string; document?: string; userId?: string | null }
-      billingAddress?: { street: string; number: string; complement?: string; neighborhood: string; city: string; state: string; zipCode: string }
-      shippingAddress?: { street: string; number: string; complement?: string; neighborhood: string; city: string; state: string; zipCode: string }
+      billingAddress?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string }
+      billingAddressId?: string | null
+      shippingAddress?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string }
+      shippingAddressId?: string | null
       notes?: string
       enrollCourseIds?: string[]
     }
@@ -138,40 +143,65 @@ export async function POST(request: NextRequest) {
       metadata.couponCode = couponRecord.code
     }
 
-    const { order } = await prisma.$transaction(async (tx) => {
-      const billingRecord = billingAddress
-        ? await tx.address.create({
-            data: {
-              userId: customer.userId || undefined,
-              name: 'Cobrança',
-              street: billingAddress.street,
-              number: billingAddress.number,
-              complement: billingAddress.complement,
-              neighborhood: billingAddress.neighborhood,
-              city: billingAddress.city,
-              state: billingAddress.state,
-              zipCode: billingAddress.zipCode,
-              country: 'BR',
-            },
-          })
-        : null
+    const findMatchingAddress = async (
+      tx: Prisma.TransactionClient,
+      userId: string | undefined | null,
+      payload?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string },
+    ) => {
+      if (!userId || !payload) return null
+      return tx.address.findFirst({
+        where: {
+          userId,
+          street: payload.street,
+          number: payload.number,
+          neighborhood: payload.neighborhood,
+          city: payload.city,
+          state: payload.state,
+          zipCode: payload.zipCode,
+        },
+      })
+    }
 
-      const shippingRecord = shippingAddress
-        ? await tx.address.create({
+    const { order } = await prisma.$transaction(async (tx) => {
+      const ensureAddress = async (
+        providedId: string | null | undefined,
+        fallbackPayload?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string },
+        defaultName?: string,
+      ) => {
+        if (customer.userId) {
+          if (providedId) {
+            const existing = await tx.address.findFirst({
+              where: { id: providedId, userId: customer.userId },
+            })
+            if (existing) return existing
+          }
+
+          const matched = await findMatchingAddress(tx, customer.userId, fallbackPayload)
+          if (matched) return matched
+        }
+
+        if (fallbackPayload) {
+          return tx.address.create({
             data: {
               userId: customer.userId || undefined,
-              name: 'Entrega',
-              street: shippingAddress.street,
-              number: shippingAddress.number,
-              complement: shippingAddress.complement,
-              neighborhood: shippingAddress.neighborhood,
-              city: shippingAddress.city,
-              state: shippingAddress.state,
-              zipCode: shippingAddress.zipCode,
+              name: defaultName ?? fallbackPayload.street,
+              street: fallbackPayload.street,
+              number: fallbackPayload.number,
+              complement: fallbackPayload.complement,
+              neighborhood: fallbackPayload.neighborhood,
+              city: fallbackPayload.city,
+              state: fallbackPayload.state,
+              zipCode: fallbackPayload.zipCode,
               country: 'BR',
             },
           })
-        : null
+        }
+
+        return null
+      }
+
+      const billingRecord = await ensureAddress(billingAddressId, billingAddress, 'Cobrança')
+      const shippingRecord = await ensureAddress(shippingAddressId, shippingAddress, 'Entrega')
 
       const orderData: any = {
         orderNumber,

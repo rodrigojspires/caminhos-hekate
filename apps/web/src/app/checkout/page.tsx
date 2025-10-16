@@ -11,6 +11,33 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+interface SavedAddress {
+  id: string
+  name: string | null
+  street: string
+  number: string | null
+  complement: string | null
+  neighborhood: string
+  city: string
+  state: string
+  zipCode: string
+  country?: string | null
+  phone?: string | null
+  isDefault?: boolean
+}
+
+type AddressFormState = {
+  street: string
+  number: string
+  complement: string
+  neighborhood: string
+  city: string
+  state: string
+  zipCode: string
+}
+
+const NEW_ADDRESS_OPTION = 'new'
+
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
   const [cart, setCart] = useState<any>(null)
@@ -24,11 +51,14 @@ export default function CheckoutPage() {
     email: '',
     phone: '',
     document: '',
-    billing: { street: '', number: '', neighborhood: '', city: '', state: '', zipCode: '' },
-    shipping: { street: '', number: '', neighborhood: '', city: '', state: '', zipCode: '' },
+    billing: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' },
+    shipping: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' },
   })
   const [sameAsBilling, setSameAsBilling] = useState(true)
   const [queriedCep, setQueriedCep] = useState<{ billing?: string; shipping?: string }>({})
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
+  const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string>(NEW_ADDRESS_OPTION)
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>(NEW_ADDRESS_OPTION)
 
   // Helpers: masks
   function formatPhoneBR(v: string) {
@@ -49,11 +79,96 @@ export default function CheckoutPage() {
         .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
     }
     // CNPJ 00.000.000/0000-00
-    return d
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1/$2')
-      .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+  return d
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+  }
+
+  const addressToFormState = (address: SavedAddress): AddressFormState => ({
+    street: address.street || '',
+    number: address.number || '',
+    complement: address.complement || '',
+    neighborhood: address.neighborhood || '',
+    city: address.city || '',
+    state: address.state || '',
+    zipCode: address.zipCode || '',
+  })
+
+  const formatAddressLabel = (address: SavedAddress) => {
+    const summary = [
+      [address.street, address.number].filter(Boolean).join(', '),
+      [address.city, address.state].filter(Boolean).join(' / '),
+    ]
+      .filter((part) => part && part.trim().length > 0)
+      .join(' • ')
+
+    const cep = address.zipCode ? `CEP ${address.zipCode}` : ''
+    const name = address.name?.trim() || 'Endereço'
+    return [name, summary, cep].filter((part) => part && part.trim().length > 0).join(' | ')
+  }
+
+  const applySavedAddressToForm = (kind: 'billing' | 'shipping', address: SavedAddress) => {
+    const values = addressToFormState(address)
+    setForm((prev) => {
+      const updated = kind === 'billing'
+        ? { ...prev.billing, ...values }
+        : { ...prev.shipping, ...values }
+      return {
+        ...prev,
+        billing: kind === 'billing' ? updated : prev.billing,
+        shipping: kind === 'shipping' ? updated : prev.shipping,
+      }
+    })
+  }
+
+  const handleBillingFieldChange = (field: keyof AddressFormState, value: string) => {
+    if (selectedBillingAddressId !== NEW_ADDRESS_OPTION) {
+      setSelectedBillingAddressId(NEW_ADDRESS_OPTION)
+    }
+    setForm((prev) => ({
+      ...prev,
+      billing: {
+        ...prev.billing,
+        [field]: value,
+      },
+    }))
+  }
+
+  const handleShippingFieldChange = (field: keyof AddressFormState, value: string) => {
+    if (selectedShippingAddressId !== NEW_ADDRESS_OPTION) {
+      setSelectedShippingAddressId(NEW_ADDRESS_OPTION)
+    }
+    setForm((prev) => ({
+      ...prev,
+      shipping: {
+        ...prev.shipping,
+        [field]: value,
+      },
+    }))
+  }
+
+  const handleBillingAddressSelect = (value: string) => {
+    setSelectedBillingAddressId(value)
+    if (value === NEW_ADDRESS_OPTION) return
+    const address = savedAddresses.find((entry) => entry.id === value)
+    if (address) {
+      applySavedAddressToForm('billing', address)
+      if (sameAsBilling) {
+        applySavedAddressToForm('shipping', address)
+        setSelectedShippingAddressId(value)
+      }
+    }
+  }
+
+  const handleShippingAddressSelect = (value: string) => {
+    setSelectedShippingAddressId(value)
+    if (value === NEW_ADDRESS_OPTION) return
+    const address = savedAddresses.find((entry) => entry.id === value)
+    if (address) {
+      applySavedAddressToForm('shipping', address)
+    }
   }
 
   async function resolveCEP(kind: 'billing' | 'shipping', cepRaw: string) {
@@ -106,20 +221,75 @@ export default function CheckoutPage() {
         const res = await fetch('/api/user/profile', { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
+        const addressList: SavedAddress[] = Array.isArray(data.addresses)
+          ? data.addresses.map((address: any) => ({
+              id: address.id,
+              name: address.name ?? null,
+              street: address.street ?? '',
+              number: address.number ?? null,
+              complement: address.complement ?? null,
+              neighborhood: address.neighborhood ?? '',
+              city: address.city ?? '',
+              state: address.state ?? '',
+              zipCode: address.zipCode ?? '',
+              country: address.country ?? null,
+              phone: address.phone ?? null,
+              isDefault: Boolean(address.isDefault),
+            }))
+          : []
+
+        setSavedAddresses(addressList)
+
         setForm((prev) => ({
           ...prev,
           name: data.user?.name || prev.name || session?.user?.name || '',
           email: data.user?.email || prev.email || session?.user?.email || '',
           phone: data.user?.phone || prev.phone || '',
           document: data.user?.document || prev.document || '',
-          billing: data.billingAddress ? { ...prev.billing, ...data.billingAddress } : prev.billing,
-          shipping: data.shippingAddress ? { ...prev.shipping, ...data.shippingAddress } : prev.shipping,
+          billing: data.billingAddress
+            ? {
+                ...prev.billing,
+                street: data.billingAddress.street ?? '',
+                number: data.billingAddress.number ?? '',
+                complement: data.billingAddress.complement ?? '',
+                neighborhood: data.billingAddress.neighborhood ?? '',
+                city: data.billingAddress.city ?? '',
+                state: data.billingAddress.state ?? '',
+                zipCode: data.billingAddress.zipCode ?? '',
+              }
+            : prev.billing,
+          shipping: data.shippingAddress
+            ? {
+                ...prev.shipping,
+                street: data.shippingAddress.street ?? '',
+                number: data.shippingAddress.number ?? '',
+                complement: data.shippingAddress.complement ?? '',
+                neighborhood: data.shippingAddress.neighborhood ?? '',
+                city: data.shippingAddress.city ?? '',
+                state: data.shippingAddress.state ?? '',
+                zipCode: data.shippingAddress.zipCode ?? '',
+              }
+            : prev.shipping,
         }))
         // If shipping exists and differs from billing, uncheck sameAsBilling
         const b = data.billingAddress, s = data.shippingAddress
         if (b && s) {
           const differs = ['street','number','neighborhood','city','state','zipCode'].some(k => b[k] !== s[k])
           setSameAsBilling(!differs)
+        }
+
+        if (data.billingAddressId && addressList.some((addr) => addr.id === data.billingAddressId)) {
+          setSelectedBillingAddressId(data.billingAddressId)
+        } else if (addressList.length > 0) {
+          setSelectedBillingAddressId(addressList[0].id)
+        } else {
+          setSelectedBillingAddressId(NEW_ADDRESS_OPTION)
+        }
+
+        if (data.shippingAddressId && addressList.some((addr) => addr.id === data.shippingAddressId)) {
+          setSelectedShippingAddressId(data.shippingAddressId)
+        } else if (addressList.length === 0) {
+          setSelectedShippingAddressId(NEW_ADDRESS_OPTION)
         }
       } catch {}
     })()
@@ -129,7 +299,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!sameAsBilling) return
     setForm((prev) => ({ ...prev, shipping: { ...prev.shipping, ...prev.billing } }))
-  }, [sameAsBilling, form.billing.street, form.billing.number, form.billing.neighborhood, form.billing.city, form.billing.state, form.billing.zipCode])
+  }, [sameAsBilling, form.billing.street, form.billing.number, form.billing.neighborhood, form.billing.city, form.billing.state, form.billing.zipCode, form.billing.complement])
+
+  useEffect(() => {
+    if (sameAsBilling) {
+      setSelectedShippingAddressId(selectedBillingAddressId)
+    }
+  }, [sameAsBilling, selectedBillingAddressId])
 
   // CEP autocompletar
   useEffect(() => {
@@ -170,28 +346,63 @@ export default function CheckoutPage() {
     // If logged in, update profile before creating order
     if (status === 'authenticated') {
       try {
+        const profilePayload: any = {
+          name: form.name,
+          phone: form.phone,
+          document: form.document,
+        }
+
+        if (selectedBillingAddressId === NEW_ADDRESS_OPTION) {
+          profilePayload.billingAddress = form.billing
+        }
+
+        if (sameAsBilling) {
+          if (selectedBillingAddressId === NEW_ADDRESS_OPTION) {
+            profilePayload.shippingAddress = form.billing
+          }
+        } else if (selectedShippingAddressId === NEW_ADDRESS_OPTION) {
+          profilePayload.shippingAddress = form.shipping
+        }
+
         await fetch('/api/user/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
-            phone: form.phone,
-            document: form.document,
-            billingAddress: form.billing,
-            shippingAddress: form.shipping,
-          }),
+          body: JSON.stringify(profilePayload),
         })
       } catch {}
+    }
+
+    const billingAddressId = selectedBillingAddressId !== NEW_ADDRESS_OPTION ? selectedBillingAddressId : null
+    const shippingAddressId = sameAsBilling
+      ? (selectedBillingAddressId !== NEW_ADDRESS_OPTION ? selectedBillingAddressId : null)
+      : (selectedShippingAddressId !== NEW_ADDRESS_OPTION ? selectedShippingAddressId : null)
+
+    const orderPayload: any = {
+      customer: {
+        name: form.name,
+        email: (session?.user?.email as string) || form.email,
+        phone: form.phone,
+        document: form.document,
+        userId: session?.user?.id || null,
+      },
+    }
+
+    if (billingAddressId) {
+      orderPayload.billingAddressId = billingAddressId
+    } else {
+      orderPayload.billingAddress = form.billing
+    }
+
+    if (shippingAddressId) {
+      orderPayload.shippingAddressId = shippingAddressId
+    } else {
+      orderPayload.shippingAddress = sameAsBilling ? form.billing : form.shipping
     }
 
     const res = await fetch('/api/shop/order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customer: { name: form.name, email: (session?.user?.email as string) || form.email, phone: form.phone, document: form.document, userId: session?.user?.id || null },
-        billingAddress: form.billing,
-        shippingAddress: sameAsBilling ? form.billing : form.shipping,
-      }),
+      body: JSON.stringify(orderPayload),
     })
     setLoading(false)
     if (!res.ok) return alert('Erro ao criar pedido')
@@ -229,30 +440,80 @@ export default function CheckoutPage() {
           </section>
           <section className="border rounded p-4">
             <h2 className="font-semibold mb-3">Endereço de cobrança</h2>
+            {savedAddresses.length > 0 && (
+              <div className="mb-3 space-y-1">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Selecionar endereço salvo
+                </label>
+                <select
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={selectedBillingAddressId}
+                  onChange={(event) => handleBillingAddressSelect(event.target.value)}
+                >
+                  <option value={NEW_ADDRESS_OPTION}>Cadastrar novo endereço</option>
+                  {savedAddresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {formatAddressLabel(address)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input placeholder="CEP" className="border rounded px-3 py-2" value={form.billing.zipCode} onChange={(e) => setForm({ ...form, billing: { ...form.billing, zipCode: e.target.value } })} />
-              <input placeholder="Rua" className="border rounded px-3 py-2 md:col-span-2" value={form.billing.street} onChange={(e) => setForm({ ...form, billing: { ...form.billing, street: e.target.value } })} />
-              <input placeholder="Número" className="border rounded px-3 py-2" value={form.billing.number} onChange={(e) => setForm({ ...form, billing: { ...form.billing, number: e.target.value } })} />
-              <input placeholder="Bairro" className="border rounded px-3 py-2" value={form.billing.neighborhood} onChange={(e) => setForm({ ...form, billing: { ...form.billing, neighborhood: e.target.value } })} />
-              <input placeholder="Cidade" className="border rounded px-3 py-2" value={form.billing.city} onChange={(e) => setForm({ ...form, billing: { ...form.billing, city: e.target.value } })} />
-              <input placeholder="Estado" className="border rounded px-3 py-2" value={form.billing.state} onChange={(e) => setForm({ ...form, billing: { ...form.billing, state: e.target.value } })} />
+              <input placeholder="CEP" className="border rounded px-3 py-2" value={form.billing.zipCode} onChange={(e) => handleBillingFieldChange('zipCode', e.target.value)} />
+              <input placeholder="Rua" className="border rounded px-3 py-2 md:col-span-2" value={form.billing.street} onChange={(e) => handleBillingFieldChange('street', e.target.value)} />
+              <input placeholder="Número" className="border rounded px-3 py-2" value={form.billing.number} onChange={(e) => handleBillingFieldChange('number', e.target.value)} />
+              <input placeholder="Complemento" className="border rounded px-3 py-2 md:col-span-2" value={form.billing.complement} onChange={(e) => handleBillingFieldChange('complement', e.target.value)} />
+              <input placeholder="Bairro" className="border rounded px-3 py-2" value={form.billing.neighborhood} onChange={(e) => handleBillingFieldChange('neighborhood', e.target.value)} />
+              <input placeholder="Cidade" className="border rounded px-3 py-2" value={form.billing.city} onChange={(e) => handleBillingFieldChange('city', e.target.value)} />
+              <input placeholder="Estado" className="border rounded px-3 py-2" value={form.billing.state} onChange={(e) => handleBillingFieldChange('state', e.target.value)} />
             </div>
           </section>
           <section className="border rounded p-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold mb-3">Endereço de entrega</h2>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={sameAsBilling} onChange={(e) => setSameAsBilling(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={sameAsBilling}
+                  onChange={(e) => {
+                    setSameAsBilling(e.target.checked)
+                    if (!e.target.checked) {
+                      setSelectedShippingAddressId(NEW_ADDRESS_OPTION)
+                    }
+                  }}
+                />
                 Usar endereço de cobrança
               </label>
             </div>
+            {savedAddresses.length > 0 && (
+              <div className="mb-3 space-y-1">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Selecionar endereço salvo
+                </label>
+                <select
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  value={selectedShippingAddressId}
+                  onChange={(event) => handleShippingAddressSelect(event.target.value)}
+                  disabled={sameAsBilling}
+                >
+                  <option value={NEW_ADDRESS_OPTION}>Cadastrar novo endereço</option>
+                  {savedAddresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {formatAddressLabel(address)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 ${sameAsBilling ? 'opacity-60 pointer-events-none select-none' : ''}`}>
-              <input placeholder="CEP" className="border rounded px-3 py-2" value={form.shipping.zipCode} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, zipCode: e.target.value } })} />
-              <input placeholder="Rua" className="border rounded px-3 py-2 md:col-span-2" value={form.shipping.street} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, street: e.target.value } })} />
-              <input placeholder="Número" className="border rounded px-3 py-2" value={form.shipping.number} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, number: e.target.value } })} />
-              <input placeholder="Bairro" className="border rounded px-3 py-2" value={form.shipping.neighborhood} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, neighborhood: e.target.value } })} />
-              <input placeholder="Cidade" className="border rounded px-3 py-2" value={form.shipping.city} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, city: e.target.value } })} />
-              <input placeholder="Estado" className="border rounded px-3 py-2" value={form.shipping.state} onChange={(e) => setForm({ ...form, shipping: { ...form.shipping, state: e.target.value } })} />
+              <input placeholder="CEP" className="border rounded px-3 py-2" value={form.shipping.zipCode} onChange={(e) => handleShippingFieldChange('zipCode', e.target.value)} />
+              <input placeholder="Rua" className="border rounded px-3 py-2 md:col-span-2" value={form.shipping.street} onChange={(e) => handleShippingFieldChange('street', e.target.value)} />
+              <input placeholder="Número" className="border rounded px-3 py-2" value={form.shipping.number} onChange={(e) => handleShippingFieldChange('number', e.target.value)} />
+              <input placeholder="Complemento" className="border rounded px-3 py-2 md:col-span-2" value={form.shipping.complement} onChange={(e) => handleShippingFieldChange('complement', e.target.value)} />
+              <input placeholder="Bairro" className="border rounded px-3 py-2" value={form.shipping.neighborhood} onChange={(e) => handleShippingFieldChange('neighborhood', e.target.value)} />
+              <input placeholder="Cidade" className="border rounded px-3 py-2" value={form.shipping.city} onChange={(e) => handleShippingFieldChange('city', e.target.value)} />
+              <input placeholder="Estado" className="border rounded px-3 py-2" value={form.shipping.state} onChange={(e) => handleShippingFieldChange('state', e.target.value)} />
             </div>
           </section>
         </div>
