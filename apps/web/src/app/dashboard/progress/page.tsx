@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Star, Trophy } from 'lucide-react'
 import { useGamificationStore } from '@/stores/gamificationStore'
 import RecentActivity from '@/components/gamification/dashboard/RecentActivity'
+import type { PointTransaction } from '@/types/gamification'
 
 interface ProgressData {
   weeklyProgress: {
@@ -34,6 +35,74 @@ interface ProgressData {
     target: number
     achieved: number
   }[]
+}
+
+const ORDER_EVENT_LABELS: Record<string, string> = {
+  ORDER_CREATED: 'Pedido criado',
+  ORDER_PAID: 'Pagamento confirmado',
+  ORDER_COMPLETED: 'Pedido concluído',
+}
+
+const isShoutingCase = (value: string) => /^[A-Z0-9_]+$/.test(value)
+
+const toTitleCase = (value: string) =>
+  value
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+
+const formatReasonLabel = (reason?: string) => {
+  if (!reason) return 'Atividade registrada'
+  if (ORDER_EVENT_LABELS[reason]) return ORDER_EVENT_LABELS[reason]
+  return isShoutingCase(reason) ? toTitleCase(reason) : reason
+}
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const getTransactionReasonLabel = (transaction: PointTransaction) => {
+  const metadataLabel =
+    typeof transaction.metadata?.reasonLabel === 'string'
+      ? transaction.metadata.reasonLabel.trim()
+      : ''
+
+  if (metadataLabel) return metadataLabel
+
+  const metadataEventType =
+    typeof transaction.metadata?.eventType === 'string'
+      ? transaction.metadata.eventType
+      : undefined
+
+  if (metadataEventType && ORDER_EVENT_LABELS[metadataEventType]) {
+    return ORDER_EVENT_LABELS[metadataEventType]
+  }
+
+  return formatReasonLabel(transaction.reason)
+}
+
+const buildTransactionDescription = (transaction: PointTransaction, reasonLabel: string) => {
+  const { description, reason, points } = transaction
+
+  if (!description) {
+    return points >= 0 ? `Pontos ganhos: ${reasonLabel}` : reasonLabel
+  }
+
+  if (reason) {
+    const replaced = description.replace(new RegExp(escapeRegex(reason), 'gi'), reasonLabel)
+    if (replaced !== description) {
+      return replaced
+    }
+  }
+
+  if (/Pontos ganhos/i.test(description) && points >= 0) {
+    return `Pontos ganhos: ${reasonLabel}`
+  }
+
+  if (/Pontos gastos/i.test(description) && points < 0) {
+    return `Pontos gastos: ${reasonLabel}`
+  }
+
+  return description
 }
 
 export default function ProgressPage() {
@@ -110,19 +179,24 @@ export default function ProgressPage() {
     fetchAchievements()
   }, [fetchUserPoints, fetchAchievements])
 
- const timelineEvents = useMemo(() => {
-    const transactionEvents = (recentTransactions || []).map((tx) => ({
-      id: tx.id,
-      type: 'milestone' as const,
-      title: tx.metadata?.orderNumber ? `Pedido ${tx.metadata.orderNumber}` : tx.reason,
-      description: tx.description || tx.reason,
-      date: tx.createdAt,
-      status: 'completed' as const,
-      metadata: {
-        points: tx.points,
-        orderNumber: tx.metadata?.orderNumber,
-      },
-    }))
+  const timelineEvents = useMemo(() => {
+    const transactionEvents = (recentTransactions || []).map((tx: PointTransaction) => {
+      const reasonLabel = getTransactionReasonLabel(tx)
+      const description = buildTransactionDescription(tx, reasonLabel)
+
+      return {
+        id: tx.id,
+        type: 'milestone' as const,
+        title: tx.metadata?.orderNumber ? `Pedido ${tx.metadata.orderNumber}` : reasonLabel,
+        description,
+        date: tx.createdAt,
+        status: 'completed' as const,
+        metadata: {
+          points: tx.points,
+          orderNumber: tx.metadata?.orderNumber,
+        },
+      }
+    })
 
     const achievementEvents = (achievements || [])
       .map((achievement: any) => {
@@ -208,7 +282,7 @@ export default function ProgressPage() {
             {recentTransactions?.slice(0, 3).map((tx) => (
               <div key={tx.id} className="flex justify-between items-center">
                 <span className="truncate mr-2">
-                  {tx.metadata?.orderNumber ? `Pedido ${tx.metadata.orderNumber}` : tx.reason}
+                  {tx.metadata?.orderNumber ? `Pedido ${tx.metadata.orderNumber}` : getTransactionReasonLabel(tx)}
                 </span>
                 <Badge variant={tx.points >= 0 ? 'default' : 'destructive'} className="text-xs">
                   {tx.points >= 0 ? '+' : ''}{tx.points}

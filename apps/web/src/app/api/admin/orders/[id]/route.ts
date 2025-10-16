@@ -64,6 +64,8 @@ export async function GET(
             createdAt: true,
           }
         },
+        billingAddress: true,
+        shippingAddress: true,
         items: {
           include: {
             product: true
@@ -185,6 +187,8 @@ export async function PUT(
             subscriptionTier: true,
           }
         },
+        billingAddress: true,
+        shippingAddress: true,
         items: {
           include: {
             product: {

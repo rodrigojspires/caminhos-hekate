@@ -10,6 +10,7 @@ import {
   User,
   Calendar,
   Mail,
+  MapPin,
   Trash2,
   Download,
   RefreshCw,
@@ -74,6 +75,20 @@ interface OrderItem {
   }
 }
 
+interface OrderAddress {
+  id?: string
+  name?: string | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+  zipCode?: string | null
+  country?: string | null
+  phone?: string | null
+}
+
 interface Order {
   id: string
   total: number
@@ -108,6 +123,8 @@ interface Order {
   shipping?: number | null
   discount?: number | null
   metadata?: Record<string, any> | null
+  billingAddress?: OrderAddress | null
+  shippingAddress?: OrderAddress | null
 }
 
 const statusColors = {
@@ -137,6 +154,31 @@ const ORDER_STATUS_FLOW: Array<keyof typeof statusLabels> = [
   'SHIPPED',
   'DELIVERED',
 ]
+
+const formatPostalCode = (value?: string | null) => {
+  if (!value) return null
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  }
+  return value
+}
+
+const formatAddressLines = (address?: OrderAddress | null) => {
+  if (!address) return null
+
+  const lines = [
+    [address.street, address.number].filter(Boolean).join(', ').trim(),
+    address.complement?.trim(),
+    address.neighborhood?.trim(),
+    [address.city, address.state].filter(Boolean).join(' - ').trim(),
+    formatPostalCode(address.zipCode) ? `CEP ${formatPostalCode(address.zipCode)}` : null,
+    address.country && address.country !== 'BR' ? address.country : null,
+    address.phone ? `Tel: ${address.phone}` : null,
+  ].filter((line) => line && line.length > 0)
+
+  return lines.length > 0 ? lines.join('\n') : null
+}
 
 interface OrderDetailsPageProps {
   params: {
@@ -181,6 +223,37 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
         : 0,
     }
 
+    const metadataObj =
+      rawOrder.metadata && typeof rawOrder.metadata === 'object' && !Array.isArray(rawOrder.metadata)
+        ? (rawOrder.metadata as Record<string, any>)
+        : null
+
+    const mapAddress = (source: any): OrderAddress | null => {
+      if (!source || typeof source !== 'object') return null
+      const data = source as Record<string, any>
+      return {
+        id: data.id ?? undefined,
+        name: data.name ?? data.label ?? null,
+        street: data.street ?? data.logradouro ?? null,
+        number: data.number ?? data.numero ?? null,
+        complement: data.complement ?? data.complemento ?? null,
+        neighborhood: data.neighborhood ?? data.bairro ?? null,
+        city: data.city ?? data.cidade ?? null,
+        state: data.state ?? data.estado ?? null,
+        zipCode: data.zipCode ?? data.cep ?? null,
+        country: data.country ?? data.pais ?? null,
+        phone: data.phone ?? data.telefone ?? null,
+      }
+    }
+
+    const billingAddress = mapAddress(
+      rawOrder.billingAddress ?? metadataObj?.billingAddress ?? metadataObj?.billing,
+    )
+
+    const shippingAddress = mapAddress(
+      rawOrder.shippingAddress ?? metadataObj?.shippingAddress ?? metadataObj?.shipping,
+    )
+
     return {
       ...rawOrder,
       total: parseNumber(rawOrder.total),
@@ -189,6 +262,8 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       discount: rawOrder.discount != null ? parseNumber(rawOrder.discount) : null,
       metadata: rawOrder.metadata ?? null,
       user: rawOrder.user ?? null,
+       billingAddress,
+       shippingAddress,
       items,
       stats,
     }
@@ -396,6 +471,9 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       </div>
     )
   }
+
+  const billingAddressText = formatAddressLines(order.billingAddress)
+  const shippingAddressText = formatAddressLines(order.shippingAddress)
 
   return (
     <div className="space-y-6">
@@ -732,6 +810,28 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
                 Ver perfil do cliente
               </Button>
             ) : null}
+
+            <div className="space-y-4 border-t border-dashed border-gray-200 pt-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  Endereço de cobrança
+                </div>
+                <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                  {billingAddressText ?? 'Endereço de cobrança não informado.'}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  Endereço de entrega
+                </div>
+                <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                  {shippingAddressText ?? 'Endereço de entrega não informado.'}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

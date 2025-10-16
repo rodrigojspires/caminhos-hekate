@@ -14,6 +14,8 @@ interface TimelineEvent {
     points?: number
     certificateId?: string
     progress?: number
+    orderNumber?: string
+    reasonLabel?: string
   }
 }
 

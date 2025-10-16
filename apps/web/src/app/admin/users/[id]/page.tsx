@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Trash2, Mail, Phone, Calendar, ShoppingBag, BookOpen } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, Phone, Calendar, ShoppingBag, BookOpen, MapPin } from 'lucide-react'
 import { UserForm } from '@/components/admin/UserForm'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
@@ -10,6 +10,25 @@ import React from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatCurrency } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+
+interface UserAddress {
+  id: string
+  name: string | null
+  street: string
+  number: string | null
+  complement: string | null
+  neighborhood: string
+  city: string
+  state: string
+  zipCode: string
+  country: string
+  phone: string | null
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 interface User {
   id: string
@@ -24,6 +43,7 @@ interface User {
     orders: number
     enrollments: number
   }
+  addresses: UserAddress[]
   orders: Array<{
     id: string
     total: number
@@ -49,6 +69,39 @@ interface UserFormData {
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
 
+const formatPostalCode = (value?: string | null) => {
+  if (!value) return null
+  const digits = String(value).replace(/\D/g, '')
+  if (digits.length === 8) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  }
+  return value
+}
+
+const getAddressLines = (address: UserAddress) => {
+  const country = address.country ? address.country.trim() : null
+  const shouldShowCountry =
+    country && !['BR', 'Brasil', 'Brazil'].includes(country.toUpperCase())
+
+  const lines = [
+    [address.street, address.number].filter(Boolean).join(', ').trim(),
+    address.complement?.trim(),
+    address.neighborhood?.trim(),
+    [address.city, address.state].filter(Boolean).join(' - ').trim(),
+    formatPostalCode(address.zipCode) ? `CEP ${formatPostalCode(address.zipCode)}` : null,
+    shouldShowCountry ? country : null,
+  ].filter((line) => line && line.length > 0)
+
+  return lines
+}
+
+const getAddressTypeLabel = (address: UserAddress) => {
+  const name = address.name?.toLowerCase() ?? ''
+  if (name.includes('cobr')) return 'Cobrança'
+  if (name.includes('entreg')) return 'Entrega'
+  return null
+}
+
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -72,7 +125,44 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       }
 
       const userData = await response.json()
-      setUser(userData)
+      const toNumber = (value: any) => {
+        if (typeof value === 'number') return value
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : 0
+      }
+
+      const normalizeAddress = (address: any): UserAddress => ({
+        id: String(address.id),
+        name: address.name ?? null,
+        street: address.street ?? '',
+        number: address.number ?? null,
+        complement: address.complement ?? null,
+        neighborhood: address.neighborhood ?? '',
+        city: address.city ?? '',
+        state: address.state ?? '',
+        zipCode: address.zipCode ?? '',
+        country: address.country ?? '',
+        phone: address.phone ?? null,
+        isDefault: Boolean(address.isDefault),
+        createdAt: address.createdAt,
+        updatedAt: address.updatedAt,
+      })
+
+      const normalizedUser: User = {
+        ...userData,
+        orders: Array.isArray(userData.orders)
+          ? userData.orders.map((order: any) => ({
+              ...order,
+              total: toNumber(order.total),
+            }))
+          : [],
+        addresses: Array.isArray(userData.addresses)
+          ? userData.addresses.map(normalizeAddress)
+          : [],
+        enrollments: Array.isArray(userData.enrollments) ? userData.enrollments : [],
+      }
+
+      setUser(normalizedUser)
     } catch (error) {
       console.error('Erro ao buscar usuário:', error)
       toast.error('Erro ao carregar dados do usuário')
@@ -195,6 +285,17 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             }`}
           >
             Detalhes
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('addresses')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'addresses'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Endereços ({user.addresses.length})
           </button>
           
           <button
@@ -337,6 +438,78 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         </div>
       )}
       
+      {activeTab === 'addresses' && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Endereços cadastrados
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Dados coletados durante o checkout ou informados pelo próprio cliente.
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            {user.addresses.length > 0 ? (
+              user.addresses.map((address) => {
+                const lines = getAddressLines(address)
+                const typeLabel = getAddressTypeLabel(address)
+                const updatedLabel = format(new Date(address.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+                const createdLabel = format(new Date(address.createdAt), 'dd/MM/yyyy', { locale: ptBR })
+
+                return (
+                  <div
+                    key={address.id}
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2 text-gray-900 dark:text-gray-100">
+                          <MapPin className="h-4 w-4 text-purple-500" />
+                          <span className="font-semibold">
+                            {address.name ?? 'Endereço'}
+                          </span>
+                          {typeLabel ? (
+                            <Badge variant="outline" className="border-purple-200 text-purple-600">
+                              {typeLabel}
+                            </Badge>
+                          ) : null}
+                          {address.isDefault ? (
+                            <Badge variant="secondary" className="bg-slate-200 text-slate-800">
+                              Principal
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Criado em {createdLabel}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Atualizado em {updatedLabel}
+                      </div>
+                    </div>
+
+                    <p className="mt-3 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
+                      {lines.length > 0 ? lines.join('\n') : 'Dados de endereço não informados.'}
+                    </p>
+
+                    {address.phone ? (
+                      <div className="mt-2 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{address.phone}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                Nenhum endereço cadastrado para este cliente.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       {activeTab === 'orders' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -361,7 +534,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                     
                     <div className="text-right">
                       <div className="font-medium text-gray-900 dark:text-gray-100">
-                        R$ {order.total.toFixed(2)}
+                        {formatCurrency(order.total)}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         {order.status}

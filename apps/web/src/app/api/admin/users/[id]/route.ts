@@ -51,6 +51,25 @@ export async function GET(
             enrollments: true
           }
         },
+        addresses: {
+          select: {
+            id: true,
+            name: true,
+            street: true,
+            number: true,
+            complement: true,
+            neighborhood: true,
+            city: true,
+            state: true,
+            zipCode: true,
+            country: true,
+            phone: true,
+            isDefault: true,
+            createdAt: true,
+            updatedAt: true
+          },
+          orderBy: { updatedAt: 'desc' }
+        },
         orders: {
           take: 5,
           orderBy: { createdAt: 'desc' },
