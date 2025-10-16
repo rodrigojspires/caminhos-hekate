@@ -1,9 +1,9 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearch"]
   // Ensure Prisma bundles engines compatible with Alpine (musl) + OpenSSL 3
   // This avoids runtime errors about missing libssl.so.1.1
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -12,93 +12,93 @@ datasource db {
 }
 
 model User {
-  id                   String                  @id @default(cuid())
-  email                String                  @unique
-  emailVerified        DateTime?
-  password             String?
-  name                 String?
-  image                String?
-  bio                  String?
-  phone                String?
-  document             String?
-  role                 Role                    @default(VISITOR)
-  subscriptionTier     SubscriptionTier        @default(FREE)
-  twoFactorEnabled     Boolean                 @default(false)
-  twoFactorSecret      String?
-  twoFactorBackupCodes Json?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
-  accounts             Account[]
-  addresses            Address[]
-  auditLogs            AuditLog[]
-  certificates         Certificate[]
-  comments             Comment[]
-  downloads            Download[]
-  enrollments          Enrollment[]
-  loginHistory         LoginHistory[]
-  sentNotifications    Notification[]
-  notifications        NotificationPreference?
-  orders               Order[]
-  posts                Post[]
-  progress             Progress[]
-  reactions            Reaction[]
-  reports              Report[]                @relation("UserReports")
-  reviewedReports      Report[]                @relation("ReviewedReports")
-  securityAlerts       SecurityAlert[]
-  sessions             Session[]
-  subscriptions        Subscription[]
-  analyticsMetrics     AnalyticsMetric[]
-  analyticsEvents      AnalyticsEvent[]
-  analyticsDashboards  AnalyticsDashboard[]
-  searchQueries        SearchQuery[]
-  createdEmailTemplates EmailTemplate[]    @relation("EmailTemplateCreator")
-  updatedEmailTemplates EmailTemplate[]    @relation("EmailTemplateUpdater")
-  emailTemplateVersions EmailTemplateVersion[]
-  emailSends           EmailSend[]
-  emailCampaigns       EmailCampaign[]
-  preferences          UserPreferences?
-  customThemes         CustomTheme[]
-  consents             UserConsent[]
-  userSubscriptions    UserSubscription[]
-  paymentTransactions  PaymentTransaction[]
+  id                            String                         @id @default(cuid())
+  email                         String                         @unique
+  emailVerified                 DateTime?
+  password                      String?
+  name                          String?
+  image                         String?
+  bio                           String?
+  phone                         String?
+  document                      String?
+  role                          Role                           @default(VISITOR)
+  subscriptionTier              SubscriptionTier               @default(FREE)
+  twoFactorEnabled              Boolean                        @default(false)
+  twoFactorSecret               String?
+  twoFactorBackupCodes          Json?
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
+  accounts                      Account[]
+  addresses                     Address[]
+  auditLogs                     AuditLog[]
+  certificates                  Certificate[]
+  comments                      Comment[]
+  downloads                     Download[]
+  enrollments                   Enrollment[]
+  loginHistory                  LoginHistory[]
+  sentNotifications             Notification[]
+  notifications                 NotificationPreference?
+  orders                        Order[]
+  posts                         Post[]
+  progress                      Progress[]
+  reactions                     Reaction[]
+  reports                       Report[]                       @relation("UserReports")
+  reviewedReports               Report[]                       @relation("ReviewedReports")
+  securityAlerts                SecurityAlert[]
+  sessions                      Session[]
+  subscriptions                 Subscription[]
+  analyticsMetrics              AnalyticsMetric[]
+  analyticsEvents               AnalyticsEvent[]
+  analyticsDashboards           AnalyticsDashboard[]
+  searchQueries                 SearchQuery[]
+  createdEmailTemplates         EmailTemplate[]                @relation("EmailTemplateCreator")
+  updatedEmailTemplates         EmailTemplate[]                @relation("EmailTemplateUpdater")
+  emailTemplateVersions         EmailTemplateVersion[]
+  emailSends                    EmailSend[]
+  emailCampaigns                EmailCampaign[]
+  preferences                   UserPreferences?
+  customThemes                  CustomTheme[]
+  consents                      UserConsent[]
+  userSubscriptions             UserSubscription[]
+  paymentTransactions           PaymentTransaction[]
   // Gamification Relations
-  userPoints          UserPoints[]
-  userAchievements    UserAchievement[]
-  userStreaks         UserStreak[]
-  pointTransactions   PointTransaction[]
-  leaderboardEntries  LeaderboardEntry[]
-  gamificationNotifications GamificationNotification[] @relation("UserGamificationNotifications")
-  userBadges          UserBadge[] @relation("UserBadges")
-  userRewards         UserReward[]
+  userPoints                    UserPoints[]
+  userAchievements              UserAchievement[]
+  userStreaks                   UserStreak[]
+  pointTransactions             PointTransaction[]
+  leaderboardEntries            LeaderboardEntry[]
+  gamificationNotifications     GamificationNotification[]     @relation("UserGamificationNotifications")
+  userBadges                    UserBadge[]                    @relation("UserBadges")
+  userRewards                   UserReward[]
   // Gamification Events Relations
   gamificationEventParticipants GamificationEventParticipant[]
   gamificationUserRewards       GamificationUserReward[]
   // Events relations
-  createdEvents        Event[]             @relation("EventCreator")
-  eventRegistrations   EventRegistration[]
-  eventReminders       EventReminder[]
-  reminders            Reminder[]
+  createdEvents                 Event[]                        @relation("EventCreator")
+  eventRegistrations            EventRegistration[]
+  eventReminders                EventReminder[]
+  reminders                     Reminder[]
   // Groups relations
-  createdGroups        Group[]             @relation("GroupCreator")
-  groupMemberships     GroupMember[]
-  invitedGroupMembers  GroupMember[]       @relation("GroupMemberInviter")
-  groupMessages        GroupMessage[]      @relation("GroupMessageAuthor")
-  pinnedGroupMessages  GroupMessage[]      @relation("GroupMessagePinner")
-  createdGroupEvents   GroupEvent[]        @relation("GroupEventCreator")
-  groupEventAttendances GroupEventAttendee[]
-  sentGroupInvitations GroupInvitation[]   @relation("GroupInvitationInviter")
-  receivedGroupInvitations GroupInvitation[] @relation("GroupInvitationInvitee")
-  uploadedGroupResources GroupResource[]   @relation("GroupResourceUploader")
+  createdGroups                 Group[]                        @relation("GroupCreator")
+  groupMemberships              GroupMember[]
+  invitedGroupMembers           GroupMember[]                  @relation("GroupMemberInviter")
+  groupMessages                 GroupMessage[]                 @relation("GroupMessageAuthor")
+  pinnedGroupMessages           GroupMessage[]                 @relation("GroupMessagePinner")
+  createdGroupEvents            GroupEvent[]                   @relation("GroupEventCreator")
+  groupEventAttendances         GroupEventAttendee[]
+  sentGroupInvitations          GroupInvitation[]              @relation("GroupInvitationInviter")
+  receivedGroupInvitations      GroupInvitation[]              @relation("GroupInvitationInvitee")
+  uploadedGroupResources        GroupResource[]                @relation("GroupResourceUploader")
   // Calendar integration fields
-  calendarNotificationSettings String?
-  calendarPrivacySettings      String?
-  calendarIntegrations         CalendarIntegration[]
-  resolvedConflicts            CalendarConflict[]   @relation("ConflictResolver")
+  calendarNotificationSettings  String?
+  calendarPrivacySettings       String?
+  calendarIntegrations          CalendarIntegration[]
+  resolvedConflicts             CalendarConflict[]             @relation("ConflictResolver")
   // Notification logs relations
-  emailLogs                    EmailLog[]
-  pushSubscriptions            PushSubscription[]
-  pushNotificationLogs         PushNotificationLog[]
-  smsLogs                      SmsLog[]
+  emailLogs                     EmailLog[]
+  pushSubscriptions             PushSubscription[]
+  pushNotificationLogs          PushNotificationLog[]
+  smsLogs                       SmsLog[]
 }
 
 model Account {
@@ -163,22 +163,22 @@ model Subscription {
 }
 
 model SubscriptionPlan {
-  id            String              @id @default(cuid())
-  tier          SubscriptionTier    @unique
-  name          String
-  description   String
-  monthlyPrice  Decimal             @db.Decimal(10, 2)
-  yearlyPrice   Decimal             @db.Decimal(10, 2)
-  interval      SubscriptionInterval @default(MONTHLY)
-  intervalCount Int                 @default(1)
-  trialDays     Int?                @default(0)
-  features      Json
-  maxCourses    Int?
-  maxDownloads  Int?
-  metadata      Json?
-  isActive      Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  id                String               @id @default(cuid())
+  tier              SubscriptionTier     @unique
+  name              String
+  description       String
+  monthlyPrice      Decimal              @db.Decimal(10, 2)
+  yearlyPrice       Decimal              @db.Decimal(10, 2)
+  interval          SubscriptionInterval @default(MONTHLY)
+  intervalCount     Int                  @default(1)
+  trialDays         Int?                 @default(0)
+  features          Json
+  maxCourses        Int?
+  maxDownloads      Int?
+  metadata          Json?
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   userSubscriptions UserSubscription[]
 
   @@index([isActive])
@@ -264,33 +264,33 @@ model Inventory {
 }
 
 model Order {
-  id                String        @id @default(cuid())
-  orderNumber       String        @unique
-  userId            String?
-  status            OrderStatus   @default(PENDING)
-  subtotal          Decimal       @db.Decimal(10, 2)
-  shipping          Decimal       @db.Decimal(10, 2)
-  discount          Decimal       @default(0) @db.Decimal(10, 2)
-  total             Decimal       @db.Decimal(10, 2)
-  customerEmail     String
-  customerName      String
-  customerPhone     String?
-  customerDocument  String?
-  billingAddressId  String?
-  shippingAddressId String?
-  notes             String?
-  trackingInfo      String?
-  metadata          Json?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  couponUsages      CouponUsage[]
-  billingAddress    Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
-  shippingAddress   Address?      @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
-  user              User?         @relation(fields: [userId], references: [id])
-  items             OrderItem[]
-  payments          Payment[]
+  id                  String               @id @default(cuid())
+  orderNumber         String               @unique
+  userId              String?
+  status              OrderStatus          @default(PENDING)
+  subtotal            Decimal              @db.Decimal(10, 2)
+  shipping            Decimal              @db.Decimal(10, 2)
+  discount            Decimal              @default(0) @db.Decimal(10, 2)
+  total               Decimal              @db.Decimal(10, 2)
+  customerEmail       String
+  customerName        String
+  customerPhone       String?
+  customerDocument    String?
+  billingAddressId    String?
+  shippingAddressId   String?
+  notes               String?
+  trackingInfo        String?
+  metadata            Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  couponUsages        CouponUsage[]
+  billingAddress      Address?             @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  shippingAddress     Address?             @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id])
+  items               OrderItem[]
+  payments            Payment[]
   paymentTransactions PaymentTransaction[]
-  shipments         Shipment[]
+  shipments           Shipment[]
 }
 
 model OrderItem {
@@ -416,19 +416,19 @@ model Review {
 }
 
 model Download {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   productId     String
   fileName      String
   fileUrl       String
-  token         String   @unique
+  token         String         @unique
   expiresAt     DateTime
-  downloadCount Int      @default(0)
-  maxDownloads  Int      @default(5)
+  downloadCount Int            @default(0)
+  maxDownloads  Int            @default(5)
   source        DownloadSource @default(ORDER)
   sourceRefId   String?
-  createdAt     DateTime @default(now())
-  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime       @default(now())
+  user          User           @relation(fields: [userId], references: [id])
 }
 
 model Topic {
@@ -543,6 +543,7 @@ model Course {
   price            Decimal?         @db.Decimal(10, 2)
   comparePrice     Decimal?         @db.Decimal(10, 2)
   tier             SubscriptionTier @default(FREE)
+  accessModel      CourseAccessModel @default(ONE_TIME)
   status           CourseStatus     @default(DRAFT)
   duration         Int?
   level            CourseLevel?     @default(BEGINNER)
@@ -582,6 +583,7 @@ model Lesson {
   content       String?
   videoUrl      String?
   videoDuration Int?
+  videoStorage   Json?
   order         Int
   isFree        Boolean    @default(false)
   createdAt     DateTime   @default(now())
@@ -599,6 +601,7 @@ model Asset {
   type      String
   url       String
   size      Int?
+  order     Int      @default(1)
   createdAt DateTime @default(now())
   lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 }
@@ -706,8 +709,6 @@ model Notification {
   user       User                @relation(fields: [userId], references: [id])
 }
 
-
-
 model WhatsAppTemplate {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -739,8 +740,8 @@ model AuditLog {
 model UserConsent {
   id          String   @id @default(cuid())
   userId      String?
-  consentType String   // cookies|privacy|terms
-  consent     Json     // categories and flags
+  consentType String // cookies|privacy|terms
+  consent     Json // categories and flags
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
@@ -901,6 +902,12 @@ enum CourseLevel {
   EXPERT
 }
 
+enum CourseAccessModel {
+  FREE
+  ONE_TIME
+  SUBSCRIPTION
+}
+
 enum NotificationChannel {
   EMAIL
   WHATSAPP
@@ -963,18 +970,18 @@ enum SecurityAlertStatus {
 
 // Analytics Models
 model AnalyticsMetric {
-  id          String   @id @default(cuid())
-  name        String
-  category    String
-  value       Float
-  unit        String?
-  dimensions  Json?
-  timestamp   DateTime @default(now())
-  userId      String?
-  sessionId   String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  user        User?    @relation(fields: [userId], references: [id])
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  value      Float
+  unit       String?
+  dimensions Json?
+  timestamp  DateTime @default(now())
+  userId     String?
+  sessionId  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@index([name, timestamp])
   @@index([category, timestamp])
@@ -1026,21 +1033,21 @@ model AnalyticsDashboard {
 
 // Search Models
 model SearchIndex {
-  id          String   @id @default(cuid())
-  entityType  String   // 'product', 'course', 'post', 'user'
-  entityId    String
-  title       String
-  content     String   @db.Text
-  summary     String?
-  tags        String[]
-  categories  String[]
-  metadata    Json?
-  searchVector String? @db.Text // Para full-text search
-  popularity  Float    @default(0)
-  relevance   Float    @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  entityType   String // 'product', 'course', 'post', 'user'
+  entityId     String
+  title        String
+  content      String   @db.Text
+  summary      String?
+  tags         String[]
+  categories   String[]
+  metadata     Json?
+  searchVector String?  @db.Text // Para full-text search
+  popularity   Float    @default(0)
+  relevance    Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([entityType, entityId])
   @@index([isActive, popularity])
@@ -1052,17 +1059,17 @@ model SearchIndex {
 }
 
 model SearchQuery {
-  id          String   @id @default(cuid())
-  query       String
-  filters     Json?
-  userId      String?
-  sessionId   String?
-  resultCount Int      @default(0)
+  id             String   @id @default(cuid())
+  query          String
+  filters        Json?
+  userId         String?
+  sessionId      String?
+  resultCount    Int      @default(0)
   clickedResults Json?
-  timestamp   DateTime @default(now())
-  ipAddress   String?
-  userAgent   String?
-  user        User?    @relation(fields: [userId], references: [id])
+  timestamp      DateTime @default(now())
+  ipAddress      String?
+  userAgent      String?
+  user           User?    @relation(fields: [userId], references: [id])
 
   @@index([query])
   @@index([userId, timestamp])
@@ -1071,14 +1078,14 @@ model SearchQuery {
 }
 
 model SearchSuggestion {
-  id          String   @id @default(cuid())
-  query       String   @unique
-  suggestion  String
-  category    String?
-  popularity  Int      @default(1)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  query      String   @unique
+  suggestion String
+  category   String?
+  popularity Int      @default(1)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([query])
   @@index([popularity])
@@ -1089,8 +1096,8 @@ model SearchSuggestion {
 model SearchFacet {
   id          String   @id @default(cuid())
   name        String
-  type        String   // 'category', 'tag', 'price_range', 'date_range', 'rating'
-  values      Json     // Array de valores possíveis
+  type        String // 'category', 'tag', 'price_range', 'date_range', 'rating'
+  values      Json // Array de valores possíveis
   entityTypes String[] // Tipos de entidade que suportam esta faceta
   isActive    Boolean  @default(true)
   order       Int      @default(0)
@@ -1105,27 +1112,27 @@ model SearchFacet {
 
 // Email Templates Models
 model EmailTemplate {
-  id          String              @id @default(cuid())
+  id          String                 @id @default(cuid())
   name        String
-  slug        String              @unique
+  slug        String                 @unique
   subject     String
-  htmlContent String              @db.Text
-  textContent String?             @db.Text
-  variables   Json?               // Variáveis disponíveis no template
-  category    EmailCategory       @default(TRANSACTIONAL)
-  status      EmailTemplateStatus @default(DRAFT)
-  version     Int                 @default(1)
-  isDefault   Boolean             @default(false)
+  htmlContent String                 @db.Text
+  textContent String?                @db.Text
+  variables   Json? // Variáveis disponíveis no template
+  category    EmailCategory          @default(TRANSACTIONAL)
+  status      EmailTemplateStatus    @default(DRAFT)
+  version     Int                    @default(1)
+  isDefault   Boolean                @default(false)
   tags        String[]
   metadata    Json?
-  previewData Json?               // Dados para preview
+  previewData Json? // Dados para preview
   createdBy   String
   updatedBy   String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
   publishedAt DateTime?
-  creator     User                @relation("EmailTemplateCreator", fields: [createdBy], references: [id])
-  updater     User?               @relation("EmailTemplateUpdater", fields: [updatedBy], references: [id])
+  creator     User                   @relation("EmailTemplateCreator", fields: [createdBy], references: [id])
+  updater     User?                  @relation("EmailTemplateUpdater", fields: [updatedBy], references: [id])
   versions    EmailTemplateVersion[]
   sends       EmailSend[]
 
@@ -1158,7 +1165,7 @@ model EmailTemplateVersion {
 }
 
 model EmailSend {
-  id           String           @id @default(cuid())
+  id           String          @id @default(cuid())
   templateId   String?
   templateSlug String?
   recipientId  String?
@@ -1167,11 +1174,11 @@ model EmailSend {
   fromEmail    String
   fromName     String?
   subject      String
-  htmlContent  String           @db.Text
-  textContent  String?          @db.Text
-  variables    Json?            // Variáveis utilizadas no envio
-  status       EmailSendStatus  @default(PENDING)
-  priority     EmailPriority    @default(NORMAL)
+  htmlContent  String          @db.Text
+  textContent  String?         @db.Text
+  variables    Json? // Variáveis utilizadas no envio
+  status       EmailSendStatus @default(PENDING)
+  priority     EmailPriority   @default(NORMAL)
   scheduledFor DateTime?
   sentAt       DateTime?
   deliveredAt  DateTime?
@@ -1180,12 +1187,12 @@ model EmailSend {
   bouncedAt    DateTime?
   errorMessage String?
   metadata     Json?
-  trackingId   String?          @unique
+  trackingId   String?         @unique
   campaignId   String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  template     EmailTemplate?   @relation(fields: [templateId], references: [id])
-  recipient    User?            @relation(fields: [recipientId], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  template     EmailTemplate?  @relation(fields: [templateId], references: [id])
+  recipient    User?           @relation(fields: [recipientId], references: [id])
   events       EmailEvent[]
 
   @@index([toEmail])
@@ -1200,15 +1207,15 @@ model EmailSend {
 }
 
 model EmailEvent {
-  id        String          @id @default(cuid())
+  id        String         @id @default(cuid())
   sendId    String
   type      EmailEventType
-  timestamp DateTime        @default(now())
+  timestamp DateTime       @default(now())
   data      Json?
   ipAddress String?
   userAgent String?
   location  String?
-  send      EmailSend       @relation(fields: [sendId], references: [id], onDelete: Cascade)
+  send      EmailSend      @relation(fields: [sendId], references: [id], onDelete: Cascade)
 
   @@index([sendId])
   @@index([type])
@@ -1217,27 +1224,27 @@ model EmailEvent {
 }
 
 model EmailCampaign {
-  id          String              @id @default(cuid())
-  name        String
-  description String?
-  status      EmailCampaignStatus @default(DRAFT)
-  templateId  String?
-  segmentId   String?
-  scheduledFor DateTime?
-  sentAt      DateTime?
-  completedAt DateTime?
-  totalRecipients Int             @default(0)
-  sentCount   Int                 @default(0)
-  deliveredCount Int              @default(0)
-  openedCount Int                 @default(0)
-  clickedCount Int                @default(0)
-  bouncedCount Int                @default(0)
-  unsubscribedCount Int           @default(0)
-  metadata    Json?
-  createdBy   String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  creator     User                @relation(fields: [createdBy], references: [id])
+  id                String              @id @default(cuid())
+  name              String
+  description       String?
+  status            EmailCampaignStatus @default(DRAFT)
+  templateId        String?
+  segmentId         String?
+  scheduledFor      DateTime?
+  sentAt            DateTime?
+  completedAt       DateTime?
+  totalRecipients   Int                 @default(0)
+  sentCount         Int                 @default(0)
+  deliveredCount    Int                 @default(0)
+  openedCount       Int                 @default(0)
+  clickedCount      Int                 @default(0)
+  bouncedCount      Int                 @default(0)
+  unsubscribedCount Int                 @default(0)
+  metadata          Json?
+  createdBy         String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  creator           User                @relation(fields: [createdBy], references: [id])
 
   @@index([status])
   @@index([createdBy])
@@ -1310,16 +1317,16 @@ enum EmailCampaignStatus {
 // ============================================================================
 
 model UserPreferences {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  theme        Json?    // Configurações de tema (cores, tipografia, etc.)
-  layout       Json?    // Configurações de layout (sidebar, header, densidade)
-  accessibility Json?   // Configurações de acessibilidade (contraste, movimento, etc.)
-  locale       String   @default("pt-BR")
-  timezone     String   @default("America/Sao_Paulo")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  theme         Json? // Configurações de tema (cores, tipografia, etc.)
+  layout        Json? // Configurações de layout (sidebar, header, densidade)
+  accessibility Json? // Configurações de acessibilidade (contraste, movimento, etc.)
+  locale        String   @default("pt-BR")
+  timezone      String   @default("America/Sao_Paulo")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_preferences")
@@ -1329,9 +1336,9 @@ model CustomTheme {
   id         String   @id @default(cuid())
   userId     String?
   name       String
-  colors     Json     // Paleta de cores do tema personalizado
-  typography Json?    // Configurações de tipografia
-  spacing    Json?    // Configurações de espaçamento
+  colors     Json // Paleta de cores do tema personalizado
+  typography Json? // Configurações de tipografia
+  spacing    Json? // Configurações de espaçamento
   isPublic   Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -1347,22 +1354,22 @@ model CustomTheme {
 // ============================================================================
 
 model UserSubscription {
-  id                String                    @id @default(cuid())
-  userId            String
-  planId            String
-  status            SubscriptionStatus        @default(PENDING)
+  id                 String               @id @default(cuid())
+  userId             String
+  planId             String
+  status             SubscriptionStatus   @default(PENDING)
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
-  trialStart        DateTime?
-  trialEnd          DateTime?
-  canceledAt        DateTime?
-  cancelAtPeriodEnd Boolean                   @default(false)
-  metadata          Json?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  user              User                      @relation(fields: [userId], references: [id])
-  plan              SubscriptionPlan          @relation(fields: [planId], references: [id])
-  payments          PaymentTransaction[]
+  trialStart         DateTime?
+  trialEnd           DateTime?
+  canceledAt         DateTime?
+  cancelAtPeriodEnd  Boolean              @default(false)
+  metadata           Json?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  user               User                 @relation(fields: [userId], references: [id])
+  plan               SubscriptionPlan     @relation(fields: [planId], references: [id])
+  payments           PaymentTransaction[]
 
   @@index([userId])
   @@index([planId])
@@ -1372,16 +1379,16 @@ model UserSubscription {
 }
 
 model PaymentTransaction {
-  id                String                    @id @default(cuid())
+  id                String                   @id @default(cuid())
   userId            String?
   subscriptionId    String?
   orderId           String?
   externalId        String?
-  amount            Decimal                   @db.Decimal(10, 2)
-  currency          String                    @default("BRL")
-  status            PaymentTransactionStatus  @default(PENDING)
+  amount            Decimal                  @db.Decimal(10, 2)
+  currency          String                   @default("BRL")
+  status            PaymentTransactionStatus @default(PENDING)
   provider          PaymentProvider
-  providerPaymentId String?                   @unique
+  providerPaymentId String?                  @unique
   providerStatus    String?
   paymentMethod     String?
   qrCode            String?
@@ -1392,11 +1399,11 @@ model PaymentTransaction {
   failedAt          DateTime?
   refundedAt        DateTime?
   metadata          Json?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  user              User?                     @relation(fields: [userId], references: [id])
-  subscription      UserSubscription?         @relation(fields: [subscriptionId], references: [id])
-  order             Order?                    @relation(fields: [orderId], references: [id])
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  user              User?                    @relation(fields: [userId], references: [id])
+  subscription      UserSubscription?        @relation(fields: [subscriptionId], references: [id])
+  order             Order?                   @relation(fields: [orderId], references: [id])
 
   @@index([subscriptionId])
   @@index([orderId])
@@ -1472,22 +1479,22 @@ model AchievementCategory {
 }
 
 model Achievement {
-  id           String               @id @default(cuid())
-  name         String
-  description  String
-  icon         String?
-  categoryId   String
-  rarity       AchievementRarity    @default(COMMON)
-  points       Int                  @default(0)
-  isActive     Boolean              @default(true)
-  criteria     Json                 // Critérios para desbloquear a conquista
-  metadata     Json?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  category     AchievementCategory  @relation(fields: [categoryId], references: [id])
+  id               String              @id @default(cuid())
+  name             String
+  description      String
+  icon             String?
+  categoryId       String
+  rarity           AchievementRarity   @default(COMMON)
+  points           Int                 @default(0)
+  isActive         Boolean             @default(true)
+  criteria         Json // Critérios para desbloquear a conquista
+  metadata         Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  category         AchievementCategory @relation(fields: [categoryId], references: [id])
   userAchievements UserAchievement[]
-  rewards      AchievementReward[]
-  userRewards  UserReward[]
+  rewards          AchievementReward[]
+  userRewards      UserReward[]
 
   @@index([categoryId])
   @@index([rarity])
@@ -1500,7 +1507,7 @@ model UserAchievement {
   userId        String
   achievementId String
   unlockedAt    DateTime    @default(now())
-  progress      Json?       // Progresso atual para conquistas progressivas
+  progress      Json? // Progresso atual para conquistas progressivas
   metadata      Json?
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievement   Achievement @relation(fields: [achievementId], references: [id])
@@ -1513,17 +1520,17 @@ model UserAchievement {
 }
 
 model UserStreak {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  streakType    String   // Tipo de streak (daily_login, course_completion, etc.)
-  currentStreak Int      @default(0)
-  longestStreak Int      @default(0)
+  streakType    String // Tipo de streak (daily_login, course_completion, etc.)
+  currentStreak Int       @default(0)
+  longestStreak Int       @default(0)
   lastActivity  DateTime?
-  isActive      Boolean  @default(true)
+  isActive      Boolean   @default(true)
   metadata      Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, streakType])
   @@index([userId])
@@ -1534,15 +1541,15 @@ model UserStreak {
 }
 
 model PointTransaction {
-  id          String            @id @default(cuid())
+  id          String               @id @default(cuid())
   userId      String
   points      Int
   type        PointTransactionType
   reason      String
   description String?
   metadata    Json?
-  createdAt   DateTime          @default(now())
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -1551,18 +1558,18 @@ model PointTransaction {
 }
 
 model LeaderboardEntry {
-  id         String              @id @default(cuid())
-  userId     String
-  category   LeaderboardCategory @default(POINTS)
-  period     LeaderboardPeriod   @default(ALL_TIME)
-  score      Int
-  rank       Int
+  id          String              @id @default(cuid())
+  userId      String
+  category    LeaderboardCategory @default(POINTS)
+  period      LeaderboardPeriod   @default(ALL_TIME)
+  score       Int
+  rank        Int
   periodStart DateTime?
   periodEnd   DateTime?
-  metadata   Json?
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata    Json?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category, period, periodStart])
   @@index([category, period, rank])
@@ -1609,21 +1616,21 @@ enum LeaderboardPeriod {
 // ============================================================================
 
 model GamificationNotification {
-  id          String                    @id @default(cuid())
+  id          String               @id @default(cuid())
   userId      String
   type        NotificationType
   title       String
-  message     String                    @db.Text
-  data        Json?                     // Dados específicos da notificação
-  isRead      Boolean                   @default(false)
-  isPush      Boolean                   @default(false)
+  message     String               @db.Text
+  data        Json? // Dados específicos da notificação
+  isRead      Boolean              @default(false)
+  isPush      Boolean              @default(false)
   pushSentAt  DateTime?
   emailSentAt DateTime?
-  priority    NotificationPriority      @default(MEDIUM)
+  priority    NotificationPriority @default(MEDIUM)
   expiresAt   DateTime?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  user        User                      @relation("UserGamificationNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation("UserGamificationNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -1635,18 +1642,18 @@ model GamificationNotification {
 }
 
 model Badge {
-  id          String        @id @default(cuid())
-  name        String        @unique
+  id          String      @id @default(cuid())
+  name        String      @unique
   description String
   icon        String
-  color       String        @default("#3B82F6")
-  rarity      BadgeRarity   @default(COMMON)
+  color       String      @default("#3B82F6")
+  rarity      BadgeRarity @default(COMMON)
   category    String?
-  isActive    Boolean       @default(true)
-  criteria    Json          // Critérios para obter o badge
+  isActive    Boolean     @default(true)
+  criteria    Json // Critérios para obter o badge
   metadata    Json?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   userBadges  UserBadge[]
 
   @@index([rarity])
@@ -1656,13 +1663,13 @@ model Badge {
 }
 
 model UserBadge {
-  id        String    @id @default(cuid())
-  userId    String
-  badgeId   String
-  earnedAt  DateTime  @default(now())
-  metadata  Json?
-  user      User      @relation("UserBadges", fields: [userId], references: [id], onDelete: Cascade)
-  badge     Badge     @relation(fields: [badgeId], references: [id])
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  metadata Json?
+  user     User     @relation("UserBadges", fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id])
 
   @@unique([userId, badgeId])
   @@index([userId])
@@ -1672,16 +1679,16 @@ model UserBadge {
 }
 
 model AchievementReward {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   achievementId String
   rewardType    RewardType
-  rewardValue   Int         // Pontos extras, dias de premium, etc.
+  rewardValue   Int // Pontos extras, dias de premium, etc.
   description   String?
-  isActive      Boolean     @default(true)
+  isActive      Boolean      @default(true)
   metadata      Json?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  achievement   Achievement  @relation(fields: [achievementId], references: [id])
   userRewards   UserReward[]
 
   @@index([achievementId])
@@ -1694,7 +1701,7 @@ model AchievementReward {
 model UserReward {
   id            String            @id @default(cuid())
   userId        String
-  rewardId      String            // Refere-se a AchievementReward
+  rewardId      String // Refere-se a AchievementReward
   achievementId String?
   claimed       Boolean           @default(false)
   claimedAt     DateTime?
@@ -1712,18 +1719,18 @@ model UserReward {
 }
 
 model NotificationTemplate {
-  id          String           @id @default(cuid())
-  type        NotificationType
-  title       String
-  message     String           @db.Text
+  id           String           @id @default(cuid())
+  type         NotificationType
+  title        String
+  message      String           @db.Text
   emailSubject String?
-  emailBody   String?          @db.Text
-  pushTitle   String?
-  pushBody    String?
-  variables   String[]         // Variáveis disponíveis no template
-  isActive    Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  emailBody    String?          @db.Text
+  pushTitle    String?
+  pushBody     String?
+  variables    String[] // Variáveis disponíveis no template
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@unique([type])
   @@index([isActive])
@@ -1762,35 +1769,35 @@ enum RewardType {
 // ============================================================================
 
 model Event {
-  id              String            @id @default(cuid())
-  title           String
-  description     String?           @db.Text
-  type            EventType         @default(MEETING)
-  status          EventStatus       @default(DRAFT)
-  startDate       DateTime
-  endDate         DateTime
-  timezone        String            @default("America/Sao_Paulo")
-  location        String?
-  virtualLink     String?
-  maxAttendees    Int?
-  isPublic        Boolean           @default(true)
-  requiresApproval Boolean          @default(false)
-  tags            String[]
-  metadata        Json?
-  createdBy       String
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  publishedAt     DateTime?
-  canceledAt      DateTime?
-  creator         User              @relation("EventCreator", fields: [createdBy], references: [id])
-  registrations   EventRegistration[]
-  eventReminders  EventReminder[]
-  reminders       Reminder[]
-  recurringEvents RecurringEvent[]
-  syncs           EventSync[]
-  calendarSyncs   CalendarSyncEvent[]
+  id                String              @id @default(cuid())
+  title             String
+  description       String?             @db.Text
+  type              EventType           @default(MEETING)
+  status            EventStatus         @default(DRAFT)
+  startDate         DateTime
+  endDate           DateTime
+  timezone          String              @default("America/Sao_Paulo")
+  location          String?
+  virtualLink       String?
+  maxAttendees      Int?
+  isPublic          Boolean             @default(true)
+  requiresApproval  Boolean             @default(false)
+  tags              String[]
+  metadata          Json?
+  createdBy         String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  publishedAt       DateTime?
+  canceledAt        DateTime?
+  creator           User                @relation("EventCreator", fields: [createdBy], references: [id])
+  registrations     EventRegistration[]
+  eventReminders    EventReminder[]
+  reminders         Reminder[]
+  recurringEvents   RecurringEvent[]
+  syncs             EventSync[]
+  calendarSyncs     CalendarSyncEvent[]
   calendarConflicts CalendarConflict[]
-  emailLogs       EmailLog[]
+  emailLogs         EmailLog[]
 
   @@index([type])
   @@index([status])
@@ -1803,19 +1810,19 @@ model Event {
 }
 
 model EventRegistration {
-  id          String                    @id @default(cuid())
-  eventId     String
-  userId      String?
-  guestEmail  String?
-  guestName   String?
-  status      EventRegistrationStatus   @default(REGISTERED)
-  attendedAt  DateTime?
-  registeredAt DateTime?                // Registration timestamp
-  metadata    Json?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  event       Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user        User?                     @relation(fields: [userId], references: [id])
+  id           String                  @id @default(cuid())
+  eventId      String
+  userId       String?
+  guestEmail   String?
+  guestName    String?
+  status       EventRegistrationStatus @default(REGISTERED)
+  attendedAt   DateTime?
+  registeredAt DateTime? // Registration timestamp
+  metadata     Json?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  event        Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User?                   @relation(fields: [userId], references: [id])
 
   @@unique([eventId, userId])
   @@unique([eventId, guestEmail])
@@ -1827,22 +1834,22 @@ model EventRegistration {
 }
 
 model EventReminder {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   eventId      String
   userId       String?
   guestEmail   String?
-  type         ReminderType  @default(EMAIL)
+  type         ReminderType   @default(EMAIL)
   triggerTime  DateTime
-  reminderDate DateTime      @default(now())
+  reminderDate DateTime       @default(now())
   sentAt       DateTime?
   status       ReminderStatus @default(PENDING)
-  retryCount   Int           @default(0)
+  retryCount   Int            @default(0)
   lastError    String?
   metadata     Json?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user         User?         @relation(fields: [userId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  event        Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User?          @relation(fields: [userId], references: [id])
 
   @@index([eventId])
   @@index([userId])
@@ -1854,16 +1861,16 @@ model EventReminder {
 }
 
 model RecurringEvent {
-  id            String              @id @default(cuid())
-  parentEventId String
-  recurrenceRule Json               // RRULE format
-  exceptions    DateTime[]          // Datas de exceção
-  endDate       DateTime?
+  id             String     @id @default(cuid())
+  parentEventId  String
+  recurrenceRule Json // RRULE format
+  exceptions     DateTime[] // Datas de exceção
+  endDate        DateTime?
   maxOccurrences Int?
-  isActive      Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  parentEvent   Event               @relation(fields: [parentEventId], references: [id], onDelete: Cascade)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  parentEvent    Event      @relation(fields: [parentEventId], references: [id], onDelete: Cascade)
 
   @@index([parentEventId])
   @@index([isActive])
@@ -1871,17 +1878,17 @@ model RecurringEvent {
 }
 
 model EventSync {
-  id              String            @id @default(cuid())
-  eventId         String
-  provider        CalendarProvider
-  externalId      String
-  syncStatus      SyncStatus        @default(PENDING)
-  lastSyncAt      DateTime?
-  syncError       String?
-  metadata        Json?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  event           Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id         String           @id @default(cuid())
+  eventId    String
+  provider   CalendarProvider
+  externalId String
+  syncStatus SyncStatus       @default(PENDING)
+  lastSyncAt DateTime?
+  syncError  String?
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, provider])
   @@index([eventId])
@@ -1958,23 +1965,23 @@ enum SyncDirection {
 // ============================================================================
 
 model WebhookLog {
-  id          String            @id @default(cuid())
-  provider    String            // MERCADOPAGO, ASAAS, etc.
-  eventType   String            // payment, subscription, etc.
-  eventId     String            // ID único do evento
-  payload     Json              // Payload completo do webhook
-  status      WebhookLogStatus  @default(PENDING)
-  error       String?           // Mensagem de erro se houver
-  processedAt DateTime          @default(now())
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id          String           @id @default(cuid())
+  provider    String // MERCADOPAGO, ASAAS, etc.
+  eventType   String // payment, subscription, etc.
+  eventId     String // ID único do evento
+  payload     Json // Payload completo do webhook
+  status      WebhookLogStatus @default(PENDING)
+  error       String? // Mensagem de erro se houver
+  processedAt DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
+  @@unique([provider, eventId])
   @@index([provider])
   @@index([eventType])
   @@index([eventId])
   @@index([status])
   @@index([processedAt])
-  @@unique([provider, eventId])
   @@map("webhook_logs")
 }
 
@@ -1990,28 +1997,28 @@ enum WebhookLogStatus {
 // ============================================================================
 
 model Group {
-  id              String        @id @default(cuid())
-  name            String
-  description     String?       @db.Text
-  type            GroupType     @default(PRIVATE)
-  visibility      GroupVisibility @default(PRIVATE)
-  maxMembers      Int?          @default(50)
-  requiresApproval Boolean      @default(true)
-  tags            String[]
-  avatar          String?
-  banner          String?
-  rules           String?       @db.Text
-  metadata        Json?
-  createdBy       String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  archivedAt      DateTime?
-  creator         User          @relation("GroupCreator", fields: [createdBy], references: [id])
-  members         GroupMember[]
-  messages        GroupMessage[]
-  events          GroupEvent[]
-  invitations     GroupInvitation[]
-  resources       GroupResource[]
+  id               String            @id @default(cuid())
+  name             String
+  description      String?           @db.Text
+  type             GroupType         @default(PRIVATE)
+  visibility       GroupVisibility   @default(PRIVATE)
+  maxMembers       Int?              @default(50)
+  requiresApproval Boolean           @default(true)
+  tags             String[]
+  avatar           String?
+  banner           String?
+  rules            String?           @db.Text
+  metadata         Json?
+  createdBy        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  archivedAt       DateTime?
+  creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
+  members          GroupMember[]
+  messages         GroupMessage[]
+  events           GroupEvent[]
+  invitations      GroupInvitation[]
+  resources        GroupResource[]
 
   @@index([type])
   @@index([visibility])
@@ -2022,21 +2029,21 @@ model Group {
 }
 
 model GroupMember {
-  id          String          @id @default(cuid())
+  id          String            @id @default(cuid())
   groupId     String
   userId      String
-  role        GroupMemberRole @default(MEMBER)
+  role        GroupMemberRole   @default(MEMBER)
   status      GroupMemberStatus @default(ACTIVE)
-  joinedAt    DateTime        @default(now())
+  joinedAt    DateTime          @default(now())
   leftAt      DateTime?
   invitedBy   String?
-  permissions Json?           // Permissões específicas do membro
+  permissions Json? // Permissões específicas do membro
   metadata    Json?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  group       Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user        User            @relation(fields: [userId], references: [id])
-  inviter     User?           @relation("GroupMemberInviter", fields: [invitedBy], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  group       Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id])
+  inviter     User?             @relation("GroupMemberInviter", fields: [invitedBy], references: [id])
 
   @@unique([groupId, userId])
   @@index([groupId])
@@ -2048,29 +2055,29 @@ model GroupMember {
 }
 
 model GroupMessage {
-  id          String            @id @default(cuid())
+  id          String           @id @default(cuid())
   groupId     String
   authorId    String
-  content     String            @db.Text
-  type        GroupMessageType  @default(TEXT)
-  attachments Json?             // URLs de arquivos anexados
-  replyToId   String?           // ID da mensagem sendo respondida
-  mentions    String[]          // IDs dos usuários mencionados
-  reactions   Json?             // Reações à mensagem
-  isEdited    Boolean           @default(false)
+  content     String           @db.Text
+  type        GroupMessageType @default(TEXT)
+  attachments Json? // URLs de arquivos anexados
+  replyToId   String? // ID da mensagem sendo respondida
+  mentions    String[] // IDs dos usuários mencionados
+  reactions   Json? // Reações à mensagem
+  isEdited    Boolean          @default(false)
   editedAt    DateTime?
-  isPinned    Boolean           @default(false)
+  isPinned    Boolean          @default(false)
   pinnedBy    String?
   pinnedAt    DateTime?
   deletedAt   DateTime?
   metadata    Json?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  group       Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  author      User              @relation("GroupMessageAuthor", fields: [authorId], references: [id])
-  replyTo     GroupMessage?     @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies     GroupMessage[]    @relation("MessageReplies")
-  pinner      User?             @relation("GroupMessagePinner", fields: [pinnedBy], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  group       Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author      User             @relation("GroupMessageAuthor", fields: [authorId], references: [id])
+  replyTo     GroupMessage?    @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies     GroupMessage[]   @relation("MessageReplies")
+  pinner      User?            @relation("GroupMessagePinner", fields: [pinnedBy], references: [id])
 
   @@index([groupId])
   @@index([authorId])
@@ -2082,29 +2089,29 @@ model GroupMessage {
 }
 
 model GroupEvent {
-  id              String              @id @default(cuid())
-  groupId         String
-  title           String
-  description     String?             @db.Text
-  type            GroupEventType      @default(MEETING)
-  status          GroupEventStatus    @default(SCHEDULED)
-  startDate       DateTime
-  endDate         DateTime
-  timezone        String              @default("America/Sao_Paulo")
-  location        String?
-  virtualLink     String?
-  maxAttendees    Int?
-  requiresRSVP    Boolean             @default(false)
-  isRecurring     Boolean             @default(false)
-  recurrenceRule  Json?               // RRULE format
-  reminders       Json?               // Configurações de lembrete
-  createdBy       String
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  canceledAt      DateTime?
-  group           Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  creator         User                @relation("GroupEventCreator", fields: [createdBy], references: [id])
-  attendees       GroupEventAttendee[]
+  id             String               @id @default(cuid())
+  groupId        String
+  title          String
+  description    String?              @db.Text
+  type           GroupEventType       @default(MEETING)
+  status         GroupEventStatus     @default(SCHEDULED)
+  startDate      DateTime
+  endDate        DateTime
+  timezone       String               @default("America/Sao_Paulo")
+  location       String?
+  virtualLink    String?
+  maxAttendees   Int?
+  requiresRSVP   Boolean              @default(false)
+  isRecurring    Boolean              @default(false)
+  recurrenceRule Json? // RRULE format
+  reminders      Json? // Configurações de lembrete
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  canceledAt     DateTime?
+  group          Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator        User                 @relation("GroupEventCreator", fields: [createdBy], references: [id])
+  attendees      GroupEventAttendee[]
 
   @@index([groupId])
   @@index([type])
@@ -2116,17 +2123,17 @@ model GroupEvent {
 }
 
 model GroupEventAttendee {
-  id          String                    @id @default(cuid())
+  id          String                   @id @default(cuid())
   eventId     String
   userId      String
-  status      GroupEventAttendeeStatus  @default(PENDING)
+  status      GroupEventAttendeeStatus @default(PENDING)
   respondedAt DateTime?
   attendedAt  DateTime?
   metadata    Json?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  event       GroupEvent                @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user        User                      @relation(fields: [userId], references: [id])
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  event       GroupEvent               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User                     @relation(fields: [userId], references: [id])
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -2136,23 +2143,23 @@ model GroupEventAttendee {
 }
 
 model GroupInvitation {
-  id          String                  @id @default(cuid())
-  groupId     String
-  inviterId   String
-  inviteeId   String?
-  email       String?                 // Para convites por email
-  token       String                  @unique
-  role        GroupMemberRole         @default(MEMBER)
-  status      GroupInvitationStatus   @default(PENDING)
-  message     String?
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  rejectedAt  DateTime?
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
-  group       Group                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  inviter     User                    @relation("GroupInvitationInviter", fields: [inviterId], references: [id])
-  invitee     User?                   @relation("GroupInvitationInvitee", fields: [inviteeId], references: [id])
+  id         String                @id @default(cuid())
+  groupId    String
+  inviterId  String
+  inviteeId  String?
+  email      String? // Para convites por email
+  token      String                @unique
+  role       GroupMemberRole       @default(MEMBER)
+  status     GroupInvitationStatus @default(PENDING)
+  message    String?
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  group      Group                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter    User                  @relation("GroupInvitationInviter", fields: [inviterId], references: [id])
+  invitee    User?                 @relation("GroupInvitationInvitee", fields: [inviteeId], references: [id])
 
   @@index([groupId])
   @@index([inviterId])
@@ -2165,23 +2172,23 @@ model GroupInvitation {
 }
 
 model GroupResource {
-  id          String              @id @default(cuid())
-  groupId     String
-  title       String
-  description String?
-  type        GroupResourceType   @default(FILE)
-  url         String
-  fileName    String?
-  fileSize    Int?
-  mimeType    String?
-  uploadedBy  String
-  isPublic    Boolean             @default(false)
+  id            String            @id @default(cuid())
+  groupId       String
+  title         String
+  description   String?
+  type          GroupResourceType @default(FILE)
+  url           String
+  fileName      String?
+  fileSize      Int?
+  mimeType      String?
+  uploadedBy    String
+  isPublic      Boolean           @default(false)
   downloadCount Int               @default(0)
-  metadata    Json?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  group       Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  uploader    User                @relation("GroupResourceUploader", fields: [uploadedBy], references: [id])
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  group         Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  uploader      User              @relation("GroupResourceUploader", fields: [uploadedBy], references: [id])
 
   @@index([groupId])
   @@index([type])
@@ -2202,9 +2209,9 @@ enum GroupType {
 }
 
 enum GroupVisibility {
-  PUBLIC      // Visível para todos
-  PRIVATE     // Apenas membros
-  UNLISTED    // Não aparece em buscas, mas acessível por link
+  PUBLIC // Visível para todos
+  PRIVATE // Apenas membros
+  UNLISTED // Não aparece em buscas, mas acessível por link
 }
 
 enum GroupMemberRole {
@@ -2227,7 +2234,7 @@ enum GroupMessageType {
   FILE
   AUDIO
   VIDEO
-  SYSTEM      // Mensagens do sistema (usuário entrou, saiu, etc.)
+  SYSTEM // Mensagens do sistema (usuário entrou, saiu, etc.)
 }
 
 enum GroupEventType {
@@ -2278,32 +2285,32 @@ enum GroupResourceType {
 
 // Calendar Integration Models
 model CalendarIntegration {
-  id                String           @id @default(cuid())
-  userId            String
-  provider          CalendarProvider
-  providerAccountId String
-  accessToken       String
-  refreshToken      String?
-  tokenExpiresAt    DateTime?
-  isActive          Boolean          @default(true)
-  syncEnabled       Boolean          @default(true)
-  syncStatus        SyncStatus?      @default(PENDING)
-  syncFrequency     String?          // daily, weekly, monthly
-  syncError         String?          // Last sync error message
-  calendarName      String?          // Display name for the calendar
-  lastSyncAt        DateTime?
-  settings          Json?            // Provider-specific settings
-  externalAccountId String?          // External account ID
-  externalAccountEmail String?       // External account email
-  name              String?          // Integration name
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  syncEvents        CalendarSyncEvent[]
-  conflicts         CalendarConflict[]
-  notifications     CalendarSyncNotification[]
-  privacySettings   CalendarPrivacySettings?
-  fieldMapping      CalendarFieldMapping?
+  id                   String                     @id @default(cuid())
+  userId               String
+  provider             CalendarProvider
+  providerAccountId    String
+  accessToken          String
+  refreshToken         String?
+  tokenExpiresAt       DateTime?
+  isActive             Boolean                    @default(true)
+  syncEnabled          Boolean                    @default(true)
+  syncStatus           SyncStatus?                @default(PENDING)
+  syncFrequency        String? // daily, weekly, monthly
+  syncError            String? // Last sync error message
+  calendarName         String? // Display name for the calendar
+  lastSyncAt           DateTime?
+  settings             Json? // Provider-specific settings
+  externalAccountId    String? // External account ID
+  externalAccountEmail String? // External account email
+  name                 String? // Integration name
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncEvents           CalendarSyncEvent[]
+  conflicts            CalendarConflict[]
+  notifications        CalendarSyncNotification[]
+  privacySettings      CalendarPrivacySettings?
+  fieldMapping         CalendarFieldMapping?
 
   @@unique([userId, provider, providerAccountId])
   @@index([userId])
@@ -2316,12 +2323,12 @@ model CalendarIntegration {
 model CalendarSyncEvent {
   id            String              @id @default(cuid())
   integrationId String
-  eventId       String?             // Local event ID
-  externalId    String              // External calendar event ID
-  operation     String              // CREATE, UPDATE, DELETE
+  eventId       String? // Local event ID
+  externalId    String // External calendar event ID
+  operation     String // CREATE, UPDATE, DELETE
   status        SyncStatus          @default(PENDING)
-  direction     String              // IMPORT, EXPORT, BIDIRECTIONAL
-  data          Json?               // Event data
+  direction     String // IMPORT, EXPORT, BIDIRECTIONAL
+  data          Json? // Event data
   error         String?
   retryCount    Int                 @default(0)
   scheduledAt   DateTime            @default(now())
@@ -2346,11 +2353,11 @@ model CalendarConflict {
   integrationId String
   eventId       String?
   externalId    String
-  conflictType  String              // TIME_OVERLAP, DUPLICATE, DATA_MISMATCH
+  conflictType  String // TIME_OVERLAP, DUPLICATE, DATA_MISMATCH
   description   String
   localData     Json?
   externalData  Json?
-  resolution    String?             // AUTO_RESOLVED, MANUAL_RESOLVED, IGNORED
+  resolution    String? // AUTO_RESOLVED, MANUAL_RESOLVED, IGNORED
   resolvedBy    String?
   resolvedAt    DateTime?
   createdAt     DateTime            @default(now())
@@ -2372,8 +2379,8 @@ model CalendarSyncNotification {
   type          NotificationType
   title         String
   message       String              @db.Text
-  severity      String              // info, success, warning, error
-  data          Json?               // Additional notification data
+  severity      String // info, success, warning, error
+  data          Json? // Additional notification data
   isRead        Boolean             @default(false)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
@@ -2387,30 +2394,30 @@ model CalendarSyncNotification {
 }
 
 model CalendarPrivacySettings {
-  id                    String              @id @default(cuid())
-  integrationId         String              @unique
-  syncPrivateEvents     Boolean             @default(false)
-  syncAllDayEvents      Boolean             @default(true)
-  syncRecurringEvents   Boolean             @default(true)
-  syncEventTitle        Boolean             @default(true)
-  syncEventDescription  Boolean             @default(true)
-  syncEventLocation     Boolean             @default(true)
-  syncEventAttendees    Boolean             @default(false)
-  syncEventAttachments  Boolean             @default(false)
-  anonymizeTitle        Boolean             @default(false)
-  anonymizeDescription  Boolean             @default(false)
-  anonymizeLocation     Boolean             @default(false)
-  anonymizeAttendees    Boolean             @default(false)
-  timeFilterEnabled     Boolean             @default(false)
-  timeFilterStart       String?             // HH:MM format
-  timeFilterEnd         String?             // HH:MM format
-  keywordFilterEnabled  Boolean             @default(false)
-  includeKeywords       Json?               // Array of keywords to include
-  excludeKeywords       Json?               // Array of keywords to exclude
-  customRules           Json?               // Array of custom privacy rules
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  integration           CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  id                   String              @id @default(cuid())
+  integrationId        String              @unique
+  syncPrivateEvents    Boolean             @default(false)
+  syncAllDayEvents     Boolean             @default(true)
+  syncRecurringEvents  Boolean             @default(true)
+  syncEventTitle       Boolean             @default(true)
+  syncEventDescription Boolean             @default(true)
+  syncEventLocation    Boolean             @default(true)
+  syncEventAttendees   Boolean             @default(false)
+  syncEventAttachments Boolean             @default(false)
+  anonymizeTitle       Boolean             @default(false)
+  anonymizeDescription Boolean             @default(false)
+  anonymizeLocation    Boolean             @default(false)
+  anonymizeAttendees   Boolean             @default(false)
+  timeFilterEnabled    Boolean             @default(false)
+  timeFilterStart      String? // HH:MM format
+  timeFilterEnd        String? // HH:MM format
+  keywordFilterEnabled Boolean             @default(false)
+  includeKeywords      Json? // Array of keywords to include
+  excludeKeywords      Json? // Array of keywords to exclude
+  customRules          Json? // Array of custom privacy rules
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  integration          CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
   @@index([integrationId])
   @@map("calendar_privacy_settings")
@@ -2419,7 +2426,7 @@ model CalendarPrivacySettings {
 model CalendarFieldMapping {
   id            String              @id @default(cuid())
   integrationId String              @unique
-  mappings      Json                // Array of field mapping objects
+  mappings      Json // Array of field mapping objects
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   integration   CalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
@@ -2430,28 +2437,28 @@ model CalendarFieldMapping {
 
 // Reminder System Models
 model Reminder {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   eventId       String?
   seriesId      String?
   instanceId    String?
   title         String
   description   String?
-  type          ReminderType @default(EMAIL)
+  type          ReminderType   @default(EMAIL)
   status        ReminderStatus @default(PENDING)
   triggerAt     DateTime
   sentAt        DateTime?
   failureReason String?
   dueDate       DateTime?
-  isCompleted   Boolean   @default(false)
-  priority      String?   @default("medium")
+  isCompleted   Boolean        @default(false)
+  priority      String?        @default("medium")
   category      String?
   tags          Json?
   metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event         Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event?         @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([eventId])
@@ -2464,79 +2471,79 @@ model Reminder {
 
 // Gamification Events Models
 model GamificationEvent {
-  id                String   @id @default(cuid())
-  title             String
-  description       String?
-  eventType         GamificationEventType @default(COMPETITION) @map("event_type")
-  category          String?
-  startDate         DateTime @map("start_date")
-  endDate           DateTime @map("end_date")
-  maxParticipants   Int?     @map("max_participants")
-  entryFeePoints    Int      @default(0) @map("entry_fee_points")
-  prizePoolPoints   Int      @default(0) @map("prize_pool_points")
-  status            GamificationEventStatus @default(UPCOMING)
-  rules             Json?
-  metadata          Json?
-  createdBy         String?  @map("created_by")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id              String                  @id @default(cuid())
+  title           String
+  description     String?
+  eventType       GamificationEventType   @default(COMPETITION) @map("event_type")
+  category        String?
+  startDate       DateTime                @map("start_date")
+  endDate         DateTime                @map("end_date")
+  maxParticipants Int?                    @map("max_participants")
+  entryFeePoints  Int                     @default(0) @map("entry_fee_points")
+  prizePoolPoints Int                     @default(0) @map("prize_pool_points")
+  status          GamificationEventStatus @default(UPCOMING)
+  rules           Json?
+  metadata        Json?
+  createdBy       String?                 @map("created_by")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
 
-  participants      GamificationEventParticipant[]
-  eventRewards      GamificationEventReward[]
+  participants GamificationEventParticipant[]
+  eventRewards GamificationEventReward[]
 
   @@map("gamification_events")
 }
 
 model GamificationEventParticipant {
-  id                String   @id @default(cuid())
-  eventId           String   @map("event_id")
-  userId            String   @map("user_id")
-  enrolledAt        DateTime @default(now()) @map("enrolled_at")
-  currentScore      Int      @default(0) @map("current_score")
-  currentRank       Int?     @map("current_rank")
-  participationData Json?    @map("participation_data")
+  id                String                        @id @default(cuid())
+  eventId           String                        @map("event_id")
+  userId            String                        @map("user_id")
+  enrolledAt        DateTime                      @default(now()) @map("enrolled_at")
+  currentScore      Int                           @default(0) @map("current_score")
+  currentRank       Int?                          @map("current_rank")
+  participationData Json?                         @map("participation_data")
   status            GamificationParticipantStatus @default(ACTIVE)
 
-  event             GamificationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event GamificationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@map("gamification_event_participants")
 }
 
 model GamificationReward {
-  id            String   @id @default(cuid())
+  id            String                 @id @default(cuid())
   name          String
   description   String?
   rewardType    GamificationRewardType @map("reward_type")
-  rewardValue   Json     @map("reward_value")
-  rarity        GamificationRarity @default(COMMON)
+  rewardValue   Json                   @map("reward_value")
+  rarity        GamificationRarity     @default(COMMON)
   conditions    Json?
-  isActive      Boolean  @default(true) @map("is_active")
-  validFrom     DateTime? @map("valid_from")
-  validUntil    DateTime? @map("valid_until")
-  maxClaims     Int?     @map("max_claims")
-  currentClaims Int      @default(0) @map("current_claims")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  isActive      Boolean                @default(true) @map("is_active")
+  validFrom     DateTime?              @map("valid_from")
+  validUntil    DateTime?              @map("valid_until")
+  maxClaims     Int?                   @map("max_claims")
+  currentClaims Int                    @default(0) @map("current_claims")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
 
-  userRewards   GamificationUserReward[]
-  eventRewards  GamificationEventReward[]
+  userRewards  GamificationUserReward[]
+  eventRewards GamificationEventReward[]
 
   @@map("gamification_rewards")
 }
 
 model GamificationUserReward {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  rewardId    String   @map("reward_id")
-  claimedAt   DateTime @default(now()) @map("claimed_at")
-  claimedFrom String?  @map("claimed_from")
+  id          String                   @id @default(cuid())
+  userId      String                   @map("user_id")
+  rewardId    String                   @map("reward_id")
+  claimedAt   DateTime                 @default(now()) @map("claimed_at")
+  claimedFrom String?                  @map("claimed_from")
   status      GamificationRewardStatus @default(CLAIMED)
   metadata    Json?
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reward      GamificationReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward GamificationReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
 
   @@unique([userId, rewardId, claimedFrom])
   @@map("gamification_user_rewards")
@@ -2547,11 +2554,11 @@ model GamificationEventReward {
   eventId               String   @map("event_id")
   rewardId              String   @map("reward_id")
   positionRequirement   Int?     @map("position_requirement")
-  percentageRequirement Decimal? @map("percentage_requirement") @db.Decimal(5,2)
+  percentageRequirement Decimal? @map("percentage_requirement") @db.Decimal(5, 2)
   createdAt             DateTime @default(now()) @map("created_at")
 
-  event                 GamificationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  reward                GamificationReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  event  GamificationEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reward GamificationReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, rewardId, positionRequirement])
   @@map("gamification_event_rewards")
@@ -2612,20 +2619,20 @@ enum GamificationRarity {
 
 // Notification Logs Models
 model EmailLog {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   to        String
   subject   String
-  type      String   @default("notification")
+  type      String      @default("notification")
   status    EmailStatus @default(PENDING)
   sentBy    String
   eventId   String?
   resendId  String?
   error     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
 
-  sender    User     @relation(fields: [sentBy], references: [id], onDelete: Cascade)
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  sender User   @relation(fields: [sentBy], references: [id], onDelete: Cascade)
+  event  Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   @@index([sentBy])
   @@index([eventId])
@@ -2635,15 +2642,15 @@ model EmailLog {
 }
 
 model PushSubscription {
-  id       String @id @default(cuid())
-  userId   String @map("user_id")
-  endpoint String
-  p256dh   String
-  auth     String
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, endpoint])
   @@index([userId])
@@ -2651,18 +2658,18 @@ model PushSubscription {
 }
 
 model PushNotificationLog {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   endpoint  String
   title     String
   body      String
   status    NotificationStatus @default(PENDING)
-  sentBy    String   @map("sent_by")
+  sentBy    String             @map("sent_by")
   data      String?
   error     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
 
-  sender    User     @relation(fields: [sentBy], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [sentBy], references: [id], onDelete: Cascade)
 
   @@index([sentBy])
   @@index([status])
@@ -2670,17 +2677,17 @@ model PushNotificationLog {
 }
 
 model SmsLog {
-  id         String   @id @default(cuid())
-  to         String
-  message    String
-  status     NotificationStatus @default(PENDING)
-  sentBy     String   @map("sent_by")
-  twilioSid  String?  @map("twilio_sid")
-  error      String?
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id        String             @id @default(cuid())
+  to        String
+  message   String
+  status    NotificationStatus @default(PENDING)
+  sentBy    String             @map("sent_by")
+  twilioSid String?            @map("twilio_sid")
+  error     String?
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
 
-  sender     User     @relation(fields: [sentBy], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [sentBy], references: [id], onDelete: Cascade)
 
   @@index([sentBy])
   @@index([status])

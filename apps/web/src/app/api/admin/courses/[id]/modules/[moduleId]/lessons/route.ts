@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 
@@ -8,6 +8,15 @@ const createLessonSchema = z.object({
   description: z.string().optional(),
   content: z.string().optional(),
   videoUrl: z.string().optional(),
+  videoStorage: z
+    .object({
+      url: z.string().optional(),
+      filename: z.string().optional(),
+      size: z.number().optional(),
+      type: z.string().optional()
+    })
+    .nullable()
+    .optional(),
   videoDuration: z.number().int().nullable().optional(),
   isFree: z.boolean().optional(),
 })
@@ -48,6 +57,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         description: data.description ?? null,
         content: data.content ?? null,
         videoUrl: data.videoUrl ?? null,
+        videoStorage: data.videoStorage != null ? (data.videoStorage as Prisma.InputJsonValue) : Prisma.DbNull,
         videoDuration: data.videoDuration ?? null,
         isFree: data.isFree ?? false,
         order: (lastLesson?.order ?? 0) + 1,

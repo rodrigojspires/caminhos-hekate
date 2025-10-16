@@ -13,6 +13,7 @@ export interface CourseFormValues {
   shortDescription: string
   price: number
   comparePrice?: number | null
+  accessModel: 'FREE' | 'ONE_TIME' | 'SUBSCRIPTION'
   status: CourseStatus
   level: CourseLevel
   featured: boolean
@@ -130,14 +131,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
     handleFieldChange('tags', data.tags.filter(tag => tag !== tagToRemove))
   }
 
-  const handleImageUrlChange = (url: string) => {
-    const normalized = url.trim()
+  const handleImageUrlChange = (url: string | null | undefined) => {
+    const normalized = typeof url === 'string' ? url.trim() : ''
     handleFieldChange('featuredImage', normalized ? normalized : null)
     setImagePreview(normalized ? normalized : null)
   }
 
-  const handleVideoUrlChange = (url: string) => {
-    const normalized = url.trim()
+  const handleVideoUrlChange = (url: string | null | undefined) => {
+    const normalized = typeof url === 'string' ? url.trim() : ''
     handleFieldChange('introVideo', normalized ? normalized : null)
     setVideoPreview(normalized ? normalized : null)
   }
@@ -342,6 +343,25 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             </select>
           </div>
           
+          <div className="space-y-2">
+            <label className={labelClasses}>
+              Modelo de Acesso *
+            </label>
+            <select
+              value={data.accessModel}
+              onChange={(e) => handleFieldChange('accessModel', e.target.value as CourseFormValues['accessModel'])}
+              className={inputClasses}
+              disabled={loading}
+            >
+              <option value="FREE">Curso gratuito</option>
+              <option value="ONE_TIME">Pagamento único</option>
+              <option value="SUBSCRIPTION">Incluído na assinatura</option>
+            </select>
+            <p className={helperTextClasses}>
+              Define como o curso fica disponível para os alunos
+            </p>
+          </div>
+
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <input

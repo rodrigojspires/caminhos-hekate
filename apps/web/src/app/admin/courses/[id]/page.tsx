@@ -88,6 +88,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
           shortDescription: data.shortDescription ?? '',
           price: data.price ?? 0,
           comparePrice: data.comparePrice ?? null,
+          accessModel: (data.accessModel as CourseFormValues['accessModel']) ?? 'ONE_TIME',
           status: data.status ?? CourseStatus.DRAFT,
           level: data.level ?? CourseLevel.BEGINNER,
           featured: data.featured ?? false,
@@ -183,6 +184,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       const payload = {
         ...formData,
         comparePrice: formData.comparePrice ?? null,
+        accessModel: formData.accessModel,
         featuredImage: formData.featuredImage?.trim() || null,
         introVideo: formData.introVideo?.trim() || null,
         duration: formData.duration ?? null,

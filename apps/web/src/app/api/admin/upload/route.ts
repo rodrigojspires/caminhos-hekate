@@ -26,17 +26,31 @@ const MAX_FILENAME_LENGTH = 100
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
+const DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/zip',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'application/json',
+  'application/octet-stream'
+]
 
 const DEFAULT_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const VIDEO_MAX_FILE_SIZE = 200 * 1024 * 1024 // 200MB
+const ASSET_MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 const UPLOAD_TYPE_CONFIG: Record<string, { allowedTypes: string[]; maxFileSize: number }> = {
   default: {
-    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES],
+    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES, ...DOCUMENT_TYPES],
     maxFileSize: VIDEO_MAX_FILE_SIZE
   },
   general: {
-    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES],
+    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES, ...DOCUMENT_TYPES],
     maxFileSize: VIDEO_MAX_FILE_SIZE
   },
   product: {
@@ -50,6 +64,10 @@ const UPLOAD_TYPE_CONFIG: Record<string, { allowedTypes: string[]; maxFileSize: 
   'course-videos': {
     allowedTypes: VIDEO_TYPES,
     maxFileSize: VIDEO_MAX_FILE_SIZE
+  },
+  'lesson-assets': {
+    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES, ...DOCUMENT_TYPES],
+    maxFileSize: ASSET_MAX_FILE_SIZE
   }
 }
 
@@ -92,16 +110,18 @@ export async function POST(request: NextRequest) {
 
     // Obter dados do formulário
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file') as File | null
     const rawType = (formData.get('type') as string) || 'general'
-  const sanitizedType = rawType
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-{2,}/g, '-')
-    .trim() || 'general'
-  const isCourseUpload = sanitizedType === 'course-images' || sanitizedType === 'course-videos'
-  const typeConfig = UPLOAD_TYPE_CONFIG[sanitizedType] ?? UPLOAD_TYPE_CONFIG.default
-  const effectiveTypeConfig = isCourseUpload ? UPLOAD_TYPE_CONFIG['course-images'] : typeConfig
+    const sanitizedType = rawType
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-{2,}/g, '-')
+      .trim() || 'general'
+
+    const uploadCategory = Object.prototype.hasOwnProperty.call(UPLOAD_TYPE_CONFIG, sanitizedType)
+      ? sanitizedType
+      : 'general'
+    const typeConfig = UPLOAD_TYPE_CONFIG[uploadCategory]
 
     if (!file) {
       return NextResponse.json(
@@ -111,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tipo de arquivo
-    if (!effectiveTypeConfig.allowedTypes.includes(file.type)) {
+    if (!typeConfig.allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { 
           message: `Tipo de arquivo não permitido. Tipos aceitos: ${typeConfig.allowedTypes.join(', ')}` 
@@ -121,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tamanho do arquivo
-    if (file.size > effectiveTypeConfig.maxFileSize) {
+    if (file.size > typeConfig.maxFileSize) {
       return NextResponse.json(
         { 
           message: `Arquivo muito grande. Tamanho máximo: ${Math.round(typeConfig.maxFileSize / (1024 * 1024))}MB` 
@@ -131,8 +151,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar diretório se não existir
-    const targetType = isCourseUpload && sanitizedType === 'course-videos' ? 'course-videos' : sanitizedType
-    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, targetType)
+    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, uploadCategory)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -147,7 +166,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filepath, buffer)
 
     // Gerar URL pública
-    const publicUrl = `/uploads/${targetType}/${filename}`
+    const publicUrl = `/uploads/${uploadCategory}/${filename}`
 
     return NextResponse.json({
       message: 'Upload realizado com sucesso',

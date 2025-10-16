@@ -272,6 +272,11 @@ export function VideoPlayer({
             className="w-full h-auto"
             autoPlay={autoPlay}
             onClick={togglePlay}
+            controlsList="nodownload noplaybackrate"
+            disablePictureInPicture
+            onContextMenu={(event) => event.preventDefault()}
+            playsInline
+            preload="metadata"
           />
 
           {/* Subtitles */}

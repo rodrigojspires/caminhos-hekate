@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { prisma, CourseStatus, CourseLevel } from '@hekate/database'
+import { prisma, CourseStatus, CourseLevel, Prisma } from '@hekate/database'
 import { CoursesHero } from '@/components/public/courses/CoursesHero'
 import { CourseStats, type CourseStatItem } from '@/components/public/courses/CourseStats'
 import { CoursesExplorer, type PublicCourse } from '@/components/public/courses/CoursesExplorer'
@@ -36,8 +36,25 @@ export const metadata: Metadata = {
   }
 }
 
+type CourseWithRelations = Prisma.CourseGetPayload<{
+  include: {
+    modules: {
+      include: {
+        lessons: {
+          select: { id: true }
+        }
+      }
+    }
+    _count: {
+      select: {
+        enrollments: true
+      }
+    }
+  }
+}>
+
 export default async function CoursesPage() {
-  let courses: Awaited<ReturnType<typeof prisma.course.findMany>> = []
+  let courses: CourseWithRelations[] = []
 
   try {
     courses = await prisma.course.findMany({
@@ -78,7 +95,7 @@ export default async function CoursesPage() {
       level: course.level ?? CourseLevel.BEGINNER,
       duration: course.duration,
       price: course.price != null ? Number(course.price) : null,
-      comparePrice: (course as any).comparePrice != null ? Number((course as any).comparePrice) : null,
+      comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
       featuredImage: course.featuredImage,
       introVideo: course.introVideo,
       modules: course.modules.length,

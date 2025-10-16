@@ -27,6 +27,7 @@ const updateCourseSchema = z.object({
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0').optional(),
   comparePrice: z.number().min(0, 'Preço de comparação deve ser maior ou igual a 0').nullable().optional(),
+  accessModel: z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION']).optional(),
   status: z.nativeEnum(CourseStatus).optional(),
   featured: z.boolean().optional(),
   featuredImage: urlOrPathSchema.nullable().optional(),

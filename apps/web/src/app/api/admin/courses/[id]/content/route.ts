@@ -35,9 +35,21 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
                 description: true,
                 content: true,
                 videoUrl: true,
+                videoStorage: true,
                 videoDuration: true,
                 order: true,
                 isFree: true,
+                assets: {
+                  orderBy: { order: 'asc' },
+                  select: {
+                    id: true,
+                    title: true,
+                    type: true,
+                    url: true,
+                    size: true,
+                    createdAt: true
+                  }
+                },
               }
             }
           }

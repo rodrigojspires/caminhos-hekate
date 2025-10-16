@@ -52,6 +52,7 @@ export default function NewCoursePage() {
     shortDescription: '',
     price: 0,
     comparePrice: null,
+    accessModel: 'ONE_TIME',
     status: CourseStatus.DRAFT,
     level: CourseLevel.BEGINNER,
     featured: false,
@@ -123,11 +124,12 @@ export default function NewCoursePage() {
 
     try {
       setLoading(true)
-
+      
       const courseData = {
         ...formData,
         status: asDraft ? CourseStatus.DRAFT : formData.status,
         comparePrice: formData.comparePrice ?? null,
+        accessModel: formData.accessModel,
         featuredImage: formData.featuredImage?.trim() || null,
         introVideo: formData.introVideo?.trim() || null,
         duration: formData.duration ?? null,

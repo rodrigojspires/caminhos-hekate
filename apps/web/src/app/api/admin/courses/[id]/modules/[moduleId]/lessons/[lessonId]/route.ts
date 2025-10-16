@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 
@@ -8,6 +8,15 @@ const updateLessonSchema = z.object({
   description: z.string().nullable().optional(),
   content: z.string().nullable().optional(),
   videoUrl: z.string().nullable().optional(),
+  videoStorage: z
+    .object({
+      url: z.string().optional(),
+      filename: z.string().optional(),
+      size: z.number().optional(),
+      type: z.string().optional()
+    })
+    .nullable()
+    .optional(),
   videoDuration: z.number().int().nullable().optional(),
   isFree: z.boolean().optional(),
   order: z.number().int().optional(),
@@ -65,6 +74,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       newOrder = targetIndex + 1
     }
 
+    const videoStorageValue =
+      data.videoStorage !== undefined
+        ? data.videoStorage != null
+          ? (data.videoStorage as Prisma.InputJsonValue)
+          : Prisma.DbNull
+        : undefined
+
     const updatedLesson = await prisma.lesson.update({
       where: { id: lesson.id },
       data: {
@@ -72,6 +88,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         description: data.description !== undefined ? data.description : lesson.description,
         content: data.content !== undefined ? data.content : lesson.content,
         videoUrl: data.videoUrl !== undefined ? data.videoUrl : lesson.videoUrl,
+        videoStorage: videoStorageValue,
         videoDuration: data.videoDuration !== undefined ? data.videoDuration : lesson.videoDuration,
         isFree: data.isFree ?? lesson.isFree,
         order: newOrder,
