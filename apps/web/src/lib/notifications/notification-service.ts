@@ -1,6 +1,12 @@
 import { prisma } from '@hekate/database'
 import { NotificationType, NotificationPriority, BadgeRarity } from '@prisma/client'
 import { EventEmitter } from 'events'
+import {
+  addNotificationListener,
+  isRedisEnabled,
+  publishNotificationMessage,
+  redisInstanceId,
+} from '@/lib/redis'
 
 export interface NotificationData {
   achievementId?: string
@@ -81,6 +87,16 @@ class NotificationService extends EventEmitter {
 
       // Emitir evento para notificação em tempo real
       this.emit('notification:created', notification)
+
+      if (isRedisEnabled) {
+        const broadcastPayload = serializeNotification(notification)
+        publishNotificationMessage({
+          sourceId: redisInstanceId,
+          notification: broadcastPayload,
+        }).catch((error) => {
+          console.error('[notifications] Falha ao publicar notificação no Redis', error)
+        })
+      }
 
       // Enviar push notification se solicitado
       if (params.isPush) {
@@ -544,4 +560,49 @@ class NotificationService extends EventEmitter {
 }
 
 export const notificationService = NotificationService.getInstance()
+
+if (isRedisEnabled) {
+  addNotificationListener((payload) => {
+    if (!payload?.notification) return
+    if (payload.sourceId && payload.sourceId === redisInstanceId) return
+    const notification = deserializeNotification(payload.notification)
+    notificationService.emit('notification:created', notification)
+  })
+}
+
 export default notificationService
+
+function serializeNotification(notification: any) {
+  return {
+    id: notification.id,
+    userId: notification.userId,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    data: notification.data ?? null,
+    isRead: notification.isRead ?? false,
+    isPush: notification.isPush ?? false,
+    priority: notification.priority ?? 'MEDIUM',
+    expiresAt: notification.expiresAt
+      ? notification.expiresAt instanceof Date
+        ? notification.expiresAt.toISOString()
+        : notification.expiresAt
+      : null,
+    createdAt:
+      notification.createdAt instanceof Date
+        ? notification.createdAt.toISOString()
+        : notification.createdAt,
+    updatedAt:
+      notification.updatedAt instanceof Date
+        ? notification.updatedAt.toISOString()
+        : notification.updatedAt,
+  }
+}
+
+function deserializeNotification(notification: any) {
+  return {
+    ...notification,
+    createdAt: notification.createdAt ? new Date(notification.createdAt) : new Date(),
+    updatedAt: notification.updatedAt ? new Date(notification.updatedAt) : new Date(),
+  }
+}

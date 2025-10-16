@@ -47,30 +47,47 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
 
   useEffect(() => {
     let isMounted = true
-    ;(async () => {
+
+    const syncNotifications = async () => {
       try {
         const response = await fetch('/api/gamification/notifications?limit=50')
         if (!response.ok) return
         const payload = await response.json()
         const list = payload?.data?.notifications || []
         if (!isMounted) return
-        setNotifications(list.map((notification: any) => ({
-          id: notification.id,
-          title: notification.title,
-          content: notification.message,
-          type: notification.type || 'SYSTEM_ANNOUNCEMENT',
-          read: notification.read,
-          createdAt: new Date(notification.createdAt).toISOString(),
-          status: notification.read ? 'sent' : 'pending',
-          channel: 'EMAIL',
-          metadata: notification.metadata || notification.data,
-        })))
+        setNotifications((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id))
+          const mapped = list.map((notification: any) => ({
+            id: notification.id,
+            title: notification.title,
+            content: notification.message,
+            type: notification.type || 'SYSTEM_ANNOUNCEMENT',
+            read: !!notification.read,
+            createdAt: new Date(notification.createdAt).toISOString(),
+            status: notification.read ? 'sent' : 'pending',
+            channel: 'EMAIL',
+            metadata: notification.metadata || notification.data,
+          }))
+          // merge in case we already have some entries (preserve existing ones but avoid duplicates)
+          const mergedMap = new Map<string, Notification>()
+          for (const notif of [...mapped, ...prev]) {
+            mergedMap.set(notif.id, { ...mergedMap.get(notif.id), ...notif })
+          }
+          return Array.from(mergedMap.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 50)
+        })
       } catch (err) {
-        console.error('Erro ao carregar notificações iniciais:', err)
+        if (isMounted) {
+          console.error('Erro ao carregar notificações:', err)
+        }
       }
-    })()
+    }
+
+    syncNotifications()
+    const interval = setInterval(syncNotifications, 30000)
+
     return () => {
       isMounted = false
+      clearInterval(interval)
     }
   }, [])
 
@@ -174,10 +191,10 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
   // API calls para gerenciar notificações
   const markAsRead = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/notifications/${id}`, {
-        method: 'PUT',
+      const response = await fetch('/api/gamification/notifications', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ read: true })
+        body: JSON.stringify({ notificationId: id })
       })
 
       if (response.ok) {
@@ -224,7 +241,7 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
 
   const deleteNotification = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/notifications/${id}`, {
+      const response = await fetch(`/api/gamification/notifications?id=${id}`, {
         method: 'DELETE'
       })
 
