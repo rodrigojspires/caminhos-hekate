@@ -45,6 +45,35 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
 
   const unreadCount = notifications.filter(n => !n.read).length
 
+  useEffect(() => {
+    let isMounted = true
+    ;(async () => {
+      try {
+        const response = await fetch('/api/gamification/notifications?limit=50')
+        if (!response.ok) return
+        const payload = await response.json()
+        const list = payload?.data?.notifications || []
+        if (!isMounted) return
+        setNotifications(list.map((notification: any) => ({
+          id: notification.id,
+          title: notification.title,
+          content: notification.message,
+          type: notification.type || 'SYSTEM_ANNOUNCEMENT',
+          read: notification.read,
+          createdAt: new Date(notification.createdAt).toISOString(),
+          status: notification.read ? 'sent' : 'pending',
+          channel: 'EMAIL',
+          metadata: notification.metadata || notification.data,
+        })))
+      } catch (err) {
+        console.error('Erro ao carregar notificações iniciais:', err)
+      }
+    })()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   const connect = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
