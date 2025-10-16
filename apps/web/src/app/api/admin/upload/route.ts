@@ -32,12 +32,12 @@ const VIDEO_MAX_FILE_SIZE = 200 * 1024 * 1024 // 200MB
 
 const UPLOAD_TYPE_CONFIG: Record<string, { allowedTypes: string[]; maxFileSize: number }> = {
   default: {
-    allowedTypes: IMAGE_TYPES,
-    maxFileSize: DEFAULT_MAX_FILE_SIZE
+    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES],
+    maxFileSize: VIDEO_MAX_FILE_SIZE
   },
   general: {
-    allowedTypes: IMAGE_TYPES,
-    maxFileSize: DEFAULT_MAX_FILE_SIZE
+    allowedTypes: [...IMAGE_TYPES, ...VIDEO_TYPES],
+    maxFileSize: VIDEO_MAX_FILE_SIZE
   },
   product: {
     allowedTypes: IMAGE_TYPES,
@@ -94,12 +94,14 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const rawType = (formData.get('type') as string) || 'general'
-    const sanitizedType = rawType
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/-{2,}/g, '-')
-      .trim() || 'general'
-    const typeConfig = UPLOAD_TYPE_CONFIG[sanitizedType] ?? UPLOAD_TYPE_CONFIG.default
+  const sanitizedType = rawType
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-{2,}/g, '-')
+    .trim() || 'general'
+  const isCourseUpload = sanitizedType === 'course-images' || sanitizedType === 'course-videos'
+  const typeConfig = UPLOAD_TYPE_CONFIG[sanitizedType] ?? UPLOAD_TYPE_CONFIG.default
+  const effectiveTypeConfig = isCourseUpload ? UPLOAD_TYPE_CONFIG['course-images'] : typeConfig
 
     if (!file) {
       return NextResponse.json(
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tipo de arquivo
-    if (!typeConfig.allowedTypes.includes(file.type)) {
+    if (!effectiveTypeConfig.allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { 
           message: `Tipo de arquivo não permitido. Tipos aceitos: ${typeConfig.allowedTypes.join(', ')}` 
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tamanho do arquivo
-    if (file.size > typeConfig.maxFileSize) {
+    if (file.size > effectiveTypeConfig.maxFileSize) {
       return NextResponse.json(
         { 
           message: `Arquivo muito grande. Tamanho máximo: ${Math.round(typeConfig.maxFileSize / (1024 * 1024))}MB` 
@@ -129,7 +131,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar diretório se não existir
-    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, sanitizedType)
+    const targetType = isCourseUpload && sanitizedType === 'course-videos' ? 'course-videos' : sanitizedType
+    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, targetType)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filepath, buffer)
 
     // Gerar URL pública
-    const publicUrl = `/uploads/${sanitizedType}/${filename}`
+    const publicUrl = `/uploads/${targetType}/${filename}`
 
     return NextResponse.json({
       message: 'Upload realizado com sucesso',

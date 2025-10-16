@@ -1,0 +1,162 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Mail, Clock, User, Loader2 } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+
+interface Enrollment {
+  id: string
+  userId: string
+  status: string
+  createdAt: string
+  user: {
+    id: string
+    name: string | null
+    email: string
+    image: string | null
+  } | null
+}
+
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+interface PageProps {
+  params: {
+    id: string
+  }
+}
+
+export default function CourseEnrollmentsPage({ params }: PageProps) {
+  const router = useRouter()
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
+  const [loading, setLoading] = useState(true)
+
+  const fetchEnrollments = async (page = 1) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/admin/courses/${params.id}/enrollments?page=${page}&limit=20`)
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || 'Erro ao carregar inscrições')
+      }
+      setEnrollments(json.enrollments)
+      setPagination(json.pagination)
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar inscrições')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchEnrollments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id])
+
+  return (
+    <div className="space-y-6 text-gray-900 dark:text-gray-100">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" onClick={() => router.back()} className="flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
+        </Button>
+        <h1 className="text-2xl font-bold">Inscrições do Curso</h1>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {pagination.total} inscrição{pagination.total === 1 ? '' : 's'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando inscrições...
+            </div>
+          ) : enrollments.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground">
+              Nenhum aluno inscrito neste curso ainda.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {enrollments.map((enrollment) => (
+                <div
+                  key={enrollment.id}
+                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border rounded-lg px-4 py-3 bg-white dark:bg-gray-900"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      {enrollment.user?.image ? (
+                        <AvatarImage src={enrollment.user.image} alt={enrollment.user.name || enrollment.user.email} />
+                      ) : (
+                        <AvatarFallback>{enrollment.user?.name?.slice(0, 1) ?? 'A'}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {enrollment.user?.name || 'Aluno sem nome'}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                          {enrollment.status === 'active' ? 'Ativo' : enrollment.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {enrollment.user?.email}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(enrollment.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="w-4 h-4" />
+                    ID do usuário: {enrollment.userId}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <Button
+                variant="outline"
+                disabled={pagination.page <= 1}
+                onClick={() => fetchEnrollments(pagination.page - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {pagination.page} de {pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => fetchEnrollments(pagination.page + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

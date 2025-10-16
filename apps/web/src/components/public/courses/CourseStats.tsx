@@ -1,67 +1,17 @@
 'use client'
 
+import { ComponentType } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Award, Clock, Users, Star, BookOpen, Target, Heart } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Star } from 'lucide-react'
 
-const stats = [
-  {
-    icon: BookOpen,
-    value: '150+',
-    label: 'Cursos Disponíveis',
-    description: 'Conteúdo diversificado para todos os níveis',
-    color: 'from-purple-500 to-indigo-500'
-  },
-  {
-    icon: Users,
-    value: '25.000+',
-    label: 'Estudantes Ativos',
-    description: 'Comunidade engajada em crescimento',
-    color: 'from-blue-500 to-cyan-500'
-  },
-  {
-    icon: Clock,
-    value: '2.500+',
-    label: 'Horas de Conteúdo',
-    description: 'Material premium e exclusivo',
-    color: 'from-green-500 to-emerald-500'
-  },
-  {
-    icon: Star,
-    value: '4.9/5',
-    label: 'Avaliação Média',
-    description: 'Qualidade reconhecida pelos alunos',
-    color: 'from-yellow-500 to-orange-500'
-  },
-  {
-    icon: Award,
-    value: '12.000+',
-    label: 'Certificados Emitidos',
-    description: 'Reconhecimento do seu progresso',
-    color: 'from-pink-500 to-rose-500'
-  },
-  {
-    icon: TrendingUp,
-    value: '95%',
-    label: 'Taxa de Conclusão',
-    description: 'Metodologia eficaz e envolvente',
-    color: 'from-indigo-500 to-purple-500'
-  },
-  {
-    icon: Target,
-    value: '89%',
-    label: 'Aplicação Prática',
-    description: 'Transformação real na vida dos alunos',
-    color: 'from-cyan-500 to-blue-500'
-  },
-  {
-    icon: Heart,
-    value: '98%',
-    label: 'Satisfação Geral',
-    description: 'Experiência transformadora garantida',
-    color: 'from-rose-500 to-pink-500'
-  }
-]
+export interface CourseStatItem {
+  icon: ComponentType<{ className?: string }>
+  value: string
+  label: string
+  description?: string
+  color: string
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -84,7 +34,11 @@ const itemVariants = {
   }
 }
 
-export function CourseStats() {
+interface CourseStatsProps {
+  stats: CourseStatItem[]
+}
+
+export function CourseStats({ stats }: CourseStatsProps) {
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
       <div className="container mx-auto px-4">
@@ -141,9 +95,11 @@ export function CourseStats() {
                     </div>
 
                     {/* Description */}
-                    <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                      {stat.description}
-                    </div>
+                    {stat.description && (
+                      <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {stat.description}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

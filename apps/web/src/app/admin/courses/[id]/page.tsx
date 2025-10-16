@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Save, Trash2, Users, BarChart3 } from 'lucide-react'
 import { CourseForm, type CourseFormValues } from '@/components/admin/CourseForm'
+import { CourseContentManager } from '@/components/admin/CourseContentManager'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
 import { CourseStatus, CourseLevel } from '@hekate/database'
 
 interface Course extends CourseFormValues {
@@ -320,89 +323,104 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Inscrições</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-            {course._count.enrollments}
-          </p>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-green-600" />
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Status</span>
-          </div>
-          <p className="text-lg font-semibold mt-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              course.status === CourseStatus.PUBLISHED
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
-                : course.status === CourseStatus.DRAFT
-                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-            }`}>
-              {course.status === CourseStatus.PUBLISHED
-                ? 'Publicado'
-                : course.status === CourseStatus.DRAFT
-                  ? 'Rascunho'
-                  : 'Arquivado'}
-            </span>
-          </p>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Preço</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-            R$ {Number(course.price ?? 0).toFixed(2)}
-          </p>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Nível</span>
-          </div>
-          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
-            {course.level === CourseLevel.BEGINNER
-              ? 'Iniciante'
-              : course.level === CourseLevel.INTERMEDIATE
-                ? 'Intermediário'
-                : course.level === CourseLevel.ADVANCED
-                  ? 'Avançado'
-                  : 'Especialista'}
-          </p>
-        </div>
-      </div>
+      <Tabs defaultValue="details" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="details">Detalhes</TabsTrigger>
+          <TabsTrigger value="content">Conteúdo</TabsTrigger>
+        </TabsList>
 
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-        <CourseForm
-          data={formData}
-          onChange={handleFormChange}
-          loading={saving}
-        />
-      </div>
+        <TabsContent value="details" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Inscrições</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                {course._count.enrollments}
+              </p>
+            </div>
 
-      <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Informações do Curso</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">Criado em:</span>
-            <span className="ml-2 text-gray-900 dark:text-gray-100">
-              {new Date(course.createdAt).toLocaleDateString('pt-BR')}
-            </span>
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Status</span>
+              </div>
+              <p className="text-lg font-semibold mt-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  course.status === CourseStatus.PUBLISHED
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : course.status === CourseStatus.DRAFT
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                }`}>
+                  {course.status === CourseStatus.PUBLISHED
+                    ? 'Publicado'
+                    : course.status === CourseStatus.DRAFT
+                      ? 'Rascunho'
+                      : 'Arquivado'}
+                </span>
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Preço</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                R$ {Number(course.price ?? 0).toFixed(2)}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Nível</span>
+              </div>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
+                {course.level === CourseLevel.BEGINNER
+                  ? 'Iniciante'
+                  : course.level === CourseLevel.INTERMEDIATE
+                    ? 'Intermediário'
+                    : course.level === CourseLevel.ADVANCED
+                      ? 'Avançado'
+                      : 'Especialista'}
+              </p>
+            </div>
           </div>
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">Última atualização:</span>
-            <span className="ml-2 text-gray-900 dark:text-gray-100">
-              {new Date(course.updatedAt).toLocaleDateString('pt-BR')}
-            </span>
+
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <CourseForm
+              data={formData}
+              onChange={handleFormChange}
+              loading={saving}
+            />
           </div>
-        </div>
-      </div>
+
+          <Card>
+            <CardContent className="bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Informações do Curso</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Criado em:</span>
+                  <span className="ml-2 text-gray-900 dark:text-gray-100">
+                    {new Date(course.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Última atualização:</span>
+                  <span className="ml-2 text-gray-900 dark:text-gray-100">
+                    {new Date(course.updatedAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="content">
+          <CourseContentManager courseId={course.id} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
