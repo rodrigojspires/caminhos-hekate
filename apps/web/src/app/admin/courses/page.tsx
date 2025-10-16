@@ -5,16 +5,9 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { 
   Plus, 
-  Search, 
   Filter, 
-  Download, 
-  Upload,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
-  Copy,
-  Users
+  Download,
+  Trash2
 } from 'lucide-react'
 import { CourseTable } from '@/components/admin/CourseTable'
 import CourseFilters from '@/components/admin/CourseFilters'
@@ -30,7 +23,8 @@ interface Course {
   slug: string
   description?: string
   shortDescription?: string
-  price?: number
+  price?: number | null
+  comparePrice?: number | null
   status: CourseStatus
   level: CourseLevel
   featured: boolean
@@ -49,18 +43,6 @@ interface Course {
   }
 }
 
-interface CourseStats {
-  overview: {
-    totalCourses: number
-    totalEnrollments: number
-    totalRevenue: number
-    averagePrice: number
-    enrollmentGrowth: number
-  }
-  coursesByStatus: Record<CourseStatus, number>
-  coursesByLevel: Record<CourseLevel, number>
-}
-
 interface Filters {
   status?: CourseStatus
   level?: CourseLevel
@@ -74,9 +56,7 @@ interface Filters {
 export default function CoursesPage() {
   const router = useRouter()
   const [courses, setCourses] = useState<Course[]>([])
-  const [stats, setStats] = useState<CourseStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [statsLoading, setStatsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Filters>({})
   const [showFilters, setShowFilters] = useState(false)
@@ -86,6 +66,7 @@ export default function CoursesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCourses, setTotalCourses] = useState(0)
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0)
   const limit = 10
 
   // Buscar cursos
@@ -127,23 +108,9 @@ export default function CoursesPage() {
   }, [currentPage, search, filters, sortBy, sortOrder])
 
   // Buscar estatísticas
-  const fetchStats = async () => {
-    try {
-      setStatsLoading(true)
-      const response = await fetch('/api/admin/courses/stats')
-      const data = await response.json()
-
-      if (response.ok) {
-        setStats(data)
-      } else {
-        console.error('Erro ao carregar estatísticas:', data.error)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error)
-    } finally {
-      setStatsLoading(false)
-    }
-  }
+  const triggerStatsRefresh = useCallback(() => {
+    setStatsRefreshKey(prev => prev + 1)
+  }, [])
 
   // Deletar curso
   const handleDelete = async (courseId: string) => {
@@ -157,7 +124,7 @@ export default function CoursesPage() {
       if (response.ok) {
         toast.success('Curso deletado com sucesso')
         fetchCourses()
-        fetchStats()
+        triggerStatsRefresh()
       } else {
         const data = await response.json()
         toast.error(data.error || 'Erro ao deletar curso')
@@ -181,7 +148,7 @@ export default function CoursesPage() {
       toast.success(`${selectedCourses.length} curso(s) deletado(s) com sucesso`)
       setSelectedCourses([])
       fetchCourses()
-      fetchStats()
+      triggerStatsRefresh()
     } catch (error) {
       toast.error('Erro ao deletar cursos')
     }
@@ -210,8 +177,8 @@ export default function CoursesPage() {
 
       if (response.ok) {
         toast.success('Curso duplicado com sucesso')
-        fetchCourses()
-        fetchStats()
+      fetchCourses()
+      triggerStatsRefresh()
       } else {
         const data = await response.json()
         toast.error(data.error || 'Erro ao duplicar curso')
@@ -270,12 +237,12 @@ export default function CoursesPage() {
     fetchCourses()
   }, [fetchCourses])
 
-  useEffect(() => {
-    fetchStats()
-  }, [])
+useEffect(() => {
+  triggerStatsRefresh()
+}, [triggerStatsRefresh])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-gray-900 dark:text-gray-100">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -285,14 +252,14 @@ export default function CoursesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleExport('csv')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <Download className="w-4 h-4" />
             Exportar
           </button>
           <button
             onClick={() => router.push('/admin/courses/new')}
-            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Novo Curso
@@ -301,7 +268,7 @@ export default function CoursesPage() {
       </div>
 
       {/* Estatísticas */}
-      <CourseStats />
+      <CourseStats key={statsRefreshKey} />
 
       {/* Filtros e Busca */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -375,7 +342,7 @@ export default function CoursesPage() {
             }}
             onRefresh={() => {
               fetchCourses()
-              fetchStats()
+              triggerStatsRefresh()
             }}
             sortBy={sortBy}
             sortOrder={sortOrder}

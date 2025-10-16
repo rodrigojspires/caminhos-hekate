@@ -56,6 +56,7 @@ async function processSubscriptions() {
             try {
               const { emailService } = await import('@/lib/email')
               await emailService.sendEmail({
+                priority: 'NORMAL',
                 toEmail: user.email,
                 subject: 'Sua assinatura renova em 5 dias',
                 htmlContent: `

@@ -72,7 +72,7 @@ export function StreakCalendar({
       isCurrentMonth: date >= monthStart && date <= monthEnd,
       dayOfWeek: date.getDay()
     }));
-  }, [currentDate, activityDates, calendarStart, calendarEnd, monthStart, monthEnd]);
+  }, [activityDates, calendarStart, calendarEnd, monthStart, monthEnd]);
   
   const stats = useMemo(() => {
     const currentMonth = calendarDays.filter(day => day.isCurrentMonth);

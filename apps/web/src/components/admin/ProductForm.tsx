@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -135,9 +136,11 @@ export function ProductForm({
         imgs.push(await p)
       }
     }
-    handleInputChange('images', [ ...(formData.images || []), ...imgs ])
+    const currentImages = Array.isArray(formData.images) ? formData.images : []
+    handleInputChange('images', [...currentImages, ...imgs])
   }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': [] } })
+  const imageList = Array.isArray(formData.images) ? formData.images : []
 
   return (
     <div className="space-y-6">
@@ -290,16 +293,23 @@ export function ProductForm({
                 <input {...getInputProps()} />
                 <p className="text-sm text-muted-foreground">Arraste e solte imagens aqui ou clique para selecionar</p>
               </div>
-              {formData.images && formData.images.length > 0 && (
+              {imageList.length > 0 && (
                 <div className="mt-2 grid grid-cols-4 gap-2">
-                  {formData.images.map((src, i) => (
+                  {imageList.map((src, i) => (
                     <div key={i} className="relative">
-                      <img src={src} alt={`Prévia ${i+1}`} className="h-20 w-20 object-cover rounded" />
+                      <Image
+                        src={src}
+                        alt={`Prévia ${i + 1}`}
+                        width={80}
+                        height={80}
+                        className="h-20 w-20 object-cover rounded"
+                        unoptimized
+                      />
                       <button
                         type="button"
                         className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs"
                         onClick={() => {
-                          const next = [...formData.images]
+                          const next = [...imageList]
                           next.splice(i, 1)
                           handleInputChange('images', next)
                         }}

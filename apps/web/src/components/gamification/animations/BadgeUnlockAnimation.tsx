@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Star, Award, Crown, Zap, Target, Flame, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -103,7 +103,7 @@ export function BadgeUnlockAnimation({
   const IconComponent = CATEGORY_ICONS[badge.category as keyof typeof CATEGORY_ICONS] || Trophy;
   
   // Create floating particles
-  const createParticles = () => {
+  const createParticles = useCallback(() => {
     const newParticles: FloatingParticle[] = [];
     const particleCount = badge.rarity === 'mythic' ? 20 : badge.rarity === 'legendary' ? 15 : 10;
     
@@ -122,7 +122,7 @@ export function BadgeUnlockAnimation({
     }
     
     setParticles(newParticles);
-  };
+  }, [badge.rarity]);
   
   // Animation sequence
   useEffect(() => {
@@ -151,7 +151,7 @@ export function BadgeUnlockAnimation({
     };
     
     sequence();
-  }, [isVisible, autoHide, hideDelay, onComplete]);
+  }, [isVisible, autoHide, hideDelay, onComplete, createParticles]);
   
   // Update particles
   useEffect(() => {

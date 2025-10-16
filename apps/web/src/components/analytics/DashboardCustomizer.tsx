@@ -165,7 +165,7 @@ export default function DashboardCustomizer({
         <DialogHeader>
           <DialogTitle>Personalizar Minha Escola</DialogTitle>
           <DialogDescription>
-            Configure quais widgets exibir e como organizá-los na sua área "Minha Escola".
+            Configure quais widgets exibir e como organizá-los na sua área &ldquo;Minha Escola&rdquo;.
           </DialogDescription>
         </DialogHeader>
         

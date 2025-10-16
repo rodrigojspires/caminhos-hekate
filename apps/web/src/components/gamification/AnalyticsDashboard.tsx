@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer,
@@ -87,7 +87,7 @@ export default function AnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
 
   // Fetch analytics data
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/admin/gamification/analytics?range=${timeRange}`)
@@ -100,11 +100,11 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange])
 
   useEffect(() => {
     fetchAnalytics()
-  }, [timeRange])
+  }, [fetchAnalytics])
 
   if (loading) {
     return (

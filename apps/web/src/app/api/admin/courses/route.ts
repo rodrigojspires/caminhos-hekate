@@ -5,25 +5,77 @@ import { z } from 'zod'
 import { CourseStatus, CourseLevel } from '@hekate/database'
 
 // Schema de validação para criação de curso
+const urlOrPathSchema = z
+  .string()
+  .trim()
+  .min(1, 'URL é obrigatória')
+  .refine((value) => {
+    if (!value) return true
+    if (value.startsWith('/')) return true
+    try {
+      new URL(value)
+      return true
+    } catch {
+      return false
+    }
+  }, 'URL inválida')
+
 const createCourseSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
   slug: z.string().min(1, 'Slug é obrigatório').optional(),
   description: z.string().min(1, 'Descrição é obrigatória'),
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
+  comparePrice: z.number().min(0, 'Preço de comparação deve ser maior ou igual a 0').nullable().optional(),
   status: z.nativeEnum(CourseStatus).default(CourseStatus.DRAFT),
   featured: z.boolean().default(false),
-  featuredImage: z.string().url().optional(),
-  introVideo: z.string().url().optional(),
+  featuredImage: urlOrPathSchema.nullable().optional(),
+  introVideo: urlOrPathSchema.nullable().optional(),
   duration: z.number().min(0).optional(),
   level: z.nativeEnum(CourseLevel).default(CourseLevel.BEGINNER),
   tags: z.array(z.string()).default([]),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   maxStudents: z.number().min(1).optional()
+}).superRefine((data, ctx) => {
+  if (data.comparePrice != null && data.comparePrice <= data.price) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['comparePrice'],
+      message: 'Preço de comparação deve ser maior que o preço atual'
+    })
+  }
 })
 
 
+
+const normalizeTags = (tags: unknown): string[] => {
+  if (Array.isArray(tags)) {
+    return tags.filter((tag): tag is string => typeof tag === 'string')
+  }
+
+  if (typeof tags === 'string') {
+    try {
+      const parsed = JSON.parse(tags)
+      return Array.isArray(parsed)
+        ? parsed.filter((tag): tag is string => typeof tag === 'string')
+        : []
+    } catch {
+      return []
+    }
+  }
+
+  return []
+}
+
+const serializeCourse = <T extends { price?: any; comparePrice?: any; tags?: any }>(course: T) => {
+  return {
+    ...course,
+    price: course.price != null ? Number(course.price) : null,
+    comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
+    tags: normalizeTags(course.tags ?? [])
+  }
+}
 
 // Gerar slug único
 async function generateUniqueSlug(title: string, excludeId?: string) {
@@ -118,8 +170,10 @@ export async function GET(request: NextRequest) {
       prisma.course.count({ where })
     ])
 
+    const normalizedCourses = courses.map((course) => serializeCourse(course))
+
     return NextResponse.json({
-      courses,
+      courses: normalizedCourses,
       pagination: {
         page,
         limit,
@@ -182,7 +236,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(course, { status: 201 })
+    return NextResponse.json(serializeCourse(course), { status: 201 })
 
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { z } from 'zod'
 
 const ProductImportSchema = z.object({
@@ -171,11 +171,14 @@ export async function POST(request: NextRequest) {
                   sku: productData.sku || `${productData.slug}-default`,
                   stock: 0,
                   weight: productData.weight ?? null,
-                  dimensions: (productData.height || productData.width || productData.length) ? {
-                    height: productData.height,
-                    width: productData.width,
-                    length: productData.length,
-                  } : null,
+                  dimensions:
+                    productData.height || productData.width || productData.length
+                      ? {
+                          height: productData.height ?? null,
+                          width: productData.width ?? null,
+                          length: productData.length ?? null,
+                        }
+                      : Prisma.JsonNull,
                   active: true,
                 }
               }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,16 +15,16 @@ export default function CouponsAdminPage() {
   const [editing, setEditing] = useState<Coupon | null>(null)
   const [creating, setCreating] = useState(false)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (active !== 'ALL') params.set('active', active)
     const res = await fetch(`/api/admin/coupons?${params.toString()}`, { cache: 'no-store' })
     const data = await res.json()
     if (res.ok) setList(data.coupons || [])
-  }
+  }, [search, active])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const rows = useMemo(() => list.map(c => (
     <tr key={c.id} className="border-b">
@@ -43,7 +43,7 @@ export default function CouponsAdminPage() {
         }}>Excluir</Button>
       </td>
     </tr>
-  )), [list])
+  )), [list, load])
 
   return (
     <div className="container mx-auto py-6 space-y-4">
@@ -134,4 +134,3 @@ export default function CouponsAdminPage() {
     </div>
   )
 }
-

@@ -4,127 +4,116 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
-import { CourseForm } from '@/components/admin/CourseForm'
+import { CourseForm, type CourseFormValues } from '@/components/admin/CourseForm'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
 import { CourseStatus, CourseLevel } from '@hekate/database'
 
-interface CourseFormData {
-  title: string
-  slug: string
-  description: string
-  shortDescription: string
-  price: number
-  comparePrice?: number
-  status: CourseStatus
-  level: CourseLevel
-  featured: boolean
-  imageUrl?: string
-  videoUrl?: string
-  duration?: number
-  maxStudents?: number
-  tags: string[]
-  seoTitle?: string
-  seoDescription?: string
+const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i
+const VIDEO_EXTENSIONS = /\.(mp4|webm|ogg|mov|qt)$/i
+
+const isValidUrlOrPath = (value?: string | null, extensionPattern?: RegExp) => {
+  if (!value) return true
+  const trimmed = value.trim()
+  if (!trimmed) return true
+
+  const validateExtension = (target: string) =>
+    extensionPattern ? extensionPattern.test(target) : true
+
+  if (trimmed.startsWith('/')) {
+    const pathname = trimmed.split('?')[0]
+    return validateExtension(pathname)
+  }
+
+  try {
+    const parsed = new URL(trimmed)
+    return validateExtension(parsed.pathname)
+  } catch {
+    return false
+  }
 }
+
+const generateSlug = (title: string) =>
+  title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
 
 export default function NewCoursePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<CourseFormData>({
+  const [formData, setFormData] = useState<CourseFormValues>({
     title: '',
     slug: '',
     description: '',
     shortDescription: '',
     price: 0,
-    comparePrice: undefined,
+    comparePrice: null,
     status: CourseStatus.DRAFT,
     level: CourseLevel.BEGINNER,
     featured: false,
-    imageUrl: undefined,
-    videoUrl: undefined,
-    duration: undefined,
-    maxStudents: undefined,
+    featuredImage: null,
+    introVideo: null,
+    duration: null,
+    maxStudents: null,
     tags: [],
-    seoTitle: undefined,
-    seoDescription: undefined
+    metaTitle: null,
+    metaDescription: null
   })
 
-  // Gerar slug automaticamente baseado no título
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim()
-  }
-
-  // Atualizar dados do formulário
-  const handleFormChange = (data: Partial<CourseFormData>) => {
+  const handleFormChange = (data: Partial<CourseFormValues>) => {
     setFormData(prev => {
       const updated = { ...prev, ...data }
-      
-      // Gerar slug automaticamente se o título mudou e slug está vazio ou é baseado no título anterior
+
       if (data.title && (!prev.slug || prev.slug === generateSlug(prev.title))) {
         updated.slug = generateSlug(data.title)
       }
-      
+
       return updated
     })
   }
 
-  // Validar formulário
   const validateForm = (): string[] => {
     const errors: string[] = []
-    
+
     if (!formData.title.trim()) {
       errors.push('Título é obrigatório')
     }
-    
+
     if (!formData.slug.trim()) {
       errors.push('Slug é obrigatório')
     }
-    
+
     if (formData.price < 0) {
       errors.push('Preço deve ser maior ou igual a zero')
     }
-    
-    if (formData.comparePrice && formData.comparePrice <= formData.price) {
+
+    if (formData.comparePrice != null && formData.comparePrice <= formData.price) {
       errors.push('Preço de comparação deve ser maior que o preço atual')
     }
-    
-    if (formData.duration && formData.duration <= 0) {
+
+    if (formData.duration != null && formData.duration <= 0) {
       errors.push('Duração deve ser maior que zero')
     }
-    
-    if (formData.maxStudents && formData.maxStudents <= 0) {
+
+    if (formData.maxStudents != null && formData.maxStudents <= 0) {
       errors.push('Número máximo de estudantes deve ser maior que zero')
     }
-    
-    if (formData.imageUrl && !isValidUrl(formData.imageUrl)) {
-      errors.push('URL da imagem inválida')
+
+    if (!isValidUrlOrPath(formData.featuredImage, IMAGE_EXTENSIONS)) {
+      errors.push('Imagem de capa inválida')
     }
-    
-    if (formData.videoUrl && !isValidUrl(formData.videoUrl)) {
-      errors.push('URL do vídeo inválida')
+
+    if (!isValidUrlOrPath(formData.introVideo, VIDEO_EXTENSIONS)) {
+      errors.push('Vídeo de apresentação inválido')
     }
-    
+
     return errors
   }
 
-  // Validar URL
-  const isValidUrl = (url: string): boolean => {
-    try {
-      new URL(url)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  // Salvar curso
   const handleSave = async (asDraft = false) => {
     const errors = validateForm()
     if (errors.length > 0) {
@@ -134,10 +123,18 @@ export default function NewCoursePage() {
 
     try {
       setLoading(true)
-      
+
       const courseData = {
         ...formData,
-        status: asDraft ? CourseStatus.DRAFT : formData.status
+        status: asDraft ? CourseStatus.DRAFT : formData.status,
+        comparePrice: formData.comparePrice ?? null,
+        featuredImage: formData.featuredImage?.trim() || null,
+        introVideo: formData.introVideo?.trim() || null,
+        duration: formData.duration ?? null,
+        maxStudents: formData.maxStudents ?? null,
+        metaTitle: formData.metaTitle?.trim() || null,
+        metaDescription: formData.metaDescription?.trim() || null,
+        tags: formData.tags.map(tag => tag.trim()).filter(Boolean)
       }
 
       const response = await fetch('/api/admin/courses', {
@@ -152,14 +149,13 @@ export default function NewCoursePage() {
 
       if (response.ok) {
         toast.success(
-          asDraft 
-            ? 'Curso salvo como rascunho com sucesso' 
+          asDraft
+            ? 'Curso salvo como rascunho com sucesso'
             : 'Curso criado com sucesso'
         )
         router.push('/admin/courses')
       } else {
         if (data.details) {
-          // Erros de validação do Zod
           data.details.forEach((error: any) => {
             toast.error(`${error.path.join('.')}: ${error.message}`)
           })
@@ -175,20 +171,19 @@ export default function NewCoursePage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 text-gray-900 dark:text-gray-100">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Novo Curso</h1>
-            <p className="text-gray-600">Crie um novo curso para a plataforma</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo Curso</h1>
+            <p className="text-gray-600 dark:text-gray-400">Crie um novo curso para a plataforma</p>
           </div>
         </div>
         
@@ -196,7 +191,7 @@ export default function NewCoursePage() {
           <button
             onClick={() => handleSave(true)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
             {loading ? (
               <LoadingSpinner size="sm" />
@@ -209,7 +204,7 @@ export default function NewCoursePage() {
           <button
             onClick={() => handleSave(false)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {loading ? (
               <LoadingSpinner size="sm" />
@@ -221,8 +216,7 @@ export default function NewCoursePage() {
         </div>
       </div>
 
-      {/* Formulário */}
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
         <CourseForm
           data={formData}
           onChange={handleFormChange}
@@ -230,10 +224,9 @@ export default function NewCoursePage() {
         />
       </div>
 
-      {/* Informações de Ajuda */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-medium text-blue-900 mb-2">Dicas para criar um curso</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
+      <div className="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+        <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Dicas para criar um curso</h3>
+        <ul className="text-sm text-blue-700 dark:text-blue-200 space-y-1">
           <li>• Use um título claro e descritivo que explique o que o aluno aprenderá</li>
           <li>• A descrição curta aparecerá nas listagens, mantenha-a concisa e atrativa</li>
           <li>• Tags ajudam na busca e categorização do curso</li>

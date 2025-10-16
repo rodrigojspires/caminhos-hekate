@@ -93,6 +93,18 @@ export function NotificationSystem({
   const [queue, setQueue] = useState<NotificationQueueItem[]>([]);
   const [activeNotifications, setActiveNotifications] = useState<NotificationQueueItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(enableSound);
+
+  const playSound = useCallback((soundUrl: string) => {
+    try {
+      const audio = new Audio(soundUrl);
+      audio.volume = 0.3;
+      audio.play().catch(() => {
+        // Ignore audio play errors (user interaction required)
+      });
+    } catch (error) {
+      // Ignore audio errors
+    }
+  }, []);
   
   // Process queue and show notifications
   useEffect(() => {
@@ -120,19 +132,7 @@ export function NotificationSystem({
         navigator.vibrate(pattern);
       }
     }
-  }, [queue, activeNotifications, maxConcurrent, soundEnabled, enableVibration]);
-  
-  const playSound = useCallback((soundUrl: string) => {
-    try {
-      const audio = new Audio(soundUrl);
-      audio.volume = 0.3;
-      audio.play().catch(() => {
-        // Ignore audio play errors (user interaction required)
-      });
-    } catch (error) {
-      // Ignore audio errors
-    }
-  }, []);
+  }, [queue, activeNotifications, maxConcurrent, soundEnabled, enableVibration, playSound]);
   
   const getVibrationPattern = (priority: NotificationQueueItem['priority']): number[] => {
     switch (priority) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -84,7 +84,7 @@ export function ParticleEffect({
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>();
   
-  const createParticle = (index: number, containerWidth: number, containerHeight: number): Particle => {
+  const createParticle = useCallback((index: number, containerWidth: number, containerHeight: number): Particle => {
     const angle = (Math.PI * 2 * index) / particleCount + (Math.random() - 0.5) * (spread * Math.PI / 180);
     const speed = velocity * (0.5 + Math.random() * 0.5);
     const particleSize = size.min + Math.random() * (size.max - size.min);
@@ -104,9 +104,9 @@ export function ParticleEffect({
       rotation: Math.random() * 360,
       rotationSpeed: (Math.random() - 0.5) * 10
     };
-  };
+  }, [colors, duration, particleCount, shapes, size, spread, velocity]);
   
-  const updateParticles = (deltaTime: number) => {
+  const updateParticles = useCallback((deltaTime: number) => {
     setParticles(prevParticles => {
       const updatedParticles = prevParticles.map(particle => {
         const newParticle = { ...particle };
@@ -145,9 +145,9 @@ export function ParticleEffect({
       
       return updatedParticles;
     });
-  };
+  }, [gravity, wind, isAnimating, onComplete]);
   
-  const animate = (currentTime: number) => {
+  const animate = useCallback((currentTime: number) => {
     if (!startTimeRef.current) {
       startTimeRef.current = currentTime;
     }
@@ -160,9 +160,9 @@ export function ParticleEffect({
     if (isAnimating) {
       animationRef.current = requestAnimationFrame(animate);
     }
-  };
+  }, [isAnimating, updateParticles]);
   
-  const startAnimation = () => {
+  const startAnimation = useCallback(() => {
     if (!containerRef.current || isAnimating) return;
     
     const rect = containerRef.current.getBoundingClientRect();
@@ -171,18 +171,21 @@ export function ParticleEffect({
     );
     
     setParticles(newParticles);
-    setIsAnimating(true);
-    startTimeRef.current = undefined;
-    animationRef.current = requestAnimationFrame(animate);
-  };
+    setIsAnimating(prev => {
+      if (prev) return prev;
+      startTimeRef.current = undefined;
+      animationRef.current = requestAnimationFrame(animate);
+      return true;
+    });
+  }, [particleCount, createParticle, animate, isAnimating]);
   
-  const stopAnimation = () => {
+  const stopAnimation = useCallback(() => {
     setIsAnimating(false);
     setParticles([]);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-  };
+  }, []);
   
   // Handle auto trigger
   useEffect(() => {
@@ -197,7 +200,7 @@ export function ParticleEffect({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, trigger]);
+  }, [isActive, trigger, startAnimation, stopAnimation]);
   
   // Cleanup on unmount
   useEffect(() => {

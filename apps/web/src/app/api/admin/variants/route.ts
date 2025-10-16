@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { z } from 'zod'
 import { withAdminAuth } from '@/lib/auth-middleware'
 
@@ -38,11 +38,13 @@ export const POST = withAdminAuth(async (_user, req: NextRequest) => {
         stock: data.stock,
         active: data.active,
         weight: data.weight ?? null,
-        dimensions: data.dimensions ? {
-          height: data.dimensions.height,
-          width: data.dimensions.width,
-          length: data.dimensions.length,
-        } : null,
+        dimensions: data.dimensions
+          ? {
+              height: data.dimensions.height ?? null,
+              width: data.dimensions.width ?? null,
+              length: data.dimensions.length ?? null,
+            }
+          : Prisma.JsonNull,
         attributes: data.attributes,
       }
     })
@@ -56,4 +58,3 @@ export const POST = withAdminAuth(async (_user, req: NextRequest) => {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 })
-

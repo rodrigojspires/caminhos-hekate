@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -27,27 +27,35 @@ interface EmailTemplate {
 }
 
 export default function DynamicEmailTemplatesPage() {
-  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | undefined>(undefined)
+  const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'preview' | 'predefined'>('list')
+  const handleTabChange = useCallback((value: string) => {
+    const allowedTabs: Array<'list' | 'editor' | 'preview' | 'predefined'> = ['list', 'editor', 'preview', 'predefined']
+    if (allowedTabs.includes(value as any)) {
+      setActiveTab(value as typeof allowedTabs[number])
+    }
+  }, [])
+  const predefinedTemplates = useMemo<PredefinedTemplate[]>(() => getAllPredefinedTemplates(), [])
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const response = await fetch('/api/admin/email-templates/dynamic');
+        const response = await fetch('/api/admin/email-templates/dynamic')
         if (response.ok) {
-          const data = await response.json();
-          setTemplates(data);
+          const data = await response.json()
+          setTemplates(data)
         }
       } catch (error) {
-        console.error('Error fetching dynamic email templates:', error);
+        console.error('Error fetching dynamic email templates:', error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchTemplates();
-  }, []);
+    fetchTemplates()
+  }, [])
 
   if (loading) {
     return (
@@ -73,27 +81,8 @@ export default function DynamicEmailTemplatesPage() {
           ))}
         </div>
       </div>
-    );
+    )
   }
-
-  if (!templates.length) {
-    return (
-      <div className="text-center py-12">
-        <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Nenhum template encontrado</h3>
-        <p className="text-muted-foreground mb-4">
-          Não há templates de email dinâmicos cadastrados.
-        </p>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Criar Primeiro Template
-        </Button>
-      </div>
-    );
-  }
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | undefined>()
-  const [activeTab, setActiveTab] = useState('list')
-  const [predefinedTemplates] = useState<PredefinedTemplate[]>(getAllPredefinedTemplates())
 
   // Tipo compatível com EmailTemplateManager (sem campos createdAt/updatedAt)
   type EditableEmailTemplate = {
@@ -215,7 +204,7 @@ export default function DynamicEmailTemplatesPage() {
       </div>
 
       {/* Tabs Principal */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="list">Lista de Templates</TabsTrigger>
           <TabsTrigger value="editor">Editor</TabsTrigger>
@@ -225,81 +214,95 @@ export default function DynamicEmailTemplatesPage() {
 
         {/* Lista de Templates */}
         <TabsContent value="list" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {templates.map((template) => (
-              <Card key={template.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {template.subject}
-                      </p>
+          {templates.length === 0 ? (
+            <div className="text-center py-12">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhum template encontrado</h3>
+              <p className="text-muted-foreground mb-4">
+                Não há templates de email dinâmicos cadastrados.
+              </p>
+              <Button onClick={handleNewTemplate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeiro Template
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {templates.map((template) => (
+                <Card key={template.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {template.subject}
+                        </p>
+                      </div>
+                      <Badge variant={template.isActive ? 'default' : 'secondary'}>
+                        {template.isActive ? 'Ativo' : 'Inativo'}
+                      </Badge>
                     </div>
-                    <Badge variant={template.isActive ? 'default' : 'secondary'}>
-                      {template.isActive ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Tags:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {template.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Tags:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {template.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Variáveis ({template.variables.length}):
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {template.variables.slice(0, 3).map((variable) => (
+                            <Badge key={variable} variant="secondary" className="text-xs">
+                              {`{{${variable}}}`}
+                            </Badge>
+                          ))}
+                          {template.variables.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{template.variables.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Criado: {template.createdAt.toLocaleDateString()}</span>
+                        <span>Atualizado: {template.updatedAt.toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handlePreviewTemplate(template)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleEditTemplate(template)}
+                        >
+                          Editar
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Variáveis ({template.variables.length}):
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {template.variables.slice(0, 3).map((variable) => (
-                          <Badge key={variable} variant="secondary" className="text-xs">
-                            {`{{${variable}}}`}
-                          </Badge>
-                        ))}
-                        {template.variables.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{template.variables.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Criado: {template.createdAt.toLocaleDateString()}</span>
-                      <span>Atualizado: {template.updatedAt.toLocaleDateString()}</span>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handlePreviewTemplate(template)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Preview
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleEditTemplate(template)}
-                      >
-                        Editar
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Editor */}

@@ -19,35 +19,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { ProductTable } from '@/components/admin/ProductTable'
+import type { ProductTableProduct } from '@/components/admin/ProductTable'
 import { ProductImportExport } from '@/components/admin/ProductImportExport'
 import { toast } from 'sonner'
 
-interface Product {
-  id: string
-  name: string
-  slug: string
-  description?: string
-  type: 'PHYSICAL' | 'DIGITAL' | 'SERVICE'
-  price: number
-  comparePrice?: number
-  sku?: string
-  status: 'ACTIVE' | 'INACTIVE' | 'OUT_OF_STOCK'
-  featured: boolean
-  images: string[]
-  category?: {
-    id: string
-    name: string
-    slug: string
-  }
-  _count: {
-    orderItems: number
-    variants: number
-  }
-  createdAt: string
-  updatedAt: string
-}
+type AdminProduct = ProductTableProduct
 
 interface Category {
   id: string
@@ -56,7 +33,7 @@ interface Category {
 }
 
 interface ProductsResponse {
-  products: Product[]
+  products: AdminProduct[]
   pagination: {
     page: number
     limit: number
@@ -69,7 +46,7 @@ interface ProductsResponse {
 
 export default function ProductsPage() {
   const router = useRouter()
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<AdminProduct[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({
@@ -287,7 +264,7 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {products.filter(p => p.status === 'ACTIVE').length}
+              {products.filter((p) => p.active).length}
             </div>
           </CardContent>
         </Card>
@@ -298,7 +275,7 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {products.filter(p => p.status === 'OUT_OF_STOCK').length}
+              {products.filter((p) => p.variants.every((v) => (v.stock ?? 0) <= 0)).length}
             </div>
           </CardContent>
         </Card>

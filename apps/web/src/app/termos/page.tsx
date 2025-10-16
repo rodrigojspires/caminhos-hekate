@@ -5,8 +5,8 @@ export default function TermsPage() {
         <h1>Termos de Uso</h1>
         <p>
           Estes Termos de Uso regulam o acesso e a utilização da plataforma Caminhos de Hekate
-          ("Plataforma"), de titularidade da <strong>Caminhos de Hekate</strong> ("Nós"). Ao utilizar a Plataforma,
-          você ("Usuário") concorda com estes Termos e com nossa <a href="/privacidade">Política de Privacidade</a>.
+          (&ldquo;Plataforma&rdquo;), de titularidade da <strong>Caminhos de Hekate</strong> (&ldquo;Nós&rdquo;). Ao utilizar a Plataforma,
+          você (&ldquo;Usuário&rdquo;) concorda com estes Termos e com nossa <a href="/privacidade">Política de Privacidade</a>.
           Estes termos observam a legislação brasileira aplicável, incluindo o Código de Defesa do Consumidor (CDC) e a LGPD (Lei nº 13.709/2018).
         </p>
 

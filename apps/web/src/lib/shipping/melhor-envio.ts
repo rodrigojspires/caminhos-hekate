@@ -1,4 +1,4 @@
-import type { CartItem } from '@/lib/shop/types'
+import type { CartItem, CartShipping } from '@/lib/shop/types'
 import { prisma } from '@hekate/database'
 
 // Integração simplificada com Melhor Envio: calcula frete com base nas dimensões/peso dos itens.
@@ -9,7 +9,7 @@ export async function calculateShippingViaMelhorEnvio(
   cep: string,
   items: CartItem[],
   preferredServiceId?: string | null,
-) {
+): Promise<CartShipping> {
   const token = process.env.MELHOR_ENVIO_TOKEN
   const fromCep = process.env.MELHOR_ENVIO_FROM_CEP
   if (!token || !fromCep) throw new Error('MELHOR_ENVIO_TOKEN/MELHOR_ENVIO_FROM_CEP ausentes')
@@ -29,7 +29,17 @@ export async function calculateShippingViaMelhorEnvio(
     payloadItems.push({ height, width, length, weight, insurance_value: price * ci.quantity, quantity: ci.quantity })
   }
 
-  if (!payloadItems.length) return { cep, price: 0, service: 'Sem itens' }
+  if (!payloadItems.length) {
+    return {
+      cep,
+      serviceId: 'digital',
+      service: 'Sem itens físicos',
+      price: 0,
+      carrier: null,
+      deliveryDays: null,
+      options: [],
+    }
+  }
 
   const endpointBase = process.env.MELHOR_ENVIO_SANDBOX === '1'
     ? 'https://sandbox.melhorenvio.com.br'

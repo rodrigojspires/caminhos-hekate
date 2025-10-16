@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { prisma, Prisma, CourseStatus, CourseLevel } from '@hekate/database'
 
 // Verificar se usuário é admin
 async function checkAdminPermission() {
@@ -86,24 +85,36 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' }
       })
 
-      data = courses.map(course => ({
-        id: course.id,
-        title: course.title,
-        slug: course.slug,
-        description: course.description || '',
-        shortDescription: course.shortDescription || '',
-        price: course.price,
-        status: course.status,
-        level: course.level,
-        featured: course.featured ? 'Sim' : 'Não',
-        duration: course.duration || '',
-        maxStudents: course.maxStudents || '',
-        totalEnrollments: course._count.enrollments,
-        totalModules: course._count.modules,
-        tags: course.tags ? (course.tags as string[]).join(', ') : '',
-        createdAt: course.createdAt.toISOString().split('T')[0],
-        updatedAt: course.updatedAt.toISOString().split('T')[0]
-      }))
+      data = courses.map(course => {
+        const compareValue =
+          'comparePrice' in course && course.comparePrice != null
+            ? Number((course as unknown as { comparePrice: Prisma.Decimal }).comparePrice)
+            : ''
+
+        const tagsValue = Array.isArray(course.tags)
+          ? (course.tags as unknown[]).filter((tag): tag is string => typeof tag === 'string')
+          : []
+
+        return {
+          id: course.id,
+          title: course.title,
+          slug: course.slug,
+          description: course.description || '',
+          shortDescription: course.shortDescription || '',
+          price: course.price != null ? Number(course.price) : '',
+          comparePrice: compareValue,
+          status: course.status,
+          level: course.level,
+          featured: course.featured ? 'Sim' : 'Não',
+          duration: course.duration || '',
+          maxStudents: course.maxStudents || '',
+          totalEnrollments: course._count.enrollments,
+          totalModules: course._count.modules,
+          tags: tagsValue.join(', '),
+          createdAt: course.createdAt.toISOString().split('T')[0],
+          updatedAt: course.updatedAt.toISOString().split('T')[0]
+        }
+      })
 
       headers = [
         'id', 'title', 'slug', 'description', 'shortDescription', 'price', 'comparePrice',

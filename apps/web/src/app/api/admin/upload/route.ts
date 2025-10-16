@@ -21,12 +21,36 @@ async function checkAdminPermission() {
   return { user: session.user }
 }
 
-// Configurações de upload
-const UPLOAD_CONFIG = {
-  maxFileSize: 5 * 1024 * 1024, // 5MB
-  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  uploadDir: 'public/uploads',
-  maxFilenameLength: 100
+const BASE_UPLOAD_DIR = 'public/uploads'
+const MAX_FILENAME_LENGTH = 100
+
+const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
+
+const DEFAULT_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const VIDEO_MAX_FILE_SIZE = 200 * 1024 * 1024 // 200MB
+
+const UPLOAD_TYPE_CONFIG: Record<string, { allowedTypes: string[]; maxFileSize: number }> = {
+  default: {
+    allowedTypes: IMAGE_TYPES,
+    maxFileSize: DEFAULT_MAX_FILE_SIZE
+  },
+  general: {
+    allowedTypes: IMAGE_TYPES,
+    maxFileSize: DEFAULT_MAX_FILE_SIZE
+  },
+  product: {
+    allowedTypes: IMAGE_TYPES,
+    maxFileSize: DEFAULT_MAX_FILE_SIZE
+  },
+  'course-images': {
+    allowedTypes: IMAGE_TYPES,
+    maxFileSize: DEFAULT_MAX_FILE_SIZE
+  },
+  'course-videos': {
+    allowedTypes: VIDEO_TYPES,
+    maxFileSize: VIDEO_MAX_FILE_SIZE
+  }
 }
 
 // Função para sanitizar nome do arquivo
@@ -38,9 +62,9 @@ function sanitizeFilename(filename: string): string {
     .toLowerCase()
 
   // Limita o tamanho do nome
-  if (sanitized.length > UPLOAD_CONFIG.maxFilenameLength) {
+  if (sanitized.length > MAX_FILENAME_LENGTH) {
     const ext = sanitized.split('.').pop()
-    const name = sanitized.substring(0, UPLOAD_CONFIG.maxFilenameLength - (ext?.length || 0) - 1)
+    const name = sanitized.substring(0, MAX_FILENAME_LENGTH - (ext?.length || 0) - 1)
     return `${name}.${ext}`
   }
 
@@ -69,7 +93,13 @@ export async function POST(request: NextRequest) {
     // Obter dados do formulário
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const type = formData.get('type') as string || 'general'
+    const rawType = (formData.get('type') as string) || 'general'
+    const sanitizedType = rawType
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-{2,}/g, '-')
+      .trim() || 'general'
+    const typeConfig = UPLOAD_TYPE_CONFIG[sanitizedType] ?? UPLOAD_TYPE_CONFIG.default
 
     if (!file) {
       return NextResponse.json(
@@ -79,27 +109,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tipo de arquivo
-    if (!UPLOAD_CONFIG.allowedTypes.includes(file.type)) {
+    if (!typeConfig.allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { 
-          message: `Tipo de arquivo não permitido. Tipos aceitos: ${UPLOAD_CONFIG.allowedTypes.join(', ')}` 
+          message: `Tipo de arquivo não permitido. Tipos aceitos: ${typeConfig.allowedTypes.join(', ')}` 
         },
         { status: 400 }
       )
     }
 
     // Validar tamanho do arquivo
-    if (file.size > UPLOAD_CONFIG.maxFileSize) {
+    if (file.size > typeConfig.maxFileSize) {
       return NextResponse.json(
         { 
-          message: `Arquivo muito grande. Tamanho máximo: ${UPLOAD_CONFIG.maxFileSize / (1024 * 1024)}MB` 
+          message: `Arquivo muito grande. Tamanho máximo: ${Math.round(typeConfig.maxFileSize / (1024 * 1024))}MB` 
         },
         { status: 400 }
       )
     }
 
     // Criar diretório se não existir
-    const uploadDir = join(process.cwd(), UPLOAD_CONFIG.uploadDir, type)
+    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, sanitizedType)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -114,7 +144,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filepath, buffer)
 
     // Gerar URL pública
-    const publicUrl = `/uploads/${type}/${filename}`
+    const publicUrl = `/uploads/${sanitizedType}/${filename}`
 
     return NextResponse.json({
       message: 'Upload realizado com sucesso',

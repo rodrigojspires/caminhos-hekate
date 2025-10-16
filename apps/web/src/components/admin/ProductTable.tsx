@@ -50,7 +50,7 @@ interface ProductVariant {
   active: boolean
 }
 
-interface Product {
+export interface ProductTableProduct {
   id: string
   name: string
   slug: string
@@ -85,7 +85,7 @@ interface Pagination {
 }
 
 interface ProductTableProps {
-  products: Product[]
+  products: ProductTableProduct[]
   loading: boolean
   pagination: Pagination
   onPageChange: (page: number) => void
@@ -160,9 +160,9 @@ export function ProductTable({
   onEditProduct,
 }: ProductTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [productToDelete, setProductToDelete] = useState<ProductTableProduct | null>(null)
 
-  const handleDeleteClick = (product: Product) => {
+  const handleDeleteClick = (product: ProductTableProduct) => {
     setProductToDelete(product)
     setDeleteDialogOpen(true)
   }

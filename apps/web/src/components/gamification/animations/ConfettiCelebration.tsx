@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -89,7 +89,7 @@ export function ConfettiCelebration({
   
   const config = INTENSITY_CONFIG[intensity];
   
-  const createConfettiPiece = (index: number, containerWidth: number, containerHeight: number): ConfettiPiece => {
+  const createConfettiPiece = useCallback((index: number, containerWidth: number, containerHeight: number): ConfettiPiece => {
     const startX = containerWidth * origin.x;
     const startY = containerHeight * origin.y;
     
@@ -115,9 +115,9 @@ export function ConfettiCelebration({
       life: 0,
       maxLife: duration + Math.random() * 1000
     };
-  };
+  }, [config, colors, duration, origin.x, origin.y, shapes, spread]);
   
-  const updateConfetti = (deltaTime: number, currentTime: number) => {
+  const updateConfetti = useCallback((deltaTime: number, currentTime: number) => {
     setConfetti(prevConfetti => {
       let updatedConfetti = prevConfetti.map(piece => {
         const newPiece = { ...piece };
@@ -181,9 +181,9 @@ export function ConfettiCelebration({
       
       return updatedConfetti;
     });
-  };
+  }, [continuous, createConfettiPiece, gravity, wind, config, isAnimating, onComplete]);
   
-  const animate = (currentTime: number) => {
+  const animate = useCallback((currentTime: number) => {
     if (!startTimeRef.current) {
       startTimeRef.current = currentTime;
     }
@@ -196,9 +196,9 @@ export function ConfettiCelebration({
     if (isAnimating) {
       animationRef.current = requestAnimationFrame(animate);
     }
-  };
+  }, [isAnimating, updateConfetti]);
   
-  const startCelebration = () => {
+  const startCelebration = useCallback(() => {
     if (!containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
@@ -208,15 +208,16 @@ export function ConfettiCelebration({
     
     setConfetti(prev => [...prev, ...newConfetti]);
     
-    if (!isAnimating) {
-      setIsAnimating(true);
+    setIsAnimating(prev => {
+      if (prev) return prev;
       startTimeRef.current = undefined;
       lastEmissionRef.current = performance.now();
       animationRef.current = requestAnimationFrame(animate);
-    }
-  };
+      return true;
+    });
+  }, [config.count, createConfettiPiece, animate]);
   
-  const stopCelebration = () => {
+  const stopCelebration = useCallback(() => {
     setIsAnimating(false);
     if (!continuous) {
       setConfetti([]);
@@ -224,7 +225,7 @@ export function ConfettiCelebration({
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-  };
+  }, [continuous]);
   
   // Handle auto trigger
   useEffect(() => {
@@ -239,7 +240,7 @@ export function ConfettiCelebration({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, autoTrigger]);
+  }, [isActive, autoTrigger, startCelebration, stopCelebration]);
   
   // Cleanup on unmount
   useEffect(() => {

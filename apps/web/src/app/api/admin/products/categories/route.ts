@@ -10,7 +10,6 @@ const createCategorySchema = z.object({
   slug: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
-  active: z.boolean().default(true),
 })
 
 // Schema de validação para query parameters
@@ -18,7 +17,6 @@ const querySchema = z.object({
   page: z.string().transform(val => parseInt(val) || 1).optional(),
   limit: z.string().transform(val => Math.min(parseInt(val) || 20, 100)).optional(),
   search: z.string().optional(),
-  active: z.string().transform(val => val === 'true' ? true : val === 'false' ? false : undefined).optional(),
   sortBy: z.enum(['name', 'createdAt', 'productsCount']).default('name').optional(),
   sortOrder: z.enum(['asc', 'desc']).default('asc').optional(),
 })
@@ -90,10 +88,6 @@ export async function GET(request: NextRequest) {
         { name: { contains: query.search, mode: 'insensitive' } },
         { description: { contains: query.search, mode: 'insensitive' } },
       ]
-    }
-    
-    if (query.active !== undefined) {
-      where.active = query.active
     }
     
     // Construir ordenação
@@ -183,7 +177,6 @@ export async function POST(request: NextRequest) {
         slug: uniqueSlug,
         description: data.description || '',
         image: data.imageUrl || null,
-        active: data.active,
       },
       include: {
         _count: {

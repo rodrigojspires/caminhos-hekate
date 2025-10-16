@@ -15,7 +15,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const [qty, setQty] = useState<number>(1)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const fromParam = searchParams.get('from')
+  const fromParam = searchParams?.get('from')
   const backTarget = fromParam && fromParam.startsWith('/') ? fromParam : '/loja'
 
   useEffect(() => {

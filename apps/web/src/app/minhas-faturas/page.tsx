@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -27,7 +27,7 @@ export default function MinhasFaturasPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [payingId, setPayingId] = useState<string | null>(null)
 
-  const load = async (p = 1) => {
+  const load = useCallback(async (p = 1) => {
     setLoading(true)
     try {
       const res = await fetch(`/api/payments/history?page=${p}&limit=20`, { cache: 'no-store' })
@@ -44,13 +44,13 @@ export default function MinhasFaturasPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { load(1) }, [])
+  useEffect(() => { load(1) }, [load])
 
   const canPay = (p: Payment) => p.status === 'PENDING' && !!p.subscription?.id
 
-  const handlePay = async (p: Payment) => {
+  const handlePay = useCallback(async (p: Payment) => {
     if (!p.subscription?.id) return
     setPayingId(p.id)
     try {
@@ -70,7 +70,7 @@ export default function MinhasFaturasPage() {
     } finally {
       setPayingId(null)
     }
-  }
+  }, [load, page])
 
   const rows = useMemo(() => payments.map(p => (
     <div key={p.id} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center py-3">
@@ -94,7 +94,7 @@ export default function MinhasFaturasPage() {
       </div>
       <Separator className="md:col-span-6" />
     </div>
-  )), [payments, payingId])
+  )), [payments, payingId, handlePay])
 
   return (
     <div className="container mx-auto py-6">
@@ -123,4 +123,3 @@ export default function MinhasFaturasPage() {
     </div>
   )
 }
-

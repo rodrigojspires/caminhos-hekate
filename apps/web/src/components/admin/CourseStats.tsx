@@ -105,10 +105,10 @@ export default function CourseStats() {
 
   const getColorClasses = (color: string) => {
     const colors = {
-      blue: 'bg-blue-50 text-blue-600',
-      green: 'bg-green-50 text-green-600',
-      yellow: 'bg-yellow-50 text-yellow-600',
-      purple: 'bg-purple-50 text-purple-600'
+      blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-200',
+      green: 'bg-green-50 text-green-600 dark:bg-green-900/40 dark:text-green-200',
+      yellow: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-200',
+      purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/40 dark:text-purple-200'
     }
     return colors[color as keyof typeof colors] || colors.blue
   }
@@ -127,7 +127,7 @@ export default function CourseStats() {
                   <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{card.value}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.description}</p>
                 </div>
-                <div className={`p-3 rounded-lg ${getColorClasses(card.color)} dark:opacity-90` }>
+                <div className={`p-3 rounded-lg ${getColorClasses(card.color)}`}>
                   <Icon className="w-6 h-6" />
                 </div>
               </div>
@@ -144,11 +144,11 @@ export default function CourseStats() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Publicados</span>
-              <span className="font-medium text-green-600">{stats.coursesByStatus.PUBLISHED}</span>
+              <span className="font-medium text-green-600 dark:text-green-300">{stats.coursesByStatus.PUBLISHED}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Rascunhos</span>
-              <span className="font-medium text-yellow-600">{stats.coursesByStatus.DRAFT}</span>
+              <span className="font-medium text-yellow-600 dark:text-yellow-300">{stats.coursesByStatus.DRAFT}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Arquivados</span>
@@ -163,19 +163,19 @@ export default function CourseStats() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Iniciante</span>
-              <span className="font-medium text-blue-600">{stats.coursesByLevel.BEGINNER}</span>
+              <span className="font-medium text-blue-600 dark:text-blue-300">{stats.coursesByLevel.BEGINNER}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Intermediário</span>
-              <span className="font-medium text-green-600">{stats.coursesByLevel.INTERMEDIATE}</span>
+              <span className="font-medium text-green-600 dark:text-green-300">{stats.coursesByLevel.INTERMEDIATE}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Avançado</span>
-              <span className="font-medium text-yellow-600">{stats.coursesByLevel.ADVANCED}</span>
+              <span className="font-medium text-yellow-600 dark:text-yellow-300">{stats.coursesByLevel.ADVANCED}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Especialista</span>
-              <span className="font-medium text-purple-600">{stats.coursesByLevel.EXPERT}</span>
+              <span className="font-medium text-purple-600 dark:text-purple-300">{stats.coursesByLevel.EXPERT}</span>
             </div>
           </div>
         </div>

@@ -31,6 +31,11 @@ export async function enrichCartWithDetails(cart: CartState): Promise<EnrichedCa
       const price = variant ? Number(variant.price) : 0
       const comparePrice = variant?.comparePrice != null ? Number(variant.comparePrice) : null
 
+      const productImagesRaw = variant?.product?.images
+      const productImages = Array.isArray(productImagesRaw)
+        ? productImagesRaw.filter((img): img is string => typeof img === 'string')
+        : []
+
       return {
         ...item,
         variantName: variant?.name,
@@ -41,8 +46,8 @@ export async function enrichCartWithDetails(cart: CartState): Promise<EnrichedCa
           ? {
               id: variant.product.id,
               name: variant.product.name,
-              slug: variant.product.slug,
-              images: Array.isArray(variant.product.images) ? variant.product.images : [],
+              slug: variant.product.slug ?? null,
+              images: productImages,
               type: variant.product.type ?? null,
             }
           : null,

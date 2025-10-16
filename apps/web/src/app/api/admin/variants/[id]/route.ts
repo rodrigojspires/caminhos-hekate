@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, Prisma } from '@hekate/database'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -57,12 +57,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       weight: data.weight ?? undefined,
       attributes: data.attributes,
     }
-    if (data.dimensions && (data.dimensions.height || data.dimensions.width || data.dimensions.length)) {
-      updateData.dimensions = {
-        height: data.dimensions.height,
-        width: data.dimensions.width,
-        length: data.dimensions.length,
-      }
+    if (data.dimensions) {
+      const hasDimensions = Boolean(data.dimensions.height ?? data.dimensions.width ?? data.dimensions.length)
+      updateData.dimensions = hasDimensions
+        ? {
+            height: data.dimensions.height ?? null,
+            width: data.dimensions.width ?? null,
+            length: data.dimensions.length ?? null,
+          }
+        : Prisma.JsonNull
     }
     const variant = await prisma.productVariant.update({ where: { id: params.id }, data: updateData })
     return NextResponse.json({ success: true, variant })

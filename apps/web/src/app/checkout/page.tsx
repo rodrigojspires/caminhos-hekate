@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import {
@@ -171,7 +171,7 @@ export default function CheckoutPage() {
     }
   }
 
-  async function resolveCEP(kind: 'billing' | 'shipping', cepRaw: string) {
+  const resolveCEP = useCallback(async (kind: 'billing' | 'shipping', cepRaw: string) => {
     const cep = cepRaw.replace(/\D/g, '')
     if (cep.length !== 8) return
     try {
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
       setForm(prev => ({ ...prev, [kind]: { ...prev[kind], ...patch } }))
       setQueriedCep(q => ({ ...q, [kind]: cep }))
     } catch {}
-  }
+  }, [queriedCep])
 
   const fetchCart = async () => {
     const res = await fetch('/api/shop/cart', { cache: 'no-store' })
@@ -293,7 +293,7 @@ export default function CheckoutPage() {
         }
       } catch {}
     })()
-  }, [status])
+  }, [status, session?.user?.name, session?.user?.email])
 
   // Keep shipping in sync with billing when checkbox enabled
   useEffect(() => {
@@ -311,12 +311,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     const t = setTimeout(() => resolveCEP('billing', form.billing.zipCode), 500)
     return () => clearTimeout(t)
-  }, [form.billing.zipCode])
+  }, [form.billing.zipCode, resolveCEP])
   useEffect(() => {
     if (sameAsBilling) return
     const t = setTimeout(() => resolveCEP('shipping', form.shipping.zipCode), 500)
     return () => clearTimeout(t)
-  }, [form.shipping.zipCode, sameAsBilling])
+  }, [form.shipping.zipCode, sameAsBilling, resolveCEP])
 
   const updateShippingOption = async () => {
     if (!cart?.shipping?.cep || !selectedShippingId) return

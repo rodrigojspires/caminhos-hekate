@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Bell, X, Check, CheckCheck, Trash2, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -29,7 +29,7 @@ export default function NotificationCenter({ className = '' }: NotificationCente
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
   // Fetch notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -58,7 +58,7 @@ export default function NotificationCenter({ className = '' }: NotificationCente
     } finally {
       setLoading(false)
     }
-  }
+  }, [filter, typeFilter])
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
@@ -176,13 +176,13 @@ export default function NotificationCenter({ className = '' }: NotificationCente
 
   useEffect(() => {
     fetchNotifications()
-  }, [filter, typeFilter])
+  }, [fetchNotifications])
 
   // Auto-refresh notifications every 30 seconds
   useEffect(() => {
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchNotifications])
 
   return (
     <div className={`relative ${className}`}>

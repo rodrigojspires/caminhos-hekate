@@ -1,5 +1,6 @@
 import { notificationService } from '@/lib/notifications/notification-service'
 import { NotificationPriority, NotificationType } from '@prisma/client'
+import { prisma } from '@hekate/database'
 
 // Função para notificar usuários (para uso interno)
 export async function notifyUsers(notification: {

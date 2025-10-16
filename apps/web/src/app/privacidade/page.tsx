@@ -4,7 +4,7 @@ export default function PrivacyPage() {
       <article className="prose prose-neutral max-w-3xl dark:prose-invert">
         <h1>Política de Privacidade</h1>
         <p>
-          Esta Política descreve como a <strong>Caminhos de Hekate</strong> ("Nós") trata dados pessoais de usuários ("Você")
+          Esta Política descreve como a <strong>Caminhos de Hekate</strong> (&ldquo;Nós&rdquo;) trata dados pessoais de usuários (&ldquo;Você&rdquo;)
           em conformidade com a Lei Geral de Proteção de Dados Pessoais – LGPD (Lei nº 13.709/2018) e demais normas aplicáveis.
         </p>
 

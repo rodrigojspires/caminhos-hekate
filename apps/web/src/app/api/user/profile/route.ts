@@ -1,27 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
+import type { Session } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
+type SessionWithId = Session & { user: NonNullable<Session['user']> & { id: string } }
+
 export async function GET() {
-  const session = await getServerSession(authOptions as any)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  let user: any = null
-  try {
-    user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, email: true, name: true, phone: true as any, document: true as any, addresses: { orderBy: { updatedAt: 'desc' }, take: 10 } },
-    })
-  } catch (e: any) {
-    // Fallback para bancos que ainda não migraram phone/document
-    user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, email: true, name: true, addresses: { orderBy: { updatedAt: 'desc' }, take: 10 } },
-    })
+  const session = (await getServerSession(authOptions)) as SessionWithId | null
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const billing = user.addresses.find(a => a.name?.toLowerCase().includes('cobran')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
-  const shipping = user.addresses.find(a => a.name?.toLowerCase().includes('entrega')) || user.addresses.find(a => a.isDefault) || user.addresses[0] || null
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      phone: true,
+      document: true,
+      addresses: {
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          name: true,
+          street: true,
+          number: true,
+          complement: true,
+          neighborhood: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          country: true,
+          phone: true,
+          isDefault: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const billing =
+    user.addresses.find((address) => address.name?.toLowerCase().includes('cobran')) ??
+    user.addresses.find((address) => address.isDefault) ??
+    user.addresses[0] ??
+    null
+
+  const shipping =
+    user.addresses.find((address) => address.name?.toLowerCase().includes('entrega')) ??
+    user.addresses.find((address) => address.isDefault) ??
+    user.addresses[0] ??
+    null
 
   const addresses = user.addresses.map((address) => ({
     id: address.id,
@@ -90,31 +126,96 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await getServerSession(authOptions as any)
+  const session = (await getServerSession(authOptions)) as SessionWithId | null
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await request.json()
-  const { name, phone, document, billingAddress, shippingAddress } = body as any
+  const body = (await request.json()) as {
+    name?: string | null
+    phone?: string | null
+    document?: string | null
+    billingAddress?: Partial<{
+      street: string | null
+      number: string | null
+      complement: string | null
+      neighborhood: string | null
+      city: string | null
+      state: string | null
+      zipCode: string | null
+    }> | null
+    shippingAddress?: Partial<{
+      street: string | null
+      number: string | null
+      complement: string | null
+      neighborhood: string | null
+      city: string | null
+      state: string | null
+      zipCode: string | null
+    }> | null
+  }
+  const { name, phone, document, billingAddress, shippingAddress } = body
+
+  type AddressPayload = {
+    street?: string | null
+    number?: string | null
+    complement?: string | null
+    neighborhood?: string | null
+    city?: string | null
+    state?: string | null
+    zipCode?: string | null
+  }
+
+  const mapAddressUpdate = (payload?: AddressPayload | null) => {
+    if (!payload) return undefined
+    const data: Record<string, string | null> = {}
+    if (payload.street !== undefined) data.street = payload.street ?? ''
+    if (payload.number !== undefined) data.number = payload.number ?? ''
+    if (payload.neighborhood !== undefined) data.neighborhood = payload.neighborhood ?? ''
+    if (payload.city !== undefined) data.city = payload.city ?? ''
+    if (payload.state !== undefined) data.state = payload.state ?? ''
+    if (payload.zipCode !== undefined) data.zipCode = payload.zipCode ?? ''
+    if (payload.complement !== undefined) data.complement = payload.complement ?? null
+    return data
+  }
+
+  const mapAddressCreate = (payload: AddressPayload, extra: { userId: string; name: string; isDefault?: boolean }) => ({
+    userId: extra.userId,
+    name: extra.name,
+    country: 'Brasil',
+    street: payload.street ?? '',
+    number: payload.number ?? '',
+    neighborhood: payload.neighborhood ?? '',
+    city: payload.city ?? '',
+    state: payload.state ?? '',
+    zipCode: payload.zipCode ?? '',
+    complement: payload.complement ?? null,
+    isDefault: extra.isDefault ?? false,
+  })
 
   await prisma.$transaction(async (tx) => {
     try {
-      await tx.user.update({ where: { id: session.user.id }, data: { name, phone, document } as any })
+      await tx.user.update({ where: { id: session.user.id }, data: { name: name ?? undefined, phone: phone ?? undefined, document: document ?? undefined } })
     } catch {
       await tx.user.update({ where: { id: session.user.id }, data: { name } })
     }
-    if (billingAddress) {
+    const billingData = mapAddressUpdate(billingAddress)
+    if (billingData && Object.keys(billingData).length > 0) {
       const ex = await tx.address.findFirst({ where: { userId: session.user.id, name: { contains: 'Cobran', mode: 'insensitive' } } })
       if (ex) {
-        await tx.address.update({ where: { id: ex.id }, data: { ...billingAddress } })
+        await tx.address.update({ where: { id: ex.id }, data: billingData })
       } else {
-        await tx.address.create({ data: { userId: session.user.id, name: 'Cobrança', country: 'Brasil', ...billingAddress, isDefault: true } })
+        await tx.address.create({
+          data: mapAddressCreate(billingAddress ?? {}, { userId: session.user.id, name: 'Cobrança', isDefault: true })
+        })
       }
     }
-    if (shippingAddress) {
+    const shippingData = mapAddressUpdate(shippingAddress)
+    if (shippingData && Object.keys(shippingData).length > 0) {
       const ex = await tx.address.findFirst({ where: { userId: session.user.id, name: { contains: 'Entrega', mode: 'insensitive' } } })
       if (ex) {
-        await tx.address.update({ where: { id: ex.id }, data: { ...shippingAddress } })
+        await tx.address.update({ where: { id: ex.id }, data: shippingData })
       } else {
-        await tx.address.create({ data: { userId: session.user.id, name: 'Entrega', country: 'Brasil', ...shippingAddress } })
+        await tx.address.create({
+          data: mapAddressCreate(shippingAddress ?? {}, { userId: session.user.id, name: 'Entrega' })
+        })
       }
     }
   })

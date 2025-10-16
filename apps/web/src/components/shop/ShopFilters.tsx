@@ -5,11 +5,11 @@ import { useSearchParams } from 'next/navigation'
 
 export default function ShopFilters({ category }: { category?: string }) {
   const sp = useSearchParams()
-  const priceMin = sp.get('priceMin') || ''
-  const priceMax = sp.get('priceMax') || ''
-  const initialTypes = (sp.get('type') || '').split(',').filter(Boolean)
+  const priceMin = sp?.get('priceMin') ?? ''
+  const priceMax = sp?.get('priceMax') ?? ''
+  const initialTypes = (sp?.get('type') ?? '').split(',').filter(Boolean)
   const [selectedTypes, setSelectedTypes] = useState<string[]>(initialTypes)
-  const availability = sp.get('availability') || ''
+  const availability = sp?.get('availability') ?? ''
 
   function toggleType(t: string, checked: boolean) {
     setSelectedTypes((prev) => {

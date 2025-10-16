@@ -541,6 +541,7 @@ model Course {
   featuredImage    String?
   introVideo       String?
   price            Decimal?         @db.Decimal(10, 2)
+  comparePrice     Decimal?         @db.Decimal(10, 2)
   tier             SubscriptionTier @default(FREE)
   status           CourseStatus     @default(DRAFT)
   duration         Int?

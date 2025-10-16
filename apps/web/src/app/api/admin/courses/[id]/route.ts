@@ -5,25 +5,81 @@ import { z } from 'zod'
 import { CourseStatus, CourseLevel } from '@hekate/database'
 
 // Schema de validação para atualização de curso
+const urlOrPathSchema = z
+  .string()
+  .trim()
+  .min(1, 'URL é obrigatória')
+  .refine((value) => {
+    if (!value) return true
+    if (value.startsWith('/')) return true
+    try {
+      new URL(value)
+      return true
+    } catch {
+      return false
+    }
+  }, 'URL inválida')
+
 const updateCourseSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório').optional(),
   slug: z.string().min(1, 'Slug é obrigatório').optional(),
   description: z.string().optional(),
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0').optional(),
+  comparePrice: z.number().min(0, 'Preço de comparação deve ser maior ou igual a 0').nullable().optional(),
   status: z.nativeEnum(CourseStatus).optional(),
   featured: z.boolean().optional(),
-  featuredImage: z.string().url().optional(),
-  introVideo: z.string().url().optional(),
+  featuredImage: urlOrPathSchema.nullable().optional(),
+  introVideo: urlOrPathSchema.nullable().optional(),
   duration: z.number().min(0).optional(),
   level: z.nativeEnum(CourseLevel).optional(),
   tags: z.array(z.string()).optional(),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   maxStudents: z.number().min(1).optional()
+}).superRefine((data, ctx) => {
+  if (
+    data.comparePrice != null &&
+    data.price != null &&
+    data.comparePrice <= data.price
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['comparePrice'],
+      message: 'Preço de comparação deve ser maior que o preço atual'
+    })
+  }
 })
 
 
+
+const normalizeTags = (tags: unknown): string[] => {
+  if (Array.isArray(tags)) {
+    return tags.filter((tag): tag is string => typeof tag === 'string')
+  }
+
+  if (typeof tags === 'string') {
+    try {
+      const parsed = JSON.parse(tags)
+      return Array.isArray(parsed)
+        ? parsed.filter((tag): tag is string => typeof tag === 'string')
+        : []
+    } catch {
+      return []
+    }
+  }
+
+  return []
+}
+
+const serializeCourse = <T extends { price?: any; comparePrice?: any; tags?: any }>(course: T) => {
+  return {
+    ...course,
+    price: course.price != null ? Number(course.price) : null,
+    comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
+    tags: normalizeTags(course.tags ?? [])
+  }
+}
 
 // Gerar slug único
 async function generateUniqueSlug(title: string, excludeId?: string) {
@@ -111,7 +167,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(course)
+    return NextResponse.json(serializeCourse(course))
 
   } catch (error) {
     console.error('Erro ao buscar curso:', error)
@@ -145,6 +201,19 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Curso não encontrado' },
         { status: 404 }
+      )
+    }
+
+    const currentPrice = existingCourse.price != null ? Number(existingCourse.price) : null
+    const effectivePrice = validatedData.price ?? currentPrice ?? 0
+
+    if (
+      validatedData.comparePrice != null &&
+      validatedData.comparePrice <= effectivePrice
+    ) {
+      return NextResponse.json(
+        { error: 'Preço de comparação deve ser maior que o preço atual' },
+        { status: 400 }
       )
     }
 
@@ -186,7 +255,7 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(updatedCourse)
+    return NextResponse.json(serializeCourse(updatedCourse))
 
   } catch (error) {
     if (error instanceof z.ZodError) {

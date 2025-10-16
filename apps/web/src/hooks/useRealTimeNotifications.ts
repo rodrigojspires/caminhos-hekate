@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 
-interface Notification {
+interface RealtimeNotification {
   id: string
   title: string
   content: string
@@ -24,7 +24,7 @@ interface SSEMessage {
 }
 
 interface UseRealTimeNotificationsReturn {
-  notifications: Notification[]
+  notifications: RealtimeNotification[]
   unreadCount: number
   isConnected: boolean
   error: string | null
@@ -36,14 +36,14 @@ interface UseRealTimeNotificationsReturn {
 }
 
 export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<RealtimeNotification[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.read).length
 
   useEffect(() => {
     let isMounted = true
@@ -56,7 +56,7 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
         const list = payload?.data?.notifications || []
         if (!isMounted) return
         setNotifications((prev) => {
-          const mapped = list.map((notification: any) => ({
+          const mapped: RealtimeNotification[] = list.map((notification: any) => ({
             id: notification.id,
             title: notification.title,
             content: notification.message,
@@ -67,9 +67,11 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
             channel: 'EMAIL',
             metadata: notification.metadata || notification.data,
           }))
-          return mapped
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 50)
+
+          const sorted = mapped.sort((a: RealtimeNotification, b: RealtimeNotification) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+          return sorted.slice(0, 50)
         })
       } catch (err) {
         if (isMounted) {
@@ -113,8 +115,8 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
             case 'notifications':
               if (message.data) {
                 setNotifications((prev) => {
-                  const incoming = message.data!.map(normalizeSSENotification)
-                  const existingMap = new Map(prev.map((n) => [n.id, n]))
+                  const incoming: RealtimeNotification[] = message.data!.map(normalizeSSENotification)
+                  const existingMap = new Map<string, RealtimeNotification>(prev.map((n) => [n.id, n]))
 
                   incoming.forEach((notif) => {
                     const existing = existingMap.get(notif.id)
@@ -130,7 +132,7 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
                   })
 
                   const merged = Array.from(existingMap.values())
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .sort((a: RealtimeNotification, b: RealtimeNotification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .slice(0, 50)
 
                   incoming.forEach((notification) => {
@@ -308,7 +310,7 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
   }
 }
 
-function normalizeSSENotification(notification: any): Notification {
+function normalizeSSENotification(notification: any): RealtimeNotification {
   return {
     id: notification.id,
     title: notification.title,

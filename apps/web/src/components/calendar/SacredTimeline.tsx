@@ -24,9 +24,9 @@ function fmtDate(d: Date) {
 
 export default function SacredTimeline() {
   const { events } = useEventsStore()
-  const now = new Date()
 
   const items = useMemo(() => {
+    const now = new Date()
     const upcoming = events.filter((e) => new Date(e.start) >= now)
     const buckets: Record<'SABBATH' | 'DEIPNON' | 'RITUAL', CalendarEvent[]> = {
       SABBATH: [],
@@ -83,4 +83,3 @@ export default function SacredTimeline() {
     </div>
   )
 }
-

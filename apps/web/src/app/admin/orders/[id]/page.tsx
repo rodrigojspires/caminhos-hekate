@@ -202,7 +202,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
     return Number.isFinite(parsed) ? parsed : 0
   }
 
-  const normalizeOrder = (rawOrder: any): Order => {
+  const normalizeOrder = useCallback((rawOrder: any): Order => {
     const items: OrderItem[] = (rawOrder.items ?? rawOrder.orderItems ?? []).map((item: any) => ({
       ...item,
       price: parseNumber(item.price),
@@ -267,7 +267,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       items,
       stats,
     }
-  }
+  }, [])
 
   // Buscar detalhes do pedido
   const fetchOrder = useCallback(async () => {
@@ -290,7 +290,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [params.id, router])
+  }, [params.id, router, normalizeOrder])
 
   // Atualizar status do pedido
   const handleOrderUpdate = async (
@@ -444,7 +444,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
       deliveryDays?: number | null
       price?: number | string | null
     }
-  }, [order?.metadata, order?.shipping])
+  }, [order?.metadata])
 
   if (loading) {
     return (

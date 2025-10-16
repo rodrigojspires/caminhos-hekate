@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -316,7 +317,14 @@ export default function ProductVariantsEditor({ productId }: { productId: string
                 <div className="mt-2 grid grid-cols-6 gap-2">
                   {(variantImages[v.id] || (v.attributes?.images || [])).map((src: string, i: number) => (
                     <div key={i} className="relative">
-                      <img src={src} alt={`var-${v.id}-${i}`} className="h-16 w-16 object-cover rounded" />
+                      <Image
+                        src={src}
+                        alt={`var-${v.id}-${i}`}
+                        width={64}
+                        height={64}
+                        className="h-16 w-16 object-cover rounded"
+                        unoptimized
+                      />
                       <button
                         type="button"
                         className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs"

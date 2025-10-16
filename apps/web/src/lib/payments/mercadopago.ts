@@ -75,7 +75,7 @@ export class MercadoPagoService {
         },
       };
 
-      const preference = await this.preference.create({ body: preferenceData });
+      const preference = await this.preference.create({ body: preferenceData as any });
       return preference;
     } catch (error) {
       console.error('Erro ao criar preferência MercadoPago:', error);
@@ -350,7 +350,7 @@ export class MercadoPagoService {
       }
 
       const preference = await this.preference.create({
-        body: preferenceBody,
+        body: preferenceBody as any,
       })
 
       await prisma.paymentTransaction.update({
