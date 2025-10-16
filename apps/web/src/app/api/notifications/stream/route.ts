@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
         // Enviar evento inicial de conexão
         const initMessage = `data: ${JSON.stringify({
-          type: 'connection',
+          type: 'connected',
           message: 'Conectado ao stream de notificações',
           timestamp: new Date().toISOString()
         })}\n\n`
@@ -39,22 +39,19 @@ export async function GET(request: NextRequest) {
 
         // Configurar listener para novas notificações
         const handleNotification = (notification: any) => {
-          if (notification.userId === userId) {
-            const message = `data: ${JSON.stringify({
-              id: notification.id,
-              type: notification.type,
-              title: notification.title,
-              message: notification.message,
-              priority: notification.priority,
-              data: notification.data,
-              createdAt: notification.createdAt
-            })}\n\n`
-            
-            try {
-              controller.enqueue(new TextEncoder().encode(message))
-            } catch (error) {
-              console.error('Erro ao enviar notificação via stream:', error)
-            }
+          if (notification.userId !== userId) return
+
+          const normalized = formatNotificationPayload(notification)
+          const payload = {
+            type: 'notifications' as const,
+            data: [normalized],
+          }
+          const message = `data: ${JSON.stringify(payload)}\n\n`
+
+          try {
+            controller.enqueue(new TextEncoder().encode(message))
+          } catch (error) {
+            console.error('Erro ao enviar notificação via stream:', error)
           }
         }
 
@@ -175,5 +172,23 @@ export async function HEAD(request: NextRequest) {
   } catch (error) {
     console.error('Erro ao verificar status da conexão:', error)
     return new Response(null, { status: 500 })
+  }
+}
+
+function formatNotificationPayload(notification: any) {
+  const createdAt = notification.createdAt instanceof Date
+    ? notification.createdAt.toISOString()
+    : notification.createdAt ?? new Date().toISOString()
+
+  return {
+    id: notification.id,
+    userId: notification.userId,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    priority: notification.priority,
+    data: notification.data ?? notification.metadata ?? null,
+    createdAt,
+    read: Boolean(notification.isRead ?? notification.read ?? false),
   }
 }
