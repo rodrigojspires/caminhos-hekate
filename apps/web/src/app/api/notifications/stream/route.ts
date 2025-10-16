@@ -186,6 +186,7 @@ function formatNotificationPayload(notification: any) {
     type: notification.type,
     title: notification.title,
     message: notification.message,
+    content: notification.message ?? notification.content ?? '',
     priority: notification.priority,
     data: notification.data ?? notification.metadata ?? null,
     createdAt,

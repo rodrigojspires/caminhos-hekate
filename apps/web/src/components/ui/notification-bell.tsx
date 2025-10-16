@@ -190,50 +190,47 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent className="w-80" align="end" forceMount>
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold">Notificações</h3>
+      <DropdownMenuContent className="w-[22rem] p-0 overflow-hidden" align="end" forceMount>
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Bell className="h-4 w-4" />
+            <span>Notificações</span>
             {!isConnected && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={reconnect}
-                className="text-xs text-orange-600 hover:text-orange-700"
+                className="h-7 px-2 text-xs text-orange-500 hover:text-orange-600"
               >
-                <WifiOff className="h-3 w-3 mr-1" />
-                Reconectar
+                <WifiOff className="mr-1 h-3 w-3" /> Reconectar
               </Button>
             )}
           </div>
           {hasNotifications && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={markAllAsRead}
-                  className="text-xs"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary/80 hover:text-primary"
                 >
-                  <Check className="h-3 w-3 mr-1" />
-                  Marcar todas
-                </Button>
+                  <Check className="h-3 w-3" /> Marcar todas
+                </button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
+              <span className="h-4 w-px bg-border" />
+              <button
+                type="button"
                 onClick={clearAll}
-                className="text-xs text-destructive hover:text-destructive"
+                className="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:text-destructive"
               >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Limpar
-              </Button>
+                <Trash2 className="h-3 w-3" /> Limpar
+              </button>
             </div>
           )}
         </div>
         {error && (
           <div className="px-4 pb-2">
-            <div className="bg-red-50 border border-red-200 rounded-md p-2 text-sm text-red-700">
+            <div className="bg-red-50 border border-red-200 rounded-md p-2 text-xs text-red-700">
               Erro de conexão: {error}
             </div>
           </div>
@@ -247,90 +244,75 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-96">
-            <div className="p-2">
+          <ScrollArea className="max-h-[24rem]">
+            <div className="p-2 space-y-2">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={cn(
-                    'flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer',
-                    !notification.read && 'bg-accent/50'
+                    'group relative rounded-lg border border-border/60 bg-background/50 p-3 transition hover:border-primary/40 hover:bg-accent/40',
+                    !notification.read && 'border-primary/30 bg-primary/5'
                   )}
                   onClick={() => onNotificationClick?.(notification)}
                 >
-                  <div className="flex-shrink-0">
-                        <div className="text-lg">
-                          {getNotificationTypeIcon(notification.type)}
-                        </div>
-                        {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1" />
-                        )}
-                      </div>
-                  
+                  <div className="relative flex-shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-base">
+                      {getNotificationTypeIcon(notification.type)}
+                    </div>
+                    {!notification.read && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500" />
+                    )}
+                  </div>
+
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className={cn(
-                            'text-sm font-medium leading-none',
-                            !notification.read && 'font-semibold'
-                          )}>
+                          <p className={cn('text-sm leading-tight', !notification.read && 'font-semibold text-foreground')}>
                             {notification.title}
                           </p>
-                          <Badge 
-                            variant="secondary" 
-                            className="text-xs px-1.5 py-0.5"
-                          >
+                          <Badge variant="outline" className="text-[10px] uppercase tracking-wide px-2 py-0">
                             {getNotificationTypeLabel(notification.type)}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {notification.content}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <p className="text-xs text-muted-foreground">
-                            {formatTimeAgo(notification.createdAt)}
+                        {notification.content && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {notification.content}
                           </p>
-                          {notification.channel && (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              {notification.channel === 'EMAIL' ? '📧' : 
-                               notification.channel === 'WHATSAPP' ? '📱' : '📧📱'}
-                            </Badge>
-                          )}
-                        </div>
+                        )}
+                        <p className="text-[11px] text-muted-foreground/80">
+                          {formatTimeAgo(notification.createdAt)}
+                        </p>
                       </div>
-                      
-                      <div className="flex items-center gap-1">
+
+                      <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100">
                         {!notification.read && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation()
                               markAsRead(notification.id)
                             }}
-                            className="h-6 w-6 p-0"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition"
                             title="Marcar como lida"
                           >
-                            <Check className="h-3 w-3" />
-                          </Button>
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
                         )}
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             deleteNotification(notification.id)
                           }}
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-destructive hover:bg-destructive hover:text-destructive-foreground transition"
                           title="Excluir notificação"
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
-                    
+
                     {notification.metadata?.actionUrl && notification.metadata?.actionLabel && (
                       <Button
                         variant="outline"
@@ -349,19 +331,6 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
               ))}
             </div>
           </ScrollArea>
-        )}
-        
-        {hasNotifications && (
-          <>
-            <DropdownMenuSeparator />
-            <div className="p-2">
-              <Button variant="ghost" className="w-full justify-center text-sm" asChild>
-                <a href="/dashboard/notifications">
-                  Ver todas as notificações
-                </a>
-              </Button>
-            </div>
-          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
