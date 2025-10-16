@@ -56,7 +56,6 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
         const list = payload?.data?.notifications || []
         if (!isMounted) return
         setNotifications((prev) => {
-          const existingIds = new Set(prev.map((n) => n.id))
           const mapped = list.map((notification: any) => ({
             id: notification.id,
             title: notification.title,
@@ -68,12 +67,9 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
             channel: 'EMAIL',
             metadata: notification.metadata || notification.data,
           }))
-          // merge in case we already have some entries (preserve existing ones but avoid duplicates)
-          const mergedMap = new Map<string, Notification>()
-          for (const notif of [...mapped, ...prev]) {
-            mergedMap.set(notif.id, { ...mergedMap.get(notif.id), ...notif })
-          }
-          return Array.from(mergedMap.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 50)
+          return mapped
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 50)
         })
       } catch (err) {
         if (isMounted) {
@@ -83,11 +79,9 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
     }
 
     syncNotifications()
-    const interval = setInterval(syncNotifications, 30000)
 
     return () => {
       isMounted = false
-      clearInterval(interval)
     }
   }, [])
 

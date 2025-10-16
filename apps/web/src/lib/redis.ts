@@ -1,7 +1,11 @@
 import Redis from 'ioredis'
 import { randomUUID } from 'crypto'
 
-const REDIS_URL = process.env.REDIS_URL
+const DEFAULT_DEV_REDIS_URL = 'redis://localhost:6379'
+const REDIS_URL =
+  process.env.REDIS_URL ||
+  (process.env.NODE_ENV !== 'production' ? DEFAULT_DEV_REDIS_URL : undefined)
+
 const REDIS_ENABLED = Boolean(REDIS_URL)
 
 const globalRedis = globalThis as unknown as {
@@ -53,9 +57,20 @@ function ensureSubscription() {
   if (!sub) return
   if (globalRedis.__redisNotificationSubscribed) return
 
-  sub.subscribe(CHANNEL_NOTIFICATIONS).catch((err) => {
-    console.error('[redis] Failed to subscribe to notifications channel', err)
-  })
+  const startSubscription = async () => {
+    try {
+      if (sub.status === 'wait' || sub.status === 'end') {
+        await sub.connect()
+      }
+      await sub.subscribe(CHANNEL_NOTIFICATIONS)
+      globalRedis.__redisNotificationSubscribed = true
+    } catch (err) {
+      console.error('[redis] Failed to subscribe to notifications channel', err)
+      setTimeout(startSubscription, 1000)
+    }
+  }
+
+  startSubscription()
 
   sub.on('message', (channel, message) => {
     if (channel !== CHANNEL_NOTIFICATIONS) return
@@ -88,6 +103,9 @@ export async function publishNotificationMessage(payload: any) {
   const pub = getRedisPub()
   if (!pub) return
   try {
+    if (pub.status === 'wait' || pub.status === 'end') {
+      await pub.connect()
+    }
     await pub.publish(CHANNEL_NOTIFICATIONS, JSON.stringify(payload))
   } catch (error) {
     console.error('[redis] Failed to publish notification message', error)
