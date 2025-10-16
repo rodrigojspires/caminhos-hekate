@@ -5,6 +5,7 @@ import { calculateShipping } from '@/lib/shop/shipping'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 import { notifyUsers } from '@/lib/notifications'
 import { ORDER_STATUS_LABELS } from '@/lib/shop/orderStatusNotifications'
+import { handleOrderCreated } from '@/lib/gamification/orderGamification'
 
 function generateOrderNumber() {
   const d = new Date()
@@ -236,6 +237,13 @@ export async function POST(request: NextRequest) {
       return { order: createdOrder }
     })
 
+    const gamificationResult = await handleOrderCreated({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      userId: customer.userId,
+      totalAmount: Number(order.total),
+    })
+
     // E-mail: pedido criado
     try {
       const { sendEmail } = await import('@/lib/email')
@@ -252,16 +260,22 @@ export async function POST(request: NextRequest) {
 
     if (customer.userId) {
       try {
+        let content = `Recebemos seu pedido e ele está em "${ORDER_STATUS_LABELS.PENDING}". Avisaremos sobre novas atualizações aqui mesmo.`
+        if (gamificationResult?.pointsAwarded) {
+          content += ` Você ganhou +${gamificationResult.pointsAwarded} pontos ao iniciar seu pedido.`
+        }
+
         await notifyUsers({
           userId: customer.userId,
           type: 'ORDER_STATUS',
           title: `Pedido ${order.orderNumber} criado`,
-          content: `Recebemos seu pedido e ele está em "${ORDER_STATUS_LABELS.PENDING}". Avisaremos sobre novas atualizações aqui mesmo.`,
+          content,
           metadata: {
             orderId: order.id,
             orderNumber: order.orderNumber,
             status: 'PENDING',
             trackingInfo: null,
+            pointsAwarded: gamificationResult?.pointsAwarded ?? 0,
           },
         })
       } catch (error) {

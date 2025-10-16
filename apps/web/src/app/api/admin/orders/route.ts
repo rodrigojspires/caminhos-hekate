@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { withAdminAuth } from '@/lib/auth-middleware'
 import { buildOrderStatusEmail, ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
 import { notifyUsers } from '@/lib/notifications'
+import { handleOrderStatusChange } from '@/lib/gamification/orderGamification'
 
 // Schema de validação para filtros
 const querySchema = z.object({
@@ -169,6 +170,7 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
         userId: true,
         orderNumber: true,
         status: true,
+        total: true,
         customerEmail: true,
         customerName: true,
         trackingInfo: true,
@@ -206,24 +208,45 @@ export const PATCH = withAdminAuth(async (user, request: NextRequest) => {
       }
 
       for (const order of ordersToNotify) {
+        let gamificationResult = { pointsAwarded: 0, achievementsUnlocked: [] as string[] }
         if (order.userId) {
+          gamificationResult = await handleOrderStatusChange({
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: order.userId,
+            totalAmount: Number(order.total ?? 0),
+            newStatus: statusToApply,
+            previousStatus: order.status,
+          })
+
           const statusLabel = ORDER_STATUS_LABELS[statusToApply] || statusToApply
           const trackingSnippet = order.trackingInfo
             ? order.trackingInfo.startsWith('http')
               ? ` Acompanhe em ${order.trackingInfo}.`
               : ` Código de rastreio: ${order.trackingInfo}.`
             : ''
+
+          let content = `Seu pedido agora está em "${statusLabel}".${trackingSnippet}`
+          if (gamificationResult.pointsAwarded > 0) {
+            content += ` Você ganhou +${gamificationResult.pointsAwarded} pontos.`
+          }
+          if (gamificationResult.achievementsUnlocked.length) {
+            content += ` Conquista desbloqueada: ${gamificationResult.achievementsUnlocked.join(', ')}.`
+          }
+
           try {
             await notifyUsers({
               userId: order.userId,
               type: 'ORDER_STATUS',
               title: `Status do pedido ${order.orderNumber}`,
-              content: `Seu pedido agora está em "${statusLabel}".${trackingSnippet}`,
+              content,
               metadata: {
                 orderId: order.id,
                 orderNumber: order.orderNumber,
                 status: statusToApply,
                 trackingInfo: order.trackingInfo ?? null,
+                pointsAwarded: gamificationResult.pointsAwarded,
+                achievementsUnlocked: gamificationResult.achievementsUnlocked,
               },
             })
           } catch (notificationError) {

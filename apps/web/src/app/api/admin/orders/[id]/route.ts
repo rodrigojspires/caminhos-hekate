@@ -5,6 +5,7 @@ import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { buildOrderStatusEmail, ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/shop/orderStatusNotifications'
 import { notifyUsers } from '@/lib/notifications'
+import { handleOrderStatusChange } from '@/lib/gamification/orderGamification'
 
 // Schema de validação para atualização de pedido
 const updateOrderSchema = z.object({
@@ -220,6 +221,15 @@ export async function PUT(
     const hasTrackingAfterUpdate = typeof updatedOrder.trackingInfo === 'string' && updatedOrder.trackingInfo.trim().length > 0
     const statusForNotifications = (data.status as OrderStatus) || (updatedOrder.status as OrderStatus)
 
+    const gamificationResult = await handleOrderStatusChange({
+      orderId: updatedOrder.id,
+      orderNumber: updatedOrder.orderNumber,
+      userId: updatedOrder.userId,
+      totalAmount: Number(updatedOrder.total ?? 0),
+      newStatus: updatedOrder.status,
+      previousStatus: existingOrder.status,
+    })
+
     const shouldNotifyStatus = statusChanged && !!data.status
     const shouldNotifyTracking = !statusChanged && trackingProvided && hasTrackingAfterUpdate && updatedOrder.status === 'SHIPPED'
     const shouldNotify = shouldNotifyStatus || shouldNotifyTracking
@@ -266,7 +276,15 @@ export async function PUT(
       const baseMessage = shouldNotifyStatus
         ? `Seu pedido agora está em "${statusLabel}".`
         : 'Atualizamos as informações de rastreamento do seu pedido.'
-      const notificationContent = `${baseMessage}${trackingSnippet}`
+
+      let notificationContent = `${baseMessage}${trackingSnippet}`
+
+      if (gamificationResult.pointsAwarded > 0) {
+        notificationContent += ` Você ganhou +${gamificationResult.pointsAwarded} pontos.`
+      }
+      if (gamificationResult.achievementsUnlocked.length) {
+        notificationContent += ` Conquista desbloqueada: ${gamificationResult.achievementsUnlocked.join(', ')}.`
+      }
 
       try {
         await notifyUsers({
@@ -279,6 +297,8 @@ export async function PUT(
             orderNumber: updatedOrder.orderNumber,
             status: statusForNotifications,
             trackingInfo: updatedOrder.trackingInfo ?? null,
+            pointsAwarded: gamificationResult.pointsAwarded,
+            achievementsUnlocked: gamificationResult.achievementsUnlocked,
           },
         })
       } catch (notificationError) {
