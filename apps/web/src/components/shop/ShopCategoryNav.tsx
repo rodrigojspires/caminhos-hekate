@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import clsx from 'clsx'
 import { KeyIcon, CrossroadsIcon, StrophalosIcon, SerpentIcon } from '@/components/icons/Esoteric'
 
 type Category = { id: string; name: string; slug: string }
@@ -16,10 +17,30 @@ function CategoryIcon({ slug, className }: { slug: string; className?: string })
   return <Icon className={className} />
 }
 
-export default function ShopCategoryNav({ categories, activeSlug }: { categories: Category[]; activeSlug?: string }) {
+interface ShopCategoryNavProps {
+  categories: Category[]
+  activeSlug?: string
+  sticky?: boolean
+  className?: string
+  innerClassName?: string
+}
+
+export default function ShopCategoryNav({
+  categories,
+  activeSlug,
+  sticky = true,
+  className,
+  innerClassName,
+}: ShopCategoryNavProps) {
+  const wrapperClassName = clsx(
+    sticky && 'sticky top-16 z-30 bg-background/60 backdrop-blur border-b',
+    !sticky && 'w-full',
+    className,
+  )
+
   return (
-    <div className="sticky top-16 z-30 bg-background/60 backdrop-blur border-b">
-      <div className="container">
+    <div className={wrapperClassName}>
+      <div className={clsx('container', innerClassName)}>
         <div className="flex items-center gap-3 overflow-x-auto py-3">
           <Link
             href="/loja"
@@ -43,4 +64,3 @@ export default function ShopCategoryNav({ categories, activeSlug }: { categories
     </div>
   )
 }
-

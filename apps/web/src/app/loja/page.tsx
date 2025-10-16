@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { Suspense } from 'react'
 import ShopBanner from '@/components/shop/ShopBanner'
 import ShopCategoryNav from '@/components/shop/ShopCategoryNav'
@@ -9,12 +8,11 @@ import ProductCard from '@/components/shop/ProductCard'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-async function fetchProducts(searchParams: Record<string, string | string[] | undefined>) {
-  const qs = new URLSearchParams(searchParams as any)
+async function fetchProducts(queryString: string) {
   const base = process.env.NEXT_PUBLIC_APP_URL
   const url = base
-    ? `${base}/api/shop/products?${qs.toString()}`
-    : `/api/shop/products?${qs.toString()}`
+    ? `${base}/api/shop/products${queryString ? `?${queryString}` : ''}`
+    : `/api/shop/products${queryString ? `?${queryString}` : ''}`
   const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) return { products: [], total: 0, page: 1, totalPages: 1 }
   return res.json()
@@ -36,21 +34,44 @@ async function fetchBanners() {
   return res.json()
 }
 
+function sanitizeSearchParams(searchParams: Record<string, string | string[] | undefined>) {
+  const qs = new URLSearchParams()
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (key === 'from' || value === undefined) return
+    if (Array.isArray(value)) {
+      value.forEach((v) => {
+        if (v !== undefined) qs.append(key, v)
+      })
+    } else {
+      qs.set(key, value)
+    }
+  })
+  return qs
+}
+
 export default async function ShopPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const sanitizedParams = sanitizeSearchParams(searchParams)
+  const queryString = sanitizedParams.toString()
   const [{ products }, { categories }, { banners }] = await Promise.all([
-    fetchProducts(searchParams),
+    fetchProducts(queryString),
     fetchCategories(),
     fetchBanners(),
   ])
+  const fromPath = queryString ? `/loja?${queryString}` : '/loja'
+
   return (
     <div className="min-h-screen">
-      {/* Categorias fixas sempre visíveis */}
-      {categories?.length ? (
-        <ShopCategoryNav categories={categories} activeSlug={searchParams.category as string | undefined} />
-      ) : null}
-
       <div className="container mx-auto py-6 lg:py-8 space-y-6">
         <h1 className="text-3xl font-serif font-bold text-hekate-pearl mb-2">Loja</h1>
+        {categories?.length ? (
+          <ShopCategoryNav
+            categories={categories}
+            activeSlug={searchParams.category as string | undefined}
+            sticky={false}
+            className="border border-hekate-gold/20 rounded-xl bg-hekate-gray-900/40 backdrop-blur-sm"
+            innerClassName="px-0"
+          />
+        ) : null}
         {/* Banner com destaques (cadastro próprio) */}
         <ShopBanner items={banners} />
       </div>
@@ -68,7 +89,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Record<
             <Suspense fallback={<div>Carregando...</div>}>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 {products.map((p: any) => (
-                  <ProductCard key={p.id} product={p} />
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    href={`/loja/${p.slug}?from=${encodeURIComponent(fromPath)}`}
+                  />
                 ))}
               </div>
             </Suspense>

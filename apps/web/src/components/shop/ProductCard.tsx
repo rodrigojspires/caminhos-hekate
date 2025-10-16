@@ -17,7 +17,12 @@ type Product = {
   type: 'DIGITAL' | 'PHYSICAL'
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product
+  href?: string
+}
+
+export default function ProductCard({ product, href }: ProductCardProps) {
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
 
@@ -61,19 +66,30 @@ export default function ProductCard({ product }: { product: Product }) {
           className: 'border-amber-400/40 bg-amber-500/10 text-amber-100',
         }
 
+  const detailHref = href ?? `/loja/${product.slug}`
+
   return (
     <div className="card-mystic-3d p-4 h-full flex flex-col">
-      <div className="relative aspect-square bg-hekate-gray-900 rounded mb-3 overflow-hidden">
+      <Link
+        href={detailHref}
+        className="relative block aspect-square bg-hekate-gray-900 rounded mb-3 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hekate-gold/60"
+      >
         {product.image && (
-          <Image src={product.image} alt={product.name} fill className="object-cover" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            className="object-cover transition-transform duration-300 hover:scale-105"
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+          />
         )}
         {product.badge && (
           <span className="absolute top-2 left-2 text-[11px] uppercase tracking-wide bg-hekate-gold text-hekate-black px-2 py-1 rounded">
             {product.badge}
           </span>
         )}
-      </div>
-      <Link href={`/loja/${product.slug}`} className="font-medium text-hekate-pearl hover:text-hekate-gold transition-colors line-clamp-2">
+      </Link>
+      <Link href={detailHref} className="font-medium text-hekate-pearl hover:text-hekate-gold transition-colors line-clamp-2">
         {product.name}
       </Link>
       <div className="mt-2">
@@ -90,7 +106,7 @@ export default function ProductCard({ product }: { product: Product }) {
         >
           {adding ? 'Adicionando...' : added ? 'Adicionado!' : 'Adicionar ao Carrinho'}
         </button>
-        <Link href={`/loja/${product.slug}`} className="border border-hekate-gold text-hekate-gold px-4 py-3 rounded-lg hover:bg-hekate-gold/10">
+        <Link href={detailHref} className="border border-hekate-gold text-hekate-gold px-4 py-3 rounded-lg hover:bg-hekate-gold/10">
           Ver
         </Link>
       </div>

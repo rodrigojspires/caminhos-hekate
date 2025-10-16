@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
+import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { broadcastCartUpdate } from '@/lib/shop/client/cartEvents'
@@ -13,6 +14,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const [imageIdx, setImageIdx] = useState(0)
   const [qty, setQty] = useState<number>(1)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromParam = searchParams.get('from')
+  const backTarget = fromParam && fromParam.startsWith('/') ? fromParam : '/loja'
 
   useEffect(() => {
     ;(async () => {
@@ -84,6 +88,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   return (
     <div className="container mx-auto py-8">
+      <div className="mb-6">
+        <Button
+          type="button"
+          variant="ghost"
+          className="inline-flex items-center gap-2 px-0 text-hekate-gold hover:text-hekate-pearl"
+          onClick={() => router.push(backTarget)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Voltar para a loja
+        </Button>
+      </div>
       {/* JSON-LD Product */}
       <script
         type="application/ld+json"
