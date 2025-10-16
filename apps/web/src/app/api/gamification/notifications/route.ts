@@ -125,20 +125,27 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE /api/gamification/notifications - Delete notification
+// DELETE /api/gamification/notifications - Delete notification(s)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const body = await request.json().catch(() => ({}))
+    const { notificationId, deleteAll } = body as { notificationId?: string; deleteAll?: boolean }
 
-    const { searchParams } = new URL(request.url)
-    const notificationId = searchParams.get('id')
+    if (deleteAll) {
+      await NotificationSystem.deleteNotifications(session.user.id)
+      return NextResponse.json({
+        success: true,
+        message: 'All notifications deleted'
+      })
+    }
 
     if (!notificationId) {
       return NextResponse.json(
-        { error: 'Missing notification ID' },
+        { error: 'Missing notificationId' },
         { status: 400 }
       )
     }

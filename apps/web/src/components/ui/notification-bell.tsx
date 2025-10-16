@@ -207,12 +207,12 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
             )}
           </div>
           {hasNotifications && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 text-xs font-medium">
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={markAllAsRead}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary/80 hover:text-primary"
+                  className="inline-flex items-center gap-1 text-gold-500 hover:text-gold-400 transition"
                 >
                   <Check className="h-3 w-3" /> Marcar todas
                 </button>
@@ -221,7 +221,7 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
               <button
                 type="button"
                 onClick={clearAll}
-                className="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:text-destructive"
+                className="inline-flex items-center gap-1 text-gold-500 hover:text-gold-400 transition"
               >
                 <Trash2 className="h-3 w-3" /> Limpar
               </button>
@@ -244,7 +244,7 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[24rem]">
+          <ScrollArea className="max-h-[24rem] overflow-y-auto">
             <div className="p-2 space-y-2">
               {notifications.map((notification) => (
                 <div

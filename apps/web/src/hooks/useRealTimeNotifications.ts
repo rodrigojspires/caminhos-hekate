@@ -17,7 +17,7 @@ interface Notification {
 
 interface SSEMessage {
   type: 'connected' | 'notifications' | 'error'
-  data?: Notification[]
+  data?: any[]
   count?: number
   message?: string
   timestamp: string
@@ -112,24 +112,37 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
               
             case 'notifications':
               if (message.data) {
-                setNotifications(prev => {
-                  // Merge com notificações existentes, evitando duplicatas
-                  const existingIds = new Set(prev.map(n => n.id))
-                  const newNotifications = message.data!.filter(n => !existingIds.has(n.id))
-                  
-                  // Mostrar toast para novas notificações
-                  newNotifications.forEach(notification => {
-                    if (!notification.read) {
-                      toast.info(notification.title, {
-                        description: notification.content,
-                        duration: 5000
+                setNotifications((prev) => {
+                  const incoming = message.data!.map(normalizeSSENotification)
+                  const existingMap = new Map(prev.map((n) => [n.id, n]))
+
+                  incoming.forEach((notif) => {
+                    const existing = existingMap.get(notif.id)
+                    if (!existing) {
+                      existingMap.set(notif.id, notif)
+                    } else {
+                      existingMap.set(notif.id, {
+                        ...existing,
+                        ...notif,
+                        createdAt: notif.createdAt || existing.createdAt,
                       })
                     }
                   })
-                  
-                  return [...newNotifications, ...prev]
+
+                  const merged = Array.from(existingMap.values())
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .slice(0, 50) // Manter apenas as 50 mais recentes
+                    .slice(0, 50)
+
+                  incoming.forEach((notification) => {
+                    if (!notification.read && !prev.some((n) => n.id === notification.id)) {
+                      toast.info(notification.title, {
+                        description: notification.content,
+                        duration: 5000,
+                      })
+                    }
+                  })
+
+                  return merged
                 })
               }
               break
@@ -235,8 +248,10 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
 
   const deleteNotification = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/gamification/notifications?id=${id}`, {
-        method: 'DELETE'
+      const response = await fetch('/api/gamification/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id })
       })
 
       if (response.ok) {
@@ -251,10 +266,10 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
 
   const clearAll = useCallback(async () => {
     try {
-      const response = await fetch('/api/notifications/bulk', {
-        method: 'POST',
+      const response = await fetch('/api/gamification/notifications', {
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete_all' })
+        body: JSON.stringify({ deleteAll: true })
       })
 
       if (response.ok) {
@@ -290,5 +305,21 @@ export function useRealTimeNotifications(): UseRealTimeNotificationsReturn {
     markAllAsRead,
     deleteNotification,
     clearAll
+  }
+}
+
+function normalizeSSENotification(notification: any): Notification {
+  return {
+    id: notification.id,
+    title: notification.title,
+    content: notification.content ?? notification.message ?? '',
+    type: notification.type || 'SYSTEM_ANNOUNCEMENT',
+    read: Boolean(notification.read),
+    createdAt: notification.createdAt
+      ? new Date(notification.createdAt).toISOString()
+      : new Date().toISOString(),
+    status: notification.read ? 'sent' : 'pending',
+    channel: 'EMAIL',
+    metadata: notification.data || notification.metadata || {},
   }
 }

@@ -147,6 +147,12 @@ export class NotificationSystem {
     })
   }
 
+  static async deleteNotifications(userId: string): Promise<void> {
+    await prisma.gamificationNotification.deleteMany({
+      where: { userId }
+    })
+  }
+
   static async cleanupExpiredNotifications(): Promise<void> {
     await prisma.gamificationNotification.deleteMany({
       where: {
