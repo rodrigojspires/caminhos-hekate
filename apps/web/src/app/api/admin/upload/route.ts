@@ -7,7 +7,11 @@ import { existsSync } from 'fs'
 import { nanoid } from 'nanoid'
 
 // Verificar se o usuário é admin
-async function checkAdminPermission() {
+type AdminPermissionResult =
+  | { error: string; status: number }
+  | { user: Record<string, unknown> }
+
+async function checkAdminPermission(): Promise<AdminPermissionResult> {
   const session = await getServerSession(authOptions)
   
   if (!session?.user) {
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
   try {
     // Verificar permissões
     const authCheck = await checkAdminPermission()
-    if (authCheck) {
+    if ('error' in authCheck) {
       return NextResponse.json(
         { message: authCheck.error },
         { status: authCheck.status }
@@ -190,7 +194,7 @@ export async function DELETE(request: NextRequest) {
   try {
     // Verificar permissões
     const authCheck = await checkAdminPermission()
-    if (authCheck) {
+    if ('error' in authCheck) {
       return NextResponse.json(
         { message: authCheck.error },
         { status: authCheck.status }

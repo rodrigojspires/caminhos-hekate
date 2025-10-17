@@ -26,6 +26,7 @@ export default async function CoursePage({ params }: PageProps) {
     ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { subscriptionTier: true } })
     : null
   const userTier = dbUser?.subscriptionTier || 'FREE'
+  const isAdmin = session?.user?.role === 'ADMIN'
 
   const course = await prisma.course.findUnique({
     where: { slug: params.slug },
@@ -48,12 +49,14 @@ export default async function CoursePage({ params }: PageProps) {
 
   // Simple tier ordering for gating
   const order: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
-  const canAccessAllContent = (order[userTier] || 0) >= (order[course.tier] || 0)
+  const canAccessAllContent = isAdmin ? true : (order[userTier] || 0) >= (order[course.tier] || 0)
   
   // Initial enrollment state for SSR hydration
-  const isEnrolled = session?.user?.id
-    ? !!(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.user.id, courseId: course.id } } }))
-    : false
+  const isEnrolled = isAdmin
+    ? true
+    : session?.user?.id
+      ? !!(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.user.id, courseId: course.id } } }))
+      : false
 
   return (
     <main className="min-h-screen container mx-auto py-8">

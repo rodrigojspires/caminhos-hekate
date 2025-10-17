@@ -68,32 +68,56 @@ const subscriptionTierOptions: Array<{ value: SubscriptionTier; label: string }>
   { value: SubscriptionTier.SACERDOCIO, label: 'Sacerdócio' }
 ]
 
+const normalizeMediaPath = (value?: string | null) => {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+    return trimmed
+  }
+
+  if (trimmed.startsWith('/')) {
+    return `/${trimmed.replace(/^\/+/, '')}`
+  }
+
+  return `/${trimmed.replace(/^\/+/, '')}`
+}
+
 const isValidImageUrl = (url: string) => {
   if (!url) return false
   const pattern = /\.(jpg|jpeg|png|gif|webp|avif)$/i
-  if (url.startsWith('/')) {
-    return pattern.test(url)
+  const sanitized = url.split('?')[0]
+  if (pattern.test(sanitized)) {
+    return true
   }
-  try {
-    const parsed = new URL(url)
-    return pattern.test(parsed.pathname)
-  } catch {
-    return false
+  if (/^(https?:)?\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url)
+      return pattern.test(parsed.pathname)
+    } catch {
+      return false
+    }
   }
+  return false
 }
 
 const isValidVideoUrl = (url: string) => {
   if (!url) return false
   const pattern = /\.(mp4|webm|ogg|mov|qt)$/i
-  if (url.startsWith('/')) {
-    return pattern.test(url)
+  const sanitized = url.split('?')[0]
+  if (pattern.test(sanitized)) {
+    return true
   }
-  try {
-    const parsed = new URL(url)
-    return pattern.test(parsed.pathname)
-  } catch {
-    return false
+  if (/^(https?:)?\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url)
+      return pattern.test(parsed.pathname)
+    } catch {
+      return false
+    }
   }
+  return false
 }
 
 const uploadFile = async (file: File, type: 'course-images' | 'course-videos') => {
@@ -125,19 +149,19 @@ const uploadFile = async (file: File, type: 'course-images' | 'course-videos') =
 
 export function CourseForm({ data, onChange, loading = false }: CourseFormProps) {
   const [newTag, setNewTag] = useState('')
-  const [imagePreview, setImagePreview] = useState<string | null>(data.featuredImage || null)
-  const [videoPreview, setVideoPreview] = useState<string | null>(data.introVideo || null)
+  const [imagePreview, setImagePreview] = useState<string | null>(normalizeMediaPath(data.featuredImage))
+  const [videoPreview, setVideoPreview] = useState<string | null>(normalizeMediaPath(data.introVideo))
   const [imageUploading, setImageUploading] = useState(false)
   const [videoUploading, setVideoUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setImagePreview(data.featuredImage || null)
+    setImagePreview(normalizeMediaPath(data.featuredImage))
   }, [data.featuredImage])
 
   useEffect(() => {
-    setVideoPreview(data.introVideo || null)
+    setVideoPreview(normalizeMediaPath(data.introVideo))
   }, [data.introVideo])
 
   const handleFieldChange = <K extends keyof CourseFormValues>(field: K, value: CourseFormValues[K]) => {
@@ -182,13 +206,13 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   }
 
   const handleImageUrlChange = (url: string | null | undefined) => {
-    const normalized = typeof url === 'string' ? url.trim() : ''
+    const normalized = normalizeMediaPath(url)
     handleFieldChange('featuredImage', normalized ? normalized : null)
     setImagePreview(normalized ? normalized : null)
   }
 
   const handleVideoUrlChange = (url: string | null | undefined) => {
-    const normalized = typeof url === 'string' ? url.trim() : ''
+    const normalized = normalizeMediaPath(url)
     handleFieldChange('introVideo', normalized ? normalized : null)
     setVideoPreview(normalized ? normalized : null)
   }
