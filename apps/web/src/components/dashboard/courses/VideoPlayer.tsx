@@ -64,6 +64,7 @@ export function VideoPlayer({
   const [showBookmarks, setShowBookmarks] = useState(false)
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
   const hlsRef = useRef<Hls | null>(null)
+  const [videoError, setVideoError] = useState<string | null>(null)
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -207,7 +208,10 @@ export function VideoPlayer({
     const video = videoRef.current
     if (!video || !src) return
 
-    const isHlsSource = src.includes('.m3u8') || src.startsWith('http') && src.includes('m3u8')
+    const isHlsSource = src.includes('.m3u8') || (src.startsWith('http') && src.includes('m3u8'))
+
+    setVideoError(null)
+    setIsPlaying(false)
 
     // Clean up previous instance
     if (hlsRef.current) {
@@ -219,6 +223,7 @@ export function VideoPlayer({
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Safari / native HLS
         video.src = src
+        video.load()
       } else if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -230,21 +235,36 @@ export function VideoPlayer({
         hls.on(Hls.Events.ERROR, (_event, data) => {
           // Basic error logging; avoid crashing the player
           console.warn('HLS error', data)
+          if (data?.response?.code) {
+            setVideoError(`Não foi possível carregar o vídeo (erro ${data.response.code})`)
+          } else {
+            setVideoError('Não foi possível carregar o vídeo.')
+          }
         })
       } else {
         // Fallback: assign src anyway and let the browser try
         video.src = src
+        video.load()
       }
     } else {
       // Non-HLS source
       video.src = src
+      video.load()
     }
+
+    const handleError = () => {
+      setVideoError('Não foi possível carregar o vídeo.')
+      setIsPlaying(false)
+    }
+
+    video.addEventListener('error', handleError)
 
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy()
         hlsRef.current = null
       }
+      video.removeEventListener('error', handleError)
     }
   }, [src])
 
@@ -269,6 +289,7 @@ export function VideoPlayer({
           <video
             ref={videoRef}
             src={src}
+            key={src || 'empty'}
             className="w-full h-auto"
             autoPlay={autoPlay}
             onClick={togglePlay}
@@ -278,6 +299,14 @@ export function VideoPlayer({
             playsInline
             preload="metadata"
           />
+          {videoError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-red-200 text-center px-4">
+              <p className="text-sm font-medium">{videoError}</p>
+              <p className="text-xs text-red-100">
+                Verifique sua conexão ou tente recarregar a página. Se o problema persistir, contate o suporte.
+              </p>
+            </div>
+          )}
 
           {/* Subtitles */}
           {showSubtitles && currentSubtitle && (

@@ -7,6 +7,9 @@ import { LessonList } from '@/components/dashboard/courses/LessonList'
 import VideoPlayer from '@/components/dashboard/courses/VideoPlayer'
 import LessonQuiz from '@/components/public/courses/LessonQuiz'
 import useCourseProgress from '@/hooks/useCourseProgress'
+import { Button } from '@/components/ui/button'
+import { Download, FileText, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 type CourseDetailProps = {
   course: any
@@ -22,6 +25,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     const firstLesson = course.modules?.[0]?.lessons?.[0]
     return firstLesson?.id || null
   })
+  const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
 
   const currentLesson = useMemo(() => {
     for (const m of course.modules || []) {
@@ -38,6 +42,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
         const lockedByTier = !canAccessAllContent
         const lockedByEnrollment = !l.isFree && !enrolled
         const locked = lockedByTier || lockedByEnrollment
+        const assetCount = Array.isArray(l.assets) ? l.assets.length : 0
         return {
           id: l.id,
           title: l.title,
@@ -46,6 +51,8 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
           type: l.videoUrl ? 'video' : 'text',
           isCompleted: !!lp?.completed,
           isLocked: locked,
+          hasResources: assetCount > 0,
+          resourcesCount: assetCount,
           order: l.order,
         }
       })
@@ -143,6 +150,55 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     } catch {}
   }
 
+  const hasLessonAccess = useMemo(() => {
+    if (!currentLesson) return false
+    if (currentLesson.isFree) return true
+    return canAccessAllContent || enrolled
+  }, [canAccessAllContent, currentLesson, enrolled])
+
+  const formatFileSize = (value?: number | null) => {
+    if (!value || value <= 0) return ''
+    if (value < 1024) return `${value} B`
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const handleDownloadAsset = async (asset: any) => {
+    if (!currentLesson) return
+    try {
+      setDownloadingAssetId(asset.id)
+      const response = await fetch(`/api/courses/${course.id}/lessons/${currentLesson.id}/assets/${asset.id}/download`)
+      if (!response.ok) {
+        let message = 'Não foi possível baixar o material.'
+        const contentType = response.headers.get('Content-Type') || ''
+        if (contentType.includes('application/json')) {
+          const data = await response.json().catch(() => null)
+          if (data?.error) {
+            message = data.error
+          }
+        } else {
+          const text = await response.text().catch(() => '')
+          if (text) message = text
+        }
+        throw new Error(message)
+      }
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = asset.title || `material-${asset.id}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível baixar o material.'
+      toast.error(message)
+    } finally {
+      setDownloadingAssetId(null)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
@@ -158,25 +214,41 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
 
             {currentLesson ? (
               <div className="space-y-3">
-                <VideoPlayer
-                  src={currentLesson.videoUrl || ''}
-                  title={currentLesson.title}
-                  duration={currentLesson.videoDuration || 0}
-                  currentTime={resumeTime}
-                  onTimeUpdate={handleTimeUpdate}
-                  className="w-full"
-                />
-
-                {(!canAccessAllContent) && (
-                  <div className="p-3 text-sm bg-yellow-50 border border-yellow-200 rounded">
-                    Este curso requer o nível {course.tier}. <a href="/precos" className="underline text-primary">Faça upgrade</a> para assistir.
-                  </div>
-                )}
-
-                {(canAccessAllContent && !currentLesson.isFree && !enrolled) && (
-                  <div className="p-3 text-sm bg-blue-50 border border-blue-200 rounded flex items-center justify-between">
-                    <span>Inscreva-se no curso para acessar esta lição.</span>
-                    <button className="text-sm text-primary underline" onClick={onEnroll}>Inscrever-se</button>
+                {currentLesson.videoUrl ? (
+                  hasLessonAccess ? (
+                    <VideoPlayer
+                      src={currentLesson.videoUrl || ''}
+                      title={currentLesson.title}
+                      duration={currentLesson.videoDuration || 0}
+                      currentTime={resumeTime}
+                      onTimeUpdate={handleTimeUpdate}
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="p-6 bg-muted border border-border rounded-lg text-center space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Você precisa de acesso para assistir a este vídeo.
+                      </p>
+                      <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                        {!canAccessAllContent && !currentLesson.isFree && !enrolled && (
+                          <span>
+                            Este curso requer o nível {course.tier}. <a href="/precos" className="underline text-primary">Faça upgrade</a> para desbloquear.
+                          </span>
+                        )}
+                        {(canAccessAllContent && !currentLesson.isFree && !enrolled) && (
+                          <span>
+                            Inscreva-se no curso para acessar esta lição.
+                            <button className="ml-1 text-primary underline" onClick={onEnroll}>
+                              Inscrever-se
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="p-6 bg-muted border border-border rounded-lg text-center text-sm text-muted-foreground">
+                    Este conteúdo não possui vídeo. Confira a descrição ou materiais de apoio da aula.
                   </div>
                 )}
 
@@ -190,8 +262,55 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                   <button className="text-sm text-primary" onClick={handleComplete}>Marcar como concluída</button>
                 </div>
 
+                {/* Materiais da lição */}
+                {hasLessonAccess && Array.isArray(currentLesson.assets) && currentLesson.assets.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Materiais da aula
+                    </h3>
+                    <div className="space-y-2">
+                      {currentLesson.assets.map((asset: any) => (
+                        <Card key={asset.id} className="border border-dashed">
+                          <CardContent className="flex items-center justify-between py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-md bg-primary/10 text-primary">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium leading-none">{asset.title || 'Material da aula'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {asset.type?.split('/')[1]?.toUpperCase() || 'ARQUIVO'} · {formatFileSize(asset.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                              onClick={() => handleDownloadAsset(asset)}
+                              disabled={downloadingAssetId === asset.id}
+                            >
+                              {downloadingAssetId === asset.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Baixando...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-4 h-4" />
+                                  Baixar
+                                </>
+                              )}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Quiz da lição, se houver e usuário puder acessar */}
-                {canAccessAllContent && (currentLesson.isFree || enrolled) && (
+                {hasLessonAccess && (
                   <LessonQuiz courseId={course.id} lessonId={currentLesson.id} />
                 )}
               </div>

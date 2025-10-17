@@ -32,7 +32,16 @@ export default async function CoursePage({ params }: PageProps) {
     where: { slug: params.slug },
     include: {
       modules: {
-        include: { lessons: { orderBy: { order: 'asc' } } },
+        include: {
+          lessons: {
+            include: {
+              assets: {
+                orderBy: { order: 'asc' }
+              }
+            },
+            orderBy: { order: 'asc' }
+          }
+        },
         orderBy: { order: 'asc' }
       }
     }
