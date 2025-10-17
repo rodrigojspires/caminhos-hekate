@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, Prisma, CourseStatus, CourseLevel, SubscriptionTier, CourseAccessModel, NotificationChannel, NotificationType } from '@hekate/database'
+import { prisma, Prisma, CourseStatus, CourseLevel, SubscriptionTier, CourseAccessModel, NotificationChannel, NotificationType, Role } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
-import { sendNotificationToUser } from '@/lib/notification-stream'
+import { notificationService } from '@/lib/notifications/notification-service'
 
 // Schema de validação para atualização de curso
 const urlOrPathSchema = z
@@ -106,41 +106,13 @@ async function notifyCoursePublication(
   accessModels: CourseAccessModel[]
 ) {
   try {
-    const recipientIds = new Set<string>()
+    // Novo critério: notificar todos os alunos (membros), independentemente de gratuidade ou assinatura
+    const recipients = await prisma.user.findMany({
+      where: { role: Role.MEMBER },
+      select: { id: true }
+    })
 
-    if (accessModels.includes(CourseAccessModel.FREE)) {
-      const users = await prisma.user.findMany({
-        select: { id: true }
-      })
-      users.forEach((user) => recipientIds.add(user.id))
-    } else {
-      const tasks: Array<Promise<void>> = []
-
-      tasks.push(
-        prisma.enrollment.findMany({
-          where: { courseId: course.id },
-          select: { userId: true }
-        }).then((enrollments) => {
-          enrollments.forEach((enrollment) => recipientIds.add(enrollment.userId))
-        })
-      )
-
-      if (accessModels.includes(CourseAccessModel.SUBSCRIPTION)) {
-        const allowedTiers = resolveEligibleSubscriptionTiers(course.tier)
-        tasks.push(
-          prisma.user.findMany({
-            where: { subscriptionTier: { in: allowedTiers } },
-            select: { id: true }
-          }).then((users) => {
-            users.forEach((user) => recipientIds.add(user.id))
-          })
-        )
-      }
-
-      await Promise.all(tasks)
-    }
-
-    if (recipientIds.size === 0) {
+    if (!recipients.length) {
       return
     }
 
@@ -149,38 +121,27 @@ async function notifyCoursePublication(
     const courseUrl = normalizedBase ? `${normalizedBase}/cursos/${course.slug}` : `/cursos/${course.slug}`
 
     const title = `Novo curso disponível: ${course.title}`
-    const content = `O curso "${course.title}" já está disponível para você. Acesse: ${courseUrl}`
-    const metadata: Prisma.JsonObject = {
-      courseId: course.id,
-      slug: course.slug,
-      url: courseUrl
-    }
+    const content = `O curso \"${course.title}\" já está disponível para você. Acesse: ${courseUrl}`
 
-    const notificationPayload: Prisma.NotificationCreateManyInput[] = Array.from(recipientIds).map((userId) => ({
-      userId,
-      type: NotificationType.SYSTEM_ANNOUNCEMENT,
-      title,
-      content,
-      channel: NotificationChannel.EMAIL,
-      metadata
-    }))
-
-    await prisma.notification.createMany({
-      data: notificationPayload,
-      skipDuplicates: true
-    })
-
-    const realtimePayload = {
-      type: 'course_published',
-      title,
-      message: content,
-      courseId: course.id,
-      courseUrl
-    }
-
-    recipientIds.forEach((userId) => {
-      sendNotificationToUser(userId, realtimePayload)
-    })
+    // Criar notificações via notificationService para emitir eventos em tempo real
+    await Promise.all(
+      recipients.map(async ({ id: userId }) => {
+        await notificationService.createNotification({
+          userId,
+          type: 'SYSTEM_ANNOUNCEMENT' as any,
+          title,
+          message: content,
+          data: {
+            actionUrl: courseUrl,
+            actionLabel: 'Ver curso',
+            courseId: course.id,
+            slug: course.slug
+          },
+          priority: 'MEDIUM',
+          isPush: false
+        })
+      })
+    )
   } catch (error) {
     console.error('Erro ao enviar notificações de publicação de curso:', error)
   }
