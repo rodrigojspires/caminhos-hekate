@@ -1,6 +1,7 @@
 import { prisma } from '@hekate/database';
 import { PaymentTransactionStatus, SubscriptionStatus, WebhookLogStatus } from '@prisma/client';
 import { logWebhook, updateWebhookStatus } from './webhook-utils';
+import { GamificationEngine } from '@/lib/gamification-engine';
 
 // Interfaces para os eventos dos webhooks
 export interface MercadoPagoWebhookEvent {
@@ -17,6 +18,8 @@ export interface MercadoPagoWebhookEvent {
     id: string;
   };
 }
+
+const COURSE_PURCHASE_POINTS = 120;
 
 export interface AsaasWebhookEvent {
   event: string;
@@ -160,6 +163,33 @@ export class MercadoPagoWebhookProcessor {
                 create: { userId: order.userId, courseId },
                 update: {}
               })
+
+              const uniqueKey = `course_purchase_${order.id}_${courseId}`
+              const alreadyAwarded = await prisma.pointTransaction.findFirst({
+                where: {
+                  userId: order.userId,
+                  metadata: {
+                    path: ['uniqueKey'],
+                    equals: uniqueKey
+                  }
+                }
+              })
+
+              if (!alreadyAwarded) {
+                await GamificationEngine.processEvent({
+                  userId: order.userId,
+                  type: 'COURSE_PURCHASED',
+                  points: COURSE_PURCHASE_POINTS,
+                  metadata: {
+                    eventType: 'COURSE_PURCHASED',
+                    reasonLabel: 'Compra de curso',
+                    orderId: order.id,
+                    orderNumber: order.orderNumber,
+                    courseId,
+                    uniqueKey
+                  }
+                })
+              }
             }
           }
         } catch (e) {
