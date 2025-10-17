@@ -57,6 +57,10 @@ COPY --from=build /app/apps/web/src/lib/background ./apps/web/src/lib/background
 # Prisma schema (útil para tarefas de manutenção)
 COPY --from=build /app/packages/database/prisma ./packages/database/prisma
 
+# Diretórios de upload precisam estar graváveis pelo usuário runtime
+RUN mkdir -p /app/apps/web/public/uploads \
+    && chown -R nextjs:nextjs /app/apps/web/public/uploads
+
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
     NODE_ENV=production
