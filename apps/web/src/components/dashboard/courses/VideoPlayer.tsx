@@ -65,6 +65,7 @@ export function VideoPlayer({
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
   const hlsRef = useRef<Hls | null>(null)
   const [videoError, setVideoError] = useState<string | null>(null)
+  const [totalDuration, setTotalDuration] = useState(duration)
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -107,8 +108,8 @@ export function VideoPlayer({
   const handleProgressChange = (value: number[]) => {
     const newProgress = value[0]
     setProgress([newProgress])
-    if (videoRef.current && duration) {
-      const newTime = (newProgress / 100) * duration
+    if (videoRef.current && totalDuration) {
+      const newTime = (newProgress / 100) * totalDuration
       videoRef.current.currentTime = newTime
       onTimeUpdate?.(newTime)
     }
@@ -185,6 +186,7 @@ export function VideoPlayer({
     }
 
     const handleLoadedMetadata = () => {
+      setTotalDuration(video.duration || duration)
       if (currentTime > 0) {
         video.currentTime = currentTime
       }
@@ -317,7 +319,7 @@ export function VideoPlayer({
 
           {/* Bookmarks on timeline */}
           {bookmarks.map((bookmark) => {
-            const position = duration > 0 ? (bookmark.time / duration) * 100 : 0
+            const position = totalDuration > 0 ? (bookmark.time / totalDuration) * 100 : 0
             return (
               <Tooltip key={bookmark.id}>
                 <TooltipTrigger asChild>
@@ -357,7 +359,7 @@ export function VideoPlayer({
               {/* Progress bar */}
               <div className="flex items-center space-x-2">
                 <span className="text-white text-sm min-w-[40px]">
-                  {formatTime((progress[0] / 100) * duration)}
+                  {formatTime((progress[0] / 100) * totalDuration)}
                 </span>
                 <Slider
                   value={progress}
@@ -367,7 +369,7 @@ export function VideoPlayer({
                   className="flex-1"
                 />
                 <span className="text-white text-sm min-w-[40px]">
-                  {formatTime(duration)}
+                  {formatTime(totalDuration)}
                 </span>
               </div>
 

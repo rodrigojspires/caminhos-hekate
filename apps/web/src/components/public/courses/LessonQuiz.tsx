@@ -29,12 +29,13 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
         return
       }
       if (!r.ok) {
-        setError('Não foi possível carregar o quiz')
+        // Tratar como "sem quiz" silenciosamente
+        setQuiz(null)
         setLoading(false)
         return
       }
-      const j = await r.json()
-      if (j?.quiz) {
+      const j = await r.json().catch(() => null)
+      if (j && j.quiz) {
         setQuiz(j.quiz)
       } else {
         setQuiz(null)
@@ -42,7 +43,8 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
       setLoading(false)
     }).catch(() => {
       if (!mounted) return
-      setError('Erro de rede ao carregar o quiz')
+      // Em erro de rede, ocultar mensagem e tratar como sem quiz
+      setQuiz(null)
       setLoading(false)
     })
     return () => { mounted = false }

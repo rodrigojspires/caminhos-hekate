@@ -34,6 +34,9 @@ export const metadata: Metadata = {
   }
 }
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type CourseWithRelations = Prisma.CourseGetPayload<{
   include: {
     modules: {
@@ -50,8 +53,8 @@ type CourseWithRelations = Prisma.CourseGetPayload<{
     }
     category: {
       select: {
-        id: true
-        name: true
+        id: true,
+        name: true,
         slug: true
       }
     }
