@@ -19,10 +19,13 @@ const PUBLIC_ROOT = (() => {
 })()
 
 const PRIVATE_ROOT = (() => {
+  const envDir = process.env.PRIVATE_UPLOAD_ROOT
   const candidates = [
+    envDir,
+    '/app/uploads',
     join(process.cwd(), 'apps', 'web', 'private_uploads'),
     join(process.cwd(), 'private_uploads'),
-  ]
+  ].filter(Boolean) as string[]
   for (const c of candidates) {
     if (existsSync(c)) return c
   }
@@ -39,7 +42,10 @@ function normalizeVideoPath(input: string): string | null {
     .replace(/^\/uploads\//, '')
     .replace(/^\/private\//, '')
   if (!withoutPrefix.startsWith('course-videos/')) return null
-  const safe = withoutPrefix.replace(/\.\.+/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
+  const safe = withoutPrefix
+    .replace(/(^|\/)\.\.(?=\/|$)/g, '')
+    .replace(/(^|\/)\.(?=\/|$)/g, '')
+    .replace(/[^a-zA-Z0-9_\-./]/g, '')
   return safe
 }
 
