@@ -194,6 +194,44 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
+  // Normalizar caminho relativo para course-videos
+  const normalizeCourseVideoRel = (url?: string | null): string | null => {
+    if (!url) return null
+    const trimmed = url.trim()
+    if (!trimmed) return null
+    const cleaned = trimmed.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/')
+    const withoutPrefix = cleaned
+      .replace(/^\/uploads\//, '')
+      .replace(/^\/private\//, '')
+    if (!withoutPrefix.startsWith('course-videos/')) return null
+    const safe = withoutPrefix.replace(/\.+\.+/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
+    return safe
+  }
+
+  // Abrir vídeo com URL assinada se for privado
+  const handleOpenLessonVideo = async (lesson: Lesson, e?: React.MouseEvent<HTMLAnchorElement>) => {
+    try {
+      const rel = normalizeCourseVideoRel(lesson.videoUrl)
+      if (!rel) {
+        // público ou não é course-videos: deixa o link seguir normalmente
+        return
+      }
+      if (e) e.preventDefault()
+      const params = new URLSearchParams({ path: rel, courseId })
+      const res = await fetch(`/api/media/course-videos/token?${params.toString()}`, { method: 'GET', cache: 'no-store' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Falha ao gerar link assinado para o vídeo')
+      }
+      const j = await res.json()
+      const url = j.url as string | undefined
+      if (!url) throw new Error('Link assinado não disponível')
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err: any) {
+      toast.error(err?.message || 'Não foi possível abrir o vídeo com link assinado.')
+    }
+  }
+
   const resetModuleForm = () => {
     setModuleForm({ title: '', description: '' })
     setCreatingModule(false)
@@ -768,6 +806,7 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
                                         href={lesson.videoUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        onClick={(e) => handleOpenLessonVideo(lesson, e)}
                                         className="inline-flex items-center gap-1 text-indigo-600 hover:underline dark:text-indigo-300"
                                       >
                                         Ver arquivo

@@ -40,6 +40,18 @@ const PUBLIC_ROOT = (() => {
   return join(process.cwd(), 'public')
 })()
 
+// Adiciona root privado para vídeos de cursos
+const PRIVATE_ROOT = (() => {
+  const candidates = [
+    join(process.cwd(), 'apps', 'web', 'private_uploads'),
+    join(process.cwd(), 'private_uploads')
+  ]
+  for (const c of candidates) {
+    if (existsSync(c)) return c
+  }
+  return join(process.cwd(), 'apps', 'web', 'private_uploads')
+})()
+
 const BASE_UPLOAD_DIR = join(PUBLIC_ROOT, 'uploads')
 const MAX_FILENAME_LENGTH = 100
 
@@ -170,7 +182,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar diretório se não existir
-    const uploadDir = join(BASE_UPLOAD_DIR, uploadCategory)
+    const isCourseVideo = uploadCategory === 'course-videos'
+    const uploadDir = isCourseVideo
+      ? join(PRIVATE_ROOT, 'uploads', uploadCategory)
+      : join(BASE_UPLOAD_DIR, uploadCategory)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -184,12 +199,14 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(filepath, buffer)
 
-    // Gerar URL pública
-    const publicUrl = `/uploads/${uploadCategory}/${filename}`
+    // Gerar URL (privada para vídeos de curso)
+    const url = isCourseVideo
+      ? `/private/${uploadCategory}/${filename}`
+      : `/uploads/${uploadCategory}/${filename}`
 
     return NextResponse.json({
       message: 'Upload realizado com sucesso',
-      url: publicUrl,
+      url,
       filename,
       size: file.size,
       type: file.type
@@ -226,16 +243,20 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Validar que o arquivo está no diretório de uploads
-    if (!filepath.startsWith('/uploads/')) {
+    const sanitizedPath = filepath.replace(/^\/+/, '')
+
+    let fullPath: string | null = null
+    if (sanitizedPath.startsWith('uploads/')) {
+      fullPath = join(PUBLIC_ROOT, sanitizedPath)
+    } else if (sanitizedPath.startsWith('private/course-videos/')) {
+      const rel = sanitizedPath.replace(/^private\//, '') // e.g. course-videos/filename.mp4
+      fullPath = join(PRIVATE_ROOT, 'uploads', rel)
+    } else {
       return NextResponse.json(
         { message: 'Caminho de arquivo inválido' },
         { status: 400 }
       )
     }
-
-    const sanitizedPath = filepath.replace(/^\/+/, '')
-    const fullPath = join(PUBLIC_ROOT, sanitizedPath)
 
     // Verificar se o arquivo existe
     if (!existsSync(fullPath)) {

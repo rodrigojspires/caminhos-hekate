@@ -43,6 +43,13 @@ export default async function CoursePage({ params }: PageProps) {
           }
         },
         orderBy: { order: 'asc' }
+      },
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true
+        }
       }
     }
   })

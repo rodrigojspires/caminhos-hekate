@@ -8,7 +8,7 @@ import VideoPlayer from '@/components/dashboard/courses/VideoPlayer'
 import LessonQuiz from '@/components/public/courses/LessonQuiz'
 import useCourseProgress from '@/hooks/useCourseProgress'
 import { Button } from '@/components/ui/button'
-import { Download, FileText, Loader2 } from 'lucide-react'
+import { Download, FileText, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { resolveMediaUrl } from '@/lib/utils'
 
@@ -40,6 +40,63 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     () => resolveMediaUrl(currentLesson?.videoUrl ?? null),
     [currentLesson?.videoUrl]
   )
+
+  // Secure signed URL state for protected course videos
+  const [signedVideoSrc, setSignedVideoSrc] = useState<string | null>(null)
+  const [signingError, setSigningError] = useState<string | null>(null)
+
+  // Helper: detect course-videos path and extract relative path
+  const normalizeCourseVideoRel = (url?: string | null): string | null => {
+    if (!url) return null
+    const trimmed = url.trim()
+    if (!trimmed) return null
+    const cleaned = trimmed.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/')
+    const withoutPrefix = cleaned
+      .replace(/^\/uploads\//, '')
+      .replace(/^\/private\//, '')
+    if (!withoutPrefix.startsWith('course-videos/')) return null
+    const safe = withoutPrefix.replace(/\.\.+/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
+    return safe
+  }
+
+  // Fetch signed URL when lesson video is a protected course video and user has access
+  useEffect(() => {
+    let abort = false
+    setSigningError(null)
+
+    const rel = normalizeCourseVideoRel(currentLesson?.videoUrl)
+    const locked = !currentLesson || (!currentLesson.isFree && !(canAccessAllContent || enrolled))
+
+    if (!rel || locked) {
+      setSignedVideoSrc(null)
+      return
+    }
+
+    ;(async () => {
+      try {
+        const params = new URLSearchParams({ path: rel, courseId: String(course.id) })
+        const res = await fetch(`/api/media/course-videos/token?${params.toString()}`, {
+          method: 'GET',
+          cache: 'no-store'
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error || `Falha ao gerar acesso ao vídeo (${res.status})`)
+        }
+        const j = await res.json()
+        if (!abort) {
+          setSignedVideoSrc(j.url || null)
+        }
+      } catch (e: any) {
+        if (!abort) {
+          setSignedVideoSrc(null)
+          setSigningError(e?.message || 'Não foi possível gerar acesso ao vídeo.')
+        }
+      }
+    })()
+
+    return () => { abort = true }
+  }, [currentLesson?.videoUrl, currentLesson?.isFree, canAccessAllContent, enrolled, course.id])
 
   const modulesForList = useMemo(() => {
     return (course.modules || []).map((m: any) => {
@@ -103,6 +160,28 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
       </div>
     )
   }, [currentLesson?.content])
+
+  // Obter progresso da lição atual
+  const currentLessonProgress = useMemo(() => {
+    if (!currentLesson?.id) return null
+    return getLessonProgress(course.id, currentLesson.id)
+  }, [course.id, currentLesson?.id, getLessonProgress])
+
+  // Traduzir nível do curso
+  const translateLevel = (level?: string | null) => {
+    switch (level) {
+      case 'BEGINNER':
+        return 'Iniciante'
+      case 'INTERMEDIATE':
+        return 'Intermediário'
+      case 'ADVANCED':
+        return 'Avançado'
+      case 'EXPERT':
+        return 'Especialista'
+      default:
+        return 'Iniciante'
+    }
+  }
 
   // Throttle progress updates to backend
   const sendProgress = useMemo(() => {
@@ -234,7 +313,12 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                 <h1 className="text-xl lg:text-2xl font-semibold">{course.title}</h1>
                 <p className="text-sm text-muted-foreground">{course.shortDescription}</p>
               </div>
-              <Badge variant="outline">{course.level || 'BEGINNER'}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{translateLevel(course.level || 'BEGINNER')}</Badge>
+                {course?.category?.name && (
+                  <Badge variant="outline">{course.category.name}</Badge>
+                )}
+              </div>
             </div>
 
             {currentLesson ? (
@@ -242,7 +326,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                 {currentLessonVideoUrl ? (
                   hasLessonAccess ? (
                     <VideoPlayer
-                      src={currentLessonVideoUrl || ''}
+                      src={signedVideoSrc || currentLessonVideoUrl || ''}
                       title={currentLesson.title}
                       duration={currentLesson.videoDuration || 0}
                       currentTime={resumeTime}
@@ -284,7 +368,13 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                       <p className="text-sm text-muted-foreground">{currentLesson.description}</p>
                     )}
                   </div>
-                  <button className="text-sm text-primary" onClick={handleComplete}>Marcar como concluída</button>
+                  {currentLessonProgress?.completed ? (
+                    <span className="inline-flex items-center text-emerald-600 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 mr-1" /> Aula concluída
+                    </span>
+                  ) : (
+                    <button className="text-sm text-primary" onClick={handleComplete}>Marcar como concluída</button>
+                  )}
                 </div>
 
                 {lessonContent && (

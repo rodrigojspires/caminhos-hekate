@@ -17,6 +17,13 @@ import {
 } from 'lucide-react'
 import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { LoadingSpinner } from './LoadingSpinner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 
 interface Course {
   id: string
@@ -74,7 +81,7 @@ export function CourseTable({
   onSort
 }: CourseTableProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null)
+  // dropdown menu now uses Radix Portal; local open state removed
 
   // Selecionar/deselecionar todos os cursos
   const handleSelectAll = (checked: boolean) => {
@@ -140,7 +147,7 @@ export function CourseTable({
       toast.error('Erro ao duplicar curso')
     } finally {
       setActionLoading(null)
-      setDropdownOpen(null)
+      
     }
   }
 
@@ -171,7 +178,7 @@ export function CourseTable({
       toast.error('Erro ao excluir curso')
     } finally {
       setActionLoading(null)
-      setDropdownOpen(null)
+      
     }
   }
 
@@ -412,59 +419,59 @@ export function CourseTable({
                 
                 <td className="px-4 py-4">
                   <div className="relative flex items-center gap-3">
-                    <button
-                      onClick={() => setDropdownOpen(dropdownOpen === course.id ? null : course.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      disabled={actionLoading === course.id}
-                    >
-                      {actionLoading === course.id ? (
-                        <LoadingSpinner size="sm" />
-                      ) : (
-                        <MoreHorizontal className="w-4 h-4" />
-                      )}
-                    </button>
-                    
-                    {dropdownOpen === course.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-                        <div className="py-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          disabled={actionLoading === course.id}
+                        >
+                          {actionLoading === course.id ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <MoreHorizontal className="w-4 h-4" />
+                          )}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem asChild>
                           <Link
                             href={`/admin/courses/${course.id}`}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            onClick={() => setDropdownOpen(null)}
+                            className="flex items-center gap-2"
                           >
                             <Edit className="w-4 h-4" />
                             Editar
                           </Link>
-                          
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem asChild>
                           <Link
                             href={`/admin/courses/${course.id}/enrollments`}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            onClick={() => setDropdownOpen(null)}
+                            className="flex items-center gap-2"
                           >
                             <Users className="w-4 h-4" />
                             Inscrições
                           </Link>
-                          
-                          <button
-                            onClick={() => handleDuplicate(course)}
-                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                          >
-                            <Copy className="w-4 h-4" />
-                            Duplicar
-                          </button>
-                          
-                          <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-                          
-                          <button
-                            onClick={() => handleDelete(course)}
-                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Excluir
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={() => handleDuplicate(course)}
+                          className="flex items-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Duplicar
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(course)}
+                          className="flex items-center gap-2 text-red-700 dark:text-red-300"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </td>
               </tr>
