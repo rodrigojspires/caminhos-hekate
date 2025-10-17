@@ -804,13 +804,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
                   {videoPreview && !videoLoadError ? (
                     <video
                       key={videoPreview}
-                      src={videoPreview}
                       controls
                       preload="metadata"
                       className="w-full h-auto bg-black"
                       onError={() => setVideoLoadError(true)}
                       onLoadedData={() => setVideoLoadError(false)}
-                    />
+                    >
+                      <source src={videoPreview} type={inferVideoMime(videoPreview)} />
+                    </video>
                   ) : (
                     <div className="w-full h-40 flex items-center justify-center text-xs text-muted-foreground px-3 text-center bg-black/40">
                       Não foi possível carregar a pré-visualização do vídeo.
@@ -1016,4 +1017,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       </Dialog>
     </div>
   )
+}
+
+const inferVideoMime = (url?: string | null): string | undefined => {
+  if (!url) return undefined
+  const lower = url.split('?')[0].toLowerCase()
+  if (lower.endsWith('.mp4')) return 'video/mp4'
+  if (lower.endsWith('.webm')) return 'video/webm'
+  if (lower.endsWith('.ogg') || lower.endsWith('.ogv')) return 'video/ogg'
+  if (lower.endsWith('.mov') || lower.endsWith('.qt')) return 'video/quicktime'
+  return undefined
 }
