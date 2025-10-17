@@ -11,6 +11,7 @@ const nextConfig = {
       'trae-api-us.mchost.guru', // Para geração de imagens
     ],
     formats: ['image/avif', 'image/webp'],
+    unoptimized: true,
   },
   output: 'standalone',
   eslint: { ignoreDuringBuilds: true },

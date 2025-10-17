@@ -44,8 +44,8 @@ RUN SKIP_REDIS=1 pnpm -w build
 # --- Runtime layer (WEB) ---
 FROM base AS runner
 WORKDIR /app
-# Usuário para rodar o Next no runtime
-RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+# Usuário para rodar o Next no runtime (UID/GID 1000 para compatibilidade com volumes)
+RUN addgroup -S nextjs -g 1000 && adduser -S nextjs -G nextjs -u 1000
 
 # Copia o output standalone do Next e assets necessários
 COPY --from=build /app/apps/web/.next/standalone ./
@@ -59,11 +59,14 @@ COPY --from=build /app/packages/database/prisma ./packages/database/prisma
 
 # Diretórios de upload precisam estar graváveis pelo usuário runtime
 RUN mkdir -p /app/apps/web/public/uploads \
-    && chown -R nextjs:nextjs /app/apps/web/public/uploads
+    && chown -R nextjs:nextjs /app/apps/web/public/uploads \
+    && mkdir -p /app/uploads/uploads \
+    && chown -R nextjs:nextjs /app/uploads
 
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    PRIVATE_UPLOAD_ROOT=/app/uploads
 
 EXPOSE 3000
 USER nextjs

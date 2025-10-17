@@ -124,6 +124,7 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin123}
       S3_BUCKET: hekate-media
       EVOLUTION_API_URL: http://evolution:8080
+      PRIVATE_UPLOAD_ROOT: /app/uploads
     ports:
       - "3000:3000"
     volumes:
@@ -132,6 +133,7 @@ services:
       - /app/node_modules
       - /app/apps/web/node_modules
       - /app/apps/web/.next
+      - private_uploads_dev:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,3 +151,4 @@ volumes:
   redis_data:
   minio_data:
   evolution_mongo_data:
+  private_uploads_dev:

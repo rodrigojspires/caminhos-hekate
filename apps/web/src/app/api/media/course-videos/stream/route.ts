@@ -16,10 +16,13 @@ const PUBLIC_ROOT = (() => {
 })()
 
 const PRIVATE_ROOT = (() => {
+  const envDir = process.env.PRIVATE_UPLOAD_ROOT
   const candidates = [
+    envDir,
+    '/app/uploads',
     join(process.cwd(), 'apps', 'web', 'private_uploads'),
     join(process.cwd(), 'private_uploads'),
-  ]
+  ].filter(Boolean) as string[]
   for (const c of candidates) {
     if (existsSync(c)) return c
   }

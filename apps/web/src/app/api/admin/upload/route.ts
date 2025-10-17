@@ -42,10 +42,13 @@ const PUBLIC_ROOT = (() => {
 
 // Adiciona root privado para vídeos de cursos
 const PRIVATE_ROOT = (() => {
+  const envDir = process.env.PRIVATE_UPLOAD_ROOT
   const candidates = [
+    envDir,
+    '/app/uploads',
     join(process.cwd(), 'apps', 'web', 'private_uploads'),
-    join(process.cwd(), 'private_uploads')
-  ]
+    join(process.cwd(), 'private_uploads'),
+  ].filter(Boolean) as string[]
   for (const c of candidates) {
     if (existsSync(c)) return c
   }
@@ -183,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     // Criar diretório se não existir
     const isCourseVideo = uploadCategory === 'course-videos'
-    const uploadDir = isCourseVideo
+    let uploadDir = isCourseVideo
       ? join(PRIVATE_ROOT, 'uploads', uploadCategory)
       : join(BASE_UPLOAD_DIR, uploadCategory)
     if (!existsSync(uploadDir)) {

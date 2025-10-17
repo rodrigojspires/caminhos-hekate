@@ -18,6 +18,10 @@ COPY packages/database/package.json ./packages/database/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
+# Prepare upload directories (dev) and environment
+RUN mkdir -p /app/uploads/uploads
+ENV PRIVATE_UPLOAD_ROOT=/app/uploads
+
 # Copy source code
 COPY . .
 
