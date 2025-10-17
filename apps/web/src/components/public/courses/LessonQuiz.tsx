@@ -20,15 +20,25 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
   useEffect(() => {
     let mounted = true
     setLoading(true)
+    setError(null)
     fetch(`/api/courses/${courseId}/lessons/${lessonId}/quiz`).then(async (r) => {
       if (!mounted) return
+      if (r.status === 404) {
+        setQuiz(null)
+        setLoading(false)
+        return
+      }
       if (!r.ok) {
         setError('Não foi possível carregar o quiz')
         setLoading(false)
         return
       }
       const j = await r.json()
-      setQuiz(j.quiz)
+      if (j?.quiz) {
+        setQuiz(j.quiz)
+      } else {
+        setQuiz(null)
+      }
       setLoading(false)
     }).catch(() => {
       if (!mounted) return
@@ -40,6 +50,7 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
 
   const submit = async () => {
     setResult(null)
+    setError(null)
     const res = await fetch(`/api/courses/${courseId}/lessons/${lessonId}/quiz`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,7 +66,7 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
 
   if (loading) return <div className="text-sm text-muted-foreground">Carregando quiz...</div>
   if (error) return <div className="text-sm text-red-600">{error}</div>
-  if (!quiz) return <div className="text-sm text-muted-foreground">Nenhum quiz disponível para esta lição.</div>
+  if (!quiz) return null
 
   return (
     <Card className="mt-4">
@@ -94,4 +105,3 @@ export default function LessonQuiz({ courseId, lessonId }: { courseId: string, l
     </Card>
   )
 }
-

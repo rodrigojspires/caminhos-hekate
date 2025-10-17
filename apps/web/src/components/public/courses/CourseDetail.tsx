@@ -79,6 +79,25 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     return lp?.watchTime || 0
   }, [course.id, currentLessonId, getLessonProgress])
 
+  const lessonContent = useMemo(() => {
+    if (!currentLesson?.content) return null
+    const value = currentLesson.content as string
+    const isLikelyHtml = /<\/?[a-z][\s\S]*>/i.test(value)
+    if (isLikelyHtml) {
+      return (
+        <div
+          className="prose prose-sm dark:prose-invert max-w-none"
+          dangerouslySetInnerHTML={{ __html: value }}
+        />
+      )
+    }
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-line">
+        {value}
+      </div>
+    )
+  }, [currentLesson?.content])
+
   // Throttle progress updates to backend
   const sendProgress = useMemo(() => {
     let timeout: any = null
@@ -261,6 +280,15 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                   </div>
                   <button className="text-sm text-primary" onClick={handleComplete}>Marcar como concluída</button>
                 </div>
+
+                {lessonContent && (
+                  <div className="mt-3 p-4 border border-border rounded-lg bg-muted/40">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      Conteúdo detalhado
+                    </h3>
+                    {lessonContent}
+                  </div>
+                )}
 
                 {/* Materiais da lição */}
                 {hasLessonAccess && Array.isArray(currentLesson.assets) && currentLesson.assets.length > 0 && (

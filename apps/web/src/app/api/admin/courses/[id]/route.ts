@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, Prisma } from '@hekate/database'
+import { prisma, Prisma, CourseStatus, CourseLevel, SubscriptionTier, CourseAccessModel, NotificationChannel, NotificationType } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
-import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
+import { sendNotificationToUser } from '@/lib/notification-stream'
 
 // Schema de validação para atualização de curso
 const urlOrPathSchema = z
@@ -80,6 +80,106 @@ const serializeCourse = <T extends { price?: any; comparePrice?: any; tags?: any
     price: course.price != null ? Number(course.price) : null,
     comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
     tags: normalizeTags(course.tags ?? [])
+  }
+}
+
+const SUBSCRIPTION_TIER_SEQUENCE: SubscriptionTier[] = [
+  SubscriptionTier.FREE,
+  SubscriptionTier.INICIADO,
+  SubscriptionTier.ADEPTO,
+  SubscriptionTier.SACERDOCIO
+]
+
+const resolveEligibleSubscriptionTiers = (requiredTier: SubscriptionTier) => {
+  const startIndex = SUBSCRIPTION_TIER_SEQUENCE.indexOf(requiredTier)
+  if (startIndex === -1) {
+    return [SubscriptionTier.FREE]
+  }
+  return SUBSCRIPTION_TIER_SEQUENCE.slice(startIndex)
+}
+
+async function notifyCoursePublication(
+  course: { id: string; title: string; slug: string; tier: SubscriptionTier },
+  accessModels: CourseAccessModel[]
+) {
+  try {
+    const recipientIds = new Set<string>()
+
+    if (accessModels.includes(CourseAccessModel.FREE)) {
+      const users = await prisma.user.findMany({
+        select: { id: true }
+      })
+      users.forEach((user) => recipientIds.add(user.id))
+    } else {
+      const tasks: Array<Promise<void>> = []
+
+      tasks.push(
+        prisma.enrollment.findMany({
+          where: { courseId: course.id },
+          select: { userId: true }
+        }).then((enrollments) => {
+          enrollments.forEach((enrollment) => recipientIds.add(enrollment.userId))
+        })
+      )
+
+      if (accessModels.includes(CourseAccessModel.SUBSCRIPTION)) {
+        const allowedTiers = resolveEligibleSubscriptionTiers(course.tier)
+        tasks.push(
+          prisma.user.findMany({
+            where: { subscriptionTier: { in: allowedTiers } },
+            select: { id: true }
+          }).then((users) => {
+            users.forEach((user) => recipientIds.add(user.id))
+          })
+        )
+      }
+
+      await Promise.all(tasks)
+    }
+
+    if (recipientIds.size === 0) {
+      return
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || ''
+    const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : ''
+    const courseUrl = normalizedBase ? `${normalizedBase}/cursos/${course.slug}` : `/cursos/${course.slug}`
+
+    const title = `Novo curso disponível: ${course.title}`
+    const content = `O curso "${course.title}" já está disponível para você. Acesse: ${courseUrl}`
+    const metadata: Prisma.JsonObject = {
+      courseId: course.id,
+      slug: course.slug,
+      url: courseUrl
+    }
+
+    const notificationPayload: Prisma.NotificationCreateManyInput[] = Array.from(recipientIds).map((userId) => ({
+      userId,
+      type: NotificationType.SYSTEM_ANNOUNCEMENT,
+      title,
+      content,
+      channel: NotificationChannel.EMAIL,
+      metadata
+    }))
+
+    await prisma.notification.createMany({
+      data: notificationPayload,
+      skipDuplicates: true
+    })
+
+    const realtimePayload = {
+      type: 'course_published',
+      title,
+      message: content,
+      courseId: course.id,
+      courseUrl
+    }
+
+    recipientIds.forEach((userId) => {
+      sendNotificationToUser(userId, realtimePayload)
+    })
+  } catch (error) {
+    console.error('Erro ao enviar notificações de publicação de curso:', error)
   }
 }
 
@@ -243,8 +343,8 @@ export async function PUT(
     }
 
     const finalAccessModelsInput =
-      validatedData.accessModels ?? (existingCourse.accessModels as Prisma.CourseAccessModel[]) ?? []
-    const normalizedAccessModels = Array.from(new Set(finalAccessModelsInput)) as Prisma.CourseAccessModel[]
+      validatedData.accessModels ?? (existingCourse.accessModels as CourseAccessModel[]) ?? []
+    const normalizedAccessModels = Array.from(new Set(finalAccessModelsInput)) as CourseAccessModel[]
 
     if (normalizedAccessModels.length === 0) {
       return NextResponse.json(
@@ -274,6 +374,9 @@ export async function PUT(
       normalizedTier = SubscriptionTier.FREE
     }
 
+    const statusToPublished =
+      validatedData.status === CourseStatus.PUBLISHED && existingCourse.status !== CourseStatus.PUBLISHED
+
     const { accessModels, tier, ...courseData } = validatedData
 
     const updateData: Prisma.CourseUpdateInput = {
@@ -294,6 +397,18 @@ export async function PUT(
         }
       }
     })
+
+    if (statusToPublished) {
+      await notifyCoursePublication(
+        {
+          id: updatedCourse.id,
+          title: updatedCourse.title,
+          slug: updatedCourse.slug,
+          tier: updatedCourse.tier as SubscriptionTier
+        },
+        normalizedAccessModels
+      )
+    }
 
     return NextResponse.json(serializeCourse(updatedCourse))
 

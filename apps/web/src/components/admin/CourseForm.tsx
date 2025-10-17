@@ -1,7 +1,6 @@
-'use client'
+"use client"
 
 import { useState, useRef, useEffect } from 'react'
-import Image from 'next/image'
 import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { Upload, X, Plus, Loader2, Video as VideoIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -84,42 +83,6 @@ const normalizeMediaPath = (value?: string | null) => {
   return `/${trimmed.replace(/^\/+/, '')}`
 }
 
-const isValidImageUrl = (url: string) => {
-  if (!url) return false
-  const pattern = /\.(jpg|jpeg|png|gif|webp|avif)$/i
-  const sanitized = url.split('?')[0]
-  if (pattern.test(sanitized)) {
-    return true
-  }
-  if (/^(https?:)?\/\//i.test(url)) {
-    try {
-      const parsed = new URL(url)
-      return pattern.test(parsed.pathname)
-    } catch {
-      return false
-    }
-  }
-  return false
-}
-
-const isValidVideoUrl = (url: string) => {
-  if (!url) return false
-  const pattern = /\.(mp4|webm|ogg|mov|qt)$/i
-  const sanitized = url.split('?')[0]
-  if (pattern.test(sanitized)) {
-    return true
-  }
-  if (/^(https?:)?\/\//i.test(url)) {
-    try {
-      const parsed = new URL(url)
-      return pattern.test(parsed.pathname)
-    } catch {
-      return false
-    }
-  }
-  return false
-}
-
 const uploadFile = async (file: File, type: 'course-images' | 'course-videos') => {
   const formData = new FormData()
   formData.append('file', file)
@@ -151,6 +114,8 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   const [newTag, setNewTag] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(normalizeMediaPath(data.featuredImage))
   const [videoPreview, setVideoPreview] = useState<string | null>(normalizeMediaPath(data.introVideo))
+  const [imageLoadError, setImageLoadError] = useState(false)
+  const [videoLoadError, setVideoLoadError] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
   const [videoUploading, setVideoUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -158,10 +123,12 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
 
   useEffect(() => {
     setImagePreview(normalizeMediaPath(data.featuredImage))
+    setImageLoadError(false)
   }, [data.featuredImage])
 
   useEffect(() => {
     setVideoPreview(normalizeMediaPath(data.introVideo))
+    setVideoLoadError(false)
   }, [data.introVideo])
 
   const handleFieldChange = <K extends keyof CourseFormValues>(field: K, value: CourseFormValues[K]) => {
@@ -209,12 +176,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
     const normalized = normalizeMediaPath(url)
     handleFieldChange('featuredImage', normalized ? normalized : null)
     setImagePreview(normalized ? normalized : null)
+    setImageLoadError(false)
   }
 
   const handleVideoUrlChange = (url: string | null | undefined) => {
     const normalized = normalizeMediaPath(url)
     handleFieldChange('introVideo', normalized ? normalized : null)
     setVideoPreview(normalized ? normalized : null)
+    setVideoLoadError(false)
   }
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -239,12 +208,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       setImageUploading(true)
       objectUrl = URL.createObjectURL(file)
       setImagePreview(objectUrl)
+      setImageLoadError(false)
 
       const uploadedUrl = await uploadFile(file, 'course-images')
       handleImageUrlChange(uploadedUrl)
       toast.success('Imagem enviada com sucesso!')
     } catch (error) {
       setImagePreview(previousImage)
+      setImageLoadError(false)
       const message = error instanceof Error ? error.message : 'Erro ao enviar a imagem'
       toast.error(message)
     } finally {
@@ -277,12 +248,14 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       setVideoUploading(true)
       objectUrl = URL.createObjectURL(file)
       setVideoPreview(objectUrl)
+      setVideoLoadError(false)
 
       const uploadedUrl = await uploadFile(file, 'course-videos')
       handleVideoUrlChange(uploadedUrl)
       toast.success('Vídeo enviado com sucesso!')
     } catch (error) {
       setVideoPreview(previousVideo)
+      setVideoLoadError(false)
       const message = error instanceof Error ? error.message : 'Erro ao enviar o vídeo'
       toast.error(message)
     } finally {
@@ -296,11 +269,13 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   const clearImage = () => {
     handleFieldChange('featuredImage', null)
     setImagePreview(null)
+    setImageLoadError(false)
   }
 
   const clearVideo = () => {
     handleFieldChange('introVideo', null)
     setVideoPreview(null)
+    setVideoLoadError(false)
   }
 
   return (
@@ -600,17 +575,21 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             <p className={helperTextClasses}>
               Recomendado: 1280x720px • Formatos JPG, PNG ou WEBP • Até 5MB
             </p>
-            {imagePreview && isValidImageUrl(imagePreview) && (
+            {(imagePreview || (data.featuredImage ?? '').trim()) && (
               <div className="mt-3 space-y-2">
-                <div className="relative w-48 h-28">
-                  <Image
-                    src={imagePreview}
-                    alt="Preview da capa"
-                    fill
-                    className="rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                    sizes="192px"
-                    onError={() => setImagePreview(null)}
-                  />
+                <div className="relative w-48 h-28 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  {imagePreview && !imageLoadError ? (
+                    <img
+                      src={imagePreview}
+                      alt="Preview da capa"
+                      className="w-full h-full object-cover"
+                      onError={() => setImageLoadError(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground px-3 text-center">
+                      Não foi possível carregar a pré-visualização.
+                    </div>
+                  )}
                   {imageUploading && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
                       <Loader2 className="w-6 h-6 text-white animate-spin" />
@@ -668,13 +647,30 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             <p className={helperTextClasses}>
               Formatos MP4, WEBM, OGG ou MOV • Até 200MB • Utilize URL externa ou envie o arquivo
             </p>
-            {videoPreview && isValidVideoUrl(videoPreview) && (
+            {(videoPreview || (data.introVideo ?? '').trim()) && (
               <div className="mt-3 space-y-2">
-                <video
-                  src={videoPreview}
-                  controls
-                  className="w-full max-w-lg rounded-lg border border-gray-200 dark:border-gray-700 bg-black"
-                />
+                <div className="relative w-full max-w-lg rounded-lg border border-gray-200 dark:border-gray-700 bg-black overflow-hidden">
+                  {videoPreview && !videoLoadError ? (
+                    <video
+                      key={videoPreview}
+                      src={videoPreview}
+                      controls
+                      preload="metadata"
+                      className="w-full h-auto bg-black"
+                      onError={() => setVideoLoadError(true)}
+                      onLoadedData={() => setVideoLoadError(false)}
+                    />
+                  ) : (
+                    <div className="w-full h-40 flex items-center justify-center text-xs text-muted-foreground px-3 text-center bg-black/40">
+                      Não foi possível carregar a pré-visualização do vídeo.
+                    </div>
+                  )}
+                  {videoUploading && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={clearVideo}
