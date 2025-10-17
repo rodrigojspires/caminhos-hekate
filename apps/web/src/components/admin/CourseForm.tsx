@@ -311,8 +311,33 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       setVideoPreview(objectUrl)
       setVideoLoadError(false)
 
+      // Faz upload e atualiza o estado do formulário com a URL final
       const uploadedUrl = await uploadFile(file, 'course-videos')
       handleVideoUrlChange(uploadedUrl)
+
+      // Valida se a URL final é reproduzível antes de alternar o preview
+      const remoteUrl = resolveMediaUrl(normalizeMediaPath(uploadedUrl))
+      if (remoteUrl) {
+        const ok = await canPlayVideoUrl(remoteUrl)
+        if (ok) {
+          setVideoPreview(remoteUrl)
+          setVideoLoadError(false)
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl)
+            objectUrl = null
+          }
+        } else {
+          // Mantém o preview do blob e agenda revogação posterior para evitar leaks
+          setVideoPreview(objectUrl)
+          setVideoLoadError(false)
+          if (objectUrl) {
+            setTimeout(() => {
+              try { URL.revokeObjectURL(objectUrl!) } catch {}
+            }, 60000)
+          }
+        }
+      }
+
       toast.success('Vídeo enviado com sucesso!')
     } catch (error) {
       setVideoPreview(resolveMediaUrl(previousVideo))
@@ -321,9 +346,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       toast.error(message)
     } finally {
       setVideoUploading(false)
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
+      // Não revoga o objectUrl aqui para evitar perder o preview antes de validar a URL final
     }
   }
 
@@ -804,14 +827,13 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
                   {videoPreview && !videoLoadError ? (
                     <video
                       key={videoPreview}
+                      src={videoPreview}
                       controls
                       preload="metadata"
                       className="w-full h-auto bg-black"
                       onError={() => setVideoLoadError(true)}
                       onLoadedData={() => setVideoLoadError(false)}
-                    >
-                      <source src={videoPreview} type={inferVideoMime(videoPreview)} />
-                    </video>
+                    />
                   ) : (
                     <div className="w-full h-40 flex items-center justify-center text-xs text-muted-foreground px-3 text-center bg-black/40">
                       Não foi possível carregar a pré-visualização do vídeo.
@@ -1027,4 +1049,41 @@ const inferVideoMime = (url?: string | null): string | undefined => {
   if (lower.endsWith('.ogg') || lower.endsWith('.ogv')) return 'video/ogg'
   if (lower.endsWith('.mov') || lower.endsWith('.qt')) return 'video/quicktime'
   return undefined
+}
+
+// Helper: verifica se a URL de vídeo consegue carregar metadados/canplay
+const canPlayVideoUrl = (url: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    try {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      let settled = false
+
+      const cleanup = () => {
+        video.onloadeddata = null
+        video.oncanplay = null
+        video.onerror = null
+        video.src = ''
+      }
+
+      const done = (result: boolean) => {
+        if (!settled) {
+          settled = true
+          cleanup()
+          resolve(result)
+        }
+      }
+
+      video.onloadeddata = () => done(true)
+      video.oncanplay = () => done(true)
+      video.onerror = () => done(false)
+
+      // Fallback por tempo caso nenhum evento dispare
+      setTimeout(() => done(false), 5000)
+
+      video.src = url
+    } catch {
+      resolve(false)
+    }
+  })
 }

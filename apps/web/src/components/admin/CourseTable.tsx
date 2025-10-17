@@ -411,7 +411,7 @@ export function CourseTable({
                 </td>
                 
                 <td className="px-4 py-4">
-                  <div className="relative">
+                  <div className="relative flex items-center gap-3">
                     <button
                       onClick={() => setDropdownOpen(dropdownOpen === course.id ? null : course.id)}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -425,7 +425,7 @@ export function CourseTable({
                     </button>
                     
                     {dropdownOpen === course.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
                         <div className="py-1">
                           <Link
                             href={`/admin/courses/${course.id}`}

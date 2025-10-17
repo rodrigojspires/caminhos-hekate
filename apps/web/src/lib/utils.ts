@@ -62,19 +62,32 @@ export function resolveMediaUrl(value?: string | null): string | null {
 
   const sanitizedPath = `/${trimmed.replace(/^\/+/, '')}`
 
-  // Prefer explicit uploads base for files under /uploads when available
-  const uploadsBase = process.env.NEXT_PUBLIC_UPLOADS_BASE_URL
-  if (uploadsBase && sanitizedPath.startsWith('/uploads/')) {
-    const normalizedBase = uploadsBase.replace(/\/$/, '')
-    return `${normalizedBase}${sanitizedPath}`
+  // Para arquivos em /uploads, preferir a origem atual no navegador (dev/local)
+  if (sanitizedPath.startsWith('/uploads/')) {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return `${window.location.origin}${sanitizedPath}`
+    }
+
+    const base =
+      process.env.NEXT_PUBLIC_UPLOADS_BASE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      ''
+
+    if (base) {
+      const normalizedBase = base.replace(/\/$/, '')
+      return `${normalizedBase}${sanitizedPath}`
+    }
+
+    return sanitizedPath
   }
 
+  // Para outros paths relativos, seguir a mesma lógica
   if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}${sanitizedPath}`
   }
 
   const base =
-    process.env.NEXT_PUBLIC_UPLOADS_BASE_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXTAUTH_URL ||
     ''
