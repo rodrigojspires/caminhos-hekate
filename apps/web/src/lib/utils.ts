@@ -62,6 +62,13 @@ export function resolveMediaUrl(value?: string | null): string | null {
 
   const sanitizedPath = `/${trimmed.replace(/^\/+/, '')}`
 
+  // Prefer explicit uploads base for files under /uploads when available
+  const uploadsBase = process.env.NEXT_PUBLIC_UPLOADS_BASE_URL
+  if (uploadsBase && sanitizedPath.startsWith('/uploads/')) {
+    const normalizedBase = uploadsBase.replace(/\/$/, '')
+    return `${normalizedBase}${sanitizedPath}`
+  }
+
   if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}${sanitizedPath}`
   }
