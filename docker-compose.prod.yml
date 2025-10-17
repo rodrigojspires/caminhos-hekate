@@ -47,6 +47,8 @@ services:
       # SMTP & others should be provided in .env
     ports:
       - "127.0.0.1:3001:3000"
+    volumes:
+      - course_uploads:/app/apps/web/public/uploads
     restart: unless-stopped
 
   worker-email:
@@ -134,3 +136,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  course_uploads:

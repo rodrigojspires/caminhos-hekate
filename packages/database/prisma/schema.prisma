@@ -196,6 +196,7 @@ model Category {
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
   products    Product[]
+  courses     Course[]
 }
 
 model Product {
@@ -542,6 +543,8 @@ model Course {
   introVideo       String?
   price            Decimal?         @db.Decimal(10, 2)
   comparePrice     Decimal?         @db.Decimal(10, 2)
+  categoryId       String?
+  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   tier             SubscriptionTier  @default(FREE)
   accessModels     CourseAccessModel[] @default([])
   status           CourseStatus     @default(DRAFT)

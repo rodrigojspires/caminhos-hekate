@@ -26,6 +26,9 @@ export interface PublicCourse {
   lessons: number
   students: number
   tags: string[]
+  categoryId?: string | null
+  categorySlug?: string | null
+  categoryName?: string | null
 }
 
 interface CoursesExplorerProps {
@@ -85,7 +88,9 @@ export function CoursesExplorer({ courses, categories, levels }: CoursesExplorer
     }
 
     if (selectedCategory !== 'todos') {
-      list = list.filter(course => course.tags.includes(selectedCategory))
+      list = list.filter(course =>
+        (course.categoryName || '').toLowerCase() === selectedCategory.toLowerCase()
+      )
     }
 
     if (selectedLevel !== 'todos') {

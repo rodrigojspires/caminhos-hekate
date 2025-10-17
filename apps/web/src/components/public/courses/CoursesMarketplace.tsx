@@ -29,6 +29,11 @@ interface CoursesMarketplaceProps {
   courses: PublicCourse[]
 }
 
+interface CategoryFilterOption {
+  value: string
+  label: string
+}
+
 const formatCurrency = (value: number | null | undefined) => {
   if (value == null) return null
   return value.toLocaleString('pt-BR', {
@@ -64,10 +69,19 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     }
   }, [courses])
 
-  const categories = useMemo(() => {
-    const all = new Set<string>()
-    courses.forEach((course) => course.tags.forEach((tag) => all.add(tag)))
-    return Array.from(all).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const categories = useMemo<CategoryFilterOption[]>(() => {
+    const map = new Map<string, string>()
+    courses.forEach((course) => {
+      const name = course.categoryName?.trim()
+      if (!name) return
+      const key = course.categoryId || course.categorySlug || name
+      if (!map.has(key)) {
+        map.set(key, name)
+      }
+    })
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
   }, [courses])
 
   const levels = useMemo(() => {
@@ -93,7 +107,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     const term = searchTerm.trim().toLowerCase()
     if (term) {
       list = list.filter((course) => {
-        const haystack = [course.title, course.description, course.shortDescription]
+        const haystack = [course.title, course.description, course.shortDescription, course.categoryName]
           .filter(Boolean)
           .join(' ')
           .toLowerCase()
@@ -103,7 +117,10 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     }
 
     if (selectedCategory !== 'todos') {
-      list = list.filter((course) => course.tags.includes(selectedCategory))
+      list = list.filter((course) => {
+        const key = course.categoryId || course.categorySlug || course.categoryName || ''
+        return key === selectedCategory
+      })
     }
 
     if (selectedLevel !== 'todos') {
@@ -214,17 +231,17 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   </Button>
                   {categories.slice(0, 6).map((category) => (
                     <Button
-                      key={category}
+                      key={category.value}
                       size="sm"
-                      variant={selectedCategory === category ? 'default' : 'outline'}
+                      variant={selectedCategory === category.value ? 'default' : 'outline'}
                       className={
-                        selectedCategory === category
+                        selectedCategory === category.value
                           ? 'bg-purple-600 hover:bg-purple-500 text-white'
                           : 'border-white/20 text-purple-100 hover:bg-white/10'
                       }
-                      onClick={() => setSelectedCategory(category)}
+                      onClick={() => setSelectedCategory(category.value)}
                     >
-                      {category}
+                      {category.label}
                     </Button>
                   ))}
                 </div>
@@ -372,19 +389,24 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-purple-100 uppercase tracking-wide">Categorias</p>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((category) => (
-                      <Badge
-                        key={category}
-                        onClick={() => setSelectedCategory((prev) => (prev === category ? 'todos' : category))}
-                        className={`cursor-pointer px-3 py-1.5 border ${
-                          selectedCategory === category
-                            ? 'bg-purple-600 border-purple-500 text-white'
-                            : 'bg-transparent border-white/20 text-purple-100 hover:bg-white/10'
-                        }`}
-                      >
-                        {category}
-                      </Badge>
-                    ))}
+                    {categories.map((category) => {
+                      const isActive = selectedCategory === category.value
+                      return (
+                        <Badge
+                          key={category.value}
+                          onClick={() =>
+                            setSelectedCategory((prev) => (prev === category.value ? 'todos' : category.value))
+                          }
+                          className={`cursor-pointer px-3 py-1.5 border ${
+                            isActive
+                              ? 'bg-purple-600 border-purple-500 text-white'
+                              : 'bg-transparent border-white/20 text-purple-100 hover:bg-white/10'
+                          }`}
+                        >
+                          {category.label}
+                        </Badge>
+                      )
+                    })}
                   </div>
                 </div>
               )}

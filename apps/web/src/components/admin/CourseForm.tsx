@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { Upload, X, Plus, Loader2, Video as VideoIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CategoryForm } from '@/components/admin/CategoryForm'
+import { resolveMediaUrl } from '@/lib/utils'
 
 export interface CourseFormValues {
   title: string
@@ -24,6 +27,7 @@ export interface CourseFormValues {
   tags: string[]
   metaTitle?: string | null
   metaDescription?: string | null
+  categoryId?: string | null
 }
 
 interface CourseFormProps {
@@ -42,6 +46,12 @@ const acceptedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'
 const acceptedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_VIDEO_SIZE = 200 * 1024 * 1024 // 200MB
+
+interface CategoryOption {
+  id: string
+  name: string
+  slug: string
+}
 
 const accessModelOptions: Array<{ value: CourseAccessModel; label: string; description: string }> = [
   {
@@ -112,24 +122,66 @@ const uploadFile = async (file: File, type: 'course-images' | 'course-videos') =
 
 export function CourseForm({ data, onChange, loading = false }: CourseFormProps) {
   const [newTag, setNewTag] = useState('')
-  const [imagePreview, setImagePreview] = useState<string | null>(normalizeMediaPath(data.featuredImage))
-  const [videoPreview, setVideoPreview] = useState<string | null>(normalizeMediaPath(data.introVideo))
+  const [imagePreview, setImagePreview] = useState<string | null>(() =>
+    resolveMediaUrl(normalizeMediaPath(data.featuredImage))
+  )
+  const [videoPreview, setVideoPreview] = useState<string | null>(() =>
+    resolveMediaUrl(normalizeMediaPath(data.introVideo))
+  )
   const [imageLoadError, setImageLoadError] = useState(false)
   const [videoLoadError, setVideoLoadError] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
   const [videoUploading, setVideoUploading] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(false)
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [creatingCategory, setCreatingCategory] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setImagePreview(normalizeMediaPath(data.featuredImage))
+    setImagePreview(resolveMediaUrl(normalizeMediaPath(data.featuredImage)))
     setImageLoadError(false)
   }, [data.featuredImage])
 
   useEffect(() => {
-    setVideoPreview(normalizeMediaPath(data.introVideo))
+    setVideoPreview(resolveMediaUrl(normalizeMediaPath(data.introVideo)))
     setVideoLoadError(false)
   }, [data.introVideo])
+
+  const loadCategories = useCallback(async () => {
+    try {
+      setLoadingCategories(true)
+      const params = new URLSearchParams({
+        limit: '200',
+        sortBy: 'name',
+        sortOrder: 'asc'
+      })
+      const response = await fetch(`/api/admin/products/categories?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Não foi possível carregar as categorias')
+      }
+      const json = await response.json()
+      const loaded = Array.isArray(json.categories)
+        ? json.categories.map((category: any) => ({
+            id: category.id,
+            name: category.name,
+            slug: category.slug
+          })) as CategoryOption[]
+        : []
+      setCategories(loaded)
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao carregar categorias'
+      )
+    } finally {
+      setLoadingCategories(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCategories()
+  }, [loadCategories])
 
   const handleFieldChange = <K extends keyof CourseFormValues>(field: K, value: CourseFormValues[K]) => {
     onChange({ [field]: value } as Pick<CourseFormValues, K>)
@@ -175,15 +227,24 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   const handleImageUrlChange = (url: string | null | undefined) => {
     const normalized = normalizeMediaPath(url)
     handleFieldChange('featuredImage', normalized ? normalized : null)
-    setImagePreview(normalized ? normalized : null)
+    setImagePreview(resolveMediaUrl(normalized))
     setImageLoadError(false)
   }
 
   const handleVideoUrlChange = (url: string | null | undefined) => {
     const normalized = normalizeMediaPath(url)
     handleFieldChange('introVideo', normalized ? normalized : null)
-    setVideoPreview(normalized ? normalized : null)
+    setVideoPreview(resolveMediaUrl(normalized))
     setVideoLoadError(false)
+  }
+
+  const handleCategorySelection = (categoryId: string) => {
+    const trimmed = categoryId.trim()
+    if (!trimmed) {
+      handleFieldChange('categoryId', null)
+      return
+    }
+    handleFieldChange('categoryId', trimmed)
   }
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,7 +262,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       return
     }
 
-    const previousImage = data.featuredImage || null
+    const previousImage = normalizeMediaPath(data.featuredImage)
     let objectUrl: string | null = null
 
     try {
@@ -214,7 +275,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       handleImageUrlChange(uploadedUrl)
       toast.success('Imagem enviada com sucesso!')
     } catch (error) {
-      setImagePreview(previousImage)
+      setImagePreview(resolveMediaUrl(previousImage))
       setImageLoadError(false)
       const message = error instanceof Error ? error.message : 'Erro ao enviar a imagem'
       toast.error(message)
@@ -241,7 +302,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       return
     }
 
-    const previousVideo = data.introVideo || null
+    const previousVideo = normalizeMediaPath(data.introVideo)
     let objectUrl: string | null = null
 
     try {
@@ -254,7 +315,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       handleVideoUrlChange(uploadedUrl)
       toast.success('Vídeo enviado com sucesso!')
     } catch (error) {
-      setVideoPreview(previousVideo)
+      setVideoPreview(resolveMediaUrl(previousVideo))
       setVideoLoadError(false)
       const message = error instanceof Error ? error.message : 'Erro ao enviar o vídeo'
       toast.error(message)
@@ -276,6 +337,46 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
     handleFieldChange('introVideo', null)
     setVideoPreview(null)
     setVideoLoadError(false)
+  }
+
+  const handleCreateCategory = async (formData: {
+    name: string
+    slug?: string
+    description?: string
+    parentId?: string | null
+  }) => {
+    try {
+      setCreatingCategory(true)
+      const response = await fetch('/api/admin/products/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description,
+          imageUrl: null
+        })
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || 'Erro ao criar categoria')
+      }
+
+      const created = json.category as CategoryOption
+      toast.success('Categoria criada com sucesso')
+      setCategories(prev => {
+        const withoutCreated = prev.filter(category => category.id !== created.id)
+        return [created, ...withoutCreated].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+      })
+      handleFieldChange('categoryId', created.id)
+      setCategoryDialogOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao criar categoria'
+      toast.error(message)
+    } finally {
+      setCreatingCategory(false)
+      loadCategories()
+    }
   }
 
   return (
@@ -320,7 +421,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             </p>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <label className={labelClasses}>
             Descrição Curta *
@@ -349,6 +450,56 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             disabled={loading}
             required
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className={labelClasses}>
+            Categoria
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={data.categoryId ?? ''}
+              onChange={(event) => handleCategorySelection(event.target.value)}
+              className={inputClasses}
+              disabled={loading || loadingCategories}
+            >
+              <option value="">Sem categoria</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setCategoryDialogOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              <Plus className="w-4 h-4" />
+              Nova categoria
+            </button>
+            {data.categoryId && (
+              <button
+                type="button"
+                onClick={() => handleCategorySelection('')}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                <X className="w-4 h-4" />
+                Remover
+              </button>
+            )}
+          </div>
+          <p className={helperTextClasses}>
+            Organize seus cursos em categorias para facilitar a navegação no site.
+          </p>
+          {loadingCategories && (
+            <p className={helperTextClasses}>Carregando categorias...</p>
+          )}
+          {!loadingCategories && categories.length === 0 && (
+            <p className={helperTextClasses}>Nenhuma categoria cadastrada ainda.</p>
+          )}
         </div>
       </div>
 
@@ -844,6 +995,25 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
           </div>
         </div>
       </div>
+
+      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nova Categoria</DialogTitle>
+          </DialogHeader>
+          <CategoryForm
+            onSubmit={async (formData) => {
+              await handleCreateCategory(formData)
+            }}
+            onCancel={() => setCategoryDialogOpen(false)}
+          />
+          {creatingCategory && (
+            <div className="pt-2 text-sm text-gray-500 dark:text-gray-400">
+              Salvando categoria...
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -38,6 +38,12 @@ interface Course {
   tags: string[]
   metaTitle?: string
   metaDescription?: string
+  categoryId?: string | null
+  category?: {
+    id: string
+    name: string
+    slug: string
+  } | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -111,7 +117,8 @@ export function CourseTable({
         maxStudents: course.maxStudents,
         tags: Array.isArray(course.tags) ? course.tags : [],
         metaTitle: course.metaTitle,
-        metaDescription: course.metaDescription
+        metaDescription: course.metaDescription,
+        categoryId: course.categoryId ?? null
       }
 
       const response = await fetch('/api/admin/courses', {
@@ -228,8 +235,8 @@ export function CourseTable({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
             <tr>
@@ -260,6 +267,10 @@ export function CourseTable({
                   Status
                   {renderSortIcon('status')}
                 </button>
+              </th>
+
+              <th className="px-4 py-3 text-left">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Categoria</span>
               </th>
               
               <th className="px-4 py-3 text-left">
@@ -346,6 +357,12 @@ export function CourseTable({
                 
                 <td className="px-4 py-4">
                   {renderStatus(course.status)}
+                </td>
+
+                <td className="px-4 py-4">
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {course.category?.name ?? 'Sem categoria'}
+                  </span>
                 </td>
                 
                 <td className="px-4 py-4">

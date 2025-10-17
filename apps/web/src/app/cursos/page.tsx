@@ -48,6 +48,13 @@ type CourseWithRelations = Prisma.CourseGetPayload<{
         enrollments: true
       }
     }
+    category: {
+      select: {
+        id: true
+        name: true
+        slug: true
+      }
+    }
   }
 }>
 
@@ -68,6 +75,13 @@ export default async function CoursesPage() {
         _count: {
           select: {
             enrollments: true
+          }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
           }
         }
       },
@@ -100,6 +114,9 @@ export default async function CoursesPage() {
       lessons: lessonsCount,
       students: course._count.enrollments,
       tags,
+      categoryId: course.category?.id ?? null,
+      categoryName: course.category?.name ?? null,
+      categorySlug: course.category?.slug ?? null,
     }
   })
 

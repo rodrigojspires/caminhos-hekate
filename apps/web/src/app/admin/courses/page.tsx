@@ -37,6 +37,12 @@ interface Course {
   tags: string[]
   metaTitle?: string
   metaDescription?: string
+  categoryId?: string | null
+  category?: {
+    id: string
+    name: string
+    slug: string
+  } | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -165,13 +171,15 @@ export default function CoursesPage() {
         slug: `${course.slug}-copy-${Date.now()}`,
         status: CourseStatus.DRAFT,
         accessModels: Array.from(new Set(course.accessModels ?? ['ONE_TIME'])),
-        tier: (course.accessModels ?? []).includes('SUBSCRIPTION') ? course.tier : SubscriptionTier.FREE
+        tier: (course.accessModels ?? []).includes('SUBSCRIPTION') ? course.tier : SubscriptionTier.FREE,
+        categoryId: course.categoryId ?? null
       }
 
       delete (duplicatedCourse as any).id
       delete (duplicatedCourse as any).createdAt
       delete (duplicatedCourse as any).updatedAt
       delete (duplicatedCourse as any)._count
+      delete (duplicatedCourse as any).category
 
       const response = await fetch('/api/admin/courses', {
         method: 'POST',

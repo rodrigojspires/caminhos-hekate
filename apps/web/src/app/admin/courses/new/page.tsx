@@ -63,7 +63,8 @@ export default function NewCoursePage() {
     maxStudents: null,
     tags: [],
     metaTitle: null,
-    metaDescription: null
+    metaDescription: null,
+    categoryId: null
   })
 
   const handleFormChange = (data: Partial<CourseFormValues>) => {
@@ -154,6 +155,11 @@ export default function NewCoursePage() {
         maxStudents: formData.maxStudents ?? null,
         metaTitle: formData.metaTitle?.trim() || null,
         metaDescription: formData.metaDescription?.trim() || null,
+        categoryId: (() => {
+          if (!formData.categoryId) return null
+          const normalized = formData.categoryId.trim()
+          return normalized.length > 0 ? normalized : null
+        })(),
         tags: formData.tags.map(tag => tag.trim()).filter(Boolean)
       }
 

@@ -19,6 +19,11 @@ interface Course extends CourseFormValues {
     enrollments: number
     modules?: number
   }
+  category?: {
+    id: string
+    name: string
+    slug: string
+  } | null
 }
 
 interface CourseEditPageProps {
@@ -132,7 +137,8 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
           maxStudents: data.maxStudents ?? null,
           tags: Array.isArray(data.tags) ? data.tags : [],
           metaTitle: data.metaTitle ?? null,
-          metaDescription: data.metaDescription ?? null
+          metaDescription: data.metaDescription ?? null,
+          categoryId: data.categoryId ?? null
         }
 
         setCourse(data)
@@ -242,6 +248,11 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
         maxStudents: formData.maxStudents ?? null,
         metaTitle: formData.metaTitle?.trim() || null,
         metaDescription: formData.metaDescription?.trim() || null,
+        categoryId: (() => {
+          if (!formData.categoryId) return null
+          const normalized = formData.categoryId.trim()
+          return normalized.length > 0 ? normalized : null
+        })(),
         tags: formData.tags.map(tag => tag.trim()).filter(Boolean)
       }
 

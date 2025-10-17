@@ -10,6 +10,7 @@ import useCourseProgress from '@/hooks/useCourseProgress'
 import { Button } from '@/components/ui/button'
 import { Download, FileText, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { resolveMediaUrl } from '@/lib/utils'
 
 type CourseDetailProps = {
   course: any
@@ -34,6 +35,11 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     }
     return null
   }, [course.modules, currentLessonId])
+
+  const currentLessonVideoUrl = useMemo(
+    () => resolveMediaUrl(currentLesson?.videoUrl ?? null),
+    [currentLesson?.videoUrl]
+  )
 
   const modulesForList = useMemo(() => {
     return (course.modules || []).map((m: any) => {
@@ -233,10 +239,10 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
 
             {currentLesson ? (
               <div className="space-y-3">
-                {currentLesson.videoUrl ? (
+                {currentLessonVideoUrl ? (
                   hasLessonAccess ? (
                     <VideoPlayer
-                      src={currentLesson.videoUrl || ''}
+                      src={currentLessonVideoUrl || ''}
                       title={currentLesson.title}
                       duration={currentLesson.videoDuration || 0}
                       currentTime={resumeTime}

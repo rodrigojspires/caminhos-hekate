@@ -31,6 +31,7 @@ const updateCourseSchema = z.object({
   tier: z.nativeEnum(SubscriptionTier).optional(),
   status: z.nativeEnum(CourseStatus).optional(),
   featured: z.boolean().optional(),
+  categoryId: z.string().trim().min(1).optional().nullable(),
   featuredImage: urlOrPathSchema.nullable().optional(),
   introVideo: urlOrPathSchema.nullable().optional(),
   duration: z.number().min(0).optional(),
@@ -79,7 +80,9 @@ const serializeCourse = <T extends { price?: any; comparePrice?: any; tags?: any
     ...course,
     price: course.price != null ? Number(course.price) : null,
     comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
-    tags: normalizeTags(course.tags ?? [])
+    tags: normalizeTags(course.tags ?? []),
+    category: (course as any).category ?? null,
+    categoryId: (course as any).categoryId ?? null
   }
 }
 
@@ -258,7 +261,14 @@ export async function GET(
             enrollments: true,
             modules: true
           }
-        }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
       }
     })
 
@@ -377,12 +387,20 @@ export async function PUT(
     const statusToPublished =
       validatedData.status === CourseStatus.PUBLISHED && existingCourse.status !== CourseStatus.PUBLISHED
 
-    const { accessModels, tier, ...courseData } = validatedData
+    const { accessModels, tier, categoryId, ...courseData } = validatedData
 
     const updateData: Prisma.CourseUpdateInput = {
       ...courseData,
       accessModels: { set: normalizedAccessModels },
       tier: normalizedTier
+    }
+
+    if (categoryId === null) {
+      updateData.category = { disconnect: true }
+    } else if (typeof categoryId === 'string' && categoryId.trim().length > 0) {
+      updateData.category = { connect: { id: categoryId } }
+    } else if (categoryId !== undefined) {
+      updateData.category = { disconnect: true }
     }
 
     const updatedCourse = await prisma.course.update({
@@ -394,7 +412,14 @@ export async function PUT(
             enrollments: true,
             modules: true
           }
-        }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
       }
     })
 

@@ -31,6 +31,7 @@ const createCourseSchema = z.object({
   tier: z.nativeEnum(SubscriptionTier).default(SubscriptionTier.FREE),
   status: z.nativeEnum(CourseStatus).default(CourseStatus.DRAFT),
   featured: z.boolean().default(false),
+  categoryId: z.string().trim().min(1).optional().nullable(),
   featuredImage: urlOrPathSchema.nullable().optional(),
   introVideo: urlOrPathSchema.nullable().optional(),
   duration: z.number().min(0).optional(),
@@ -93,7 +94,9 @@ const serializeCourse = <T extends { price?: any; comparePrice?: any; tags?: any
     ...course,
     price: course.price != null ? Number(course.price) : null,
     comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
-    tags: normalizeTags(course.tags ?? [])
+    tags: normalizeTags(course.tags ?? []),
+    category: (course as any).category ?? null,
+    categoryId: (course as any).categoryId ?? null
   }
 }
 
@@ -143,6 +146,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as CourseStatus | null
     const level = searchParams.get('level') as CourseLevel | null
     const featured = searchParams.get('featured')
+    const categoryId = searchParams.get('categoryId')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -171,6 +175,10 @@ export async function GET(request: NextRequest) {
       where.featured = featured === 'true'
     }
 
+    if (categoryId) {
+      where.categoryId = categoryId
+    }
+
     // Buscar cursos
     const [courses, total] = await Promise.all([
       prisma.course.findMany({
@@ -184,7 +192,14 @@ export async function GET(request: NextRequest) {
               enrollments: true,
               modules: true
             }
-          }
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          },
         }
       }),
       prisma.course.count({ where })
@@ -242,7 +257,7 @@ export async function POST(request: NextRequest) {
       finalSlug = providedSlug
     }
 
-    const { accessModels, tier, slug: _slug, ...courseData } = validatedData
+    const { accessModels, tier, slug: _slug, categoryId, ...courseData } = validatedData
     const normalizedAccessModels = Array.from(new Set(accessModels)) as Prisma.CourseAccessModel[]
     const normalizedTier = normalizedAccessModels.includes('SUBSCRIPTION')
       ? tier
@@ -252,7 +267,8 @@ export async function POST(request: NextRequest) {
       ...courseData,
       slug: finalSlug,
       tier: normalizedTier,
-      accessModels: normalizedAccessModels
+      accessModels: normalizedAccessModels,
+      ...(categoryId ? { category: { connect: { id: categoryId } } } : {})
     }
 
     const course = await prisma.course.create({
@@ -263,7 +279,14 @@ export async function POST(request: NextRequest) {
             enrollments: true,
             modules: true
           }
-        }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
       }
     })
 
