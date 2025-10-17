@@ -542,8 +542,8 @@ model Course {
   introVideo       String?
   price            Decimal?         @db.Decimal(10, 2)
   comparePrice     Decimal?         @db.Decimal(10, 2)
-  tier             SubscriptionTier @default(FREE)
-  accessModel      CourseAccessModel @default(ONE_TIME)
+  tier             SubscriptionTier  @default(FREE)
+  accessModels     CourseAccessModel[] @default([])
   status           CourseStatus     @default(DRAFT)
   duration         Int?
   level            CourseLevel?     @default(BEGINNER)

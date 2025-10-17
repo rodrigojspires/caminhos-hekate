@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
 
 // Schema de validação para atualização de curso
 const urlOrPathSchema = z
@@ -27,7 +27,8 @@ const updateCourseSchema = z.object({
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0').optional(),
   comparePrice: z.number().min(0, 'Preço de comparação deve ser maior ou igual a 0').nullable().optional(),
-  accessModel: z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION']).optional(),
+  accessModels: z.array(z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION'])).min(1, 'Selecione pelo menos um modelo de acesso').optional(),
+  tier: z.nativeEnum(SubscriptionTier).optional(),
   status: z.nativeEnum(CourseStatus).optional(),
   featured: z.boolean().optional(),
   featuredImage: urlOrPathSchema.nullable().optional(),
@@ -241,7 +242,45 @@ export async function PUT(
       validatedData.slug = await generateUniqueSlug(newTitle, params.id)
     }
 
-    const updateData: Prisma.CourseUpdateInput = { ...(validatedData as any) }
+    const finalAccessModelsInput =
+      validatedData.accessModels ?? (existingCourse.accessModels as Prisma.CourseAccessModel[]) ?? []
+    const normalizedAccessModels = Array.from(new Set(finalAccessModelsInput)) as Prisma.CourseAccessModel[]
+
+    if (normalizedAccessModels.length === 0) {
+      return NextResponse.json(
+        { error: 'Selecione ao menos um modelo de acesso' },
+        { status: 400 }
+      )
+    }
+
+    const requestedTier = validatedData.tier ?? existingCourse.tier ?? SubscriptionTier.FREE
+    let normalizedTier: SubscriptionTier
+
+    if (normalizedAccessModels.includes('SUBSCRIPTION')) {
+      if (requestedTier === SubscriptionTier.FREE) {
+        return NextResponse.json(
+          { error: 'Selecione qual plano de assinatura inclui este curso' },
+          { status: 400 }
+        )
+      }
+      normalizedTier = requestedTier
+    } else {
+      if (validatedData.tier && validatedData.tier !== SubscriptionTier.FREE) {
+        return NextResponse.json(
+          { error: 'Cursos fora da assinatura devem permanecer no plano FREE' },
+          { status: 400 }
+        )
+      }
+      normalizedTier = SubscriptionTier.FREE
+    }
+
+    const { accessModels, tier, ...courseData } = validatedData
+
+    const updateData: Prisma.CourseUpdateInput = {
+      ...courseData,
+      accessModels: { set: normalizedAccessModels },
+      tier: normalizedTier
+    }
 
     const updatedCourse = await prisma.course.update({
       where: { id: params.id },

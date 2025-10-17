@@ -29,6 +29,11 @@ const ACCEPTED_ASSET_TYPES = [
 ]
 const MAX_ASSET_SIZE = 50 * 1024 * 1024 // 50MB
 
+const isSupportedAssetType = (file: File) =>
+  ACCEPTED_ASSET_TYPES.includes(file.type) ||
+  ACCEPTED_VIDEO_TYPES.includes(file.type) ||
+  file.type.startsWith('image/')
+
 interface LessonAsset {
   id: string
   title: string
@@ -36,6 +41,7 @@ interface LessonAsset {
   url: string
   size?: number | null
   createdAt?: string | null
+  isPending?: boolean
 }
 
 interface Lesson {
@@ -88,6 +94,7 @@ type LessonFormState = {
   videoStorage: Lesson['videoStorage']
   videoDuration: string
   isFree: boolean
+  assets: LessonAsset[]
 }
 
 export function CourseContentManager({ courseId }: CourseContentManagerProps) {
@@ -105,12 +112,16 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     videoStorage: null,
     videoDuration: '',
     isFree: false,
+    assets: [],
   })
   const videoFileInputRef = useRef<HTMLInputElement | null>(null)
   const assetFileInputsRef = useRef<Record<string, HTMLInputElement | null>>({})
   const [videoUploading, setVideoUploading] = useState(false)
   const [assetUploadingLessonId, setAssetUploadingLessonId] = useState<string | null>(null)
   const [assetDeletingId, setAssetDeletingId] = useState<string | null>(null)
+  const lessonAssetFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [lessonAssetUploading, setLessonAssetUploading] = useState(false)
+  const [lessonAssetDeletingId, setLessonAssetDeletingId] = useState<string | null>(null)
 
   const formatFileSize = (size?: number | null) => {
     if (!size || size <= 0) return ''
@@ -119,31 +130,47 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('type', type)
+const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('type', type)
 
-    const response = await fetch('/api/admin/upload', {
-      method: 'POST',
-      body: formData
-    })
+  const response = await fetch('/api/admin/upload', {
+    method: 'POST',
+    body: formData
+  })
 
-    if (!response.ok) {
+  if (!response.ok) {
+    const fallbackMessage = 'Erro ao enviar arquivo'
+    const text = await response.text().catch(() => '')
+
+    if (text) {
       try {
-        const error = await response.json()
-        throw new Error(error?.message || 'Erro ao enviar arquivo')
-      } catch (err) {
-        if (err instanceof Error && err.message !== 'Erro ao enviar arquivo') {
-          throw err
-        }
-        throw new Error('Erro ao enviar arquivo')
+        const json = JSON.parse(text)
+        const message =
+          (typeof json === 'object' && json !== null && 'message' in json && typeof json.message === 'string'
+            ? json.message
+            : typeof json === 'object' && json !== null && 'error' in json && typeof json.error === 'string'
+              ? json.error
+              : typeof json === 'string'
+                ? json
+                : null) || fallbackMessage
+        throw new Error(message)
+      } catch {
+        throw new Error(fallbackMessage)
       }
     }
 
+    throw new Error(fallbackMessage)
+  }
+
+  try {
     const data = await response.json()
     return data as { url: string; filename: string; size?: number; type?: string }
+  } catch {
+    throw new Error('Erro ao processar resposta do upload')
   }
+}
 
   const fetchContent = async () => {
     try {
@@ -265,6 +292,7 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
       videoStorage: lesson?.videoStorage ?? null,
       videoDuration: lesson?.videoDuration != null ? String(lesson.videoDuration) : '',
       isFree: lesson?.isFree ?? false,
+      assets: lesson?.assets ?? [],
     })
   }
 
@@ -278,7 +306,10 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
       videoStorage: null,
       videoDuration: '',
       isFree: false,
+      assets: [],
     })
+    setLessonAssetUploading(false)
+    setLessonAssetDeletingId(null)
   }
 
   const handleSaveLesson = async () => {
@@ -306,6 +337,21 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     } else if (hasVideo) {
       payload.videoUrl = trimmedVideoUrl
       payload.videoStorage = lessonForm.videoStorage ?? null
+    }
+
+    if (!lessonForm.id) {
+      const pendingAssets = lessonForm.assets.filter(
+        (asset) => asset.isPending || asset.id.startsWith('temp-')
+      )
+
+      if (pendingAssets.length > 0) {
+        payload.assets = pendingAssets.map((asset) => ({
+          title: asset.title,
+          url: asset.url,
+          type: asset.type,
+          size: asset.size != null ? Math.round(asset.size) : undefined
+        }))
+      }
     }
 
     try {
@@ -409,12 +455,7 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     event.target.value = ''
     if (!file) return
 
-    const isAllowed =
-      ACCEPTED_ASSET_TYPES.includes(file.type) ||
-      ACCEPTED_VIDEO_TYPES.includes(file.type) ||
-      file.type.startsWith('image/')
-
-    if (!isAllowed) {
+    if (!isSupportedAssetType(file)) {
       toast.error('Formato de arquivo não suportado para materiais da aula.')
       return
     }
@@ -427,6 +468,9 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     try {
       setAssetUploadingLessonId(lesson.id)
       const uploaded = await uploadMedia(file, 'lesson-assets')
+      const sizeValue = uploaded.size ?? file.size
+      const normalizedSize =
+        typeof sizeValue === 'number' && Number.isFinite(sizeValue) ? Math.round(sizeValue) : undefined
       const response = await fetch(`/api/admin/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}/assets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -434,7 +478,7 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
           title: file.name,
           url: uploaded.url,
           type: uploaded.type ?? file.type,
-          size: uploaded.size ?? file.size
+          size: normalizedSize
         })
       })
 
@@ -450,6 +494,128 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
       toast.error(message)
     } finally {
       setAssetUploadingLessonId(null)
+    }
+  }
+
+  const handleLessonDialogAssetUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    if (!isSupportedAssetType(file)) {
+      toast.error('Formato de arquivo não suportado para materiais da aula.')
+      return
+    }
+
+    if (file.size > MAX_ASSET_SIZE) {
+      toast.error('O material deve ter no máximo 50MB.')
+      return
+    }
+
+    try {
+      setLessonAssetUploading(true)
+      const uploaded = await uploadMedia(file, 'lesson-assets')
+      const sizeValue = uploaded.size ?? file.size
+      const normalizedSize =
+        typeof sizeValue === 'number' && Number.isFinite(sizeValue) ? Math.round(sizeValue) : undefined
+
+      if (lessonForm.id && lessonDialog.moduleId) {
+        const response = await fetch(`/api/admin/courses/${courseId}/modules/${lessonDialog.moduleId}/lessons/${lessonForm.id}/assets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: file.name,
+            url: uploaded.url,
+            type: uploaded.type ?? file.type,
+            size: normalizedSize
+          })
+        })
+
+        const json = await response.json()
+        if (!response.ok) {
+          throw new Error(json.error || json.message || 'Erro ao adicionar material')
+        }
+
+        if (json.asset) {
+          const savedAsset: LessonAsset = {
+            ...json.asset,
+            isPending: false
+          }
+          setLessonForm((prev) => ({
+            ...prev,
+            assets: [...prev.assets.filter((asset) => asset.id !== savedAsset.id), savedAsset]
+          }))
+        }
+
+        toast.success('Material adicionado com sucesso')
+        fetchContent()
+      } else {
+        const tempAsset: LessonAsset = {
+          id: `temp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          title: file.name,
+          type: uploaded.type ?? file.type ?? 'file',
+          url: uploaded.url,
+          size: normalizedSize ?? null,
+          createdAt: new Date().toISOString(),
+          isPending: true
+        }
+
+        setLessonForm((prev) => ({
+          ...prev,
+          assets: [...prev.assets, tempAsset]
+        }))
+
+        toast.success('Material pronto para adicionar ao salvar a aula')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao adicionar material'
+      toast.error(message)
+    } finally {
+      setLessonAssetUploading(false)
+    }
+  }
+
+  const handleLessonDialogAssetRemove = async (asset: LessonAsset) => {
+    const isPendingAsset = asset.isPending || asset.id.startsWith('temp-')
+
+    if (isPendingAsset || !lessonForm.id) {
+      setLessonForm((prev) => ({
+        ...prev,
+        assets: prev.assets.filter((item) => item.id !== asset.id)
+      }))
+      toast.success('Material removido')
+      return
+    }
+
+    if (!lessonDialog.moduleId) return
+
+    if (!confirm(`Deseja remover o material "${asset.title}"?`)) {
+      return
+    }
+
+    try {
+      setLessonAssetDeletingId(asset.id)
+      const response = await fetch(`/api/admin/courses/${courseId}/modules/${lessonDialog.moduleId}/lessons/${lessonForm.id}/assets/${asset.id}`, {
+        method: 'DELETE'
+      })
+
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || 'Erro ao remover material')
+      }
+
+      setLessonForm((prev) => ({
+        ...prev,
+        assets: prev.assets.filter((item) => item.id !== asset.id)
+      }))
+
+      toast.success('Material removido')
+      fetchContent()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao remover material'
+      toast.error(message)
+    } finally {
+      setLessonAssetDeletingId(null)
     }
   }
 
@@ -886,6 +1052,107 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
               <label htmlFor="lesson-free" className="text-sm text-muted-foreground">
                 Esta aula é gratuita (acesso aberto sem compra)
               </label>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Paperclip className="w-4 h-4" />
+                  Materiais da aula
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => lessonAssetFileInputRef.current?.click()}
+                    disabled={lessonAssetUploading}
+                  >
+                    {lessonAssetUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Adicionar material
+                      </>
+                    )}
+                  </Button>
+                  <input
+                    ref={lessonAssetFileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleLessonDialogAssetUpload}
+                    disabled={lessonAssetUploading}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Envie PDFs, apresentações, imagens ou materiais extras (até 50MB por arquivo).
+                Esses materiais ficam disponíveis para alunos com acesso à aula.
+              </p>
+              {lessonForm.assets.length ? (
+                <div className="space-y-2">
+                  {lessonForm.assets.map((asset) => {
+                    const assetSize = formatFileSize(asset.size)
+                    const isPending = asset.isPending || asset.id.startsWith('temp-')
+                    return (
+                      <div
+                        key={asset.id}
+                        className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {asset.title}
+                            </p>
+                            {isPending && (
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-300">
+                                Será adicionado ao salvar
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {assetSize ? `${assetSize} • ` : ''}
+                            {asset.type || 'Arquivo'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={asset.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-indigo-600 hover:underline dark:text-indigo-300"
+                          >
+                            Abrir
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleLessonDialogAssetRemove(asset)}
+                            disabled={lessonAssetDeletingId === asset.id || lessonAssetUploading}
+                          >
+                            {lessonAssetDeletingId === asset.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Remover
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum material anexado ainda. Você pode enviar apostilas, slides ou outros recursos para os alunos.
+                </p>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={closeLessonDialog}>Cancelar</Button>

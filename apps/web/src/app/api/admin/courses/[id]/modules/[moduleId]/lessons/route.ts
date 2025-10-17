@@ -3,6 +3,13 @@ import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 
+const lessonAssetSchema = z.object({
+  title: z.string().optional(),
+  url: z.string().min(1, 'URL do arquivo é obrigatória'),
+  type: z.string().optional(),
+  size: z.number().int().nonnegative().nullable().optional()
+})
+
 const createLessonSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
   description: z.string().optional(),
@@ -19,6 +26,7 @@ const createLessonSchema = z.object({
     .optional(),
   videoDuration: z.number().int().nullable().optional(),
   isFree: z.boolean().optional(),
+  assets: z.array(lessonAssetSchema).optional()
 })
 
 interface RouteParams {
@@ -63,6 +71,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         order: (lastLesson?.order ?? 0) + 1,
       }
     })
+
+    if (data.assets && data.assets.length > 0) {
+      const assetsData = data.assets.map((asset, index) => ({
+        lessonId: lesson.id,
+        title: asset.title?.trim() || asset.url.split('/').pop() || 'Material da aula',
+        type: asset.type ?? 'file',
+        url: asset.url,
+        size: asset.size != null ? Math.round(asset.size) : null,
+        order: index + 1
+      }))
+
+      if (assetsData.length > 0) {
+        await prisma.asset.createMany({ data: assetsData })
+      }
+    }
 
     return NextResponse.json({ success: true, lesson }, { status: 201 })
   } catch (error) {

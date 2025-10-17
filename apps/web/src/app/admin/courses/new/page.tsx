@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, ExternalLink } from 'lucide-react'
 import { CourseForm, type CourseFormValues } from '@/components/admin/CourseForm'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
 
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i
 const VIDEO_EXTENSIONS = /\.(mp4|webm|ogg|mov|qt)$/i
@@ -52,7 +52,8 @@ export default function NewCoursePage() {
     shortDescription: '',
     price: 0,
     comparePrice: null,
-    accessModel: 'ONE_TIME',
+    accessModels: ['ONE_TIME'],
+    tier: SubscriptionTier.FREE,
     status: CourseStatus.DRAFT,
     level: CourseLevel.BEGINNER,
     featured: false,
@@ -86,6 +87,20 @@ export default function NewCoursePage() {
 
     if (!formData.slug.trim()) {
       errors.push('Slug é obrigatório')
+    }
+
+    if (formData.accessModels.length === 0) {
+      errors.push('Selecione ao menos um modelo de acesso')
+    }
+
+    const hasSubscription = formData.accessModels.includes('SUBSCRIPTION')
+
+    if (hasSubscription && formData.tier === SubscriptionTier.FREE) {
+      errors.push('Escolha qual plano de assinatura inclui este curso')
+    }
+
+    if (!hasSubscription && formData.tier !== SubscriptionTier.FREE) {
+      errors.push('Cursos fora da assinatura devem permanecer no plano FREE')
     }
 
     if (formData.price < 0) {
@@ -125,11 +140,14 @@ export default function NewCoursePage() {
     try {
       setLoading(true)
       
+      const hasSubscription = formData.accessModels.includes('SUBSCRIPTION')
+
       const courseData = {
         ...formData,
         status: asDraft ? CourseStatus.DRAFT : formData.status,
         comparePrice: formData.comparePrice ?? null,
-        accessModel: formData.accessModel,
+        accessModels: formData.accessModels,
+        tier: hasSubscription ? formData.tier : SubscriptionTier.FREE,
         featuredImage: formData.featuredImage?.trim() || null,
         introVideo: formData.introVideo?.trim() || null,
         duration: formData.duration ?? null,
@@ -190,6 +208,17 @@ export default function NewCoursePage() {
         </div>
         
         <div className="flex items-center gap-2">
+          {formData.slug.trim() && (
+            <a
+              href={`/cursos/${formData.slug.trim()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 text-indigo-600 dark:text-indigo-200 bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Ver curso
+            </a>
+          )}
           <button
             onClick={() => handleSave(true)}
             disabled={loading}

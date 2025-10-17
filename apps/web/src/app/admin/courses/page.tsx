@@ -15,7 +15,7 @@ import CourseStats from '@/components/admin/CourseStats'
 import { SearchInput } from '@/components/admin/SearchInput'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
 import { Pagination } from '@/components/admin/Pagination'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 
 interface Course {
   id: string
@@ -28,6 +28,8 @@ interface Course {
   status: CourseStatus
   level: CourseLevel
   featured: boolean
+  accessModels: CourseAccessModel[]
+  tier: SubscriptionTier
   featuredImage?: string
   introVideo?: string
   duration?: number
@@ -161,7 +163,9 @@ export default function CoursesPage() {
         ...course,
         title: `${course.title} (Cópia)`,
         slug: `${course.slug}-copy-${Date.now()}`,
-        status: CourseStatus.DRAFT
+        status: CourseStatus.DRAFT,
+        accessModels: Array.from(new Set(course.accessModels ?? ['ONE_TIME'])),
+        tier: (course.accessModels ?? []).includes('SUBSCRIPTION') ? course.tier : SubscriptionTier.FREE
       }
 
       delete (duplicatedCourse as any).id

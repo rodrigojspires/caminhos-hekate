@@ -15,7 +15,7 @@ import {
   ArrowDown,
   MoreHorizontal
 } from 'lucide-react'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { LoadingSpinner } from './LoadingSpinner'
 
 interface Course {
@@ -29,6 +29,8 @@ interface Course {
   status: CourseStatus
   level: CourseLevel
   featured: boolean
+  accessModels: CourseAccessModel[]
+  tier: SubscriptionTier
   featuredImage?: string
   introVideo?: string
   duration?: number
@@ -98,6 +100,8 @@ export function CourseTable({
         shortDescription: course.shortDescription,
         price: course.price != null ? Number(course.price) : 0,
         comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
+        accessModels: Array.from(new Set(course.accessModels ?? ['ONE_TIME'])),
+        tier: (course.accessModels ?? []).includes('SUBSCRIPTION') ? course.tier : SubscriptionTier.FREE,
         status: CourseStatus.DRAFT,
         level: course.level,
         featured: false,

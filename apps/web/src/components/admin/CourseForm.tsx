@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { Upload, X, Plus, Loader2, Video as VideoIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -13,7 +13,8 @@ export interface CourseFormValues {
   shortDescription: string
   price: number
   comparePrice?: number | null
-  accessModel: 'FREE' | 'ONE_TIME' | 'SUBSCRIPTION'
+  accessModels: CourseAccessModel[]
+  tier: SubscriptionTier
   status: CourseStatus
   level: CourseLevel
   featured: boolean
@@ -42,6 +43,30 @@ const acceptedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'
 const acceptedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_VIDEO_SIZE = 200 * 1024 * 1024 // 200MB
+
+const accessModelOptions: Array<{ value: CourseAccessModel; label: string; description: string }> = [
+  {
+    value: CourseAccessModel.FREE,
+    label: 'Curso gratuito',
+    description: 'Disponível para todos sem necessidade de compra'
+  },
+  {
+    value: CourseAccessModel.ONE_TIME,
+    label: 'Pagamento único',
+    description: 'Venda avulsa com acesso vitalício ao conteúdo'
+  },
+  {
+    value: CourseAccessModel.SUBSCRIPTION,
+    label: 'Incluído na assinatura',
+    description: 'Acesso liberado para assinantes do plano selecionado'
+  }
+]
+
+const subscriptionTierOptions: Array<{ value: SubscriptionTier; label: string }> = [
+  { value: SubscriptionTier.INICIADO, label: 'Iniciado' },
+  { value: SubscriptionTier.ADEPTO, label: 'Adepto' },
+  { value: SubscriptionTier.SACERDOCIO, label: 'Sacerdócio' }
+]
 
 const isValidImageUrl = (url: string) => {
   if (!url) return false
@@ -117,6 +142,31 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
 
   const handleFieldChange = <K extends keyof CourseFormValues>(field: K, value: CourseFormValues[K]) => {
     onChange({ [field]: value } as Pick<CourseFormValues, K>)
+  }
+
+  const toggleAccessModel = (value: CourseAccessModel) => {
+    if (data.accessModels.includes(value)) {
+      if (data.accessModels.length === 1) {
+        toast.warning('Selecione ao menos um modelo de acesso.')
+        return
+      }
+
+      const nextModels = data.accessModels.filter(model => model !== value)
+      handleFieldChange('accessModels', nextModels)
+
+      if (value === CourseAccessModel.SUBSCRIPTION) {
+        handleFieldChange('tier', SubscriptionTier.FREE)
+      }
+
+      return
+    }
+
+    const nextModels = [...data.accessModels, value]
+    handleFieldChange('accessModels', nextModels)
+
+    if (value === CourseAccessModel.SUBSCRIPTION && data.tier === SubscriptionTier.FREE) {
+      handleFieldChange('tier', SubscriptionTier.INICIADO)
+    }
   }
 
   const handleAddTag = () => {
@@ -343,22 +393,67 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
             </select>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-3 lg:col-span-3">
             <label className={labelClasses}>
-              Modelo de Acesso *
+              Modelos de Acesso *
             </label>
-            <select
-              value={data.accessModel}
-              onChange={(e) => handleFieldChange('accessModel', e.target.value as CourseFormValues['accessModel'])}
-              className={inputClasses}
-              disabled={loading}
-            >
-              <option value="FREE">Curso gratuito</option>
-              <option value="ONE_TIME">Pagamento único</option>
-              <option value="SUBSCRIPTION">Incluído na assinatura</option>
-            </select>
+            <div className="grid gap-2">
+              {accessModelOptions.map(option => {
+                const checked = data.accessModels.includes(option.value)
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${
+                      checked
+                        ? 'border-blue-500 bg-blue-50 dark:border-blue-400/80 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAccessModel(option.value)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900"
+                      disabled={loading}
+                    />
+                    <div className="space-y-1">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {option.label}
+                      </span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {option.description}
+                      </p>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {data.accessModels.includes(CourseAccessModel.SUBSCRIPTION) && (
+              <div className="space-y-2">
+                <label className={labelClasses}>
+                  Plano de Assinatura *
+                </label>
+                <select
+                  value={data.tier}
+                  onChange={(e) => handleFieldChange('tier', e.target.value as SubscriptionTier)}
+                  className={inputClasses}
+                  disabled={loading}
+                >
+                  {subscriptionTierOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className={helperTextClasses}>
+                  Escolha qual nível de assinatura concede acesso a este curso
+                </p>
+              </div>
+            )}
+
             <p className={helperTextClasses}>
-              Define como o curso fica disponível para os alunos
+              Selecione todas as formas de acesso disponíveis para este curso
             </p>
           </div>
 

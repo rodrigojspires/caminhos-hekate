@@ -389,6 +389,7 @@ async function main() {
         shortDescription: 'Introdução aos mistérios de Hekate',
         featuredImage: 'curso-fundamentos-cover.jpg',
         tier: 'INICIADO',
+        accessModels: ['ONE_TIME', 'SUBSCRIPTION'],
         status: 'PUBLISHED',
         duration: 480, // 8 horas
         level: 'BEGINNER',
@@ -485,6 +486,7 @@ async function main() {
         shortDescription: 'Mistérios avançados e iniciação',
         featuredImage: 'curso-avancado-cover.jpg',
         tier: 'SACERDOCIO',
+        accessModels: ['SUBSCRIPTION'],
         status: 'PUBLISHED',
         duration: 720, // 12 horas
         level: 'ADVANCED',

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
 
 // Schema de validação para criação de curso
 const urlOrPathSchema = z
@@ -27,7 +27,8 @@ const createCourseSchema = z.object({
   shortDescription: z.string().optional(),
   price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
   comparePrice: z.number().min(0, 'Preço de comparação deve ser maior ou igual a 0').nullable().optional(),
-  accessModel: z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION']).default('ONE_TIME'),
+  accessModels: z.array(z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION'])).min(1, 'Selecione pelo menos um modelo de acesso').default(['ONE_TIME']),
+  tier: z.nativeEnum(SubscriptionTier).default(SubscriptionTier.FREE),
   status: z.nativeEnum(CourseStatus).default(CourseStatus.DRAFT),
   featured: z.boolean().default(false),
   featuredImage: urlOrPathSchema.nullable().optional(),
@@ -44,6 +45,24 @@ const createCourseSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['comparePrice'],
       message: 'Preço de comparação deve ser maior que o preço atual'
+    })
+  }
+
+  const hasSubscription = data.accessModels.includes('SUBSCRIPTION')
+
+  if (hasSubscription && data.tier === SubscriptionTier.FREE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tier'],
+      message: 'Selecione qual plano de assinatura inclui este curso'
+    })
+  }
+
+  if (!hasSubscription && data.tier !== SubscriptionTier.FREE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tier'],
+      message: 'Cursos fora da assinatura devem permanecer no plano FREE'
     })
   }
 })
@@ -223,7 +242,18 @@ export async function POST(request: NextRequest) {
       finalSlug = providedSlug
     }
 
-    const createData: Prisma.CourseCreateInput = { ...(validatedData as any), slug: finalSlug }
+    const { accessModels, tier, slug: _slug, ...courseData } = validatedData
+    const normalizedAccessModels = Array.from(new Set(accessModels)) as Prisma.CourseAccessModel[]
+    const normalizedTier = normalizedAccessModels.includes('SUBSCRIPTION')
+      ? tier
+      : SubscriptionTier.FREE
+
+    const createData: Prisma.CourseCreateInput = {
+      ...courseData,
+      slug: finalSlug,
+      tier: normalizedTier,
+      accessModels: normalizedAccessModels
+    }
 
     const course = await prisma.course.create({
       data: createData,

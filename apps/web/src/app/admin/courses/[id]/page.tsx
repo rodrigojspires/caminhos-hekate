@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Save, Trash2, Users, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Users, BarChart3, ExternalLink } from 'lucide-react'
 import { CourseForm, type CourseFormValues } from '@/components/admin/CourseForm'
 import { CourseContentManager } from '@/components/admin/CourseContentManager'
 import { LoadingSpinner } from '@/components/admin/LoadingSpinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { CourseStatus, CourseLevel } from '@hekate/database'
+import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
 
 interface Course extends CourseFormValues {
   id: string
@@ -81,6 +81,39 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
           return
         }
 
+        const rawAccessModels = Array.isArray(data.accessModels)
+          ? data.accessModels
+          : data.accessModel
+            ? [data.accessModel]
+            : []
+
+        const validAccessModels = Array.from(
+          new Set(
+            rawAccessModels.filter((value): value is CourseFormValues['accessModels'][number] =>
+              value === 'FREE' || value === 'ONE_TIME' || value === 'SUBSCRIPTION'
+            )
+          )
+        )
+
+        const normalizedAccessModels = (validAccessModels.length > 0
+          ? validAccessModels
+          : ['ONE_TIME']) as CourseFormValues['accessModels']
+
+        const retrievedTier = typeof data.tier === 'string' ? data.tier : SubscriptionTier.FREE
+        const validTier: SubscriptionTier = ([
+          SubscriptionTier.FREE,
+          SubscriptionTier.INICIADO,
+          SubscriptionTier.ADEPTO,
+          SubscriptionTier.SACERDOCIO
+        ] as const).includes(retrievedTier as SubscriptionTier)
+          ? (retrievedTier as SubscriptionTier)
+          : SubscriptionTier.FREE
+
+        const hasSubscription = normalizedAccessModels.includes('SUBSCRIPTION')
+        const normalizedTier = hasSubscription
+          ? (validTier === SubscriptionTier.FREE ? SubscriptionTier.INICIADO : validTier)
+          : SubscriptionTier.FREE
+
         const mappedFormData: CourseFormValues = {
           title: data.title ?? '',
           slug: data.slug ?? '',
@@ -88,7 +121,8 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
           shortDescription: data.shortDescription ?? '',
           price: data.price ?? 0,
           comparePrice: data.comparePrice ?? null,
-          accessModel: (data.accessModel as CourseFormValues['accessModel']) ?? 'ONE_TIME',
+          accessModels: normalizedAccessModels,
+          tier: normalizedTier,
           status: data.status ?? CourseStatus.DRAFT,
           level: data.level ?? CourseLevel.BEGINNER,
           featured: data.featured ?? false,
@@ -142,6 +176,20 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       errors.push('Slug é obrigatório')
     }
 
+    if (!formData.accessModels || formData.accessModels.length === 0) {
+      errors.push('Selecione ao menos um modelo de acesso')
+    }
+
+    const hasSubscription = formData.accessModels?.includes('SUBSCRIPTION') ?? false
+
+    if (hasSubscription && formData.tier === SubscriptionTier.FREE) {
+      errors.push('Escolha qual plano de assinatura inclui este curso')
+    }
+
+    if (!hasSubscription && formData.tier !== SubscriptionTier.FREE) {
+      errors.push('Cursos fora da assinatura devem permanecer no plano FREE')
+    }
+
     if (formData.price < 0) {
       errors.push('Preço deve ser maior ou igual a zero')
     }
@@ -181,10 +229,13 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
     try {
       setSaving(true)
 
+      const hasSubscription = formData.accessModels.includes('SUBSCRIPTION')
+
       const payload = {
         ...formData,
         comparePrice: formData.comparePrice ?? null,
-        accessModel: formData.accessModel,
+        accessModels: Array.from(new Set(formData.accessModels)),
+        tier: hasSubscription ? formData.tier : SubscriptionTier.FREE,
         featuredImage: formData.featuredImage?.trim() || null,
         introVideo: formData.introVideo?.trim() || null,
         duration: formData.duration ?? null,
@@ -289,6 +340,17 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          {formData.slug.trim() && (
+            <a
+              href={`/cursos/${formData.slug.trim()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 text-indigo-600 dark:text-indigo-200 bg-white dark:bg-gray-900 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Ver curso
+            </a>
+          )}
           <button
             onClick={() => router.push(`/admin/courses/${params.id}/enrollments`)}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
