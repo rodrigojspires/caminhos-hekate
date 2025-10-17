@@ -25,7 +25,22 @@ async function checkAdminPermission(): Promise<AdminPermissionResult> {
   return { user: session.user }
 }
 
-const BASE_UPLOAD_DIR = 'public/uploads'
+const PUBLIC_ROOT = (() => {
+  const candidates = [
+    join(process.cwd(), 'apps', 'web', 'public'),
+    join(process.cwd(), 'public')
+  ]
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return join(process.cwd(), 'public')
+})()
+
+const BASE_UPLOAD_DIR = join(PUBLIC_ROOT, 'uploads')
 const MAX_FILENAME_LENGTH = 100
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
@@ -155,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar diretório se não existir
-    const uploadDir = join(process.cwd(), BASE_UPLOAD_DIR, uploadCategory)
+    const uploadDir = join(BASE_UPLOAD_DIR, uploadCategory)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -219,7 +234,8 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const fullPath = join(process.cwd(), 'public', filepath)
+    const sanitizedPath = filepath.replace(/^\/+/, '')
+    const fullPath = join(PUBLIC_ROOT, sanitizedPath)
 
     // Verificar se o arquivo existe
     if (!existsSync(fullPath)) {

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { join } from 'path'
 import { readFile, stat } from 'fs/promises'
+import { existsSync } from 'fs'
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
 
 interface RouteParams {
@@ -34,6 +35,21 @@ const ensureSafeRelativePath = (value: string) => {
   }
   return sanitized.replace(/^\/+/, '')
 }
+
+const PUBLIC_ROOT = (() => {
+  const candidates = [
+    join(process.cwd(), 'apps', 'web', 'public'),
+    join(process.cwd(), 'public')
+  ]
+
+  for (const dir of candidates) {
+    if (existsSync(dir)) {
+      return dir
+    }
+  }
+
+  return join(process.cwd(), 'public')
+})()
 
 const addWatermarkToPdf = async (file: Uint8Array, watermark: string) => {
   const document = await PDFDocument.load(file)
@@ -150,9 +166,39 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Caminho de arquivo inválido' }, { status: 400 })
     }
 
-    const fullPath = join(process.cwd(), 'public', relativePath)
-    const fileBuffer = await readFile(fullPath)
-    const fileInfo = await stat(fullPath)
+    const candidateRoots = [
+      PUBLIC_ROOT,
+      join(process.cwd(), 'apps', 'web', 'public'),
+      join(process.cwd(), 'public'),
+      process.cwd()
+    ]
+
+    const checked = new Set<string>()
+    let resolvedPath: string | null = null
+    let fileInfo: Awaited<ReturnType<typeof stat>> | null = null
+
+    for (const root of candidateRoots) {
+      const base = root.replace(/\/+$/, '')
+      const fullCandidate = join(base, relativePath)
+      if (checked.has(fullCandidate)) continue
+      checked.add(fullCandidate)
+      try {
+        fileInfo = await stat(fullCandidate)
+        resolvedPath = fullCandidate
+        break
+      } catch (error: any) {
+        if (error?.code === 'ENOENT') {
+          continue
+        }
+        throw error
+      }
+    }
+
+    if (!resolvedPath || !fileInfo) {
+      return NextResponse.json({ error: 'Arquivo do material não encontrado' }, { status: 404 })
+    }
+
+    const fileBuffer = await readFile(resolvedPath)
 
     const extension = relativePath.includes('.') ? relativePath.split('.').pop() || '' : ''
     const normalizedTitle = asset.title?.trim() || relativePath.split('/').pop() || `material-${asset.id}`
