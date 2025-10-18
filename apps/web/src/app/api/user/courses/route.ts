@@ -28,6 +28,14 @@ export async function GET(_request: NextRequest) {
             featuredImage: true,
             duration: true,
             level: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            },
             modules: {
               select: {
                 id: true,
@@ -128,7 +136,7 @@ export async function GET(_request: NextRequest) {
           totalLessons,
           completedLessons,
           lastAccessed: lastAccessed?.toISOString(),
-          category: 'Geral', // Categoria fixa por enquanto
+          category: course.category?.slug || course.category?.name || 'geral',
           level: (course.level?.toLowerCase() as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
           enrolledAt: enrollment.createdAt.toISOString(),
           totalStudyTime: Math.round(totalStudyTime / 60), // em minutos

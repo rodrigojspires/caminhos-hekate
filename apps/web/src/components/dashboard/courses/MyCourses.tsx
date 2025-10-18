@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Play, Clock, BookOpen, Star, Calendar, CheckCircle, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -29,9 +28,6 @@ interface MyCoursesProps {
 }
 
 export function MyCourses({ courses, loading = false, onCourseSelect }: MyCoursesProps) {
-  const [filter, setFilter] = useState<'all' | 'in_progress' | 'completed' | 'not_started'>('all')
-  const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent')
-
   const getStatusIcon = (status: Course['status']) => {
     switch (status) {
       case 'completed':
@@ -76,27 +72,6 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
     }
   }
 
-  const filteredCourses = courses.filter(course => {
-    if (filter === 'all') return true
-    return course.status === filter
-  })
-
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case 'recent':
-        if (!a.lastAccessed && !b.lastAccessed) return 0
-        if (!a.lastAccessed) return 1
-        if (!b.lastAccessed) return -1
-        return new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime()
-      case 'progress':
-        return b.progress - a.progress
-      case 'title':
-        return a.title.localeCompare(b.title)
-      default:
-        return 0
-    }
-  })
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -127,7 +102,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
         <h3 className="text-lg font-medium text-foreground mb-2">Nenhum curso encontrado</h3>
         <p className="text-muted-foreground mb-6">Explore nosso catálogo e comece sua jornada de aprendizado.</p>
         <Link
-          href="/courses"
+          href="/cursos"
           className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           Explorar Cursos
@@ -138,61 +113,13 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
 
   return (
     <div className="space-y-6 min-w-0 overflow-hidden">
-      {/* Filters and Sort */}
-      <div className="bg-card rounded-lg shadow-sm border p-4">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'all'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              Todos ({courses.length})
-            </button>
-            <button
-              onClick={() => setFilter('in_progress')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'in_progress'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              Em Progresso ({courses.filter(c => c.status === 'in_progress').length})
-            </button>
-            <button
-              onClick={() => setFilter('completed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'completed'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-accent hover:text-accent-foreground'
-              }`}
-            >
-              Concluídos ({courses.filter(c => c.status === 'completed').length})
-            </button>
-          </div>
-          
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 border border-input bg-background rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-          >
-            <option value="recent">Mais Recentes</option>
-            <option value="progress">Maior Progresso</option>
-            <option value="title">Nome A-Z</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Courses List */}
+      {/* Lista de Cursos (sem filtros internos) */}
       <div className="space-y-4 min-w-0">
-        {sortedCourses.map((course) => (
+        {courses.map((course) => (
           <div key={course.id} className="bg-card rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden">
             <div className="p-6">
               <div className="flex gap-4">
-                {/* Course Thumbnail */}
+                {/* Miniatura do Curso */}
                 <div className="relative w-32 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
                   <Image
                     src={course.thumbnail}
@@ -205,7 +132,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                   </div>
                 </div>
 
-                {/* Course Info */}
+                {/* Info do Curso */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2">
                     <div>
@@ -222,7 +149,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
 
                   <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{course.description}</p>
 
-                  {/* Progress Bar */}
+                  {/* Barra de Progresso */}
                   <div className="mb-3">
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div

@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trophy, Award, Star, Zap, Crown, Sparkles } from 'lucide-react'
-import { NotificationType, BadgeRarity, AchievementRarity } from '@prisma/client'
+import { BadgeRarity, AchievementRarity } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
 export interface AchievementNotificationData {
   id: string
-  type: NotificationType
+  type: keyof typeof typeConfig
   title: string
   message: string
   data?: {
@@ -159,172 +159,65 @@ export const AchievementNotification: React.FC<AchievementNotificationProps> = (
       const timer = setTimeout(() => {
         handleClose()
       }, duration)
-
-      const progressTimer = setInterval(() => {
-        setProgress(prev => {
-          const newProgress = prev - (100 / (duration / 100))
-          return newProgress <= 0 ? 0 : newProgress
-        })
-      }, 100)
-
-      return () => {
-        clearTimeout(timer)
-        clearInterval(progressTimer)
-      }
+      return () => clearTimeout(timer)
     }
   }, [autoClose, duration, handleClose])
 
   useEffect(() => {
-    // Tocar som da notificação
-    if (typeConf?.sound) {
-      const audio = new Audio(typeConf.sound)
-      audio.volume = 0.3
-      audio.play().catch(() => {
-        // Ignorar erro se não conseguir tocar o som
-      })
+    let interval: NodeJS.Timeout | null = null
+    if (autoClose) {
+      interval = setInterval(() => {
+        setProgress((prev) => Math.max(0, prev - 2))
+      }, duration / 50)
     }
-  }, [typeConf?.sound])
-
-  
-
-  const particles = Array.from({ length: config.particles }, (_, i) => (
-    <Particle key={i} delay={i * 0.1} rarity={rarity} />
-  ))
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [autoClose, duration])
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: -50 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.8, y: -50 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed top-4 right-4 z-50 max-w-sm w-full"
+          className={cn(
+            'relative w-96 rounded-lg shadow-lg overflow-hidden border',
+            config.bgColor,
+            config.borderColor
+          )}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
         >
-          <div className="relative overflow-hidden">
-            {/* Particles */}
-            <div className="absolute inset-0 pointer-events-none">
-              {particles}
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+            <div className="flex items-center gap-2">
+              <IconComponent className="w-5 h-5" />
+              <h3 className="text-sm font-semibold">{notification.title}</h3>
             </div>
+            <button
+              onClick={handleClose}
+              className="p-1 hover:bg-white/10 rounded"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            {/* Main notification */}
-            <div className={cn(
-              "relative rounded-lg border-2 shadow-lg backdrop-blur-sm",
-              config.bgColor,
-              config.borderColor
-            )}>
-              {/* Glow effect for rare items */}
-              {['EPIC', 'LEGENDARY', 'MYTHIC'].includes(rarity) && (
-                <div className={cn(
-                  "absolute inset-0 rounded-lg blur-sm opacity-30",
-                  `bg-gradient-to-r ${config.color}`
-                )} />
-              )}
-
-              {/* Progress bar */}
-              {autoClose && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-t-lg overflow-hidden">
-                  <motion.div
-                    className={`h-full bg-gradient-to-r ${config.color}`}
-                    initial={{ width: '100%' }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.1 }}
-                  />
-                </div>
-              )}
-
-              <div className="relative p-4">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <motion.div
-                      initial={{ rotate: 0, scale: 1 }}
-                      animate={{ 
-                        rotate: [0, 10, -10, 0],
-                        scale: [1, 1.1, 1]
-                      }}
-                      transition={{ 
-                        duration: 0.6,
-                        repeat: 2,
-                        repeatType: 'reverse'
-                      }}
-                      className={cn(
-                        "p-2 rounded-full bg-gradient-to-r",
-                        config.color
-                      )}
-                    >
-                      <IconComponent className="w-5 h-5 text-white" />
-                    </motion.div>
-                    
-                    <div>
-                      <h3 className={cn(
-                        "font-bold text-sm",
-                        config.textColor
-                      )}>
-                        {notification.title}
-                      </h3>
-                      
-                      {notification.data?.rarity && (
-                        <span className={cn(
-                          "text-xs font-medium px-2 py-1 rounded-full",
-                          config.bgColor,
-                          config.textColor
-                        )}>
-                          {notification.data.rarity}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleClose}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Content */}
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    {notification.message}
-                  </p>
-
-                  {/* Additional info */}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center space-x-4">
-                      {notification.data?.points && (
-                        <span className="flex items-center space-x-1">
-                          <Star className="w-3 h-3" />
-                          <span>+{notification.data.points} pts</span>
-                        </span>
-                      )}
-                      
-                      {notification.data?.level && (
-                        <span className="flex items-center space-x-1">
-                          <Zap className="w-3 h-3" />
-                          <span>Nível {notification.data.level}</span>
-                        </span>
-                      )}
-                      
-                      {notification.data?.days && (
-                        <span className="flex items-center space-x-1">
-                          <span>{notification.data.days} dias</span>
-                        </span>
-                      )}
-                    </div>
-                    
-                    <span>
-                      {new Date(notification.createdAt).toLocaleTimeString('pt-BR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          {/* Content */}
+          <div className="p-4">
+            <p className="text-sm text-gray-700">{notification.message}</p>
+            {/* Decorative particles based on rarity */}
+            <div className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: (rarityConfig[rarity as keyof typeof rarityConfig]?.particles || 5) }).map((_, i) => (
+                <Particle key={i} delay={i * 0.1} rarity={rarity as string} />
+              ))}
             </div>
           </div>
+
+          {/* Progress bar */}
+          {autoClose && (
+            <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600" style={{ width: `${progress}%` }} />
+          )}
         </motion.div>
       )}
     </AnimatePresence>

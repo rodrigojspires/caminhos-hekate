@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface Enrollment {
   id: string
@@ -40,6 +42,11 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
 
+  // Estado do formulário manual
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
   const fetchEnrollments = async (page = 1) => {
     try {
       setLoading(true)
@@ -58,6 +65,39 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
     }
   }
 
+  const handleManualEnroll = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) {
+      toast.error('Informe um email válido')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const response = await fetch(`/api/admin/courses/${params.id}/enrollments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: name || undefined })
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || 'Falha ao inscrever aluno')
+      }
+      toast.success(
+        json.createdUser
+          ? 'Usuário criado e inscrito. Dois e-mails enviados.'
+          : 'Aluno inscrito. E-mail de confirmação enviado.'
+      )
+      setEmail('')
+      setName('')
+      fetchEnrollments(pagination.page)
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Falha ao inscrever aluno')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   useEffect(() => {
     fetchEnrollments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,6 +112,53 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
         </Button>
         <h1 className="text-2xl font-bold">Inscrições do Curso</h1>
       </div>
+
+      {/* Formulário de inscrição manual */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Inscrever aluno manualmente</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleManualEnroll} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="email">Email do aluno</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="aluno@exemplo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="name">Nome (opcional)</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Nome do aluno"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end md:col-span-1">
+              <Button type="submit" disabled={submitting} className="w-full md:w-auto">
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Processando
+                  </span>
+                ) : (
+                  'Inscrever aluno'
+                )}
+              </Button>
+            </div>
+          </form>
+          <p className="text-sm text-muted-foreground mt-2">
+            • Se o email existir, enviamos apenas o email de inscrição.
+            Se não existir, criamos o usuário, enviamos um email com senha temporária e outro confirmando a inscrição.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

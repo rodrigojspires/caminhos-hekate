@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import AchievementNotification, { AchievementNotificationData } from './AchievementNotification'
 import { useGamificationStore } from '@/stores/gamificationStore'
-import { NotificationType } from '@prisma/client'
 
 interface NotificationSystemProps {
   maxNotifications?: number
@@ -26,15 +25,8 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
   useEffect(() => {
     const convertedNotifications = storeNotifications.map(notification => ({
       id: notification.id,
-      // Map store lowercase type to Prisma enum (uppercase) for the UI component expectations
-      type: (notification.type
-        .toUpperCase()
-        .replace('BADGE_EARNED', 'BADGE_EARNED')
-        .replace('POINTS_EARNED', 'POINTS_EARNED')
-        .replace('ACHIEVEMENT_UNLOCKED', 'ACHIEVEMENT_UNLOCKED')
-        .replace('LEVEL_UP', 'LEVEL_UP')
-        .replace('STREAK_MILESTONE', 'STREAK_MILESTONE')
-      ) as NotificationType,
+      // Map store lowercase type to UI enum (uppercase)
+      type: (notification.type.toUpperCase()) as AchievementNotificationData['type'],
       title: getNotificationTitle(notification.type, notification.data),
       message: getNotificationMessage(notification.type, notification.data),
       data: notification.data,

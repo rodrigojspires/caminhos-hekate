@@ -3,6 +3,7 @@ import { prisma } from '@hekate/database'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import CourseDetail from '@/components/public/courses/CourseDetail'
+import CoursePresentation from '@/components/public/courses/CoursePresentation'
 
 type PageProps = {
   params: { slug: string }
@@ -91,7 +92,13 @@ export default async function CoursePage({ params }: PageProps) {
           },
         }) }}
       />
-      <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={isEnrolled} />
+      {/* Presentation section */}
+      <CoursePresentation course={course as any} />
+      {/* Course content section */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold mb-4">Conteúdo do curso</h2>
+        <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={isEnrolled} />
+      </div>
     </main>
   )
 }

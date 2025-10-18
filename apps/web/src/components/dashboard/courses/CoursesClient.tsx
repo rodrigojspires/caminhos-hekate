@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { MyCourses } from './MyCourses'
 import { CourseFilters } from './CourseFilters'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface Course {
   id: string
@@ -36,79 +35,92 @@ export function CoursesClient({
   completedCourses, 
   notStartedCourses 
 }: CoursesClientProps) {
-  const [filteredInProgress, setFilteredInProgress] = useState(inProgressCourses)
-  const [filteredCompleted, setFilteredCompleted] = useState(completedCourses)
-  const [filteredNotStarted, setFilteredNotStarted] = useState(notStartedCourses)
+  // Unificar todos os cursos em uma única lista
+  const allCourses: Course[] = [
+    ...inProgressCourses,
+    ...notStartedCourses,
+    ...completedCourses
+  ]
+
+  const [filteredCourses, setFilteredCourses] = useState(allCourses)
   const [loading, setLoading] = useState(false)
 
   const handleFilterChange = (filters: {
     search?: string
     category?: string
     level?: string
+    status?: string
     sort?: string
   }) => {
     setLoading(true)
-    
-    // Aplicar filtros a todos os arrays de cursos
-    const applyFilters = (courses: Course[]) => {
-      let filtered = [...courses]
 
-      // Filtro de busca
-      if (filters.search) {
-        const searchTerm = filters.search.toLowerCase()
-        filtered = filtered.filter(course => 
-          course.title.toLowerCase().includes(searchTerm) ||
-          course.instructor.toLowerCase().includes(searchTerm) ||
-          course.description.toLowerCase().includes(searchTerm)
-        )
+    let filtered = [...allCourses]
+
+    // Filtro de busca
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase()
+      filtered = filtered.filter(course => 
+        course.title.toLowerCase().includes(searchTerm) ||
+        course.instructor.toLowerCase().includes(searchTerm) ||
+        course.description.toLowerCase().includes(searchTerm)
+      )
+    }
+
+    // Filtro de categoria
+    if (filters.category && filters.category !== 'all') {
+      filtered = filtered.filter(course => 
+        course.category.toLowerCase() === filters.category?.toLowerCase()
+      )
+    }
+
+    // Filtro de nível
+    if (filters.level && filters.level !== 'all') {
+      filtered = filtered.filter(course => 
+        course.level === filters.level
+      )
+    }
+
+    // Filtro de status
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(course => course.status === filters.status)
+    }
+
+    // Ordenação
+    if (filters.sort) {
+      switch (filters.sort) {
+        case 'title':
+          filtered.sort((a, b) => a.title.localeCompare(b.title))
+          break
+        case 'progress':
+          filtered.sort((a, b) => b.progress - a.progress)
+          break
+        case 'recent':
+          filtered.sort((a, b) => {
+            const dateA = a.lastAccessed ? new Date(a.lastAccessed) : new Date(a.enrolledAt)
+            const dateB = b.lastAccessed ? new Date(b.lastAccessed) : new Date(b.enrolledAt)
+            return dateB.getTime() - dateA.getTime()
+          })
+          break
+        case 'rating':
+          filtered.sort((a, b) => b.rating - a.rating)
+          break
+        case 'duration':
+          filtered.sort((a, b) => {
+            const parseHours = (d: string) => {
+              const match = d.match(/\d+/)
+              return match ? parseInt(match[0], 10) : 0
+            }
+            return parseHours(a.duration) - parseHours(b.duration)
+          })
+          break
+        default:
+          break
       }
-
-      // Filtro de categoria
-      if (filters.category && filters.category !== 'all') {
-        filtered = filtered.filter(course => 
-          course.category.toLowerCase() === filters.category?.toLowerCase()
-        )
-      }
-
-      // Filtro de nível
-      if (filters.level && filters.level !== 'all') {
-        filtered = filtered.filter(course => 
-          course.level === filters.level
-        )
-      }
-
-      // Ordenação
-      if (filters.sort) {
-        switch (filters.sort) {
-          case 'title':
-            filtered.sort((a, b) => a.title.localeCompare(b.title))
-            break
-          case 'progress':
-            filtered.sort((a, b) => b.progress - a.progress)
-            break
-          case 'recent':
-            filtered.sort((a, b) => {
-              const dateA = a.lastAccessed ? new Date(a.lastAccessed) : new Date(a.enrolledAt)
-              const dateB = b.lastAccessed ? new Date(b.lastAccessed) : new Date(b.enrolledAt)
-              return dateB.getTime() - dateA.getTime()
-            })
-            break
-          case 'rating':
-            filtered.sort((a, b) => b.rating - a.rating)
-            break
-          default:
-            break
-        }
-      }
-
-      return filtered
     }
 
     // Simular delay de loading
     setTimeout(() => {
-      setFilteredInProgress(applyFilters(inProgressCourses))
-      setFilteredCompleted(applyFilters(completedCourses))
-      setFilteredNotStarted(applyFilters(notStartedCourses))
+      setFilteredCourses(filtered)
       setLoading(false)
     }, 300)
   }
@@ -119,68 +131,26 @@ export function CoursesClient({
   }
 
   return (
-    <Tabs defaultValue="in-progress" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="in-progress" className="flex items-center gap-2">
-          Em Andamento
-          {inProgressCourses.length > 0 && (
-            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-              {inProgressCourses.length}
-            </span>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="not-started" className="flex items-center gap-2">
-          Não Iniciados
-          {notStartedCourses.length > 0 && (
-            <span className="rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700">
-              {notStartedCourses.length}
-            </span>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="completed" className="flex items-center gap-2">
-          Concluídos
-          {completedCourses.length > 0 && (
-            <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-              {completedCourses.length}
-            </span>
-          )}
-        </TabsTrigger>
-      </TabsList>
-
+    <div className="space-y-6">
+      {/* Filtros superiores */}
       <CourseFilters onFilterChange={handleFilterChange} />
 
-      <TabsContent value="in-progress" className="space-y-4">
+      {/* Listagem única de cursos */}
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Cursos em Andamento</h2>
+          <h2 className="text-xl font-semibold">Meus Cursos</h2>
+          {filteredCourses.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              {filteredCourses.length} cursos
+            </span>
+          )}
         </div>
         <MyCourses 
-          courses={filteredInProgress}
+          courses={filteredCourses}
           loading={loading}
           onCourseSelect={handleCourseSelect}
         />
-      </TabsContent>
-
-      <TabsContent value="not-started" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Cursos Não Iniciados</h2>
-        </div>
-        <MyCourses 
-          courses={filteredNotStarted}
-          loading={loading}
-          onCourseSelect={handleCourseSelect}
-        />
-      </TabsContent>
-
-      <TabsContent value="completed" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Cursos Concluídos</h2>
-        </div>
-        <MyCourses 
-          courses={filteredCompleted}
-          loading={loading}
-          onCourseSelect={handleCourseSelect}
-        />
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   )
 }

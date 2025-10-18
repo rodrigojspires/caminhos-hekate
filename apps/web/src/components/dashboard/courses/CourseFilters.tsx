@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Filter, BookOpen, Clock, Star } from "lucide-react"
 
 interface CourseFiltersProps {
@@ -19,6 +19,25 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
   const [level, setLevel] = useState("all")
   const [status, setStatus] = useState("all")
   const [sort, setSort] = useState("recent")
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  const [loadingCategories, setLoadingCategories] = useState(false)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true)
+        const res = await fetch('/api/categories')
+        if (!res.ok) throw new Error('Falha ao buscar categorias')
+        const data = await res.json()
+        setCategories(data.categories || [])
+      } catch (e) {
+        console.error('Erro ao carregar categorias', e)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+    fetchCategories()
+  }, [])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -75,13 +94,13 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
                 className="w-full pl-9 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none"
               >
                 <option value="all">Todas as Categorias</option>
-                <option value="tarot">Tarô</option>
-                <option value="astrologia">Astrologia</option>
-                <option value="numerologia">Numerologia</option>
-                <option value="cristais">Cristais</option>
-                <option value="meditacao">Meditação</option>
-                <option value="rituais">Rituais</option>
-                <option value="herbalismo">Herbalismo</option>
+                {loadingCategories ? (
+                  <option value="" disabled>Carregando...</option>
+                ) : (
+                  categories.map((cat) => (
+                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                  ))
+                )}
               </select>
             </div>
           </div>

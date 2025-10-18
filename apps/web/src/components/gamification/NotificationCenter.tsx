@@ -136,6 +136,7 @@ export default function NotificationCenter({ className = '' }: NotificationCente
       case 'ACHIEVEMENT_UNLOCKED': return '🏆'
       case 'LEVEL_UP': return '⬆️'
       case 'POINTS_EARNED': return '💰'
+      case 'SPECIAL_EVENT': return metadata?.points ? '💰' : '🎉'
       case 'EVENT_REMINDER': return '📅'
       case 'STREAK_MILESTONE': return '🔥'
       case 'REWARD_AVAILABLE': return '🎁'

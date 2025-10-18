@@ -24,7 +24,7 @@ export function CourseProgress({
 }: CourseProgressProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {[...Array(4)].map((_, index) => (
           <div key={index} className="bg-card rounded-lg shadow-sm border border-border p-6 animate-pulse">
             <div className="flex items-center justify-between mb-4">
@@ -84,25 +84,8 @@ export function CourseProgress({
 
   return (
     <div className="space-y-6">
-      {/* Progress Overview */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Geral</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-muted-foreground">Progresso Médio dos Cursos</span>
-            <span className="text-sm font-bold text-foreground">{averageProgress.toFixed(1)}%</span>
-          </div>
-          <Progress value={averageProgress} className="h-3" />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Indicadores (2 colunas x 2 linhas) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {progressCards.map((card, index) => {
           const Icon = card.icon
           return (
@@ -135,7 +118,24 @@ export function CourseProgress({
         })}
       </div>
 
-      {/* Weekly Progress */}
+      {/* Progresso Geral */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Geral</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-muted-foreground">Progresso Médio dos Cursos</span>
+            <span className="text-sm font-bold text-foreground">{averageProgress.toFixed(1)}%</span>
+          </div>
+          <Progress value={averageProgress} className="h-3" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>0%</span>
+            <span>50%</span>
+            <span>100%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Progresso Semanal */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Semanal</h3>
         <div className="grid grid-cols-7 gap-2">
