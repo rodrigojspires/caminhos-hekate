@@ -92,13 +92,18 @@ export default async function CoursePage({ params }: PageProps) {
           },
         }) }}
       />
-      {/* Presentation section */}
-      <CoursePresentation course={course as any} />
-      {/* Course content section */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4">Conteúdo do curso</h2>
-        <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={isEnrolled} />
-      </div>
+      {!isEnrolled ? (
+        <>
+          <div className="mb-4">
+            <a href="/cursos" className="text-sm text-muted-foreground hover:text-primary underline underline-offset-4">
+              ← Voltar para todos os cursos
+            </a>
+          </div>
+          <CoursePresentation course={course as any} />
+        </>
+      ) : (
+        <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={true} />
+      )}
     </main>
   )
 }

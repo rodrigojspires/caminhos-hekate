@@ -113,6 +113,7 @@ export default async function CoursesPage() {
       comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null,
       featuredImage: course.featuredImage,
       introVideo: course.introVideo,
+      featured: course.featured,
       modules: course.modules.length,
       lessons: lessonsCount,
       students: course._count.enrollments,

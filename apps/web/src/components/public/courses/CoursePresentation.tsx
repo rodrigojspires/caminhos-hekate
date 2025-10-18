@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CreditCard, QrCode, FileText, Play, CheckCircle2 } from 'lucide-react'
 import { resolveMediaUrl } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 type CoursePresentationProps = {
   course: {
@@ -44,11 +45,60 @@ const accessModelLabels: Record<string, string> = {
   SUBSCRIPTION: 'Assinatura',
 }
 
+const tierLabels: Record<string, string> = {
+  FREE: 'Gratuito',
+  INICIADO: 'Iniciado',
+  ADEPTO: 'Adepto',
+  SACERDOCIO: 'Sacerdócio',
+}
+
 export default function CoursePresentation({ course }: CoursePresentationProps) {
   const [enrolling, setEnrolling] = useState(false)
   const [enrolled, setEnrolled] = useState(false)
+  const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null)
   const heroImage = useMemo(() => resolveMediaUrl(course.featuredImage || null), [course.featuredImage])
-  const introVideoSrc = useMemo(() => resolveMediaUrl(course.introVideo || null), [course.introVideo])
+  const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(() => resolveMediaUrl(course.introVideo || null))
+  const router = useRouter()
+
+  useEffect(() => {
+    let mounted = true
+    fetch(`/api/courses/${course.id}/enrollment`).then(async (r) => {
+      if (!mounted) return
+      const j = await r.json().catch(() => ({ enrolled: false }))
+      setEnrolled(!!j.enrolled)
+      setEnrollmentStatus(j.status || null)
+    }).catch(() => {})
+    return () => { mounted = false }
+  }, [course.id])
+
+  useEffect(() => {
+    const raw = course.introVideo || null
+    const normalized = raw ? raw.trim() : null
+    if (!normalized) {
+      setIntroVideoSrc(null)
+      return
+    }
+    const cleaned = normalized.replace(/^https?:\/\/[^\/]+\//, '/').replace(/^\/+/, '/')
+    const looksPrivateCourseVideo = cleaned.startsWith('/private/course-videos/')
+    let cancelled = false
+    async function update() {
+      if (looksPrivateCourseVideo) {
+        try {
+          const params = new URLSearchParams({ path: normalized || '', courseId: String(course.id) })
+          const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
+          const json = await resp.json()
+          if (resp.ok && json?.url) {
+            if (!cancelled) setIntroVideoSrc(resolveMediaUrl(json.url))
+            return
+          }
+        } catch {}
+      }
+      if (!cancelled) setIntroVideoSrc(resolveMediaUrl(normalized))
+    }
+    update()
+    return () => { cancelled = true }
+  }, [course.introVideo, course.id])
+
   const isFree = (course.price ?? null) === null || (course.accessModels || []).includes('FREE') || course.tier === 'FREE'
 
   const priceBRL = useMemo(() => {
@@ -82,10 +132,12 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
       }
       const j = await res.json()
       setEnrolled(!!j.enrolled)
+      setEnrollmentStatus(j.status || null)
       if (j.status === 'pending') {
         toast.info('Inscrição pendente. Conclua o pagamento para liberar acesso.')
       } else {
         toast.success('Inscrição realizada com sucesso!')
+        router.refresh()
       }
     } catch (e) {
       toast.error('Erro ao processar inscrição')
@@ -192,12 +244,17 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
               <h3 className="text-base font-semibold">Modalidade de pagamento</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {(course.accessModels || []).length > 0 ? (
-                  (course.accessModels || []).map((m) => (
-                    <span key={m} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      {accessModelLabels[m] ?? m}
-                    </span>
-                  ))
+                  (course.accessModels || []).map((m) => {
+                    const label = accessModelLabels[m] ?? m
+                    const showPlan = m === 'SUBSCRIPTION' && course.tier && course.tier !== 'FREE'
+                    const planText = showPlan ? ` — Plano ${tierLabels[course.tier || 'FREE']}` : ''
+                    return (
+                      <span key={m} className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                        {`${label}${planText}`}
+                      </span>
+                    )
+                  })
                 ) : (
                   <span className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
                     <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -275,6 +332,11 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
               {(course.accessModels || []).includes('SUBSCRIPTION') && (
                 <Button variant="outline" asChild>
                   <a href="/precos">Conheça os planos</a>
+                </Button>
+              )}
+              {enrollmentStatus === 'pending' && (
+                <Button variant="default" asChild>
+                  <a href={`/checkout?enrollCourseId=${course.id}`}>Ir para o checkout</a>
                 </Button>
               )}
               <Button onClick={onEnroll} disabled={enrolling}>

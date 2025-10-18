@@ -22,6 +22,7 @@ export interface PublicCourse {
   comparePrice: number | null
   featuredImage?: string | null
   introVideo?: string | null
+  featured: boolean
   modules: number
   lessons: number
   students: number

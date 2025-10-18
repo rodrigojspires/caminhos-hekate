@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,18 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
   const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string>(NEW_ADDRESS_OPTION)
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState<string>(NEW_ADDRESS_OPTION)
+
+  const searchParams = useSearchParams()
+  const [enrollCourseIds, setEnrollCourseIds] = useState<string[]>([])
+
+  useEffect(() => {
+    try {
+      const ids = searchParams?.getAll('enrollCourseId') || []
+      const single = searchParams?.get('enrollCourseId') || null
+      if (ids && ids.length > 0) setEnrollCourseIds(ids)
+      else if (single) setEnrollCourseIds([single])
+    } catch {}
+  }, [searchParams])
 
   // Helpers: masks
   function formatPhoneBR(v: string) {
@@ -397,6 +410,10 @@ export default function CheckoutPage() {
       orderPayload.shippingAddressId = shippingAddressId
     } else {
       orderPayload.shippingAddress = sameAsBilling ? form.billing : form.shipping
+    }
+
+    if (enrollCourseIds.length > 0) {
+      orderPayload.enrollCourseIds = enrollCourseIds
     }
 
     const res = await fetch('/api/shop/order', {

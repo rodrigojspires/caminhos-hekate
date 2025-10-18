@@ -145,8 +145,33 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   }, [data.featuredImage])
 
   useEffect(() => {
-    setVideoPreview(resolveMediaUrl(normalizeMediaPath(data.introVideo)))
-    setVideoLoadError(false)
+    let cancelled = false
+    const normalized = normalizeMediaPath(data.introVideo)
+    const rel = normalized ? normalized.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/') : null
+    const looksPrivateCourseVideo = !!rel && /^\/private\/course-videos\//.test(rel)
+
+    async function updatePreview() {
+      setVideoLoadError(false)
+      if (!normalized) {
+        if (!cancelled) setVideoPreview(null)
+        return
+      }
+      if (looksPrivateCourseVideo) {
+        try {
+          const params = new URLSearchParams({ path: normalized })
+          const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
+          const json = await resp.json()
+          if (resp.ok && json?.url) {
+            if (!cancelled) setVideoPreview(resolveMediaUrl(json.url))
+            return
+          }
+        } catch {}
+      }
+      if (!cancelled) setVideoPreview(resolveMediaUrl(normalizeMediaPath(normalized)))
+    }
+
+    updatePreview()
+    return () => { cancelled = true }
   }, [data.introVideo])
 
   const loadCategories = useCallback(async () => {
@@ -231,11 +256,28 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
     setImageLoadError(false)
   }
 
-  const handleVideoUrlChange = (url: string | null | undefined) => {
+  const handleVideoUrlChange = async (url: string | null | undefined) => {
     const normalized = normalizeMediaPath(url)
     handleFieldChange('introVideo', normalized ? normalized : null)
-    setVideoPreview(resolveMediaUrl(normalized))
     setVideoLoadError(false)
+    if (!normalized) {
+      setVideoPreview(null)
+      return
+    }
+    const rel = normalized.replace(/^https?:\/\/[^\/]+\//, '/').replace(/^\/+/, '/')
+    const looksPrivateCourseVideo = /^\/private\/course-videos\//.test(rel)
+    if (looksPrivateCourseVideo) {
+      try {
+        const params = new URLSearchParams({ path: normalized })
+        const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
+        const json = await resp.json()
+        if (resp.ok && json?.url) {
+          setVideoPreview(resolveMediaUrl(json.url))
+          return
+        }
+      } catch {}
+    }
+    setVideoPreview(resolveMediaUrl(normalizeMediaPath(normalized)))
   }
 
   const handleCategorySelection = (categoryId: string) => {
@@ -313,31 +355,11 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
 
       // Faz upload e atualiza o estado do formulário com a URL final
       const uploadedUrl = await uploadFile(file, 'course-videos')
-      handleVideoUrlChange(uploadedUrl)
-
-      // Valida se a URL final é reproduzível antes de alternar o preview
-      const remoteUrl = resolveMediaUrl(normalizeMediaPath(uploadedUrl))
-      if (remoteUrl) {
-        const ok = await canPlayVideoUrl(remoteUrl)
-        if (ok) {
-          setVideoPreview(remoteUrl)
-          setVideoLoadError(false)
-          if (objectUrl) {
-            URL.revokeObjectURL(objectUrl)
-            objectUrl = null
-          }
-        } else {
-          // Mantém o preview do blob e agenda revogação posterior para evitar leaks
-          setVideoPreview(objectUrl)
-          setVideoLoadError(false)
-          if (objectUrl) {
-            setTimeout(() => {
-              try { URL.revokeObjectURL(objectUrl!) } catch {}
-            }, 60000)
-          }
-        }
+      await handleVideoUrlChange(uploadedUrl)
+      if (objectUrl) {
+        try { URL.revokeObjectURL(objectUrl) } catch {}
+        objectUrl = null
       }
-
       toast.success('Vídeo enviado com sucesso!')
     } catch (error) {
       setVideoPreview(resolveMediaUrl(previousVideo))

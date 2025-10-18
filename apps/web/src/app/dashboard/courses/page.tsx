@@ -6,6 +6,7 @@ import { MyCourses } from '@/components/dashboard/courses/MyCourses'
 import { CourseFilters } from '@/components/dashboard/courses/CourseFilters'
 import { CourseProgress } from '@/components/dashboard/courses/CourseProgress'
 import { CoursesClient } from '@/components/dashboard/courses/CoursesClient'
+import { prisma } from '@hekate/database'
 
 export const metadata: Metadata = {
   title: 'Meus Cursos | Minha Escola',
@@ -48,20 +49,140 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
       return null
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const response = await fetch(`${baseUrl}/api/user/courses`, {
-      headers: {
-        'Cookie': `next-auth.session-token=${session.user.id}` // Simplified for server-side
+    const userId = session.user.id
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        userId,
+        status: 'active'
       },
-      cache: 'no-store'
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            featuredImage: true,
+            duration: true,
+            level: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            },
+            modules: {
+              select: {
+                id: true,
+                lessons: {
+                  select: {
+                    id: true,
+                    videoDuration: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
     })
 
-    if (!response.ok) {
-      console.error('Erro ao buscar cursos:', response.status)
-      return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }
+    const coursesWithProgress: CourseData[] = []
+
+    for (const enrollment of enrollments) {
+      const { course } = enrollment
+
+      const totalLessons = course.modules.reduce(
+        (total, module) => total + module.lessons.length,
+        0
+      )
+
+      const lessonIds = course.modules.flatMap(
+        module => module.lessons.map(lesson => lesson.id)
+      )
+
+      const progresses = await prisma.progress.findMany({
+        where: {
+          userId,
+          lessonId: { in: lessonIds }
+        },
+        select: {
+          lessonId: true,
+          completed: true,
+          videoTime: true,
+          updatedAt: true
+        }
+      })
+
+      const completedLessons = progresses.filter(p => p.completed).length
+      const progressPercentage = totalLessons > 0
+        ? Math.round((completedLessons / totalLessons) * 100)
+        : 0
+
+      let status: 'not_started' | 'in_progress' | 'completed'
+      if (completedLessons === 0) {
+        status = 'not_started'
+      } else if (completedLessons >= totalLessons) {
+        status = 'completed'
+      } else {
+        status = 'in_progress'
+      }
+
+      const lastAccessedDate = progresses.length > 0
+        ? progresses.reduce((latest, p) => (!latest || p.updatedAt > latest ? p.updatedAt : latest), null as Date | null)
+        : null
+
+      const totalStudyTimeMinutes = progresses.reduce(
+        (total, p) => total + (p.videoTime || 0),
+        0
+      )
+
+      const courseDurationMinutes = course.modules.reduce(
+        (total, module) => total + module.lessons.reduce(
+          (moduleTotal, lesson) => moduleTotal + (lesson.videoDuration || 0),
+          0
+        ),
+        0
+      )
+
+      coursesWithProgress.push({
+        id: course.id,
+        title: course.title,
+        description: course.description || '',
+        thumbnail: course.featuredImage || '/images/course-placeholder.jpg',
+        instructor: 'Instrutor',
+        duration: course.duration ? `${Math.round(course.duration / 60)}h` : `${Math.round(courseDurationMinutes / 60)}h`,
+        progress: progressPercentage,
+        status,
+        rating: 4.5,
+        totalLessons,
+        completedLessons,
+        lastAccessed: lastAccessedDate?.toISOString(),
+        category: course.category?.slug || course.category?.name || 'geral',
+        level: (course.level?.toLowerCase() as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
+        enrolledAt: enrollment.createdAt.toISOString(),
+        totalStudyTime: Math.round(totalStudyTimeMinutes / 60),
+        estimatedTimeRemaining: Math.max(0, Math.round((courseDurationMinutes - totalStudyTimeMinutes) / 60))
+      })
     }
 
-    return await response.json()
+    const stats: CourseStats = {
+      totalCourses: coursesWithProgress.length,
+      completedCourses: coursesWithProgress.filter(c => c.status === 'completed').length,
+      inProgressCourses: coursesWithProgress.filter(c => c.status === 'in_progress').length,
+      notStartedCourses: coursesWithProgress.filter(c => c.status === 'not_started').length,
+      totalStudyTime: coursesWithProgress.reduce((total, c) => total + c.totalStudyTime, 0),
+      averageProgress: coursesWithProgress.length > 0
+        ? Math.round(coursesWithProgress.reduce((total, c) => total + c.progress, 0) / coursesWithProgress.length)
+        : 0
+    }
+
+    return { courses: coursesWithProgress, stats }
   } catch (error) {
     console.error('Erro ao buscar cursos do usuário:', error)
     return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }

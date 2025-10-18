@@ -362,7 +362,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                                   Não possui assinatura com acesso a este curso. <a href="/precos" className="underline text-primary">Conheça os planos</a>.
                                 </span>
                               )}
-                              <a href="/checkout" className="underline text-primary">Ir para o checkout</a>
+                              <a href={`/checkout?enrollCourseId=${course.id}`} className="underline text-primary">Ir para o checkout</a>
                             </div>
                           )}
                         </>

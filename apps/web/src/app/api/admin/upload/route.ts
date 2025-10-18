@@ -185,13 +185,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar diretório se não existir e preparar caminho/URL
-    const isCourseVideo = uploadCategory === 'course-videos'
-    let uploadDir = isCourseVideo
-      ? join(PRIVATE_ROOT, 'uploads', uploadCategory)
-      : join(BASE_UPLOAD_DIR, uploadCategory)
-    let urlBase = isCourseVideo
-      ? `/private/${uploadCategory}`
-      : `/uploads/${uploadCategory}`
+    // Tornar vídeos de curso públicos: sempre salvar em /uploads
+    const isCourseVideo = false
+    let uploadDir = join(BASE_UPLOAD_DIR, uploadCategory)
+    let urlBase = `/uploads/${uploadCategory}`
 
     if (!existsSync(uploadDir)) {
       try {

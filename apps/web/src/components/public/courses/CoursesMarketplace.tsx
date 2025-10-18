@@ -90,12 +90,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
   }, [courses])
 
   const trendingCourses = useMemo(() => {
-    const sorted = [...courses].sort((a, b) => {
-      const scoreA = a.modules * 3 + a.lessons * 2 + (a.duration ?? 0)
-      const scoreB = b.modules * 3 + b.lessons * 2 + (b.duration ?? 0)
-      return scoreB - scoreA
-    })
-    return sorted.slice(0, 5)
+    return courses.filter((course) => course.featured)
   }, [courses])
 
   const filteredCourses = useMemo(() => {
@@ -252,10 +247,10 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   </Badge>
                   <p className="text-sm text-purple-100/80">Cursos que os iniciados estão amando agora</p>
                 </div>
-                <Button variant="ghost" size="sm" className="text-purple-200 hover:text-white">
+                <Link href="#catalogo" className="text-purple-200 hover:text-white text-sm inline-flex items-center">
                   Ver todos
                   <ArrowUpRight className="w-4 h-4 ml-2" />
-                </Button>
+                </Link>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-700/60">
                 {trendingCourses.map((course) => {
@@ -421,7 +416,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
             </aside>
 
             {/* Catalog */}
-            <div className="space-y-6">
+            <div className="space-y-6" id="catalogo">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Catálogo completo</h2>
