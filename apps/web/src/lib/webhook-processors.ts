@@ -161,7 +161,7 @@ export class MercadoPagoWebhookProcessor {
               await prisma.enrollment.upsert({
                 where: { userId_courseId: { userId: order.userId, courseId } },
                 create: { userId: order.userId, courseId },
-                update: {}
+                update: { status: 'active' }
               })
 
               const uniqueKey = `course_purchase_${order.id}_${courseId}`

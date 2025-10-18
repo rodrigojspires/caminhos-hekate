@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir, access } from 'fs/promises'
 import { join } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, constants } from 'fs'
 import { nanoid } from 'nanoid'
 
 // Verificar se o usuário é admin
@@ -184,13 +184,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Criar diretório se não existir
+    // Criar diretório se não existir e preparar caminho/URL
     const isCourseVideo = uploadCategory === 'course-videos'
     let uploadDir = isCourseVideo
       ? join(PRIVATE_ROOT, 'uploads', uploadCategory)
       : join(BASE_UPLOAD_DIR, uploadCategory)
+    let urlBase = isCourseVideo
+      ? `/private/${uploadCategory}`
+      : `/uploads/${uploadCategory}`
+
     if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
+      try {
+        await mkdir(uploadDir, { recursive: true })
+      } catch {
+        // ignore mkdir errors here; we'll handle access below
+      }
+    }
+
+    // Se não for vídeo de curso, verificar permissão de escrita e fazer fallback para diretório privado se necessário
+    if (!isCourseVideo) {
+      try {
+        await access(uploadDir, constants.W_OK)
+      } catch {
+        // Fallback: usar diretório privado /app/uploads
+        uploadDir = join(PRIVATE_ROOT, 'uploads', uploadCategory)
+        if (!existsSync(uploadDir)) {
+          await mkdir(uploadDir, { recursive: true })
+        }
+        // Ajustar URL para servir via API
+        urlBase = `/api/media/public/uploads/${uploadCategory}`
+      }
     }
 
     // Gerar nome único para o arquivo
@@ -202,10 +225,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(filepath, buffer)
 
-    // Gerar URL (privada para vídeos de curso)
-    const url = isCourseVideo
-      ? `/private/${uploadCategory}/${filename}`
-      : `/uploads/${uploadCategory}/${filename}`
+    // Gerar URL
+    const url = `${urlBase}/${filename}`
 
     return NextResponse.json({
       message: 'Upload realizado com sucesso',
@@ -251,6 +272,9 @@ export async function DELETE(request: NextRequest) {
     let fullPath: string | null = null
     if (sanitizedPath.startsWith('uploads/')) {
       fullPath = join(PUBLIC_ROOT, sanitizedPath)
+    } else if (sanitizedPath.startsWith('api/media/public/uploads/')) {
+      const rel = sanitizedPath.replace(/^api\/media\/public\//, '') // e.g. uploads/course-images/filename.jpg
+      fullPath = join(PRIVATE_ROOT, rel)
     } else if (sanitizedPath.startsWith('private/course-videos/')) {
       const rel = sanitizedPath.replace(/^private\//, '') // e.g. course-videos/filename.mp4
       fullPath = join(PRIVATE_ROOT, 'uploads', rel)

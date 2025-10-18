@@ -62,7 +62,13 @@ COPY --from=build /app/packages/database/prisma ./packages/database/prisma
 RUN mkdir -p /app/apps/web/public/uploads \
     && chown -R node:node /app/apps/web/public/uploads \
     && mkdir -p /app/uploads/uploads \
-    && chown -R node:node /app/uploads
+    && chown -R node:node /app/uploads \
+    && chmod -R 775 /app/apps/web/public/uploads /app/uploads
+
+# Instalar su-exec para alternar para usuário node no entrypoint
+RUN apk add --no-cache su-exec
+# Garantir permissão de execução do entrypoint
+RUN chmod +x /app/apps/web/scripts/docker-entrypoint.sh
 
 ENV PORT=3000 \
     HOSTNAME=0.0.0.0 \
@@ -70,8 +76,8 @@ ENV PORT=3000 \
     PRIVATE_UPLOAD_ROOT=/app/uploads
 
 EXPOSE 3000
-USER node
-CMD ["node", "apps/web/server.js"]
+USER root
+ENTRYPOINT ["sh","-lc","/app/apps/web/scripts/docker-entrypoint.sh"]
 
 # --- Worker layer (JOBS/QUEUES) ---
 FROM base AS worker

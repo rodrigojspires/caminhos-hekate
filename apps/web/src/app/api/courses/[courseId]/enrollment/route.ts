@@ -12,9 +12,9 @@ export async function GET(_req: NextRequest, { params }: { params: { courseId: s
     const userId = session.user.id
     const enrollment = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId, courseId: params.courseId } },
-      select: { id: true }
+      select: { id: true, status: true }
     })
-    return NextResponse.json({ enrolled: !!enrollment })
+    return NextResponse.json({ enrolled: !!enrollment, status: enrollment?.status || null })
   } catch (e) {
     return NextResponse.json({ enrolled: false })
   }
@@ -28,24 +28,34 @@ export async function POST(_req: NextRequest, { params }: { params: { courseId: 
     }
     const userId = session.user.id
 
-    const course = await prisma.course.findUnique({ where: { id: params.courseId }, select: { id: true, tier: true, price: true } })
+    const course = await prisma.course.findUnique({ where: { id: params.courseId }, select: { id: true, tier: true, accessModels: true } })
     if (!course) {
       return NextResponse.json({ error: 'Curso não encontrado' }, { status: 404 })
     }
 
-    // Regra simples: permitir auto-inscrição apenas em cursos FREE por enquanto
-    if (course.tier !== 'FREE') {
-      return NextResponse.json({ error: 'Inscrição automática indisponível para este curso' }, { status: 403 })
-    }
+    // Verifica se assinatura do usuário cobre o curso
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionTier: true } })
+    const order: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
+    const allowedBySubscription = (order[(user?.subscriptionTier as keyof typeof order) || 'FREE'] || 0) >= ((order[course.tier as keyof typeof order]) || 0)
+
+    // Determina status inicial da inscrição
+    const isFreeCourse = course.tier === 'FREE' || (Array.isArray(course.accessModels) && course.accessModels.includes('FREE'))
+    const targetStatus = isFreeCourse || allowedBySubscription ? 'active' : 'pending'
 
     const existing = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId, courseId: course.id } },
-      select: { id: true }
+      select: { id: true, status: true }
     })
-    if (existing) return NextResponse.json({ enrolled: true })
 
-    await prisma.enrollment.create({ data: { userId, courseId: course.id } })
-    return NextResponse.json({ enrolled: true })
+    if (existing) {
+      if (existing.status !== targetStatus) {
+        await prisma.enrollment.update({ where: { id: existing.id }, data: { status: targetStatus } })
+      }
+      return NextResponse.json({ enrolled: true, status: targetStatus })
+    }
+
+    await prisma.enrollment.create({ data: { userId, courseId: course.id, status: targetStatus } })
+    return NextResponse.json({ enrolled: true, status: targetStatus })
   } catch (error) {
     console.error('Erro ao inscrever no curso:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

@@ -21,6 +21,7 @@ type CourseDetailProps = {
 export default function CourseDetail({ course, canAccessAllContent, initialEnrolled = false }: CourseDetailProps) {
   const { getLessonProgress, updateWatchTime, markLessonComplete } = useCourseProgress()
   const [enrolled, setEnrolled] = useState<boolean>(initialEnrolled)
+  const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null)
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(() => {
     // Default to first free lesson or first lesson
     const firstLesson = course.modules?.[0]?.lessons?.[0]
@@ -55,7 +56,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
       .replace(/^\/uploads\//, '')
       .replace(/^\/private\//, '')
     if (!withoutPrefix.startsWith('course-videos/')) return null
-    const safe = withoutPrefix.replace(/\.\.+/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
+    const safe = withoutPrefix.replace(/\.{2,}/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
     return safe
   }
 
@@ -65,7 +66,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     setSigningError(null)
 
     const rel = normalizeCourseVideoRel(currentLesson?.videoUrl)
-    const locked = !currentLesson || (!currentLesson.isFree && !(canAccessAllContent || enrolled))
+    const locked = !currentLesson || !enrolled || (!currentLesson.isFree && enrollmentStatus !== 'active')
 
     if (!rel || locked) {
       setSignedVideoSrc(null)
@@ -96,15 +97,13 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     })()
 
     return () => { abort = true }
-  }, [currentLesson?.videoUrl, currentLesson?.isFree, canAccessAllContent, enrolled, course.id])
+  }, [currentLesson?.videoUrl, currentLesson?.isFree, enrolled, enrollmentStatus, course.id])
 
   const modulesForList = useMemo(() => {
     return (course.modules || []).map((m: any) => {
       const lessons = (m.lessons || []).map((l: any) => {
         const lp = getLessonProgress(course.id, l.id)
-        const lockedByTier = !canAccessAllContent
-        const lockedByEnrollment = !l.isFree && !enrolled
-        const locked = lockedByTier || lockedByEnrollment
+        const locked = !enrolled || (!l.isFree && enrollmentStatus !== 'active')
         const assetCount = Array.isArray(l.assets) ? l.assets.length : 0
         return {
           id: l.id,
@@ -134,7 +133,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
         order: m.order,
       }
     })
-  }, [course.modules, course.id, canAccessAllContent, getLessonProgress, enrolled])
+  }, [course.modules, course.id, getLessonProgress, enrolled, enrollmentStatus])
 
   const resumeTime = useMemo(() => {
     if (!currentLessonId) return 0
@@ -239,6 +238,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
         if (!mounted) return
         const j = await r.json().catch(() => ({ enrolled: false }))
         setEnrolled(!!j.enrolled)
+        setEnrollmentStatus(j.status || null)
       }).catch(() => {})
     }
     return () => { mounted = false }
@@ -250,15 +250,17 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
       if (res.ok) {
         const j = await res.json()
         setEnrolled(!!j.enrolled)
+        setEnrollmentStatus(j.status || null)
       }
     } catch {}
   }
 
   const hasLessonAccess = useMemo(() => {
     if (!currentLesson) return false
+    if (!enrolled) return false
     if (currentLesson.isFree) return true
-    return canAccessAllContent || enrolled
-  }, [canAccessAllContent, currentLesson, enrolled])
+    return enrollmentStatus === 'active'
+  }, [currentLesson, enrolled, enrollmentStatus])
 
   const formatFileSize = (value?: number | null) => {
     if (!value || value <= 0) return ''
@@ -335,24 +337,36 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                     />
                   ) : (
                     <div className="p-6 bg-muted border border-border rounded-lg text-center space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Você precisa de acesso para assistir a este vídeo.
-                      </p>
-                      <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                        {!canAccessAllContent && !currentLesson.isFree && !enrolled && (
-                          <span>
-                            Este curso requer o nível {course.tier}. <a href="/precos" className="underline text-primary">Faça upgrade</a> para desbloquear.
-                          </span>
-                        )}
-                        {(canAccessAllContent && !currentLesson.isFree && !enrolled) && (
-                          <span>
-                            Inscreva-se no curso para acessar esta lição.
-                            <button className="ml-1 text-primary underline" onClick={onEnroll}>
-                              Inscrever-se
-                            </button>
-                          </span>
-                        )}
-                      </div>
+                      {!enrolled ? (
+                        <>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Faça sua inscrição para acessar conteúdo do curso.
+                          </p>
+                          <Button variant="default" size="sm" onClick={onEnroll}>
+                            Inscrever-se
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {currentLesson.isFree ? (
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Você tem acesso às aulas gratuitas. Selecione uma aula gratuita no menu.
+                            </p>
+                          ) : (
+                            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                              <span>
+                                Este curso é pago. Conclua o pagamento para acessar esta lição.
+                              </span>
+                              {!canAccessAllContent && (
+                                <span>
+                                  Não possui assinatura com acesso a este curso. <a href="/precos" className="underline text-primary">Conheça os planos</a>.
+                                </span>
+                              )}
+                              <a href="/checkout" className="underline text-primary">Ir para o checkout</a>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )
                 ) : (
