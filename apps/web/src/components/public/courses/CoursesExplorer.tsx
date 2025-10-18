@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { CourseStatItem } from './CourseStats'
+import { resolveMediaUrl } from '@/lib/utils'
 
 export interface PublicCourse {
   id: string
@@ -246,7 +247,7 @@ export function CoursesExplorer({ courses, categories, levels }: CoursesExplorer
                     <div className="relative aspect-video w-full overflow-hidden rounded-t-xl">
                       {course.featuredImage ? (
                         <Image
-                          src={course.featuredImage}
+                          src={resolveMediaUrl(course.featuredImage) || '/logo.svg'}
                           alt={course.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"

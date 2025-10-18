@@ -84,8 +84,10 @@ export async function GET(_req: NextRequest, ctx: { params: { path: string[] } }
       'Cache-Control': 'public, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
       'Content-Disposition': 'inline',
+      'Access-Control-Allow-Origin': '*',
     }
-    return new NextResponse(stream as any, { status: 200, headers })
+    // Usar Response nativa para streaming mais robusto
+    return new Response(stream as any, { status: 200, headers })
   } catch (e) {
     console.error('Erro ao servir upload público:', e)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
@@ -93,3 +95,5 @@ export async function GET(_req: NextRequest, ctx: { params: { path: string[] } }
 }
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0

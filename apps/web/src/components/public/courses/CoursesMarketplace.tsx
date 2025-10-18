@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { resolveMediaUrl } from '@/lib/utils'
 
 interface CoursesMarketplaceProps {
   courses: PublicCourse[]
@@ -273,7 +274,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-transform duration-300 group-hover:-translate-y-2">
                         <div className="relative aspect-video">
                           {course.featuredImage ? (
-                            <Image src={course.featuredImage} alt={course.title} fill className="object-cover" />
+                            <Image src={resolveMediaUrl(course.featuredImage) || '/logo.svg'} alt={course.title} fill className="object-cover" />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/30 to-indigo-600/20 flex flex-col items-center justify-center gap-3">
                               <Play className="w-12 h-12 text-purple-100" />
@@ -472,7 +473,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                               <div className="relative aspect-video overflow-hidden">
                                 {course.featuredImage ? (
                                   <Image
-                                    src={course.featuredImage}
+                                    src={resolveMediaUrl(course.featuredImage) || '/logo.svg'}
                                     alt={course.title}
                                     fill
                                     className="object-cover group-hover:scale-105 transition-transform duration-500"

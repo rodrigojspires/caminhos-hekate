@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { resolveMediaUrl } from '@/lib/utils'
 
 interface Course {
   id: string
@@ -336,7 +337,7 @@ export function CourseTable({
                   <div className="flex items-center gap-3">
                     {course.featuredImage && (
                       <Image
-                        src={course.featuredImage}
+                        src={resolveMediaUrl(course.featuredImage) || '/logo.svg'}
                         alt={course.title}
                         width={48}
                         height={48}
