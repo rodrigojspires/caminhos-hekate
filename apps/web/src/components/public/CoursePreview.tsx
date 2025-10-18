@@ -6,7 +6,6 @@ import { motion } from 'framer-motion'
 import { 
   Play, 
   Clock, 
-  Users, 
   Star, 
   BookOpen, 
   Award,
@@ -214,10 +213,6 @@ export function CoursePreview() {
                     <div className="flex items-center space-x-1">
                       <BookOpen className="h-4 w-4" />
                       <span>{course.lessons} aulas</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-4 w-4" />
-                      <span>{course.students.toLocaleString()}</span>
                     </div>
                   </div>
 

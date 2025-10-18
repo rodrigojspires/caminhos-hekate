@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Search, SlidersHorizontal, X, Video, BookOpen, Users, Clock } from 'lucide-react'
+import { Search, SlidersHorizontal, X, Video, BookOpen, Clock } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { CourseStatItem } from './CourseStats'
 import { resolveMediaUrl } from '@/lib/utils'
 
 export interface PublicCourse {
@@ -114,8 +113,11 @@ export function CoursesExplorer({ courses, categories, levels }: CoursesExplorer
       case 'recent':
         list.sort((a, b) => b.lessons - a.lessons)
         break
+      case 'popular':
+        list.sort((a, b) => (b.modules * 2 + b.lessons) - (a.modules * 2 + a.lessons))
+        break
       default:
-        list.sort((a, b) => b.students - a.students)
+        list.sort((a, b) => b.lessons - a.lessons)
     }
 
     return list
@@ -287,10 +289,6 @@ export function CoursesExplorer({ courses, categories, levels }: CoursesExplorer
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          {course.students} aluno{course.students === 1 ? '' : 's'}
-                        </div>
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4" />
                           {course.duration ? `${course.duration}h` : 'Duração livre'}

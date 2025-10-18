@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   Filter,
   Star,
-  Users,
   Clock,
   Layers,
   Sparkles,
@@ -60,13 +59,10 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
   const catalogMetrics = useMemo(() => {
     const totalHours = courses.reduce((sum, course) => sum + (course.duration ?? 0), 0)
     const totalLessons = courses.reduce((sum, course) => sum + course.lessons, 0)
-    const totalStudents = courses.reduce((sum, course) => sum + course.students, 0)
-
     return {
       totalCourses: courses.length,
       totalHours,
-      totalLessons,
-      totalStudents
+      totalLessons
     }
   }, [courses])
 
@@ -95,8 +91,8 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
 
   const trendingCourses = useMemo(() => {
     const sorted = [...courses].sort((a, b) => {
-      const scoreA = a.students * 3 + a.lessons * 2 + (a.price ?? 0)
-      const scoreB = b.students * 3 + b.lessons * 2 + (b.price ?? 0)
+      const scoreA = a.modules * 3 + a.lessons * 2 + (a.duration ?? 0)
+      const scoreB = b.modules * 3 + b.lessons * 2 + (b.duration ?? 0)
       return scoreB - scoreA
     })
     return sorted.slice(0, 5)
@@ -144,8 +140,11 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
       case 'recent':
         list.sort((a, b) => b.lessons - a.lessons)
         break
+      case 'popular':
+        list.sort((a, b) => (b.modules * 2 + b.lessons) - (a.modules * 2 + a.lessons))
+        break
       default:
-        list.sort((a, b) => b.students - a.students)
+        list.sort((a, b) => b.lessons - a.lessons)
     }
 
     return list
@@ -190,12 +189,6 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   <div>
                     <p className="text-sm text-purple-200 uppercase tracking-wide">Aulas</p>
                     <p className="text-2xl font-semibold text-white">{catalogMetrics.totalLessons}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-purple-200 uppercase tracking-wide">Estudantes</p>
-                    <p className="text-2xl font-semibold text-white">
-                      {catalogMetrics.totalStudents.toLocaleString('pt-BR')}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -289,7 +282,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                           </div>
                           <h3 className="font-semibold text-white line-clamp-2 min-h-[48px]">{course.title}</h3>
                           <div className="flex items-center gap-3 text-sm text-purple-200">
-                            <Users className="w-4 h-4" /> {course.students.toLocaleString('pt-BR')} alunos
+                            <span className="sr-only">Alunos</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-purple-200">{course.lessons} aulas</span>
@@ -507,10 +500,6 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                                 )}
                               </div>
                               <div className="grid grid-cols-2 gap-3 text-sm text-purple-200">
-                                <div className="flex items-center gap-2">
-                                  <Users className="w-4 h-4" />
-                                  {course.students.toLocaleString('pt-BR')} alunos
-                                </div>
                                 <div className="flex items-center gap-2">
                                   <Clock className="w-4 h-4" />
                                   {course.duration ?? 0}h de conteúdo

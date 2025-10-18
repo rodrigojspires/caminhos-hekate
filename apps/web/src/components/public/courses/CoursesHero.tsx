@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Search, Filter, BookOpen, Clock, Users, Star } from 'lucide-react'
+import { Search, Filter, BookOpen, Clock, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 const stats = [
   { label: 'Cursos Disponíveis', value: '150+', icon: BookOpen },
   { label: 'Horas de Conteúdo', value: '2.500+', icon: Clock },
-  { label: 'Estudantes Ativos', value: '25.000+', icon: Users },
   { label: 'Avaliação Média', value: '4.9', icon: Star }
 ]
 
@@ -121,7 +120,7 @@ export function CoursesHero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto"
+            className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl mx-auto"
           >
             {stats.map((stat, index) => {
               const Icon = stat.icon
