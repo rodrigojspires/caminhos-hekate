@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 interface CourseData {
   id: string
+  slug: string
   title: string
   description: string
   thumbnail: string
@@ -152,6 +153,7 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
 
       coursesWithProgress.push({
         id: course.id,
+        slug: course.slug,
         title: course.title,
         description: course.description || '',
         thumbnail: course.featuredImage || '/images/course-placeholder.jpg',

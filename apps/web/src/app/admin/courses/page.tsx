@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { 
   Plus, 
   Filter, 
-  Download,
   Trash2
 } from 'lucide-react'
 import { CourseTable } from '@/components/admin/CourseTable'
@@ -200,37 +199,6 @@ export default function CoursesPage() {
     }
   }
 
-  // Exportar dados
-  const handleExport = async (format: 'csv' | 'json' = 'csv') => {
-    try {
-      const params = new URLSearchParams({ format, type: 'courses' })
-      
-      // Adicionar filtros à exportação
-      if (filters.status) params.append('status', filters.status)
-      if (filters.level) params.append('level', filters.level)
-      if (filters.dateFrom) params.append('startDate', filters.dateFrom)
-      if (filters.dateTo) params.append('endDate', filters.dateTo)
-
-      const response = await fetch(`/api/admin/courses/export?${params}`)
-      
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `cursos_${new Date().toISOString().split('T')[0]}.${format}`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        toast.success('Dados exportados com sucesso')
-      } else {
-        toast.error('Erro ao exportar dados')
-      }
-    } catch (error) {
-      toast.error('Erro ao exportar dados')
-    }
-  }
 
   // Aplicar filtros
   const handleApplyFilters = (newFilters: Filters) => {
@@ -262,13 +230,6 @@ useEffect(() => {
           <p className="text-gray-600 dark:text-gray-400">Gerencie os cursos da plataforma</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleExport('csv')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Exportar
-          </button>
           <button
             onClick={() => router.push('/admin/courses/new')}
             className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"

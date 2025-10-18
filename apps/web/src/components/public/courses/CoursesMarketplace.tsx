@@ -1,14 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
-  Search,
+  // Search,  // removido do Hero
   Flame,
   SlidersHorizontal,
-  Filter,
+  // Filter,  // removido do Hero
   Star,
   Clock,
   Layers,
@@ -16,7 +16,9 @@ import {
   Play,
   Bookmark,
   ArrowUpRight,
-  CheckCircle2
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { PublicCourse } from '@/components/public/courses/CoursesExplorer'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +95,51 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     return courses.filter((course) => course.featured)
   }, [courses])
 
+  // carrossel de "em alta"
+  const trendingRef = useRef<HTMLDivElement | null>(null)
+  // remove função antiga scrollTrending
+
+  // estado e helpers para páginas do carrossel
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+
+  const updatePagesAndIndex = () => {
+    const container = trendingRef.current
+    if (!container) return
+    const firstItem = container.querySelector<HTMLAnchorElement>('.hekate-trending-card')
+    const itemWidth = firstItem?.clientWidth || container.clientWidth
+    const perView = Math.max(1, Math.floor(container.clientWidth / itemWidth))
+    setTotalPages(Math.max(1, Math.ceil(trendingCourses.length / perView)))
+    setCurrentPage(Math.round(container.scrollLeft / container.clientWidth))
+  }
+
+  useEffect(() => {
+    updatePagesAndIndex()
+    const handleResize = () => updatePagesAndIndex()
+    window.addEventListener('resize', handleResize)
+
+    const container = trendingRef.current
+    const handleScroll = () => {
+      const c = trendingRef.current
+      if (!c) return
+      setCurrentPage(Math.round(c.scrollLeft / c.clientWidth))
+    }
+    container?.addEventListener('scroll', handleScroll)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      container?.removeEventListener('scroll', handleScroll)
+    }
+  }, [trendingCourses.length])
+
+  const goToPage = (page: number) => {
+    const c = trendingRef.current
+    if (!c) return
+    const target = Math.max(0, Math.min(page, totalPages - 1))
+    c.scrollTo({ left: target * c.clientWidth, behavior: 'smooth' })
+  }
+
+  // restaura filtragem do catálogo
   const filteredCourses = useMemo(() => {
     let list = [...courses]
 
@@ -189,53 +236,8 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
               </div>
             </div>
 
-            <div className="w-full max-w-xl space-y-5">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-200 w-5 h-5" />
-                <Input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Busque por um curso, tema ou instrutor"
-                  className="pl-12 pr-4 h-14 text-lg bg-white/10 border-white/20 text-white placeholder:text-purple-200 focus-visible:ring-purple-300"
-                />
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-purple-200" />
-                  <p className="text-sm text-purple-100">Categorias em destaque</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    key="todos"
-                    size="sm"
-                    variant={selectedCategory === 'todos' ? 'default' : 'outline'}
-                    className={
-                      selectedCategory === 'todos'
-                        ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                        : 'border-white/20 text-purple-100 hover:bg-white/10'
-                    }
-                    onClick={() => setSelectedCategory('todos')}
-                  >
-                    Todas
-                  </Button>
-                  {categories.slice(0, 6).map((category) => (
-                    <Button
-                      key={category.value}
-                      size="sm"
-                      variant={selectedCategory === category.value ? 'default' : 'outline'}
-                      className={
-                        selectedCategory === category.value
-                          ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                          : 'border-white/20 text-purple-100 hover:bg-white/10'
-                      }
-                      onClick={() => setSelectedCategory(category.value)}
-                    >
-                      {category.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Bloco de busca/filtros removido do Hero */}
+            {/* <div className="w-full max-w-xl space-y-5"> ... </div> */}
           </div>
 
           {!!trendingCourses.length && (
@@ -252,42 +254,82 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   <ArrowUpRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-700/60">
-                {trendingCourses.map((course) => {
-                  const priceLabel =
-                    course.price == null || course.price === 0 ? 'Gratuito' : formatCurrency(course.price)
 
-                  return (
-                    <Link key={course.id} href={`/cursos/${course.slug}`} className="group min-w-[260px]">
-                      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-transform duration-300 group-hover:-translate-y-2">
-                        <div className="relative aspect-video">
-                          {course.featuredImage ? (
-                            <Image src={resolveMediaUrl(course.featuredImage) || '/logo.svg'} alt={course.title} fill className="object-cover" />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/30 to-indigo-600/20 flex flex-col items-center justify-center gap-3">
-                              <Play className="w-12 h-12 text-purple-100" />
-                              <span className="text-sm text-purple-100/80">Curso digital</span>
+              {/* Carrossel de cursos em alta */}
+              <div className="relative">
+                <div
+                  ref={trendingRef}
+                  className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-700/60 scroll-smooth"
+                >
+                  {trendingCourses.map((course) => {
+                    const priceLabel =
+                      course.price == null || course.price === 0 ? 'Gratuito' : formatCurrency(course.price)
+
+                    return (
+                      <Link key={course.id} href={`/cursos/${course.slug}`} className="group min-w-[260px]">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-transform duration-300 group-hover:-translate-y-2">
+                          <div className="relative aspect-video">
+                            {course.featuredImage ? (
+                              <Image src={resolveMediaUrl(course.featuredImage) || '/logo.svg'} alt={course.title} fill className="object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/30 to-indigo-600/20 flex flex-col items-center justify-center gap-3">
+                                <Play className="w-12 h-12 text-purple-100" />
+                                <span className="text-sm text-purple-100/80">Curso digital</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="p-4 space-y-3">
+                            <div className="flex items-center gap-2 text-xs text-purple-200">
+                              <Star className="w-3.5 h-3.5" /> Destaque da semana
                             </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <div className="p-4 space-y-3">
-                          <div className="flex items-center gap-2 text-xs text-purple-200">
-                            <Star className="w-3.5 h-3.5" /> Destaque da semana
-                          </div>
-                          <h3 className="font-semibold text-white line-clamp-2 min-h-[48px]">{course.title}</h3>
-                          <div className="flex items-center gap-3 text-sm text-purple-200">
-                            <span className="sr-only">Alunos</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-purple-200">{course.lessons} aulas</span>
-                            <span className="text-base font-semibold text-white">{priceLabel}</span>
+                            <h3 className="font-semibold text-white line-clamp-2 min-h-[48px]">{course.title}</h3>
+                            <div className="flex items-center gap-3 text-sm text-purple-200">
+                              <span className="sr-only">Alunos</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-purple-200">{course.lessons} aulas</span>
+                              <span className="text-base font-semibold text-white">{priceLabel}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  )
-                })}
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {/* Controles do carrossel */}
+                <div className="pointer-events-none">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto absolute -left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    onClick={() => goToPage(Math.max(currentPage - 1, 0))}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="pointer-events-auto absolute -right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    onClick={() => goToPage(Math.min(currentPage + 1, totalPages - 1))}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Indicadores de página (bolinhas) */}
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`Ir para página ${i + 1}`}
+                      onClick={() => goToPage(i)}
+                      className={`${i === currentPage ? 'bg-purple-400' : 'bg-white/20 hover:bg-white/30'} h-2.5 w-2.5 rounded-full transition-colors`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}

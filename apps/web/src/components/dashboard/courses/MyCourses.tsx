@@ -1,11 +1,12 @@
 "use client"
 
-import { Play, Clock, BookOpen, Star, Calendar, CheckCircle, AlertCircle } from "lucide-react"
+import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
 interface Course {
   id: string
+  slug: string
   title: string
   description: string
   thumbnail: string
@@ -171,10 +172,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(course.level)}`}>
                         {getLevelText(course.level)}
                       </span>
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        <Star className="w-4 h-4 fill-current" />
-                        <span className="text-sm font-medium text-foreground">{course.rating.toFixed(1)}</span>
-                      </div>
+                      {/* Rating removido por ausência de sistema de avaliação */}
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span className="text-sm">{course.completedLessons}/{course.totalLessons} aulas</span>
@@ -183,14 +181,17 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
 
                     <div className="flex gap-2">
                       <Link
-                        href={`/courses/${course.id}`}
+                        href={`/cursos/${course.slug}`}
                         className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                       >
                         Continuar
                       </Link>
-                      <button className="px-4 py-2 border border-input rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <Link
+                        href={`/cursos/${course.slug}`}
+                        className="px-4 py-2 border border-input rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
+                      >
                         Detalhes
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { CourseFilters } from './CourseFilters'
 
 interface Course {
   id: string
+  slug: string
   title: string
   description: string
   thumbnail: string

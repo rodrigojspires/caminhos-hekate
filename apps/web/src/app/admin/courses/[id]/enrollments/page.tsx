@@ -46,6 +46,9 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
 
   const fetchEnrollments = async (page = 1) => {
     try {
@@ -95,6 +98,73 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
       toast.error(error instanceof Error ? error.message : 'Falha ao inscrever aluno')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDeleteEnrollment = async (enrollmentId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta inscrição?')) return
+    try {
+      setDeletingId(enrollmentId)
+      const res = await fetch(`/api/admin/courses/${params.id}/enrollments/${enrollmentId}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao excluir inscrição')
+      }
+      toast.success('Inscrição excluída')
+      // Atualiza lista local sem refetch completo
+      setEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId))
+      setPagination((p) => ({ ...p, total: Math.max(0, p.total - 1), totalPages: Math.max(1, Math.ceil((Math.max(0, p.total - 1)) / p.limit)) }))
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir inscrição')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleDeactivateEnrollment = async (enrollmentId: string) => {
+    if (!confirm('Tem certeza que deseja desativar esta inscrição? O aluno perderá acesso, mas o progresso será mantido.')) return
+    try {
+      setDeactivatingId(enrollmentId)
+      const res = await fetch(`/api/admin/courses/${params.id}/enrollments/${enrollmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'inactive' })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao desativar inscrição')
+      }
+      toast.success('Inscrição desativada')
+      setEnrollments((prev) => prev.map((e) => e.id === enrollmentId ? { ...e, status: 'inactive' } : e))
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao desativar inscrição')
+    } finally {
+      setDeactivatingId(null)
+    }
+  }
+
+  const handleActivateEnrollment = async (enrollmentId: string) => {
+    if (!confirm('Tem certeza que deseja ativar esta inscrição? O aluno voltará a ter acesso ao curso.')) return
+    try {
+      setActivatingId(enrollmentId)
+      const res = await fetch(`/api/admin/courses/${params.id}/enrollments/${enrollmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao ativar inscrição')
+      }
+      toast.success('Inscrição ativada')
+      setEnrollments((prev) => prev.map((e) => e.id === enrollmentId ? { ...e, status: 'active' } : e))
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao ativar inscrição')
+    } finally {
+      setActivatingId(null)
     }
   }
 
@@ -196,7 +266,7 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
                           {enrollment.user?.name || 'Aluno sem nome'}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                          {enrollment.status === 'active' ? 'Ativo' : enrollment.status}
+                          {enrollment.status === 'active' ? 'Ativo' : enrollment.status === 'inactive' ? 'Inativo' : enrollment.status}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -215,6 +285,54 @@ export default function CourseEnrollmentsPage({ params }: PageProps) {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="w-4 h-4" />
                     ID do usuário: {enrollment.userId}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {enrollment.status === 'inactive' ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleActivateEnrollment(enrollment.id)}
+                        disabled={activatingId === enrollment.id}
+                      >
+                        {activatingId === enrollment.id ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Ativando
+                          </span>
+                        ) : (
+                          'Ativar inscrição'
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeactivateEnrollment(enrollment.id)}
+                        disabled={deactivatingId === enrollment.id || enrollment.status !== 'active'}
+                      >
+                        {deactivatingId === enrollment.id ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Desativando
+                          </span>
+                        ) : (
+                          'Desativar inscrição'
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteEnrollment(enrollment.id)}
+                      disabled={deletingId === enrollment.id}
+                    >
+                      {deletingId === enrollment.id ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Excluindo
+                        </span>
+                      ) : (
+                        'Excluir inscrição'
+                      )}
+                    </Button>
                   </div>
                 </div>
               ))}
