@@ -39,6 +39,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
                 videoDuration: true,
                 order: true,
                 isFree: true,
+                releaseAfterDays: true,
                 assets: {
                   orderBy: { order: 'asc' },
                   select: {

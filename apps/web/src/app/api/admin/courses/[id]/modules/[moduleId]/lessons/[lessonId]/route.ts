@@ -20,6 +20,7 @@ const updateLessonSchema = z.object({
   videoDuration: z.number().int().nullable().optional(),
   isFree: z.boolean().optional(),
   order: z.number().int().optional(),
+  releaseAfterDays: z.number().int().min(0).nullable().optional(),
 })
 
 interface RouteParams {
@@ -91,6 +92,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         videoStorage: videoStorageValue,
         videoDuration: data.videoDuration !== undefined ? data.videoDuration : lesson.videoDuration,
         isFree: data.isFree ?? lesson.isFree,
+        releaseAfterDays: data.releaseAfterDays !== undefined ? data.releaseAfterDays : lesson.releaseAfterDays,
         order: newOrder,
       }
     })

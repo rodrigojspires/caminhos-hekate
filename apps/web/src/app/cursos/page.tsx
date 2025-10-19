@@ -121,6 +121,8 @@ export default async function CoursesPage() {
       categoryId: course.category?.id ?? null,
       categoryName: course.category?.name ?? null,
       categorySlug: course.category?.slug ?? null,
+      tier: course.tier ?? null,
+      accessModels: Array.isArray(course.accessModels) ? [...course.accessModels] : []
     }
   })
 

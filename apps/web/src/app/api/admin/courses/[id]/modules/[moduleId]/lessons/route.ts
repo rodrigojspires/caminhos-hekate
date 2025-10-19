@@ -26,6 +26,7 @@ const createLessonSchema = z.object({
     .optional(),
   videoDuration: z.number().int().nullable().optional(),
   isFree: z.boolean().optional(),
+  releaseAfterDays: z.number().int().min(0).nullable().optional(),
   assets: z.array(lessonAssetSchema).optional()
 })
 
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         videoStorage: data.videoStorage != null ? (data.videoStorage as Prisma.InputJsonValue) : Prisma.DbNull,
         videoDuration: data.videoDuration ?? null,
         isFree: data.isFree ?? false,
+        releaseAfterDays: data.releaseAfterDays ?? null,
         order: (lastLesson?.order ?? 0) + 1,
       }
     })

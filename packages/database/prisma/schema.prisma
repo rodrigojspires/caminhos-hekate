@@ -589,6 +589,7 @@ model Lesson {
   videoStorage   Json?
   order         Int
   isFree        Boolean    @default(false)
+  releaseAfterDays Int?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   assets        Asset[]

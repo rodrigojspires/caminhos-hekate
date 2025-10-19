@@ -25,6 +25,8 @@ interface Lesson {
   videoUrl?: string
   thumbnailUrl?: string
   order: number
+  availableAt?: string | null
+  releaseAfterDays?: number | null
 }
 
 interface Module {
@@ -134,6 +136,23 @@ export function LessonList({
     return totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
   }
 
+  const formatUnlockMessage = (lesson: Lesson) => {
+    if (!lesson.availableAt) return null
+    const target = new Date(lesson.availableAt)
+    if (Number.isNaN(target.getTime())) return null
+    const now = new Date()
+    if (target.getTime() <= now.getTime()) {
+      return 'Liberada recentemente'
+    }
+    const diffDays = Math.max(1, Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    const diffLabel = diffDays === 1 ? '1 dia' : `${diffDays} dias`
+    const formattedDate = target.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short'
+    })
+    return `Disponível em ${diffLabel} (${formattedDate})`
+  }
+
   return (
     <Card className={cn('', className)}>
       <CardHeader>
@@ -199,6 +218,7 @@ export function LessonList({
                 <CollapsibleContent>
                   <div className="bg-muted/20">
                     {module.lessons.map((lesson, lessonIndex) => {
+                      const unlockMessage = formatUnlockMessage(lesson)
                       const isCurrentLesson = lesson.id === currentLessonId
                       
                       return (
@@ -231,6 +251,11 @@ export function LessonList({
                               {lesson.description && (
                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                   {lesson.description}
+                                </p>
+                              )}
+                              {lesson.isLocked && unlockMessage && (
+                                <p className="text-xs text-amber-600 mt-1">
+                                  {unlockMessage}
                                 </p>
                               )}
                               

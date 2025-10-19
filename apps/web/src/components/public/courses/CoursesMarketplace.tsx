@@ -51,6 +51,13 @@ const levelLabels: Record<string, string> = {
   EXPERT: 'Especialista'
 }
 
+const tierLabels: Record<string, string> = {
+  FREE: 'Gratuito',
+  INICIADO: 'Iniciado',
+  ADEPTO: 'Adepto',
+  SACERDOCIO: 'Sacerdócio'
+}
+
 export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('todos')
@@ -264,6 +271,8 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   {trendingCourses.map((course) => {
                     const priceLabel =
                       course.price == null || course.price === 0 ? 'Gratuito' : formatCurrency(course.price)
+                    const tierLabel = course.tier ? (tierLabels[course.tier] ?? course.tier) : null
+                    const isFree = !course.price || course.price === 0
 
                     return (
                       <Link key={course.id} href={`/cursos/${course.slug}`} className="group min-w-[260px]">
@@ -277,6 +286,16 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                                 <span className="text-sm text-purple-100/80">Curso digital</span>
                               </div>
                             )}
+                            <div className="absolute top-2 left-2 flex flex-wrap gap-2">
+                              {tierLabel && (
+                                <Badge className="bg-black/60 text-white border-white/20">
+                                  Plano {tierLabel}
+                                </Badge>
+                              )}
+                              {isFree && (
+                                <Badge className="bg-emerald-500/90 text-white border-emerald-400/60">Gratuito</Badge>
+                              )}
+                            </div>
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                           <div className="p-4 space-y-3">
@@ -494,6 +513,8 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                     const priceBRL = formatCurrency(course.price)
                     const compareBRL = formatCurrency(course.comparePrice)
                     const isFree = !course.price || course.price === 0
+                    const tierLabel = course.tier ? (tierLabels[course.tier] ?? course.tier) : null
+                    const requiresSubscription = course.tier ? course.tier !== 'FREE' : false
 
                     return (
                       <motion.div key={course.id} layout>
@@ -520,6 +541,11 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                                     <Badge className="bg-emerald-500/90 text-white border-emerald-400/60">Gratuito</Badge>
                                   ) : (
                                     <Badge className="bg-purple-600/90 text-white border-purple-500/60">Premium</Badge>
+                                  )}
+                                  {tierLabel && (
+                                    <Badge className="bg-black/60 text-white border-white/20">
+                                      Plano {tierLabel}
+                                    </Badge>
                                   )}
                                   {course.level && (
                                     <Badge className="bg-white/10 text-white border-white/30">
@@ -558,6 +584,13 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                                 </span>
                                 {!isFree && compareBRL && (
                                   <span className="text-sm text-purple-200/70 line-through">{compareBRL}</span>
+                                )}
+                                {tierLabel && (
+                                  <span className="text-xs text-purple-200/80 mt-1">
+                                    {requiresSubscription
+                                      ? `Incluído a partir do plano ${tierLabel}`
+                                      : 'Plano Gratuito'}
+                                  </span>
                                 )}
                               </div>
                               <Button variant="ghost" className="text-purple-200 hover:text-white">

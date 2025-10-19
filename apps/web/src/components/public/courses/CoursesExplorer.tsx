@@ -30,6 +30,8 @@ export interface PublicCourse {
   categoryId?: string | null
   categorySlug?: string | null
   categoryName?: string | null
+  tier?: string | null
+  accessModels?: string[]
 }
 
 interface CoursesExplorerProps {

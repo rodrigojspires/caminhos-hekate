@@ -59,6 +59,7 @@ interface Lesson {
   videoDuration?: number | null
   order: number
   isFree: boolean
+  releaseAfterDays?: number | null
   assets: LessonAsset[]
 }
 
@@ -94,6 +95,7 @@ type LessonFormState = {
   videoStorage: Lesson['videoStorage']
   videoDuration: string
   isFree: boolean
+  releaseAfterDays: string
   assets: LessonAsset[]
 }
 
@@ -112,6 +114,7 @@ export function CourseContentManager({ courseId }: CourseContentManagerProps) {
     videoStorage: null,
     videoDuration: '',
     isFree: false,
+    releaseAfterDays: '',
     assets: [],
   })
   const videoFileInputRef = useRef<HTMLInputElement | null>(null)
@@ -330,6 +333,7 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
       videoStorage: lesson?.videoStorage ?? null,
       videoDuration: lesson?.videoDuration != null ? String(lesson.videoDuration) : '',
       isFree: lesson?.isFree ?? false,
+      releaseAfterDays: lesson?.releaseAfterDays != null ? String(lesson.releaseAfterDays) : '',
       assets: lesson?.assets ?? [],
     })
   }
@@ -344,6 +348,7 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
       videoStorage: null,
       videoDuration: '',
       isFree: false,
+      releaseAfterDays: '',
       assets: [],
     })
     setLessonAssetUploading(false)
@@ -360,6 +365,16 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
 
     const trimmedVideoUrl = lessonForm.videoUrl.trim()
     const hasVideo = trimmedVideoUrl.length > 0
+    const releaseTrimmed = lessonForm.releaseAfterDays.trim()
+    let parsedRelease: number | null = null
+    if (releaseTrimmed) {
+      const releaseNumber = Number(releaseTrimmed)
+      if (!Number.isFinite(releaseNumber) || releaseNumber < 0) {
+        toast.error('Informe um número válido de dias para liberação (0 ou mais).')
+        return
+      }
+      parsedRelease = Math.floor(releaseNumber)
+    }
 
     const payload: Record<string, unknown> = {
       title: lessonForm.title.trim(),
@@ -367,6 +382,7 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
       content: lessonForm.content.trim() || undefined,
       videoDuration: lessonForm.videoDuration ? Number(lessonForm.videoDuration) : undefined,
       isFree: lessonForm.isFree,
+      releaseAfterDays: parsedRelease,
     }
 
     if (lessonForm.id) {
@@ -783,6 +799,11 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
                                     {lesson.description && (
                                       <p className="text-sm text-muted-foreground">{lesson.description}</p>
                                     )}
+                                    {lesson.releaseAfterDays != null && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Liberação: {lesson.releaseAfterDays === 0 ? 'imediata' : `após ${lesson.releaseAfterDays} dia${lesson.releaseAfterDays === 1 ? '' : 's'}`}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Button variant="ghost" size="sm" onClick={() => openLessonDialog(module.id, lesson)}>
@@ -1053,15 +1074,30 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Duração do vídeo (minutos)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={lessonForm.videoDuration}
-                  onChange={(e) => setLessonForm((prev) => ({ ...prev, videoDuration: e.target.value }))}
-                  placeholder="ex: 15"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Duração do vídeo (minutos)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={lessonForm.videoDuration}
+                    onChange={(e) => setLessonForm((prev) => ({ ...prev, videoDuration: e.target.value }))}
+                    placeholder="ex: 15"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Liberação após (dias)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={lessonForm.releaseAfterDays}
+                    onChange={(e) => setLessonForm((prev) => ({ ...prev, releaseAfterDays: e.target.value }))}
+                    placeholder="ex: 7"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Defina após quantos dias da inscrição esta aula será liberada. Deixe em branco para liberar imediatamente.
+                  </p>
+                </div>
               </div>
             </div>
             <div className="space-y-2">

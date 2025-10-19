@@ -77,7 +77,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
     : session?.user?.id
       ? await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.user.id, courseId: course.id } },
-          select: { status: true }
+          select: { status: true, createdAt: true }
         })
       : null
 
@@ -111,6 +111,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
           course={course as any}
           canAccessAllContent={canAccessAllContent}
           initialEnrolled={enrollmentStatus === 'active'}
+          enrollmentStartedAt={enrollment?.createdAt ? enrollment.createdAt.toISOString() : null}
         />
       ) : (
         <>

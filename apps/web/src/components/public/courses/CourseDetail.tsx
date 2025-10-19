@@ -16,17 +16,19 @@ type CourseDetailProps = {
   course: any
   canAccessAllContent: boolean
   initialEnrolled?: boolean
+  enrollmentStartedAt?: string | null
 }
 
-export default function CourseDetail({ course, canAccessAllContent, initialEnrolled = false }: CourseDetailProps) {
+export default function CourseDetail({
+  course,
+  canAccessAllContent,
+  initialEnrolled = false,
+  enrollmentStartedAt = null
+}: CourseDetailProps) {
   const { getLessonProgress, updateWatchTime, markLessonComplete } = useCourseProgress()
   const [enrolled, setEnrolled] = useState<boolean>(initialEnrolled)
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null)
-  const [currentLessonId, setCurrentLessonId] = useState<string | null>(() => {
-    // Default to first free lesson or first lesson
-    const firstLesson = course.modules?.[0]?.lessons?.[0]
-    return firstLesson?.id || null
-  })
+  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
 
   const currentLesson = useMemo(() => {
@@ -45,6 +47,11 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
   // Secure signed URL state for protected course videos
   const [signedVideoSrc, setSignedVideoSrc] = useState<string | null>(null)
   const [signingError, setSigningError] = useState<string | null>(null)
+  const enrollmentStartDate = useMemo(() => {
+    if (!enrollmentStartedAt) return null
+    const parsed = new Date(enrollmentStartedAt)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }, [enrollmentStartedAt])
 
   // Helper: detect course-videos path and extract relative path
   const normalizeCourseVideoRel = (url?: string | null): string | null => {
@@ -66,7 +73,7 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     setSigningError(null)
 
     const rel = normalizeCourseVideoRel(currentLesson?.videoUrl)
-    const locked = !currentLesson || !enrolled || (!currentLesson.isFree && enrollmentStatus !== 'active')
+    const locked = !currentLesson || !enrolled || currentLessonMeta?.isLocked || (!currentLesson.isFree && enrollmentStatus !== 'active')
 
     if (!rel || locked) {
       setSignedVideoSrc(null)
@@ -97,14 +104,29 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
     })()
 
     return () => { abort = true }
-  }, [currentLesson?.videoUrl, currentLesson?.isFree, enrolled, enrollmentStatus, course.id])
+  }, [currentLesson, currentLesson?.videoUrl, currentLesson?.isFree, currentLessonMeta?.isLocked, enrolled, enrollmentStatus, course.id])
 
   const modulesForList = useMemo(() => {
+    const now = new Date()
+    const enrollmentStartMs = enrollmentStartDate ? enrollmentStartDate.getTime() : null
+
     return (course.modules || []).map((m: any) => {
       const lessons = (m.lessons || []).map((l: any) => {
         const lp = getLessonProgress(course.id, l.id)
-        const locked = !enrolled || (!l.isFree && enrollmentStatus !== 'active')
+        const releaseAfterDays =
+          typeof l.releaseAfterDays === 'number' && l.releaseAfterDays >= 0 ? l.releaseAfterDays : null
         const assetCount = Array.isArray(l.assets) ? l.assets.length : 0
+
+        let availableAt: Date | null = null
+        if (releaseAfterDays != null && enrollmentStartMs != null) {
+          availableAt = new Date(enrollmentStartMs + releaseAfterDays * 24 * 60 * 60 * 1000)
+        }
+
+        let locked = !enrolled || (!l.isFree && enrollmentStatus !== 'active')
+        if (!locked && availableAt && availableAt > now) {
+          locked = true
+        }
+
         return {
           id: l.id,
           title: l.title,
@@ -116,6 +138,8 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
           hasResources: assetCount > 0,
           resourcesCount: assetCount,
           order: l.order,
+          availableAt: availableAt ? availableAt.toISOString() : null,
+          releaseAfterDays,
         }
       })
 
@@ -133,8 +157,103 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
         order: m.order,
       }
     })
-  }, [course.modules, course.id, getLessonProgress, enrolled, enrollmentStatus])
+  }, [course.modules, course.id, getLessonProgress, enrolled, enrollmentStatus, enrollmentStartDate])
 
+  const flatLessonMetas = useMemo(() => {
+    return modulesForList.flatMap((module) => module.lessons)
+  }, [modulesForList])
+
+  const firstUnlockedLesson = useMemo(() => {
+    return flatLessonMetas.find((lesson) => !lesson.isLocked) || null
+  }, [flatLessonMetas])
+
+  const nextUnlockLesson = useMemo(() => {
+    const upcoming = flatLessonMetas
+      .filter((lesson) => lesson.isLocked && lesson.availableAt)
+      .map((lesson) => ({
+        lesson,
+        availableAt: lesson.availableAt ? new Date(lesson.availableAt) : null
+      }))
+      .filter(({ availableAt }) => availableAt && availableAt.getTime() > Date.now())
+      .sort((a, b) => (a.availableAt!.getTime() - b.availableAt!.getTime()))
+    return upcoming.length > 0 ? upcoming[0] : null
+  }, [flatLessonMetas])
+
+  const upcomingUnlockInfo = useMemo(() => {
+    if (!nextUnlockLesson?.availableAt) return null
+    const target = nextUnlockLesson.availableAt
+    const now = new Date()
+    const diffMs = target.getTime() - now.getTime()
+    const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+    const diffLabel = diffDays <= 1 ? '1 dia' : `${diffDays} dias`
+    const formattedDate = target.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'long'
+    })
+    return {
+      lessonTitle: nextUnlockLesson.lesson.title,
+      diffLabel,
+      formattedDate
+    }
+  }, [nextUnlockLesson])
+
+  useEffect(() => {
+    if (!flatLessonMetas.length) {
+      if (currentLessonId !== null) setCurrentLessonId(null)
+      return
+    }
+
+    const currentMeta = currentLessonId
+      ? flatLessonMetas.find((lesson) => lesson.id === currentLessonId)
+      : null
+
+    if (firstUnlockedLesson) {
+      if (!currentMeta || currentMeta.isLocked) {
+        if (currentLessonId !== firstUnlockedLesson.id) {
+          setCurrentLessonId(firstUnlockedLesson.id)
+        }
+      }
+      return
+    }
+
+    const fallbackId = flatLessonMetas[0]?.id ?? null
+    const shouldShowUpcoming = Boolean(nextUnlockLesson)
+
+    if (shouldShowUpcoming) {
+      if (currentLessonId !== null) {
+        setCurrentLessonId(null)
+      }
+      return
+    }
+
+    if (!currentMeta && fallbackId && currentLessonId !== fallbackId) {
+      setCurrentLessonId(fallbackId)
+      return
+    }
+
+    if (currentMeta && currentMeta.isLocked && fallbackId && currentLessonId !== fallbackId) {
+      setCurrentLessonId(fallbackId)
+    }
+  }, [flatLessonMetas, currentLessonId, firstUnlockedLesson, nextUnlockLesson])
+
+  const currentLessonMeta = useMemo(() => {
+    if (!currentLessonId) return null
+    return flatLessonMetas.find((lesson) => lesson.id === currentLessonId) || null
+  }, [currentLessonId, flatLessonMetas])
+
+  const currentLessonUnlockMessage = useMemo(() => {
+    if (!currentLessonMeta?.availableAt) return null
+    const target = new Date(currentLessonMeta.availableAt)
+    if (Number.isNaN(target.getTime())) return null
+    if (target.getTime() <= Date.now()) return null
+    const diffDays = Math.max(1, Math.ceil((target.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    const diffLabel = diffDays === 1 ? '1 dia' : `${diffDays} dias`
+    const formattedDate = target.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'long'
+    })
+    return { diffLabel, formattedDate }
+  }, [currentLessonMeta])
   const resumeTime = useMemo(() => {
     if (!currentLessonId) return 0
     const lp = getLessonProgress(course.id, currentLessonId)
@@ -258,9 +377,10 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
   const hasLessonAccess = useMemo(() => {
     if (!currentLesson) return false
     if (!enrolled) return false
+    if (currentLessonMeta?.isLocked) return false
     if (currentLesson.isFree) return true
     return enrollmentStatus === 'active'
-  }, [currentLesson, enrolled, enrollmentStatus])
+  }, [currentLesson, currentLessonMeta, enrolled, enrollmentStatus])
 
   const formatFileSize = (value?: number | null) => {
     if (!value || value <= 0) return ''
@@ -348,7 +468,16 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                         </>
                       ) : (
                         <>
-                          {currentLesson.isFree ? (
+                          {currentLessonUnlockMessage ? (
+                            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                              <span>
+                                Esta aula será liberada em <strong>{currentLessonUnlockMessage.diffLabel}</strong>, a partir de {currentLessonUnlockMessage.formattedDate}.
+                              </span>
+                              <span>
+                                Continue acompanhando sua trilha; novas aulas serão desbloqueadas automaticamente conforme o cronograma.
+                              </span>
+                            </div>
+                          ) : currentLesson.isFree ? (
                             <p className="text-sm font-medium text-muted-foreground">
                               Você tem acesso às aulas gratuitas. Selecione uma aula gratuita no menu.
                             </p>
@@ -451,6 +580,17 @@ export default function CourseDetail({ course, canAccessAllContent, initialEnrol
                 {hasLessonAccess && (
                   <LessonQuiz courseId={course.id} lessonId={currentLesson.id} />
                 )}
+              </div>
+            ) : upcomingUnlockInfo ? (
+              <div className="p-6 text-center text-muted-foreground space-y-2">
+                <h3 className="text-lg font-semibold text-foreground">Conteúdo disponível em breve</h3>
+                <p className="text-sm">
+                  A próxima aula <strong>{upcomingUnlockInfo.lessonTitle}</strong> será liberada em{' '}
+                  <strong>{upcomingUnlockInfo.diffLabel}</strong>, a partir de {upcomingUnlockInfo.formattedDate}.
+                </p>
+                <p className="text-sm">
+                  Voltaremos a enviar notificações quando novas aulas forem liberadas.
+                </p>
               </div>
             ) : (
               <div className="p-6 text-center text-muted-foreground">Selecione uma lição para começar</div>
