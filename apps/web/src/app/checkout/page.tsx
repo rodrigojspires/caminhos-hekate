@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -63,6 +63,7 @@ export default function CheckoutPage() {
 
   const searchParams = useSearchParams()
   const [enrollCourseIds, setEnrollCourseIds] = useState<string[]>([])
+  const hasProcessedEnroll = useRef(false)
 
   useEffect(() => {
     try {
@@ -72,6 +73,21 @@ export default function CheckoutPage() {
       else if (single) setEnrollCourseIds([single])
     } catch {}
   }, [searchParams])
+
+  // Quando vem de um fluxo de curso, garante item no carrinho
+  useEffect(() => {
+    if (hasProcessedEnroll.current) return
+    if (!enrollCourseIds || enrollCourseIds.length === 0) return
+    hasProcessedEnroll.current = true
+    ;(async () => {
+      try {
+        for (const courseId of enrollCourseIds) {
+          await fetch(`/api/courses/${courseId}/add-to-cart`, { method: 'POST' })
+        }
+        await fetchCart()
+      } catch {}
+    })()
+  }, [enrollCourseIds])
 
   // Helpers: masks
   function formatPhoneBR(v: string) {

@@ -145,6 +145,13 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
       setEnrolling(false)
     }
   }
++
++ const goToCart = async () => {
++   try {
++     await fetch(`/api/courses/${course.id}/add-to-cart`, { method: 'POST' })
++   } catch {}
++   router.push('/carrinho')
++ }
 
   return (
     <section className="space-y-8">
@@ -334,14 +341,16 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
                   <a href="/precos">Conheça os planos</a>
                 </Button>
               )}
-              {enrollmentStatus === 'pending' && (
-                <Button variant="default" asChild>
-                  <a href={`/checkout?enrollCourseId=${course.id}`}>Ir para o checkout</a>
+              {!isFree && !enrolled && (
+                <Button variant="default" onClick={goToCart}>Ir para o carrinho</Button>
+              )}
+              {enrolled && enrollmentStatus === 'active' ? (
+                <span className="text-sm font-medium text-emerald-700">Você já está inscrito neste curso.</span>
+              ) : (
+                <Button onClick={onEnroll} disabled={enrolling}>
+                  {enrolling ? 'Processando...' : (enrolled ? 'Inscrito' : 'Inscrever-se')}
                 </Button>
               )}
-              <Button onClick={onEnroll} disabled={enrolling}>
-                {enrolling ? 'Processando...' : (enrolled ? 'Inscrito' : 'Inscrever-se')}
-              </Button>
             </div>
           </div>
         </CardContent>
