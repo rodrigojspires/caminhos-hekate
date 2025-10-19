@@ -62,6 +62,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('todos')
   const [selectedLevel, setSelectedLevel] = useState('todos')
+  const [selectedTier, setSelectedTier] = useState<'todos' | 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'>('todos')
   const [priceFilter, setPriceFilter] = useState<'todos' | 'free' | 'paid'>('todos')
   const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'price-low' | 'price-high'>('popular')
 
@@ -173,10 +174,21 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
       list = list.filter((course) => (course.level ?? '').toLowerCase() === selectedLevel.toLowerCase())
     }
 
+    // filtro por plano de assinatura (sempre inclui cursos gratuitos)
+    if (selectedTier !== 'todos') {
+      list = list.filter((course) => {
+        const isFree = (course.price ?? 0) === 0 || course.tier === 'FREE'
+        return course.tier === selectedTier || isFree
+      })
+    }
+
+    // preço: se um plano está selecionado, manter gratuitos mesmo se 'paid'
     if (priceFilter === 'free') {
       list = list.filter((course) => (course.price ?? 0) === 0)
     } else if (priceFilter === 'paid') {
-      list = list.filter((course) => (course.price ?? 0) > 0)
+      if (selectedTier === 'todos') {
+        list = list.filter((course) => (course.price ?? 0) > 0)
+      } // quando tem plano selecionado, não removemos os gratuitos
     }
 
     switch (sortBy) {
@@ -197,7 +209,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     }
 
     return list
-  }, [courses, priceFilter, searchTerm, selectedCategory, selectedLevel, sortBy])
+  }, [courses, priceFilter, searchTerm, selectedCategory, selectedLevel, selectedTier, sortBy])
 
   return (
     <div className="bg-gradient-to-b from-gray-950 via-gray-930 to-gray-900 text-white">
@@ -396,6 +408,43 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                 </div>
               </div>
 
+              {/* Filtro por assinatura */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-purple-100 uppercase tracking-wide">Assinatura</p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant={selectedTier === 'todos' ? 'default' : 'outline'}
+                    className={`justify-start ${
+                      selectedTier === 'todos'
+                        ? 'bg-purple-600 hover:bg-purple-500 text-white'
+                        : 'bg-transparent border-white/20 text-purple-100 hover:bg-white/10'
+                    }`}
+                    onClick={() => setSelectedTier('todos')}
+                  >
+                    <CheckCircle2 className={`w-4 h-4 mr-2 ${selectedTier === 'todos' ? 'opacity-100' : 'opacity-40'}`} />
+                    Todos os planos
+                  </Button>
+                  {(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO'] as const).map((tier) => (
+                    <Button
+                      key={tier}
+                      variant={selectedTier === tier ? 'default' : 'outline'}
+                      className={`justify-start ${
+                        selectedTier === tier
+                          ? 'bg-purple-600 hover:bg-purple-500 text-white'
+                          : 'bg-transparent border-white/20 text-purple-100 hover:bg-white/10'
+                      }`}
+                      onClick={() => setSelectedTier(tier)}
+                    >
+                      <CheckCircle2 className={`w-4 h-4 mr-2 ${selectedTier === tier ? 'opacity-100' : 'opacity-40'}`} />
+                      {tierLabels[tier]}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-purple-200/80">
+                  Ao escolher um plano, cursos gratuitos são sempre incluídos.
+                </p>
+              </div>
+
               {!!levels.length && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-purple-100 uppercase tracking-wide">Nível</p>
@@ -489,6 +538,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                   onClick={() => {
                     setSelectedCategory('todos')
                     setSelectedLevel('todos')
+                    setSelectedTier('todos')
                     setPriceFilter('todos')
                     setSortBy('popular')
                     setSearchTerm('')
