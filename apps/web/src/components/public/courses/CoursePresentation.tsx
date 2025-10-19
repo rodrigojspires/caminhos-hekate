@@ -145,13 +145,13 @@ export default function CoursePresentation({ course }: CoursePresentationProps) 
       setEnrolling(false)
     }
   }
-+
-+ const goToCart = async () => {
-+   try {
-+     await fetch(`/api/courses/${course.id}/add-to-cart`, { method: 'POST' })
-+   } catch {}
-+   router.push('/carrinho')
-+ }
+
+  const goToCart = async () => {
+    try {
+      await fetch(`/api/courses/${course.id}/add-to-cart`, { method: 'POST' })
+    } catch {}
+    router.push('/carrinho')
+  }
 
   return (
     <section className="space-y-8">
