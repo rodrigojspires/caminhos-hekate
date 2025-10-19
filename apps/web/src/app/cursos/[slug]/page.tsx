@@ -7,6 +7,7 @@ import CoursePresentation from '@/components/public/courses/CoursePresentation'
 
 type PageProps = {
   params: { slug: string }
+  searchParams?: { view?: string }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -21,7 +22,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function CoursePage({ params }: PageProps) {
+const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
+
+export default async function CoursePage({ params, searchParams }: PageProps) {
   const session = await getServerSession(authOptions)
   const dbUser = session?.user?.id
     ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { subscriptionTier: true } })
@@ -64,16 +67,27 @@ export default async function CoursePage({ params }: PageProps) {
     )
   }
 
-  // Simple tier ordering for gating
-  const order: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
-  const canAccessAllContent = isAdmin ? true : (order[userTier] || 0) >= (order[course.tier] || 0)
-  
-  // Initial enrollment state for SSR hydration
-  const isEnrolled = isAdmin
-    ? true
+  const courseTierValue = tierOrder[course.tier as keyof typeof tierOrder] ?? 0
+  const userTierValue = isAdmin ? Number.POSITIVE_INFINITY : tierOrder[userTier as keyof typeof tierOrder] ?? 0
+  const canAccessBySubscription = userTierValue >= courseTierValue
+  const canAccessAllContent = isAdmin ? true : canAccessBySubscription
+
+  const enrollment = isAdmin
+    ? { status: 'active' }
     : session?.user?.id
-      ? !!(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.user.id, courseId: course.id } } }))
-      : false
+      ? await prisma.enrollment.findUnique({
+          where: { userId_courseId: { userId: session.user.id, courseId: course.id } },
+          select: { status: true }
+        })
+      : null
+
+  const enrollmentStatus = isAdmin ? 'active' : enrollment?.status ?? null
+  const isEnrolled = enrollmentStatus != null
+
+  const viewParam = searchParams?.view
+  const forcedOverview = viewParam === 'overview'
+  const forcedContent = viewParam === 'content'
+  const shouldShowContent = !forcedOverview && (forcedContent || (isEnrolled && enrollmentStatus === 'active'))
 
   return (
     <main className="min-h-screen container mx-auto py-8">
@@ -92,17 +106,30 @@ export default async function CoursePage({ params }: PageProps) {
           },
         }) }}
       />
-      {!isEnrolled ? (
+      {shouldShowContent ? (
+        <CourseDetail
+          course={course as any}
+          canAccessAllContent={canAccessAllContent}
+          initialEnrolled={enrollmentStatus === 'active'}
+        />
+      ) : (
         <>
           <div className="mb-4">
             <a href="/cursos" className="text-sm text-muted-foreground hover:text-primary underline underline-offset-4">
               ← Voltar para todos os cursos
             </a>
           </div>
-          <CoursePresentation course={course as any} />
+          <CoursePresentation
+            course={course as any}
+            userTier={userTier}
+            canAccessBySubscription={canAccessBySubscription}
+            isAdmin={isAdmin}
+            initialEnrolled={enrollmentStatus === 'active'}
+            initialEnrollmentStatus={enrollmentStatus}
+            continueUrl={`/cursos/${course.slug}?view=content`}
+            isAuthenticated={!!session?.user}
+          />
         </>
-      ) : (
-        <CourseDetail course={course as any} canAccessAllContent={canAccessAllContent} initialEnrolled={true} />
       )}
     </main>
   )

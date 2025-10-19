@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { getCartFromCookie, setCartToCookie, validateAndNormalizeItems, computeTotals } from '@/lib/shop/cart'
 import { enrichCartWithDetails } from '@/lib/shop/enrich-cart'
-import { nanoid } from 'nanoid'
+import { ensureCourseProduct } from '@/lib/shop/ensure-course-product'
 
 export async function POST(_req: NextRequest, { params }: { params: { courseId: string } }) {
   try {
@@ -32,70 +32,20 @@ export async function POST(_req: NextRequest, { params }: { params: { courseId: 
       return NextResponse.json({ skipped: true, reason: 'free_or_included' })
     }
 
-    const productSlug = `course-${course.slug}`
-
-    // Reutiliza produto existente ou cria um novo
-    let product = await prisma.product.findUnique({ where: { slug: productSlug } })
-    if (!product) {
-      product = await prisma.product.create({
-        data: {
-          name: course.title,
-          slug: productSlug,
-          description: course.shortDescription || course.description || '',
-          type: 'DIGITAL' as any,
-          active: true,
-          featured: false,
-          images: course.featuredImage ? [course.featuredImage] : [],
-        }
-      })
-    } else if (!product.active) {
-      // Garante que está ativo
-      await prisma.product.update({ where: { id: product.id }, data: { active: true } })
-    }
-
-    // Busca/Cria variante ativa
-    let variant = await prisma.productVariant.findFirst({
-      where: { productId: product.id, active: true },
-      orderBy: { createdAt: 'asc' },
+    const { product, variant } = await ensureCourseProduct({
+      id: course.id,
+      slug: course.slug,
+      title: course.title,
+      description: course.description,
+      shortDescription: course.shortDescription,
+      featuredImage: course.featuredImage || undefined,
+      price: course.price != null ? Number(course.price) : null,
+      comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null
     })
-
-    if (!variant) {
-      const baseSku = `COURSE-${(course.slug || course.id).toUpperCase().replace(/[^A-Z0-9]/g, '-')}`
-      let sku = `${baseSku}-${nanoid(6).toUpperCase()}`
-      // tenta evitar colisões de SKU
-      for (let i = 0; i < 3; i++) {
-        const exists = await prisma.productVariant.findUnique({ where: { sku } })
-        if (!exists) break
-        sku = `${baseSku}-${nanoid(6).toUpperCase()}`
-      }
-      variant = await prisma.productVariant.create({
-        data: {
-          productId: product.id,
-          name: 'Acesso ao curso',
-          sku,
-          price: course.price ?? 0,
-          comparePrice: course.comparePrice ?? null,
-          stock: 999999,
-          active: true,
-        }
-      })
-    } else {
-      // Mantém preço sincronizado com o curso
-      const needsUpdate = (variant.price as any) !== (course.price ?? 0) || (variant.comparePrice ?? null) !== (course.comparePrice ?? null)
-      if (needsUpdate) {
-        await prisma.productVariant.update({
-          where: { id: variant.id },
-          data: {
-            price: course.price ?? 0,
-            comparePrice: course.comparePrice ?? null,
-          },
-        })
-      }
-    }
 
     // Adiciona ao carrinho
     const cart = getCartFromCookie()
-    const existing = cart.items.find((i) => i.variantId === variant!.id)
+    const existing = cart.items.find((i) => i.variantId === variant.id)
     if (existing) existing.quantity += 1
     else cart.items.push({ productId: product.id, variantId: variant.id, quantity: 1 })
 

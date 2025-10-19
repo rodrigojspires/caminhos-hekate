@@ -3,6 +3,7 @@ import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
+import { ensureCourseProduct } from '@/lib/shop/ensure-course-product'
 
 // Schema de validação para criação de curso
 const urlOrPathSchema = z
@@ -289,6 +290,21 @@ export async function POST(request: NextRequest) {
         },
       }
     })
+
+    try {
+      await ensureCourseProduct({
+        id: course.id,
+        slug: course.slug,
+        title: course.title,
+        description: course.description,
+        shortDescription: course.shortDescription,
+        featuredImage: course.featuredImage || undefined,
+        price: course.price != null ? Number(course.price) : null,
+        comparePrice: course.comparePrice != null ? Number(course.comparePrice) : null
+      })
+    } catch (productError) {
+      console.error('Erro ao sincronizar produto do curso após criação:', productError)
+    }
 
     return NextResponse.json(serializeCourse(course), { status: 201 })
 

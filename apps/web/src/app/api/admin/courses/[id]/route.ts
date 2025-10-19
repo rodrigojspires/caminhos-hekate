@@ -3,6 +3,7 @@ import { prisma, Prisma, CourseStatus, CourseLevel, SubscriptionTier, CourseAcce
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 import { notificationService } from '@/lib/notifications/notification-service'
+import { ensureCourseProduct } from '@/lib/shop/ensure-course-product'
 
 // Schema de validação para atualização de curso
 const urlOrPathSchema = z
@@ -383,6 +384,24 @@ export async function PUT(
         },
       }
     })
+
+    try {
+      await ensureCourseProduct(
+        {
+          id: updatedCourse.id,
+          slug: updatedCourse.slug,
+          title: updatedCourse.title,
+          description: updatedCourse.description,
+          shortDescription: updatedCourse.shortDescription,
+          featuredImage: updatedCourse.featuredImage || undefined,
+          price: updatedCourse.price != null ? Number(updatedCourse.price) : null,
+          comparePrice: updatedCourse.comparePrice != null ? Number(updatedCourse.comparePrice) : null
+        },
+        { previousCourseSlug: existingCourse.slug }
+      )
+    } catch (productError) {
+      console.error('Erro ao sincronizar produto do curso após atualização:', productError)
+    }
 
     if (statusToPublished) {
       await notifyCoursePublication(
