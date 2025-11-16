@@ -187,7 +187,10 @@ export default function CourseDetail({
     setSigningError(null)
 
     const rel = getCourseVideoRelativePath(currentLesson?.videoUrl)
-    const locked = !currentLesson || !enrolled || currentLessonMeta?.isLocked || (!currentLesson.isFree && enrollmentStatus !== 'active')
+    const locked =
+      !currentLesson ||
+      currentLessonMeta?.isLocked ||
+      (!currentLesson.isFree && (!enrolled || enrollmentStatus !== 'active'))
 
     if (!rel || locked) {
       setSignedVideoSrc(null)

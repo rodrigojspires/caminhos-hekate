@@ -549,7 +549,9 @@ export default function CoursePresentation({
               )}
               {enrollmentStatus === 'pending' && (
                 <div className="text-amber-600 font-medium">
-                  Pagamento pendente. Finalize o checkout para liberar o conteúdo.
+                  {hasFreeLessons
+                    ? 'Acesso às aulas gratuitas liberado. Conclua o checkout para destravar todo o curso.'
+                    : 'Pagamento pendente. Finalize o checkout para liberar o conteúdo.'}
                 </div>
               )}
               {!isAuthenticated && isFree && (
