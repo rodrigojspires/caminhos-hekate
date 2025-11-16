@@ -82,7 +82,18 @@ export default function CourseDetail({
         // Para cursos gratuitos (preço zero ou flag FREE), todas as aulas ficam liberadas após inscrição
         const allowAllContent = canAccessAllContent || isCourseFree
 
-        let locked = !allowAllContent && (!enrolled || (!l.isFree && enrollmentStatus !== 'active'))
+        // Não travar aulas marcadas como gratuitas, mesmo para usuários não inscritos,
+        // para permitir preview em cursos pagos ou de plano superior.
+        let locked = false
+        if (!allowAllContent) {
+          if (!l.isFree) {
+            if (!enrolled) {
+              locked = true
+            } else if (enrollmentStatus !== 'active') {
+              locked = true
+            }
+          }
+        }
         if (!locked && availableAt && availableAt > now) {
           locked = true
         }
@@ -374,11 +385,15 @@ export default function CourseDetail({
 
   const hasLessonAccess = useMemo(() => {
     if (!currentLesson) return false
+    // Aulas marcadas como gratuitas ficam acessíveis mesmo sem matrícula
+    if (currentLesson.isFree) return true
+
     if (!enrolled) return false
     if (currentLessonMeta?.isLocked) return false
+
     const allowAllContent = canAccessAllContent || isCourseFree
     if (allowAllContent) return true
-    if (currentLesson.isFree) return true
+
     return enrollmentStatus === 'active'
   }, [currentLesson, currentLessonMeta, enrolled, enrollmentStatus, canAccessAllContent, isCourseFree])
 
