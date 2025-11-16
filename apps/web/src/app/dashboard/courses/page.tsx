@@ -32,6 +32,9 @@ interface CourseData {
   enrolledAt: string
   totalStudyTime: number
   estimatedTimeRemaining: number
+  enrollmentStatus: 'active' | 'pending'
+  hasFreeLessons: boolean
+  checkoutUrl: string
 }
 
 interface CourseStats {
@@ -55,7 +58,7 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
     const enrollments = await prisma.enrollment.findMany({
       where: {
         userId,
-        status: 'active'
+        status: { in: ['active', 'pending'] }
       },
       include: {
         course: {
@@ -80,7 +83,8 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
                 lessons: {
                   select: {
                     id: true,
-                    videoDuration: true
+                    videoDuration: true,
+                    isFree: true
                   }
                 }
               }
@@ -102,6 +106,15 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         (total, module) => total + module.lessons.length,
         0
       )
+
+      const hasFreeLessons = course.modules.some((m) =>
+        m.lessons.some((l) => l.isFree)
+      )
+
+      // Mostrar pendentes apenas se houver aulas gratuitas
+      if (enrollment.status === 'pending' && !hasFreeLessons) {
+        continue
+      }
 
       const lessonIds = course.modules.flatMap(
         module => module.lessons.map(lesson => lesson.id)
@@ -169,7 +182,10 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         level: (course.level?.toLowerCase() as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
         enrolledAt: enrollment.createdAt.toISOString(),
         totalStudyTime: Math.round(totalStudyTimeMinutes / 60),
-        estimatedTimeRemaining: Math.max(0, Math.round((courseDurationMinutes - totalStudyTimeMinutes) / 60))
+        estimatedTimeRemaining: Math.max(0, Math.round((courseDurationMinutes - totalStudyTimeMinutes) / 60)),
+        enrollmentStatus: (enrollment.status as 'active' | 'pending') || 'active',
+        hasFreeLessons,
+        checkoutUrl: `/checkout?enrollCourseId=${course.id}`
       })
     }
 

@@ -20,6 +20,9 @@ interface Course {
   lastAccessed?: string
   category: string
   level: 'beginner' | 'intermediate' | 'advanced'
+  enrollmentStatus: 'active' | 'pending'
+  hasFreeLessons: boolean
+  checkoutUrl: string
 }
 
 interface MyCoursesProps {
@@ -141,10 +144,19 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       <p className="text-sm text-muted-foreground mb-2">{course.instructor}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(course.status)}
-                      <span className="text-sm font-medium text-foreground">
-                        {getStatusText(course.status)}
-                      </span>
+                      {course.enrollmentStatus === 'pending' && course.hasFreeLessons ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">
+                          <AlertCircle className="w-4 h-4" />
+                          Acesso parcial (gratuitas)
+                        </span>
+                      ) : (
+                        <>
+                          {getStatusIcon(course.status)}
+                          <span className="text-sm font-medium text-foreground">
+                            {getStatusText(course.status)}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -192,6 +204,14 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       >
                         Detalhes
                       </Link>
+                      {course.enrollmentStatus === 'pending' && course.hasFreeLessons && (
+                        <Link
+                          href={course.checkoutUrl}
+                          className="px-4 py-2 border border-amber-300 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors"
+                        >
+                          Concluir compra
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

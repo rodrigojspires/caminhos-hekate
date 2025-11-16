@@ -23,6 +23,9 @@ interface Course {
   enrolledAt: string
   totalStudyTime: number
   estimatedTimeRemaining: number
+  enrollmentStatus: 'active' | 'pending'
+  hasFreeLessons: boolean
+  checkoutUrl: string
 }
 
 interface CoursesClientProps {
