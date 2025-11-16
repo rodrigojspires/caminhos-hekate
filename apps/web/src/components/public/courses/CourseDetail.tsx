@@ -577,11 +577,19 @@ export default function CourseDetail({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mt-2">
-                  <div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-2">
+                  <div className="space-y-1">
                     <h2 className="font-medium">{currentLesson.title}</h2>
                     {currentLesson.description && (
                       <p className="text-sm text-muted-foreground">{currentLesson.description}</p>
+                    )}
+                    {currentLesson.isFree && !isCourseFree && !canAccessAllContent && (!enrolled || enrollmentStatus !== 'active') && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Curtiu a aula gratuita?</span>
+                        <Button size="sm" variant="link" className="px-0" asChild>
+                          <a href={`/checkout?enrollCourseId=${course.id}`}>Ir para o checkout</a>
+                        </Button>
+                      </div>
                     )}
                   </div>
                   {currentLessonProgress?.completed ? (
