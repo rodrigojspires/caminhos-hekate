@@ -322,12 +322,13 @@ export default function CoursePresentation({
       setEnrolled(!!j.enrolled)
       setEnrollmentStatus(j.status || 'pending')
       toast.success('Acesso às aulas gratuitas liberado.')
+      router.push(continueUrl || `/cursos/${course.slug}?view=content`)
     } catch {
       toast.error('Não foi possível liberar as aulas gratuitas.')
     } finally {
       setCtaLoading(false)
     }
-  }, [ctaLoading, course.id, course.slug, router])
+  }, [ctaLoading, continueUrl, course.id, course.slug, router])
 
   return (
     <section className="space-y-8">
