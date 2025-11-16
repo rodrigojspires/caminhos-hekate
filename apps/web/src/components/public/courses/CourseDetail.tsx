@@ -53,45 +53,6 @@ export default function CourseDetail({
     return Number.isNaN(parsed.getTime()) ? null : parsed
   }, [enrollmentStartedAt])
 
-  // Fetch signed URL when lesson video is a protected course video and user has access
-  useEffect(() => {
-    let abort = false
-    setSigningError(null)
-
-    const rel = getCourseVideoRelativePath(currentLesson?.videoUrl)
-    const locked = !currentLesson || !enrolled || currentLessonMeta?.isLocked || (!currentLesson.isFree && enrollmentStatus !== 'active')
-
-    if (!rel || locked) {
-      setSignedVideoSrc(null)
-      return
-    }
-
-    ;(async () => {
-      try {
-        const params = new URLSearchParams({ path: rel, courseId: String(course.id) })
-        const res = await fetch(`/api/media/course-videos/token?${params.toString()}`, {
-          method: 'GET',
-          cache: 'no-store'
-        })
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data?.error || `Falha ao gerar acesso ao vídeo (${res.status})`)
-        }
-        const j = await res.json()
-        if (!abort) {
-          setSignedVideoSrc(j.url || null)
-        }
-      } catch (e: any) {
-        if (!abort) {
-          setSignedVideoSrc(null)
-          setSigningError(e?.message || 'Não foi possível gerar acesso ao vídeo.')
-        }
-      }
-    })()
-
-    return () => { abort = true }
-  }, [currentLesson, currentLesson?.videoUrl, currentLesson?.isFree, currentLessonMeta?.isLocked, enrolled, enrollmentStatus, course.id])
-
   const modulesForList = useMemo(() => {
     const now = new Date()
     const enrollmentStartMs = enrollmentStartDate ? enrollmentStartDate.getTime() : null
@@ -145,13 +106,12 @@ export default function CourseDetail({
     })
   }, [course.modules, course.id, getLessonProgress, enrolled, enrollmentStatus, enrollmentStartDate])
 
-  const flatLessonMetas = useMemo(() => {
-    return modulesForList.flatMap((module) => module.lessons)
-  }, [modulesForList])
+  const flatLessonMetas = useMemo(() => modulesForList.flatMap((module) => module.lessons), [modulesForList])
 
-  const firstUnlockedLesson = useMemo(() => {
-    return flatLessonMetas.find((lesson) => !lesson.isLocked) || null
-  }, [flatLessonMetas])
+  const firstUnlockedLesson = useMemo(
+    () => flatLessonMetas.find((lesson) => !lesson.isLocked) || null,
+    [flatLessonMetas]
+  )
 
   const nextUnlockLesson = useMemo(() => {
     const upcoming = flatLessonMetas
@@ -161,7 +121,7 @@ export default function CourseDetail({
         availableAt: lesson.availableAt ? new Date(lesson.availableAt) : null
       }))
       .filter(({ availableAt }) => availableAt && availableAt.getTime() > Date.now())
-      .sort((a, b) => (a.availableAt!.getTime() - b.availableAt!.getTime()))
+      .sort((a, b) => a.availableAt!.getTime() - b.availableAt!.getTime())
     return upcoming.length > 0 ? upcoming[0] : null
   }, [flatLessonMetas])
 
@@ -182,6 +142,50 @@ export default function CourseDetail({
       formattedDate
     }
   }, [nextUnlockLesson])
+
+  const currentLessonMeta = useMemo(() => {
+    if (!currentLessonId) return null
+    return flatLessonMetas.find((lesson) => lesson.id === currentLessonId) || null
+  }, [currentLessonId, flatLessonMetas])
+
+  // Fetch signed URL when lesson video is a protected course video and user has access
+  useEffect(() => {
+    let abort = false
+    setSigningError(null)
+
+    const rel = getCourseVideoRelativePath(currentLesson?.videoUrl)
+    const locked = !currentLesson || !enrolled || currentLessonMeta?.isLocked || (!currentLesson.isFree && enrollmentStatus !== 'active')
+
+    if (!rel || locked) {
+      setSignedVideoSrc(null)
+      return
+    }
+
+    ;(async () => {
+      try {
+        const params = new URLSearchParams({ path: rel, courseId: String(course.id) })
+        const res = await fetch(`/api/media/course-videos/token?${params.toString()}`, {
+          method: 'GET',
+          cache: 'no-store'
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error || `Falha ao gerar acesso ao vídeo (${res.status})`)
+        }
+        const j = await res.json()
+        if (!abort) {
+          setSignedVideoSrc(j.url || null)
+        }
+      } catch (e: any) {
+        if (!abort) {
+          setSignedVideoSrc(null)
+          setSigningError(e?.message || 'Não foi possível gerar acesso ao vídeo.')
+        }
+      }
+    })()
+
+    return () => { abort = true }
+  }, [currentLesson, currentLesson?.videoUrl, currentLesson?.isFree, currentLessonMeta?.isLocked, enrolled, enrollmentStatus, course.id])
 
   useEffect(() => {
     if (!flatLessonMetas.length) {
