@@ -100,6 +100,11 @@ export default function CoursePresentation({
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(initialEnrollmentStatus)
   const heroImage = useMemo(() => resolveMediaUrl(course.featuredImage || null), [course.featuredImage])
   const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(() => resolveMediaUrl(course.introVideo || null))
+  const hasFreeLessons = useMemo(() => {
+    return Array.isArray(course.modules)
+      ? course.modules.some((m) => Array.isArray(m.lessons) && m.lessons.some((l) => !!l.isFree))
+      : false
+  }, [course.modules])
 
   useEffect(() => {
     let mounted = true
@@ -297,6 +302,32 @@ export default function CoursePresentation({
     () => (course.accessModels || []).includes('SUBSCRIPTION'),
     [course.accessModels]
   )
+
+  const handlePreviewEnroll = useCallback(async () => {
+    if (ctaLoading) return
+    try {
+      setCtaLoading(true)
+      const res = await fetch(`/api/courses/${course.id}/enrollment`, { method: 'POST' })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('Faça login para acessar as aulas gratuitas.')
+          const callback = encodeURIComponent(`/cursos/${course.slug}`)
+          router.push(`/auth/login?callbackUrl=${callback}`)
+          return
+        }
+        toast.error(j.error || 'Não foi possível liberar as aulas gratuitas.')
+        return
+      }
+      setEnrolled(!!j.enrolled)
+      setEnrollmentStatus(j.status || 'pending')
+      toast.success('Acesso às aulas gratuitas liberado.')
+    } catch {
+      toast.error('Não foi possível liberar as aulas gratuitas.')
+    } finally {
+      setCtaLoading(false)
+    }
+  }, [ctaLoading, course.id, course.slug, router])
 
   return (
     <section className="space-y-8">
@@ -531,6 +562,11 @@ export default function CoursePresentation({
               {showPlanButton && (
                 <Button variant="outline" asChild>
                   <a href="/precos">Conheça os planos</a>
+                </Button>
+              )}
+              {!hasActiveAccess && !canDirectEnroll && hasFreeLessons && (
+                <Button variant="secondary" onClick={handlePreviewEnroll} disabled={ctaLoading}>
+                  {ctaLoading ? 'Liberando...' : 'Ver aulas gratuitas'}
                 </Button>
               )}
               <Button onClick={handlePrimaryAction} disabled={ctaLoading}>
