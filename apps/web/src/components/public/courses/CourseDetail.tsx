@@ -143,11 +143,6 @@ export default function CourseDetail({
     }
   }, [nextUnlockLesson])
 
-  const currentLessonMeta = useMemo(() => {
-    if (!currentLessonId) return null
-    return flatLessonMetas.find((lesson) => lesson.id === currentLessonId) || null
-  }, [currentLessonId, flatLessonMetas])
-
   // Fetch signed URL when lesson video is a protected course video and user has access
   useEffect(() => {
     let abort = false
