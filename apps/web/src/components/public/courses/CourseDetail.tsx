@@ -376,9 +376,11 @@ export default function CourseDetail({
     if (!currentLesson) return false
     if (!enrolled) return false
     if (currentLessonMeta?.isLocked) return false
+    const allowAllContent = canAccessAllContent || isCourseFree
+    if (allowAllContent) return true
     if (currentLesson.isFree) return true
     return enrollmentStatus === 'active'
-  }, [currentLesson, currentLessonMeta, enrolled, enrollmentStatus])
+  }, [currentLesson, currentLessonMeta, enrolled, enrollmentStatus, canAccessAllContent, isCourseFree])
 
   const formatFileSize = (value?: number | null) => {
     if (!value || value <= 0) return ''
