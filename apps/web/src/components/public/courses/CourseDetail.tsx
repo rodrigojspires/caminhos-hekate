@@ -138,10 +138,11 @@ export default function CourseDetail({
     [flatLessonMetas]
   )
 
-  const hasFreeLessons = useMemo(
-    () => flatLessonMetas.some((lesson) => lesson.isFree),
-    [flatLessonMetas]
-  )
+  const hasFreeLessons = useMemo(() => {
+    return (course.modules || []).some((m: any) =>
+      (m.lessons || []).some((l: any) => !!l.isFree)
+    )
+  }, [course.modules])
 
   const nextUnlockLesson = useMemo(() => {
     const upcoming = flatLessonMetas
@@ -503,9 +504,21 @@ export default function CourseDetail({
                           <p className="text-sm font-medium text-muted-foreground">
                             Faça sua inscrição para acessar conteúdo do curso.
                           </p>
-                          <Button variant="default" size="sm" onClick={onEnroll}>
-                            Inscrever-se
-                          </Button>
+                          <div className="flex items-center gap-3 flex-wrap justify-center">
+                            <Button variant="default" size="sm" onClick={onEnroll}>
+                              Inscrever-se
+                            </Button>
+                            {hasFreeLessons && !isCourseFree && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={onPreviewEnroll}
+                                disabled={previewEnrollLoading}
+                              >
+                                {previewEnrollLoading ? 'Liberando...' : 'Ver aulas gratuitas'}
+                              </Button>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <>
