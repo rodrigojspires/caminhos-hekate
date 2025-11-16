@@ -10,7 +10,7 @@ import useCourseProgress from '@/hooks/useCourseProgress'
 import { Button } from '@/components/ui/button'
 import { Download, FileText, Loader2, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { resolveMediaUrl } from '@/lib/utils'
+import { resolveMediaUrl, getCourseVideoRelativePath } from '@/lib/utils'
 
 type CourseDetailProps = {
   course: any
@@ -53,26 +53,12 @@ export default function CourseDetail({
     return Number.isNaN(parsed.getTime()) ? null : parsed
   }, [enrollmentStartedAt])
 
-  // Helper: detect course-videos path and extract relative path
-  const normalizeCourseVideoRel = (url?: string | null): string | null => {
-    if (!url) return null
-    const trimmed = url.trim()
-    if (!trimmed) return null
-    const cleaned = trimmed.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/')
-    const withoutPrefix = cleaned
-      .replace(/^\/uploads\//, '')
-      .replace(/^\/private\//, '')
-    if (!withoutPrefix.startsWith('course-videos/')) return null
-    const safe = withoutPrefix.replace(/\.{2,}/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
-    return safe
-  }
-
   // Fetch signed URL when lesson video is a protected course video and user has access
   useEffect(() => {
     let abort = false
     setSigningError(null)
 
-    const rel = normalizeCourseVideoRel(currentLesson?.videoUrl)
+    const rel = getCourseVideoRelativePath(currentLesson?.videoUrl)
     const locked = !currentLesson || !enrolled || currentLessonMeta?.isLocked || (!currentLesson.isFree && enrollmentStatus !== 'active')
 
     if (!rel || locked) {

@@ -39,6 +39,12 @@ const nextConfig = {
         source: '/robots.txt',
         destination: '/api/robots',
       },
+      {
+        // Garante que uploads enviados em runtime sejam servidos pela API,
+        // mesmo quando o diretório público não é servido diretamente.
+        source: '/uploads/:path*',
+        destination: '/api/media/public/uploads/:path*',
+      },
     ];
   },
 };

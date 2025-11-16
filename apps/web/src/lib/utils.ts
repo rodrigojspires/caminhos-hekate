@@ -44,7 +44,7 @@ export function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function resolveMediaUrl(value?: string | null): string | null {
+export function normalizeMediaPath(value?: string | null): string | null {
   if (!value) return null
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -57,10 +57,90 @@ export function resolveMediaUrl(value?: string | null): string | null {
     const url = new URL(trimmed)
     return url.toString()
   } catch {
+    // not an absolute URL, normalize as relative path
+  }
+
+  const withoutOrigin = trimmed.replace(/^https?:\/\/[^/]+\//i, '/')
+  const cleaned = withoutOrigin
+    .replace(/[\r\n\t]+/g, '')
+    .replace(/\/{2,}/g, '/')
+    .replace(/(\.\.\/)+/g, '')
+    .replace(/\/\.\//g, '/')
+
+  const withLeadingSlash = cleaned.startsWith('/') ? cleaned : `/${cleaned.replace(/^\/+/, '')}`
+  return withLeadingSlash
+}
+
+const COURSE_VIDEO_PREFIX = '/course-videos/'
+const PRIVATE_COURSE_VIDEO_PREFIX = '/private/course-videos/'
+const PUBLIC_UPLOAD_PREFIX = '/uploads/'
+const API_UPLOAD_PREFIX = '/api/media/public/uploads/'
+
+export function isProtectedCourseVideoPath(value?: string | null): boolean {
+  const normalized = normalizeMediaPath(value)
+  if (!normalized) return false
+  try {
+    const url = new URL(normalized)
+    return url.pathname.startsWith(PRIVATE_COURSE_VIDEO_PREFIX)
+  } catch {
+    return normalized.startsWith(PRIVATE_COURSE_VIDEO_PREFIX)
+  }
+}
+
+export function getCourseVideoRelativePath(value?: string | null): string | null {
+  const normalized = normalizeMediaPath(value)
+  if (!normalized) return null
+
+  let candidate = normalized
+  try {
+    const url = new URL(normalized)
+    candidate = url.pathname
+  } catch {
+    // keep candidate as-is for relative paths
+  }
+
+  const stripped = candidate
+    .replace(/^\/+/, '/')
+    .replace(new RegExp(`^${API_UPLOAD_PREFIX.replace(/\//g, '\\/')}`, 'i'), '/')
+    .replace(new RegExp(`^${PUBLIC_UPLOAD_PREFIX.replace(/\//g, '\\/')}`, 'i'), '/')
+    .replace(new RegExp(`^${PRIVATE_COURSE_VIDEO_PREFIX.replace(/\//g, '\\/')}`, 'i'), COURSE_VIDEO_PREFIX)
+
+  const relativeRaw = stripped.startsWith(COURSE_VIDEO_PREFIX)
+    ? stripped.slice(COURSE_VIDEO_PREFIX.length)
+    : stripped.startsWith('/course-videos/')
+      ? stripped.replace(/^\/course-videos\//, '')
+      : stripped.startsWith('course-videos/')
+        ? stripped.replace(/^course-videos\//, '')
+        : null
+
+  if (!relativeRaw) return null
+
+  const safeSegments = relativeRaw
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(segment => segment.length > 0 && segment !== '.' && segment !== '..' && !segment.includes('..'))
+
+  if (safeSegments.length === 0) return null
+
+  return `course-videos/${safeSegments.join('/')}`
+}
+
+export function resolveMediaUrl(value?: string | null): string | null {
+  const normalized = normalizeMediaPath(value)
+  if (!normalized) return null
+
+  if (normalized.startsWith('data:')) {
+    return normalized
+  }
+
+  try {
+    const url = new URL(normalized)
+    return url.toString()
+  } catch {
     // Value is not an absolute URL; continue normalizing as a path
   }
 
-  const sanitizedPath = `/${trimmed.replace(/^\/+/, '')}`
+  const sanitizedPath = normalized.startsWith('/') ? normalized : `/${normalized.replace(/^\/+/, '')}`
 
   // Para arquivos em /uploads, preferir a origem atual no navegador (dev/local)
   if (sanitizedPath.startsWith('/uploads/')) {

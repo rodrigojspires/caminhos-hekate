@@ -14,7 +14,7 @@ import {
   BookOpen,
   ChevronRight
 } from 'lucide-react'
-import { resolveMediaUrl } from '@/lib/utils'
+import { resolveMediaUrl, normalizeMediaPath, isProtectedCourseVideoPath } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -118,19 +118,17 @@ export default function CoursePresentation({
   }, [course.id])
 
   useEffect(() => {
-    const raw = course.introVideo || null
-    const normalized = raw ? raw.trim() : null
+    const normalized = normalizeMediaPath(course.introVideo)
     if (!normalized) {
       setIntroVideoSrc(null)
       return
     }
-    const cleaned = normalized.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/')
-    const looksPrivateCourseVideo = cleaned.startsWith('/private/course-videos/')
+    const isProtectedVideo = isProtectedCourseVideoPath(normalized)
     let cancelled = false
     async function update() {
-      if (looksPrivateCourseVideo) {
+      if (isProtectedVideo) {
         try {
-          const params = new URLSearchParams({ path: normalized || '', courseId: String(course.id) })
+          const params = new URLSearchParams({ path: normalized, courseId: String(course.id) })
           const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
           const json = await resp.json()
           if (resp.ok && json?.url) {

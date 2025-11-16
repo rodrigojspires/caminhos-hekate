@@ -6,7 +6,7 @@ import { Upload, X, Plus, Loader2, Video as VideoIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CategoryForm } from '@/components/admin/CategoryForm'
-import { resolveMediaUrl } from '@/lib/utils'
+import { resolveMediaUrl, normalizeMediaPath, isProtectedCourseVideoPath } from '@/lib/utils'
 
 export interface CourseFormValues {
   title: string
@@ -77,22 +77,6 @@ const subscriptionTierOptions: Array<{ value: SubscriptionTier; label: string }>
   { value: SubscriptionTier.SACERDOCIO, label: 'Sacerdócio' }
 ]
 
-const normalizeMediaPath = (value?: string | null) => {
-  if (!value) return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-
-  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
-    return trimmed
-  }
-
-  if (trimmed.startsWith('/')) {
-    return `/${trimmed.replace(/^\/+/, '')}`
-  }
-
-  return `/${trimmed.replace(/^\/+/, '')}`
-}
-
 const uploadFile = async (file: File, type: 'course-images' | 'course-videos') => {
   const formData = new FormData()
   formData.append('file', file)
@@ -147,8 +131,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
   useEffect(() => {
     let cancelled = false
     const normalized = normalizeMediaPath(data.introVideo)
-    const rel = normalized ? normalized.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/') : null
-    const looksPrivateCourseVideo = !!rel && /^\/private\/course-videos\//.test(rel)
+    const isProtectedVideo = isProtectedCourseVideoPath(normalized)
 
     async function updatePreview() {
       setVideoLoadError(false)
@@ -156,7 +139,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
         if (!cancelled) setVideoPreview(null)
         return
       }
-      if (looksPrivateCourseVideo) {
+      if (isProtectedVideo) {
         try {
           const params = new URLSearchParams({ path: normalized })
           const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
@@ -167,7 +150,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
           }
         } catch {}
       }
-      if (!cancelled) setVideoPreview(resolveMediaUrl(normalizeMediaPath(normalized)))
+      if (!cancelled) setVideoPreview(resolveMediaUrl(normalized))
     }
 
     updatePreview()
@@ -264,9 +247,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
       setVideoPreview(null)
       return
     }
-    const rel = normalized.replace(/^https?:\/\/[^\/]+\//, '/').replace(/^\/+/, '/')
-    const looksPrivateCourseVideo = /^\/private\/course-videos\//.test(rel)
-    if (looksPrivateCourseVideo) {
+    if (isProtectedCourseVideoPath(normalized)) {
       try {
         const params = new URLSearchParams({ path: normalized })
         const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
@@ -277,7 +258,7 @@ export function CourseForm({ data, onChange, loading = false }: CourseFormProps)
         }
       } catch {}
     }
-    setVideoPreview(resolveMediaUrl(normalizeMediaPath(normalized)))
+    setVideoPreview(resolveMediaUrl(normalized))
   }
 
   const handleCategorySelection = (categoryId: string) => {

@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Video, Edit2, ChevronRight, Upload, Paperclip, Loader2, ExternalLink } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getCourseVideoRelativePath } from '@/lib/utils'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
@@ -197,24 +197,10 @@ const uploadMedia = async (file: File, type: 'course-videos' | 'lesson-assets') 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
-  // Normalizar caminho relativo para course-videos
-  const normalizeCourseVideoRel = (url?: string | null): string | null => {
-    if (!url) return null
-    const trimmed = url.trim()
-    if (!trimmed) return null
-    const cleaned = trimmed.replace(/^https?:\/\/[^/]+\//, '/').replace(/^\/+/, '/')
-    const withoutPrefix = cleaned
-      .replace(/^\/uploads\//, '')
-      .replace(/^\/private\//, '')
-    if (!withoutPrefix.startsWith('course-videos/')) return null
-    const safe = withoutPrefix.replace(/\.+\.+/g, '').replace(/[^a-zA-Z0-9_\-./]/g, '')
-    return safe
-  }
-
   // Abrir vídeo com URL assinada se for privado
   const handleOpenLessonVideo = async (lesson: Lesson, e?: React.MouseEvent<HTMLAnchorElement>) => {
     try {
-      const rel = normalizeCourseVideoRel(lesson.videoUrl)
+      const rel = getCourseVideoRelativePath(lesson.videoUrl)
       if (!rel) {
         // público ou não é course-videos: deixa o link seguir normalmente
         return

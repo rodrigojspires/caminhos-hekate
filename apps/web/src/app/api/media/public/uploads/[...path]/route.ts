@@ -46,12 +46,30 @@ function contentTypeFromExt(name: string): string {
       return 'image/gif'
     case 'svg':
       return 'image/svg+xml'
+    case 'mp4':
+      return 'video/mp4'
+    case 'webm':
+      return 'video/webm'
+    case 'ogg':
+    case 'ogv':
+      return 'video/ogg'
+    case 'mov':
+    case 'qt':
+      return 'video/quicktime'
+    case 'm3u8':
+      return 'application/vnd.apple.mpegurl'
+    case 'mp3':
+      return 'audio/mpeg'
+    case 'wav':
+      return 'audio/wav'
+    case 'aac':
+      return 'audio/aac'
     default:
       return 'application/octet-stream'
   }
 }
 
-export async function GET(_req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function GET(req: NextRequest, ctx: { params: { path: string[] } }) {
   try {
     const raw = Array.isArray(ctx.params?.path) ? ctx.params.path : []
     const segments = raw.map(sanitizeSegment).filter(Boolean)
@@ -76,17 +94,42 @@ export async function GET(_req: NextRequest, ctx: { params: { path: string[] } }
     }
 
     const stats = await fsStat(filepath)
-    const stream = createReadStream(filepath)
+    const rangeHeader = req.headers.get('range')
     const ctype = contentTypeFromExt(segments[segments.length - 1])
-    const headers: Record<string, string> = {
+    const baseHeaders: Record<string, string> = {
       'Content-Type': ctype,
-      'Content-Length': String(stats.size),
       'Cache-Control': 'public, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
       'Content-Disposition': 'inline',
       'Access-Control-Allow-Origin': '*',
+      'Accept-Ranges': 'bytes',
     }
-    // Usar Response nativa para streaming mais robusto
+
+    if (rangeHeader) {
+      const match = /bytes=(\d*)-(\d*)/.exec(rangeHeader)
+      let start = 0
+      let end = stats.size - 1
+      if (match) {
+        if (match[1]) start = Number(match[1])
+        if (match[2]) end = Number(match[2])
+      }
+      if (Number.isNaN(start) || start < 0) start = 0
+      if (Number.isNaN(end) || end >= stats.size) end = stats.size - 1
+      const chunkSize = end - start + 1
+      const stream = createReadStream(filepath, { start, end })
+      const headers = {
+        ...baseHeaders,
+        'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+        'Content-Length': String(chunkSize),
+      }
+      return new Response(stream as any, { status: 206, headers })
+    }
+
+    const stream = createReadStream(filepath)
+    const headers = {
+      ...baseHeaders,
+      'Content-Length': String(stats.size),
+    }
     return new Response(stream as any, { status: 200, headers })
   } catch (e) {
     console.error('Erro ao servir upload público:', e)
