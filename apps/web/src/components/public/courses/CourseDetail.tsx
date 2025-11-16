@@ -139,10 +139,12 @@ export default function CourseDetail({
   )
 
   const hasFreeLessons = useMemo(() => {
-    return (course.modules || []).some((m: any) =>
+    const fromCourse = (course.modules || []).some((m: any) =>
       (m.lessons || []).some((l: any) => !!l.isFree)
     )
-  }, [course.modules])
+    const fromComputed = flatLessonMetas.some((lesson) => lesson.isFree)
+    return fromCourse || fromComputed
+  }, [course.modules, flatLessonMetas])
 
   const nextUnlockLesson = useMemo(() => {
     const upcoming = flatLessonMetas
