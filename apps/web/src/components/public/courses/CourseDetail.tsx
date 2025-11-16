@@ -30,6 +30,7 @@ export default function CourseDetail({
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null)
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
+  const [previewEnrollLoading, setPreviewEnrollLoading] = useState(false)
 
   const isCourseFree = useMemo(() => {
     const price = Number(course.price ?? 0)
@@ -134,6 +135,11 @@ export default function CourseDetail({
 
   const firstUnlockedLesson = useMemo(
     () => flatLessonMetas.find((lesson) => !lesson.isLocked) || null,
+    [flatLessonMetas]
+  )
+
+  const hasFreeLessons = useMemo(
+    () => flatLessonMetas.some((lesson) => lesson.isFree),
     [flatLessonMetas]
   )
 
@@ -383,6 +389,26 @@ export default function CourseDetail({
     } catch {}
   }
 
+  const onPreviewEnroll = useCallback(async () => {
+    try {
+      setPreviewEnrollLoading(true)
+      const res = await fetch(`/api/courses/${course.id}/enrollment`, { method: 'POST' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        toast.error(j.error || 'Não foi possível liberar as aulas gratuitas.')
+        return
+      }
+      const j = await res.json()
+      setEnrolled(!!j.enrolled)
+      setEnrollmentStatus(j.status || 'pending')
+      toast.success('Acesso às aulas gratuitas liberado.')
+    } catch (e) {
+      toast.error('Não foi possível liberar as aulas gratuitas.')
+    } finally {
+      setPreviewEnrollLoading(false)
+    }
+  }, [course.id])
+
   const hasLessonAccess = useMemo(() => {
     if (!currentLesson) return false
     // Aulas marcadas como gratuitas ficam acessíveis mesmo sem matrícula
@@ -506,7 +532,21 @@ export default function CourseDetail({
                                   Não possui assinatura com acesso a este curso. <a href="/precos" className="underline text-primary">Conheça os planos</a>.
                                 </span>
                               )}
-                              <a href={`/checkout?enrollCourseId=${course.id}`} className="underline text-primary">Ir para o checkout</a>
+                              <div className="flex items-center gap-3 flex-wrap justify-center">
+                                <a href={`/checkout?enrollCourseId=${course.id}`} className="underline text-primary">
+                                  Ir para o checkout
+                                </a>
+                                {hasFreeLessons && (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={onPreviewEnroll}
+                                    disabled={previewEnrollLoading}
+                                  >
+                                    {previewEnrollLoading ? 'Liberando...' : 'Ver aulas gratuitas'}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </>
