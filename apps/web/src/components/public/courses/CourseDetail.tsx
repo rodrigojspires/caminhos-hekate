@@ -31,6 +31,16 @@ export default function CourseDetail({
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
 
+  const isCourseFree = useMemo(() => {
+    const price = Number(course.price ?? 0)
+    const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
+    return (
+      price === 0 ||
+      accessModels.includes('FREE') ||
+      course.tier === 'FREE'
+    )
+  }, [course.accessModels, course.price, course.tier])
+
   const currentLesson = useMemo(() => {
     for (const m of course.modules || []) {
       const l = (m.lessons || []).find((x: any) => x.id === currentLessonId)
@@ -69,7 +79,10 @@ export default function CourseDetail({
           availableAt = new Date(enrollmentStartMs + releaseAfterDays * 24 * 60 * 60 * 1000)
         }
 
-        let locked = !enrolled || (!l.isFree && enrollmentStatus !== 'active')
+        // Para cursos gratuitos (preço zero ou flag FREE), todas as aulas ficam liberadas após inscrição
+        const allowAllContent = canAccessAllContent || isCourseFree
+
+        let locked = !allowAllContent && (!enrolled || (!l.isFree && enrollmentStatus !== 'active'))
         if (!locked && availableAt && availableAt > now) {
           locked = true
         }
