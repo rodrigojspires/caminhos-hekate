@@ -186,7 +186,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     // filtro por plano de assinatura (sempre inclui cursos gratuitos)
     if (selectedTier !== 'todos') {
       list = list.filter((course) => {
-        const freeCourse = isCourseFree(course) || course.tier === 'FREE'
+        const freeCourse = isCourseFree(course) || (hasSubscriptionAccess(course) && course.tier === 'FREE')
         const matchesPlan = hasSubscriptionAccess(course) && course.tier === selectedTier
         return matchesPlan || freeCourse
       })
