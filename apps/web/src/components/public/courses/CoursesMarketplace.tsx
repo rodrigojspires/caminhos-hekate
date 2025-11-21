@@ -44,6 +44,12 @@ const formatCurrency = (value: number | null | undefined) => {
   })
 }
 
+const isCourseFree = (course: PublicCourse) => {
+  const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
+  const priceNumber = course.price != null ? Number(course.price) : null
+  return accessModels.includes('FREE') || (priceNumber != null && priceNumber === 0)
+}
+
 const levelLabels: Record<string, string> = {
   BEGINNER: 'Iniciante',
   INTERMEDIATE: 'Intermediário',
@@ -177,17 +183,17 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     // filtro por plano de assinatura (sempre inclui cursos gratuitos)
     if (selectedTier !== 'todos') {
       list = list.filter((course) => {
-        const isFree = (course.price ?? 0) === 0 || course.tier === 'FREE'
+        const isFree = isCourseFree(course) || course.tier === 'FREE'
         return course.tier === selectedTier || isFree
       })
     }
 
     // preço: se um plano está selecionado, manter gratuitos mesmo se 'paid'
     if (priceFilter === 'free') {
-      list = list.filter((course) => (course.price ?? 0) === 0)
+      list = list.filter((course) => isCourseFree(course))
     } else if (priceFilter === 'paid') {
       if (selectedTier === 'todos') {
-        list = list.filter((course) => (course.price ?? 0) > 0)
+        list = list.filter((course) => !isCourseFree(course))
       } // quando tem plano selecionado, não removemos os gratuitos
     }
 
@@ -560,11 +566,15 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
               ) : (
                 <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredCourses.map((course) => {
-                    const priceBRL = formatCurrency(course.price)
+                    const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
+                    const priceNumber = course.price != null ? Number(course.price) : null
+                    const priceBRL = formatCurrency(priceNumber)
                     const compareBRL = formatCurrency(course.comparePrice)
-                    const isFree = !course.price || course.price === 0
-                    const tierLabel = course.tier ? (tierLabels[course.tier] ?? course.tier) : null
-                    const requiresSubscription = course.tier ? course.tier !== 'FREE' : false
+                    const isFree = accessModels.includes('FREE') || (priceNumber != null && priceNumber === 0)
+                    const hasSubscriptionAccess = accessModels.includes('SUBSCRIPTION')
+                    const tierLabel =
+                      hasSubscriptionAccess && course.tier ? (tierLabels[course.tier] ?? course.tier) : null
+                    const requiresSubscription = hasSubscriptionAccess && course.tier ? course.tier !== 'FREE' : false
 
                     return (
                       <motion.div key={course.id} layout>
@@ -630,7 +640,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                             <CardFooter className="p-6 pt-0 flex items-center justify-between">
                               <div className="flex flex-col">
                                 <span className="text-lg font-semibold text-white">
-                                  {isFree ? 'Acesso gratuito' : priceBRL}
+                                  {isFree ? 'Acesso gratuito' : priceBRL || 'Valor disponível no checkout'}
                                 </span>
                                 {!isFree && compareBRL && (
                                   <span className="text-sm text-purple-200/70 line-through">{compareBRL}</span>
@@ -639,7 +649,7 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
                                   <span className="text-xs text-purple-200/80 mt-1">
                                     {requiresSubscription
                                       ? `Incluído a partir do plano ${tierLabel}`
-                                      : 'Plano Gratuito'}
+                                      : 'Disponível na assinatura'}
                                   </span>
                                 )}
                               </div>

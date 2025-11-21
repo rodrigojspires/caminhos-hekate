@@ -26,7 +26,9 @@ export async function POST(_req: NextRequest, { params }: { params: { courseId: 
       return NextResponse.json({ error: 'Curso não encontrado' }, { status: 404 })
     }
 
-    const isFree = course.price == null || (Array.isArray(course.accessModels) && course.accessModels.includes('FREE')) || course.tier === 'FREE'
+    const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
+    const normalizedPrice = course.price != null ? Number(course.price) : null
+    const isFree = accessModels.includes('FREE') || (normalizedPrice != null && !Number.isNaN(normalizedPrice) && normalizedPrice === 0)
     if (isFree) {
       // Nada para adicionar ao carrinho; curso gratuito ou incluído na assinatura
       return NextResponse.json({ skipped: true, reason: 'free_or_included' })

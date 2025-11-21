@@ -260,8 +260,8 @@ export default function CoursePresentation({
         await onEnroll(true)
         return
       }
-      toast.success('Curso adicionado ao carrinho.')
-      router.push('/carrinho')
+      toast.success('Curso adicionado. Indo para o checkout...')
+      router.push(`/checkout?enrollCourseId=${course.id}`)
     } catch {
       toast.error('Não foi possível adicionar o curso ao carrinho.')
     } finally {
@@ -274,7 +274,7 @@ export default function CoursePresentation({
     if (canDirectEnroll) {
       return isFree ? 'Acessar gratuitamente' : 'Liberar acesso com assinatura'
     }
-    return 'Ir para o carrinho'
+    return 'Ir para o checkout'
   }, [canDirectEnroll, hasActiveAccess, isFree])
 
   const handlePrimaryAction = useCallback(async () => {
