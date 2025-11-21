@@ -31,16 +31,16 @@ export default function CourseDetail({
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
   const [previewEnrollLoading, setPreviewEnrollLoading] = useState(false)
+  const accessModels = useMemo(
+    () => (Array.isArray(course.accessModels) ? course.accessModels : []),
+    [course.accessModels]
+  )
 
   const isCourseFree = useMemo(() => {
-    const price = Number(course.price ?? 0)
-    const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
-    return (
-      price === 0 ||
-      accessModels.includes('FREE') ||
-      course.tier === 'FREE'
-    )
-  }, [course.accessModels, course.price, course.tier])
+    const price = course.price == null ? null : Number(course.price)
+    const hasZeroPrice = price != null && !Number.isNaN(price) && price === 0
+    return accessModels.includes('FREE') || hasZeroPrice
+  }, [accessModels, course.price])
 
   const currentLesson = useMemo(() => {
     for (const m of course.modules || []) {

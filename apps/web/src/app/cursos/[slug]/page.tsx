@@ -67,9 +67,10 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
     )
   }
 
+  const accessModels = Array.isArray(course.accessModels) ? course.accessModels : []
   const courseTierValue = tierOrder[course.tier as keyof typeof tierOrder] ?? 0
   const userTierValue = isAdmin ? Number.POSITIVE_INFINITY : tierOrder[userTier as keyof typeof tierOrder] ?? 0
-  const canAccessBySubscription = userTierValue >= courseTierValue
+  const canAccessBySubscription = accessModels.includes('SUBSCRIPTION') && userTierValue >= courseTierValue
   const canAccessAllContent = isAdmin ? true : canAccessBySubscription
 
   const enrollment = isAdmin

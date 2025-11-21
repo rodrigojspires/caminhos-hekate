@@ -100,6 +100,10 @@ export default function CoursePresentation({
   const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(initialEnrollmentStatus)
   const heroImage = useMemo(() => resolveMediaUrl(course.featuredImage || null), [course.featuredImage])
   const [introVideoSrc, setIntroVideoSrc] = useState<string | null>(() => resolveMediaUrl(course.introVideo || null))
+  const accessModels = useMemo(
+    () => (Array.isArray(course.accessModels) ? course.accessModels : []),
+    [course.accessModels]
+  )
   const hasFreeLessons = useMemo(() => {
     return Array.isArray(course.modules)
       ? course.modules.some((m) => Array.isArray(m.lessons) && m.lessons.some((l) => !!l.isFree))
@@ -178,23 +182,22 @@ export default function CoursePresentation({
     [modules]
   )
 
-  const isFree =
-    normalizedPrice == null ||
-    normalizedPrice === 0 ||
-    (course.accessModels || []).includes('FREE') ||
-    course.tier === 'FREE'
+  const hasFreeAccessModel = accessModels.includes('FREE')
+  const hasSubscriptionAccessModel = accessModels.includes('SUBSCRIPTION')
+  const isFree = hasFreeAccessModel || normalizedPrice === 0
   const canDirectEnroll = isAdmin || canAccessBySubscription || isFree
   const hasActiveAccess = enrolled && enrollmentStatus === 'active'
 
   const priceBRL = useMemo(() => {
-    if (normalizedPrice == null || normalizedPrice === 0) return 'Acesso gratuito'
+    if (isFree) return 'Acesso gratuito'
+    if (normalizedPrice == null) return 'Valor indisponível'
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(normalizedPrice)
-  }, [normalizedPrice])
+  }, [isFree, normalizedPrice])
 
   const compareBRL = useMemo(() => {
-    if (normalizedComparePrice == null || normalizedComparePrice === 0) return null
+    if (isFree || normalizedComparePrice == null || normalizedComparePrice === 0) return null
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(normalizedComparePrice)
-  }, [normalizedComparePrice])
+  }, [isFree, normalizedComparePrice])
 
   const objectiveList = Array.isArray(course.objectives)
     ? course.objectives.filter((i: any) => typeof i === 'string')
@@ -288,7 +291,7 @@ export default function CoursePresentation({
   }, [ctaLoading, canDirectEnroll, continueUrl, course.slug, goToCart, hasActiveAccess, onEnroll, router])
 
   const subscriptionLabel = useMemo(() => {
-    if (!course.tier) return null
+    if (!hasSubscriptionAccessModel || !course.tier) return null
     const label = tierLabels[course.tier] ?? course.tier
     if (isAdmin) return `${label} (Administrador)`
     if (userTier) {
@@ -296,12 +299,9 @@ export default function CoursePresentation({
       return `${label} · Seu plano: ${userLabel}`
     }
     return label
-  }, [course.tier, isAdmin, userTier])
+  }, [course.tier, hasSubscriptionAccessModel, isAdmin, userTier])
 
-  const showPlanButton = useMemo(
-    () => (course.accessModels || []).includes('SUBSCRIPTION'),
-    [course.accessModels]
-  )
+  const showPlanButton = hasSubscriptionAccessModel
 
   const handlePreviewEnroll = useCallback(async () => {
     if (ctaLoading) return
@@ -361,7 +361,7 @@ export default function CoursePresentation({
                         {course.category.name}
                       </Badge>
                     )}
-                    {(course.accessModels || []).map((m) => (
+                    {accessModels.map((m) => (
                       <Badge
                         key={m}
                         variant="outline"
@@ -464,8 +464,8 @@ export default function CoursePresentation({
             <div>
               <h3 className="text-base font-semibold">Modalidade de pagamento</h3>
               <div className="mt-2 flex flex-wrap gap-2">
-                {(course.accessModels || []).length > 0 ? (
-                  (course.accessModels || []).map((m) => {
+                {accessModels.length > 0 ? (
+                  accessModels.map((m) => {
                     const label = accessModelLabels[m] ?? m
                     const showPlan = m === 'SUBSCRIPTION' && course.tier && course.tier !== 'FREE'
                     const planText = showPlan ? ` — Plano ${tierLabels[course.tier || 'FREE']}` : ''
