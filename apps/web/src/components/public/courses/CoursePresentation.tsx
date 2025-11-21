@@ -249,25 +249,14 @@ export default function CoursePresentation({
   const goToCart = useCallback(async () => {
     setCtaLoading(true)
     try {
-      const res = await fetch(`/api/courses/${course.id}/add-to-cart`, { method: 'POST' })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(json?.error || 'Não foi possível adicionar o curso ao carrinho.')
-        return
-      }
-      if (json?.skipped && canDirectEnroll) {
-        setCtaLoading(false)
-        await onEnroll(true)
-        return
-      }
-      toast.success('Curso adicionado. Indo para o checkout...')
+      // Checkout vai garantir o item no carrinho usando enrollCourseId para evitar duplicidade
       router.push(`/checkout?enrollCourseId=${course.id}`)
     } catch {
-      toast.error('Não foi possível adicionar o curso ao carrinho.')
+      toast.error('Não foi possível encaminhar para o checkout.')
     } finally {
       setCtaLoading(false)
     }
-  }, [canDirectEnroll, course.id, onEnroll, router])
+  }, [course.id, router])
 
   const primaryActionLabel = useMemo(() => {
     if (hasActiveAccess) return 'Acessar curso'

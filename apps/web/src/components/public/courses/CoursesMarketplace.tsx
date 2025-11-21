@@ -50,6 +50,9 @@ const isCourseFree = (course: PublicCourse) => {
   return accessModels.includes('FREE') || (priceNumber != null && priceNumber === 0)
 }
 
+const hasSubscriptionAccess = (course: PublicCourse) =>
+  Array.isArray(course.accessModels) && course.accessModels.includes('SUBSCRIPTION')
+
 const levelLabels: Record<string, string> = {
   BEGINNER: 'Iniciante',
   INTERMEDIATE: 'Intermediário',
@@ -183,8 +186,9 @@ export function CoursesMarketplace({ courses }: CoursesMarketplaceProps) {
     // filtro por plano de assinatura (sempre inclui cursos gratuitos)
     if (selectedTier !== 'todos') {
       list = list.filter((course) => {
-        const isFree = isCourseFree(course) || course.tier === 'FREE'
-        return course.tier === selectedTier || isFree
+        const freeCourse = isCourseFree(course) || course.tier === 'FREE'
+        const matchesPlan = hasSubscriptionAccess(course) && course.tier === selectedTier
+        return matchesPlan || freeCourse
       })
     }
 
