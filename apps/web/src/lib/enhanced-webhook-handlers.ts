@@ -3,8 +3,36 @@ import { logWebhook } from './webhook-utils';
 
 // Enhanced MercadoPago webhook processor
 export class EnhancedMercadoPagoProcessor {
+  private async fetchPaymentDetails(paymentId: string): Promise<any | null> {
+    try {
+      const token = process.env.MERCADOPAGO_ACCESS_TOKEN
+      if (!token) throw new Error('MERCADOPAGO_ACCESS_TOKEN not configured')
+
+      const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      if (!res.ok) {
+        throw new Error(`MercadoPago API error: ${res.status}`)
+      }
+      return await res.json()
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do pagamento MercadoPago:', error)
+      return null
+    }
+  }
+
   async processPaymentWebhook(data: any) {
-    const { id, status, transaction_amount, payer, external_reference } = data;
+    // Webhook de notificação simples (payment.updated) vem sem status; buscar detalhes na API
+    const paymentData = data?.status ? data : await this.fetchPaymentDetails((data?.data?.id || data?.id || '').toString())
+    if (!paymentData) {
+      console.warn('Pagamento MercadoPago não encontrado na notificação', data)
+      return { processed: false, reason: 'Payment details not found' }
+    }
+
+    const { id, status, transaction_amount, payer, external_reference, metadata = {}, order = {} } = paymentData;
     
     try {
       // Busca a transação existente
@@ -12,7 +40,10 @@ export class EnhancedMercadoPagoProcessor {
         where: {
           OR: [
             { providerPaymentId: id.toString() },
-            { providerPaymentId: external_reference },
+            external_reference ? { providerPaymentId: external_reference } : undefined,
+            metadata?.transaction_id ? { id: metadata.transaction_id } : undefined,
+            metadata?.transaction_id ? { providerPaymentId: metadata.transaction_id } : undefined,
+            order?.id ? { providerPaymentId: order.id } : undefined,
           ],
         },
         include: { subscription: { include: { user: true } } },
@@ -37,13 +68,14 @@ export class EnhancedMercadoPagoProcessor {
       
       // Atualiza a transação
       await prisma.paymentTransaction.update({
-          where: { id: transaction.id },
-          data: {
-            status: newStatus as any,
-            metadata: data,
-            updatedAt: new Date(),
-          },
-        });
+        where: { id: transaction.id },
+        data: {
+          status: newStatus as any,
+          providerPaymentId: id.toString(),
+          metadata: paymentData,
+          updatedAt: new Date(),
+        },
+      });
 
       // Se aprovado, ativa a assinatura
         if (status === 'approved' && transaction.subscriptionId && transaction.subscription?.user) {

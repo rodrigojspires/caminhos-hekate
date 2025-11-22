@@ -77,9 +77,19 @@ export class MercadoPagoWebhookProcessor {
       throw new Error(`Payment not found: ${paymentId}`);
     }
 
-    // Buscar transação no banco
-    const transaction = await prisma.paymentTransaction.findUnique({
-      where: { providerPaymentId: paymentId },
+    const txMetadata: any = paymentDetails.metadata || {}
+    const metaTransactionId = txMetadata.transaction_id || txMetadata.transactionId || null
+
+    // Buscar transação no banco com fallbacks (paymentId, metadata.transaction_id, preference id)
+    const transaction = await prisma.paymentTransaction.findFirst({
+      where: {
+        OR: [
+          { providerPaymentId: paymentId },
+          metaTransactionId ? { id: metaTransactionId } : undefined,
+          metaTransactionId ? { providerPaymentId: metaTransactionId } : undefined,
+          paymentDetails.order?.id ? { providerPaymentId: paymentDetails.order.id } : undefined,
+        ].filter(Boolean) as any
+      },
       include: { subscription: true }
     });
 
@@ -97,6 +107,7 @@ export class MercadoPagoWebhookProcessor {
       data: {
         status,
         providerStatus: paymentDetails.status,
+        providerPaymentId: paymentId,
         paidAt: paymentDetails.status === 'approved' ? new Date() : null,
         failedAt: ['rejected', 'cancelled'].includes(paymentDetails.status) ? new Date() : null,
         refundedAt: paymentDetails.status === 'refunded' ? new Date() : null,

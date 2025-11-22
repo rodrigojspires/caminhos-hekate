@@ -10,6 +10,42 @@ export interface GamificationEvent {
 
 // Main gamification engine class
 export class GamificationEngine {
+  // Ensure a base category exists for auto achievements
+  private static async ensureDefaultCategory() {
+    return prisma.achievementCategory.upsert({
+      where: { name: 'Sistema' },
+      update: {},
+      create: {
+        name: 'Sistema',
+        description: 'Conquistas automáticas geradas pelo sistema',
+        icon: 'sparkles',
+        color: '#6B46C1'
+      }
+    })
+  }
+
+  // Guarantee an Achievement row exists before linking to user
+  private static async ensureAchievementExists(achievement: any) {
+    const existing = await prisma.achievement.findUnique({
+      where: { id: achievement.achievementId }
+    })
+    if (existing) return existing
+
+    const category = await this.ensureDefaultCategory()
+    return prisma.achievement.create({
+      data: {
+        id: achievement.achievementId,
+        name: achievement.title || achievement.achievementId,
+        description: achievement.description || 'Conquista automática',
+        categoryId: category.id,
+        rarity: achievement.rarity || 'COMMON',
+        points: achievement.points || 0,
+        criteria: achievement.criteria || { type: achievement.type || 'AUTO' },
+        metadata: achievement.metadata || { source: 'auto' }
+      }
+    })
+  }
+
   // Process a gamification event
   static async processEvent(event: GamificationEvent) {
     try {
@@ -278,6 +314,8 @@ export class GamificationEngine {
       return existingAchievement
     }
 
+    await this.ensureAchievementExists(achievement)
+
     const userAchievement = await prisma.userAchievement.create({
       data: {
         userId: userId,
@@ -308,16 +346,22 @@ export class GamificationEngine {
     })
 
     if (!existingAchievement) {
-      // Ensure the achievement exists before linking
-      const achievement = await prisma.achievement.findUnique({ where: { id: achievementId } })
-      if (achievement) {
-        await prisma.userAchievement.create({
-          data: {
-            userId: userId,
-            achievementId: achievementId
-          }
-        })
-      }
+      await this.ensureAchievementExists({
+        achievementId,
+        title: `Nível ${level}`,
+        description: `Alcançou o nível ${level}`,
+        type: 'LEVEL',
+        rarity: level >= 50 ? 'LEGENDARY' : level >= 25 ? 'EPIC' : level >= 10 ? 'RARE' : 'COMMON',
+        points: Math.max(10, level * 2),
+        metadata: { level }
+      })
+
+      await prisma.userAchievement.create({
+        data: {
+          userId: userId,
+          achievementId: achievementId
+        }
+      })
     }
   }
 
