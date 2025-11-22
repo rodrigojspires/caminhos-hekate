@@ -78,6 +78,7 @@ export class MercadoPagoWebhookProcessor {
     }
 
     const txMetadata: any = paymentDetails.metadata || {}
+    const externalReference = paymentDetails.external_reference || null
     const metaTransactionId = txMetadata.transaction_id || txMetadata.transactionId || null
 
     // Buscar transação no banco com fallbacks (paymentId, metadata.transaction_id, preference id)
@@ -87,6 +88,7 @@ export class MercadoPagoWebhookProcessor {
           { providerPaymentId: paymentId },
           metaTransactionId ? { id: metaTransactionId } : undefined,
           metaTransactionId ? { providerPaymentId: metaTransactionId } : undefined,
+          externalReference ? { providerPaymentId: externalReference } : undefined,
           paymentDetails.order?.id ? { providerPaymentId: paymentDetails.order.id } : undefined,
         ].filter(Boolean) as any
       },
@@ -113,7 +115,8 @@ export class MercadoPagoWebhookProcessor {
         refundedAt: paymentDetails.status === 'refunded' ? new Date() : null,
         metadata: {
           ...transaction.metadata as any,
-          mercadoPagoDetails: paymentDetails
+          mercadoPagoDetails: paymentDetails,
+          external_reference: externalReference ?? (transaction.metadata as any)?.external_reference ?? null
         }
       }
     });
@@ -166,12 +169,25 @@ export class MercadoPagoWebhookProcessor {
         try {
           const order = await prisma.order.findUnique({ where: { id: transaction.orderId }, include: { items: true } })
           if (order?.userId) {
-            const meta: any = order.metadata || {}
-            const courseIds: string[] = Array.isArray(meta.enrollCourseIds) ? meta.enrollCourseIds : []
+            const fromOrderMeta: any = order.metadata || {}
+            const fromTxMeta: any = transaction.metadata || {}
+            const metaCourseIds: any[] = []
+            if (Array.isArray(fromOrderMeta.enrollCourseIds)) metaCourseIds.push(...fromOrderMeta.enrollCourseIds)
+            if (Array.isArray(fromTxMeta.enrollCourseIds)) metaCourseIds.push(...fromTxMeta.enrollCourseIds)
+
+            // Normaliza e evita duplicados
+            const courseIds = Array.from(
+              new Set(
+                metaCourseIds
+                  .map((id) => (id != null ? String(id) : null))
+                  .filter((id): id is string => !!id && id.trim().length > 0)
+              )
+            )
+
             for (const courseId of courseIds) {
               await prisma.enrollment.upsert({
                 where: { userId_courseId: { userId: order.userId, courseId } },
-                create: { userId: order.userId, courseId },
+                create: { userId: order.userId, courseId, status: 'active' },
                 update: { status: 'active' }
               })
 
