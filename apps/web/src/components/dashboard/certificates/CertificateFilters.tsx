@@ -4,9 +4,9 @@ import { useState } from "react"
 import { Search, Filter, Calendar } from "lucide-react"
 
 interface CertificateFiltersProps {
-  onSearchChange: (search: string) => void
-  onStatusChange: (status: string) => void
-  onDateRangeChange: (dateRange: string) => void
+  onSearchChange?: (search: string) => void
+  onStatusChange?: (status: string) => void
+  onDateRangeChange?: (dateRange: string) => void
 }
 
 export default function CertificateFilters({
@@ -20,17 +20,17 @@ export default function CertificateFilters({
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    onSearchChange(value)
+    onSearchChange?.(value)
   }
 
   const handleStatusChange = (value: string) => {
     setStatus(value)
-    onStatusChange(value)
+    onStatusChange?.(value)
   }
 
   const handleDateRangeChange = (value: string) => {
     setDateRange(value)
-    onDateRangeChange(value)
+    onDateRangeChange?.(value)
   }
 
   return (

@@ -73,11 +73,7 @@ export default async function CertificatesPage() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-6">
-          <CertificateFilters 
-            onSearchChange={() => {}}
-            onStatusChange={() => {}}
-            onDateRangeChange={() => {}}
-          />
+          <CertificateFilters />
           <CertificateGallery certificates={certificates} />
         </TabsContent>
 
