@@ -7,9 +7,12 @@ interface CourseProgressProps {
   totalCourses: number
   completedCourses: number
   inProgressCourses: number
+  notStartedCourses: number
   totalHours: number
   completedHours: number
   averageProgress?: number
+  weeklyProgress?: number[]
+  streakDays?: number
   loading?: boolean
 }
 
@@ -17,9 +20,12 @@ export function CourseProgress({
   totalCourses,
   completedCourses,
   inProgressCourses,
+  notStartedCourses,
   totalHours,
   completedHours,
   averageProgress = 0,
+  weeklyProgress = [],
+  streakDays = 0,
   loading = false 
 }: CourseProgressProps) {
   if (loading) {
@@ -39,7 +45,8 @@ export function CourseProgress({
     )
   }
 
-  const streakDays = 0 // Placeholder - pode ser implementado futuramente
+  const inProgressTotalBase = Math.max(0, totalCourses - completedCourses)
+  const weeklySlots = weeklyProgress.length === 7 ? weeklyProgress : new Array(7).fill(0)
   
   const progressCards = [
     {
@@ -54,11 +61,11 @@ export function CourseProgress({
     {
       title: "Em Progresso",
       value: inProgressCourses,
-      total: totalCourses,
+      total: inProgressTotalBase || inProgressCourses,
       icon: BookOpen,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
-      progress: totalCourses > 0 ? (inProgressCourses / totalCourses) * 100 : 0
+      progress: inProgressTotalBase > 0 ? (inProgressCourses / inProgressTotalBase) * 100 : 0
     },
     {
       title: "Horas de Estudo",
@@ -73,11 +80,11 @@ export function CourseProgress({
     {
       title: "Sequência de Dias",
       value: streakDays,
-      total: 30,
+      total: Math.max(7, streakDays || 1),
       icon: Target,
       color: "text-amber-600 dark:text-amber-400",
       bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
-      progress: (streakDays / 30) * 100,
+      progress: Math.min(100, (streakDays / Math.max(7, streakDays || 1)) * 100),
       suffix: " dias"
     }
   ]
@@ -140,7 +147,8 @@ export function CourseProgress({
         <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Semanal</h3>
         <div className="grid grid-cols-7 gap-2">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => {
-            const isActive = index < streakDays % 7
+            const activityCount = weeklySlots[index] || 0
+            const isActive = activityCount > 0
             return (
               <div key={day} className="text-center">
                 <div className="text-xs text-muted-foreground mb-2">{day}</div>
@@ -149,7 +157,11 @@ export function CourseProgress({
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted text-muted-foreground'
                 }`}>
-                  {isActive ? <CheckCircle className="w-4 h-4" /> : <div className="w-2 h-2 bg-current rounded-full" />}
+                  {isActive ? (
+                    <div className="text-xs font-semibold">{activityCount}</div>
+                  ) : (
+                    <div className="w-2 h-2 bg-current rounded-full" />
+                  )}
                 </div>
               </div>
             )

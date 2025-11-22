@@ -6,6 +6,7 @@ import CertificateGallery from '@/components/dashboard/certificates/CertificateG
 import CertificateFilters from '@/components/dashboard/certificates/CertificateFilters'
 import CertificateStats from '@/components/dashboard/certificates/CertificateStats'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cookies, headers } from 'next/headers'
 
 export const metadata: Metadata = {
   title: 'Certificados | Minha Escola | Caminhos de Hekate',
@@ -13,12 +14,23 @@ export const metadata: Metadata = {
 }
 
 async function fetchCertificateData() {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-  
+  const host = headers().get('host')
+  const baseUrl =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (host ? `https://${host}` : 'http://localhost:3000')
+  const cookieHeader = cookies().toString()
+
   try {
     const [statsRes, certificatesRes] = await Promise.all([
-      fetch(`${baseUrl}/api/user/certificates/stats`, { cache: 'no-store' }),
-      fetch(`${baseUrl}/api/user/certificates`, { cache: 'no-store' })
+      fetch(`${baseUrl}/api/user/certificates/stats`, {
+        cache: 'no-store',
+        headers: { cookie: cookieHeader }
+      }),
+      fetch(`${baseUrl}/api/user/certificates`, {
+        cache: 'no-store',
+        headers: { cookie: cookieHeader }
+      })
     ])
 
     const stats = statsRes.ok ? await statsRes.json() : { totalCertificates: 0, completedThisMonth: 0, downloadCount: 0, averageScore: 0 }

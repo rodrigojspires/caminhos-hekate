@@ -44,6 +44,8 @@ interface CourseStats {
   notStartedCourses: number
   totalStudyTime: number
   averageProgress: number
+  weeklyProgress: number[]
+  streakDays: number
 }
 
 async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseStats } | null> {
@@ -98,6 +100,8 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
     })
 
     const coursesWithProgress: CourseData[] = []
+    const weeklyActivity = new Array(7).fill(0) as number[]
+    const activityDates = new Set<string>()
 
     for (const enrollment of enrollments) {
       const { course } = enrollment
@@ -151,10 +155,12 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         ? progresses.reduce((latest, p) => (!latest || p.updatedAt > latest ? p.updatedAt : latest), null as Date | null)
         : null
 
-      const totalStudyTimeMinutes = progresses.reduce(
-        (total, p) => total + (p.videoTime || 0),
-        0
-      )
+      const totalStudyTimeMinutes = progresses.reduce((total, p) => {
+        const lesson = course.modules.flatMap((m) => m.lessons).find((l) => l.id === p.lessonId)
+        const duration = lesson?.videoDuration || 0
+        const credit = p.completed && duration > 0 ? duration : p.videoTime || 0
+        return total + credit
+      }, 0)
 
       const courseDurationMinutes = course.modules.reduce(
         (total, module) => total + module.lessons.reduce(
@@ -163,6 +169,18 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         ),
         0
       )
+
+      // Weekly activity and streaks (based on progress updates)
+      const now = new Date()
+      progresses.forEach((p) => {
+        if (!p.updatedAt) return
+        const dayDiff = Math.floor((now.getTime() - p.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+        if (dayDiff >= 0 && dayDiff < 7) {
+          weeklyActivity[6 - dayDiff] += 1
+        }
+        const dayKey = p.updatedAt.toISOString().slice(0, 10)
+        activityDates.add(dayKey)
+      })
 
       coursesWithProgress.push({
         id: course.id,
@@ -197,7 +215,9 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
       totalStudyTime: coursesWithProgress.reduce((total, c) => total + c.totalStudyTime, 0),
       averageProgress: coursesWithProgress.length > 0
         ? Math.round(coursesWithProgress.reduce((total, c) => total + c.progress, 0) / coursesWithProgress.length)
-        : 0
+        : 0,
+      weeklyProgress: weeklyActivity,
+      streakDays: calculateStreak(Array.from(activityDates))
     }
 
     return { courses: coursesWithProgress, stats }
@@ -252,12 +272,40 @@ export default async function CoursesPage() {
             totalCourses={stats.totalCourses}
             completedCourses={stats.completedCourses}
             inProgressCourses={stats.inProgressCourses}
+            notStartedCourses={stats.notStartedCourses}
             totalHours={Math.round(stats.totalStudyTime / 60)}
             completedHours={Math.round(stats.totalStudyTime / 60)}
             averageProgress={stats.averageProgress}
+            weeklyProgress={stats.weeklyProgress}
+            streakDays={stats.streakDays}
           />
         </div>
       </div>
     </div>
   )
+}
+function calculateStreak(dateStrings: string[]): number {
+  if (!dateStrings.length) return 0
+  const dates = dateStrings
+    .map((d) => new Date(d + 'T00:00:00Z').getTime())
+    .filter((n) => !Number.isNaN(n))
+    .sort((a, b) => b - a)
+
+  let streak = 0
+  let current = new Date()
+  current.setUTCHours(0, 0, 0, 0)
+
+  for (const ts of dates) {
+    if (ts === current.getTime()) {
+      streak += 1
+      current = new Date(current.getTime() - 24 * 60 * 60 * 1000)
+    } else if (ts === current.getTime() - 24 * 60 * 60 * 1000) {
+      streak += 1
+      current = new Date(current.getTime() - 24 * 60 * 60 * 1000)
+    } else if (ts < current.getTime() - 24 * 60 * 60 * 1000) {
+      break
+    }
+  }
+
+  return streak
 }
