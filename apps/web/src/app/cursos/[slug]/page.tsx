@@ -74,7 +74,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
   const canAccessAllContent = isAdmin ? true : canAccessBySubscription
 
   const enrollment = isAdmin
-    ? { status: 'active' }
+    ? { status: 'active', createdAt: new Date() }
     : session?.user?.id
       ? await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.user.id, courseId: course.id } },
@@ -82,13 +82,14 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
         })
       : null
 
+  // Considerar pending como acesso liberado se já existe pagamento (bloqueio é feito no conteúdo)
   const enrollmentStatus = isAdmin ? 'active' : enrollment?.status ?? null
-  const isEnrolled = enrollmentStatus != null
+  const isEnrolled = enrollmentStatus === 'active'
 
   const viewParam = searchParams?.view
   const forcedOverview = viewParam === 'overview'
   const forcedContent = viewParam === 'content'
-  const shouldShowContent = !forcedOverview && (forcedContent || (isEnrolled && enrollmentStatus === 'active'))
+  const shouldShowContent = !forcedOverview && (forcedContent || isEnrolled)
 
   return (
     <main className="min-h-screen container mx-auto py-8">

@@ -27,7 +27,7 @@ export default function CourseDetail({
 }: CourseDetailProps) {
   const { getLessonProgress, updateWatchTime, markLessonComplete } = useCourseProgress()
   const [enrolled, setEnrolled] = useState<boolean>(initialEnrolled)
-  const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(null)
+  const [enrollmentStatus, setEnrollmentStatus] = useState<string | null>(initialEnrolled ? 'active' : null)
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null)
   const [downloadingAssetId, setDownloadingAssetId] = useState<string | null>(null)
   const [previewEnrollLoading, setPreviewEnrollLoading] = useState(false)
