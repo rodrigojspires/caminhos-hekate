@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     }
 
     const validation = validateMercadoPagoSignature(raw, signature, secret)
-    if (!validation.isValid) {
-      // Proceed but mark as failed validation in log
+    if (!validation.isValid && secret) {
+      // Não retornar 401 para não perder notificações; apenas logar
       console.warn('MercadoPago signature invalid:', validation.error)
     }
 
