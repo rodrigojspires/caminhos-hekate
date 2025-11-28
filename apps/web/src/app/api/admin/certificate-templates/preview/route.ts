@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import type { CertificateTemplate } from '@hekate/database'
 import PDFDocument from 'pdfkit'
+import { resolve as resolvePath } from 'path'
 import { withAdminAuth } from '@/lib/auth-middleware'
 import { z } from 'zod'
 
@@ -97,6 +98,13 @@ async function createPdfBuffer({
 }) {
   return await new Promise<Buffer>(async (resolve) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 })
+    try {
+      const helveticaPath = resolvePath(require.resolve('pdfkit/js/data/Helvetica.afm'))
+      doc.registerFont('Helvetica', helveticaPath)
+      doc.font('Helvetica')
+    } catch {
+      // Se não encontrar o arquivo da fonte, segue com a fonte padrão do PDFKit
+    }
     const chunks: Buffer[] = []
     doc.on('data', (d) => chunks.push(d as Buffer))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
