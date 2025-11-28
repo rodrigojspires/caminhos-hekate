@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle } from "lucide-react"
+import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle, Award } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -23,6 +23,10 @@ interface Course {
   enrollmentStatus: 'active' | 'pending'
   hasFreeLessons: boolean
   checkoutUrl: string
+  certificateStatus: 'locked' | 'ready' | 'available'
+  certificateUrl?: string
+  certificateIssuedAt?: string
+  certificateTemplateName?: string
 }
 
 interface MyCoursesProps {
@@ -191,7 +195,30 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {course.certificateStatus === 'locked' ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-dashed border-muted-foreground/40 text-muted-foreground/80 rounded-lg cursor-not-allowed"
+                          title="Conclua o curso para liberar o certificado"
+                        >
+                          <Award className="w-4 h-4" />
+                          Certificado bloqueado
+                        </button>
+                      ) : (
+                        <a
+                          href={course.certificateUrl || `/api/certificates/${course.id}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-emerald-300 text-emerald-800 rounded-lg hover:bg-emerald-50 transition-colors"
+                          title={
+                            (course.certificateIssuedAt ? 'Baixar certificado' : 'Emitir certificado') +
+                            (course.certificateTemplateName ? ` • ${course.certificateTemplateName}` : '')
+                          }
+                        >
+                          <Award className="w-4 h-4" />
+                          {course.certificateIssuedAt ? 'Baixar certificado' : 'Emitir certificado'}
+                        </a>
+                      )}
                       <Link
                         href={`/cursos/${course.slug}?view=content`}
                         className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"

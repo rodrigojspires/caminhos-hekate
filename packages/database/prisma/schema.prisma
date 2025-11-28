@@ -32,6 +32,8 @@ model User {
   addresses                     Address[]
   auditLogs                     AuditLog[]
   certificates                  Certificate[]
+  certificateTemplatesCreated   CertificateTemplate[] @relation("CertificateTemplateCreator")
+  certificateTemplatesUpdated   CertificateTemplate[] @relation("CertificateTemplateUpdater")
   comments                      Comment[]
   downloads                     Download[]
   enrollments                   Enrollment[]
@@ -562,6 +564,7 @@ model Course {
   updatedAt        DateTime         @updatedAt
   publishedAt      DateTime?
   certificates     Certificate[]
+  certificateTemplates CertificateTemplate[]
   enrollments      Enrollment[]
   modules          Module[]
 }
@@ -646,12 +649,36 @@ model Certificate {
   courseId          String
   certificateNumber String   @unique
   issuedAt          DateTime @default(now())
+  templateId        String?
   pdfUrl            String?
   metadata          Json?
   course            Course   @relation(fields: [courseId], references: [id])
   user              User     @relation(fields: [userId], references: [id])
+  template          CertificateTemplate? @relation(fields: [templateId], references: [id])
 
   @@unique([userId, courseId])
+}
+
+model CertificateTemplate {
+  id                  String      @id @default(cuid())
+  name                String
+  description         String?
+  courseId            String?
+  backgroundImageUrl  String?
+  layout              Json?
+  isDefault           Boolean     @default(false)
+  isActive            Boolean     @default(true)
+  createdById         String?
+  updatedById         String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  course              Course?     @relation(fields: [courseId], references: [id])
+  createdBy           User?       @relation("CertificateTemplateCreator", fields: [createdById], references: [id])
+  updatedBy           User?       @relation("CertificateTemplateUpdater", fields: [updatedById], references: [id])
+  certificates        Certificate[]
+
+  @@index([courseId])
+  @@index([isActive])
 }
 
 model Quiz {

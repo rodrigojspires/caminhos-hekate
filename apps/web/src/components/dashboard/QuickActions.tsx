@@ -10,8 +10,7 @@ import {
   Search, 
   Users, 
   Video,
-  FileText,
-  Award
+  FileText
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -202,12 +201,6 @@ export function QuickActions() {
       description: 'Tire suas dúvidas',
       icon: MessageCircle,
       href: '/forum'
-    },
-    {
-      title: 'Certificados',
-      description: 'Veja suas conquistas',
-      icon: Award,
-      href: '/dashboard/certificates'
     },
     {
       title: 'Relatórios',

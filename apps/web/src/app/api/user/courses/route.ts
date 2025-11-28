@@ -55,6 +55,18 @@ export async function GET(_request: NextRequest) {
       }
     })
 
+    const certificates = await prisma.certificate.findMany({
+      where: { userId },
+      include: {
+        template: {
+          select: {
+            name: true
+          }
+        }
+      }
+    })
+    const certificatesByCourse = new Map(certificates.map((certificate) => [certificate.courseId, certificate]))
+
     // Processar dados de cada curso
     const coursesWithProgress = await Promise.all(
       enrollments.map(async (enrollment) => {
@@ -140,7 +152,15 @@ export async function GET(_request: NextRequest) {
           level: (course.level?.toLowerCase() as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
           enrolledAt: enrollment.createdAt.toISOString(),
           totalStudyTime: Math.round(totalStudyTime / 60), // em minutos
-          estimatedTimeRemaining: Math.max(0, Math.round((courseDuration - totalStudyTime) / 60))
+          estimatedTimeRemaining: Math.max(0, Math.round((courseDuration - totalStudyTime) / 60)),
+          certificateStatus: status === 'completed'
+            ? (certificatesByCourse.has(course.id) ? 'available' : 'ready')
+            : 'locked',
+          certificateUrl: status === 'completed'
+            ? `/api/certificates/${certificatesByCourse.get(course.id)?.id ?? course.id}`
+            : undefined,
+          certificateIssuedAt: certificatesByCourse.get(course.id)?.issuedAt?.toISOString(),
+          certificateTemplateName: certificatesByCourse.get(course.id)?.template?.name
         }
       })
     )

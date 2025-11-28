@@ -35,6 +35,10 @@ interface CourseData {
   enrollmentStatus: 'active' | 'pending'
   hasFreeLessons: boolean
   checkoutUrl: string
+  certificateStatus: 'locked' | 'ready' | 'available'
+  certificateUrl?: string
+  certificateIssuedAt?: string
+  certificateTemplateName?: string
 }
 
 interface CourseStats {
@@ -98,6 +102,18 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         updatedAt: 'desc'
       }
     })
+
+    const certificates = await prisma.certificate.findMany({
+      where: { userId },
+      include: {
+        template: {
+          select: {
+            name: true
+          }
+        }
+      }
+    })
+    const certificatesByCourse = new Map(certificates.map((certificate) => [certificate.courseId, certificate]))
 
     const coursesWithProgress: CourseData[] = []
     const weeklyActivity = new Array(7).fill(0) as number[]
@@ -203,7 +219,15 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
         estimatedTimeRemaining: Math.max(0, Math.round((courseDurationMinutes - totalStudyTimeMinutes) / 60)),
         enrollmentStatus: (enrollment.status as 'active' | 'pending') || 'active',
         hasFreeLessons,
-        checkoutUrl: `/checkout?enrollCourseId=${course.id}`
+        checkoutUrl: `/checkout?enrollCourseId=${course.id}`,
+        certificateStatus: status === 'completed'
+          ? (certificatesByCourse.has(course.id) ? 'available' : 'ready')
+          : 'locked',
+        certificateUrl: status === 'completed'
+          ? `/api/certificates/${certificatesByCourse.get(course.id)?.id ?? course.id}`
+          : undefined,
+        certificateIssuedAt: certificatesByCourse.get(course.id)?.issuedAt?.toISOString(),
+        certificateTemplateName: certificatesByCourse.get(course.id)?.template?.name
       })
     }
 

@@ -26,6 +26,10 @@ interface Course {
   enrollmentStatus: 'active' | 'pending'
   hasFreeLessons: boolean
   checkoutUrl: string
+  certificateStatus: 'locked' | 'ready' | 'available'
+  certificateUrl?: string
+  certificateIssuedAt?: string
+  certificateTemplateName?: string
 }
 
 interface CoursesClientProps {

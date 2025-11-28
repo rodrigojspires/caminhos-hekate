@@ -25,6 +25,12 @@ export async function GET(_request: NextRequest) {
             duration: true,
           },
         },
+        template: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       },
     })
 
@@ -60,6 +66,7 @@ export async function GET(_request: NextRequest) {
           thumbnailUrl: c.course?.featuredImage || '',
           instructor: 'Equipe de Ensino',
           duration: c.course?.duration != null ? `${c.course?.duration} min` : '—',
+          templateName: c.template?.name
         }
       })
     )

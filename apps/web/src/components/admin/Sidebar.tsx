@@ -19,7 +19,8 @@ import {
   Calendar,
   Bell,
   DollarSign,
-  Trophy
+  Trophy,
+  Award
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -78,6 +79,11 @@ const menuItems = [
     title: "Gamification",
     href: "/admin/gamification",
     icon: Trophy,
+  },
+  {
+    title: "Templates de Certificado",
+    href: "/admin/certificates/templates",
+    icon: Award,
   },
   // Eventos e Notificações ainda não possuem páginas no admin
   // Removidos para evitar 404 no painel

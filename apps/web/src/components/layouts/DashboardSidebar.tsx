@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import {
-  Award,
   BarChart3,
   BookOpen,
   Calendar,
@@ -43,12 +42,6 @@ const navigation = [
     name: 'Progresso',
     href: '/dashboard/progress',
     icon: TrendingUp,
-  },
-  {
-    name: 'Certificados',
-    href: '/dashboard/certificates',
-    icon: Award,
-    badge: '2',
   },
   {
     name: 'Calendário',
