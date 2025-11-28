@@ -3,8 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import type { CertificateTemplate } from '@hekate/database'
-import PDFDocument from 'pdfkit'
-import { join } from 'path'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 type TemplateField = {
   key: string
@@ -77,14 +76,13 @@ function mergeFields(layout?: TemplateLayout): TemplateField[] {
   return [...merged, ...extras]
 }
 
-async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+async function fetchImageBuffer(url: string): Promise<Uint8Array | null> {
   try {
     const res = await fetch(url)
     if (!res.ok) return null
     const arrayBuffer = await res.arrayBuffer()
-    return Buffer.from(arrayBuffer)
-  } catch (error) {
-    console.warn('Falha ao carregar imagem de fundo do certificado', error)
+    return new Uint8Array(arrayBuffer)
+  } catch {
     return null
   }
 }
@@ -102,6 +100,20 @@ async function findTemplateForCourse(courseId: string) {
   })
 }
 
+function rgbFromHex(hex: string) {
+  const normalized = hex.startsWith('#') ? hex.slice(1) : hex
+  if (normalized.length === 3) {
+    const r = parseInt(normalized[0] + normalized[0], 16)
+    const g = parseInt(normalized[1] + normalized[1], 16)
+    const b = parseInt(normalized[2] + normalized[2], 16)
+    return rgb(r / 255, g / 255, b / 255)
+  }
+  const r = parseInt(normalized.slice(0, 2), 16)
+  const g = parseInt(normalized.slice(2, 4), 16)
+  const b = parseInt(normalized.slice(4, 6), 16)
+  return rgb(r / 255, g / 255, b / 255)
+}
+
 async function createPdfBuffer({
   userName,
   courseTitle,
@@ -117,72 +129,83 @@ async function createPdfBuffer({
   certificateNumber: string
   template?: CertificateTemplate | null
 }) {
-  return await new Promise<Buffer>(async (resolve) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 50 })
-    try {
-      const helveticaPath = join(process.cwd(), 'apps', 'web', 'public', 'fonts', 'Helvetica.afm')
-      doc.registerFont('Helvetica', helveticaPath)
-      doc.font('Helvetica')
-    } catch {
-      doc.font('Helvetica')
+  const pdfDoc = await PDFDocument.create()
+  const page = pdfDoc.addPage([595, 842]) // A4
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+  const { width, height } = page.getSize()
+  const marginLeft = 50
+  const marginTop = 50
+
+  const layout = parseLayout(template?.layout) || undefined
+  const fields = mergeFields(layout)
+  const footerText = layout?.footerText ?? defaultLayout.footerText
+
+  const bgUrl = template?.backgroundImageUrl || undefined
+  if (bgUrl) {
+    const normalizedUrl = bgUrl.startsWith('/uploads/') && process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}${bgUrl}`
+      : bgUrl
+    const background = await fetchImageBuffer(normalizedUrl)
+    if (background) {
+      const isPng = background[0] === 0x89 && background[1] === 0x50
+      const embedded = isPng ? await pdfDoc.embedPng(background) : await pdfDoc.embedJpg(background)
+      page.drawImage(embedded, { x: 0, y: 0, width, height })
     }
-    const chunks: Buffer[] = []
-    doc.on('data', (d) => chunks.push(d as Buffer))
-    doc.on('end', () => resolve(Buffer.concat(chunks)))
+  }
 
-    const layout = parseLayout(template?.layout) || undefined
-    const fields = mergeFields(layout)
-    const footerText = layout?.footerText ?? defaultLayout.footerText
-    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right
+  const valueMap: Record<string, string | undefined> = {
+    userName,
+    courseTitle,
+    hours: hours ? `${hours} horas` : undefined,
+    issuedAt: issuedAt.toLocaleDateString('pt-BR'),
+    certificateNumber,
+    title: 'Certificado de Conclusão',
+    customText: template?.description || undefined
+  }
 
-    if (template?.backgroundImageUrl) {
-      const background = await fetchImageBuffer(template.backgroundImageUrl)
-      if (background) {
-        doc.image(background, 0, 0, { width: doc.page.width, height: doc.page.height })
-      }
+  fields.forEach((field) => {
+    const baseValue = field.text ?? valueMap[field.key]
+    let value = baseValue
+
+    if (!field.text && field.label) {
+      value = baseValue ? `${field.label}: ${baseValue}` : field.label
     }
 
-    const valueMap: Record<string, string | undefined> = {
-      userName,
-      courseTitle,
-      hours: hours ? `${hours} horas` : undefined,
-      issuedAt: issuedAt.toLocaleDateString('pt-BR'),
-      certificateNumber,
-      title: 'Certificado de Conclusão',
-      customText: template?.description || undefined
+    if (!value) return
+
+    const font = field.fontSize && field.fontSize > 18 ? helveticaBold : helvetica
+    const size = field.fontSize || 14
+    const maxWidth = field.maxWidth ?? (width - marginLeft * 2)
+    const textWidth = font.widthOfTextAtSize(value, size)
+    let x = marginLeft + (field.x || 0)
+    if (field.align === 'center') {
+      x = marginLeft + (field.x || 0) + Math.max(0, (maxWidth - textWidth) / 2)
+    } else if (field.align === 'right') {
+      x = marginLeft + (field.x || 0) + Math.max(0, maxWidth - textWidth)
     }
+    const y = height - marginTop - (field.y || 0) - size
 
-    fields.forEach((field) => {
-      const baseValue = field.text ?? valueMap[field.key]
-      let value = baseValue
-
-      if (!field.text && field.label) {
-        value = baseValue ? `${field.label}: ${baseValue}` : field.label
-      }
-
-      if (!value) return
-
-      doc
-        .fontSize(field.fontSize || 14)
-        .fillColor(field.color || '#111')
-        .text(value, field.x ?? doc.page.margins.left, field.y ?? doc.y, {
-          width: field.maxWidth ?? pageWidth,
-          align: field.align ?? 'center'
-        })
+    page.drawText(value, {
+      x,
+      y,
+      size,
+      font,
+      color: rgbFromHex(field.color || '#111')
     })
-
-    if (footerText) {
-      doc
-        .fontSize(10)
-        .fillColor('#444')
-        .text(footerText, doc.page.margins.left, doc.page.height - doc.page.margins.bottom - 30, {
-          width: pageWidth,
-          align: 'center'
-        })
-    }
-
-    doc.end()
   })
+
+  if (footerText) {
+    const size = 10
+    const font = helvetica
+    const textWidth = font.widthOfTextAtSize(footerText, size)
+    const x = marginLeft + Math.max(0, (width - marginLeft * 2 - textWidth) / 2)
+    const y = marginTop
+    page.drawText(footerText, { x, y, size, font, color: rgb(0.26, 0.26, 0.26) })
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Buffer.from(pdfBytes)
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
