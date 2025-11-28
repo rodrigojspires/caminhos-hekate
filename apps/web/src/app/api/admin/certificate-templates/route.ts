@@ -20,11 +20,22 @@ const layoutSchema = z.object({
   footerText: z.string().optional()
 }).optional()
 
+const backgroundUrlSchema = z.string().trim().optional().refine((value) => {
+  if (!value) return true
+  if (value.startsWith('/uploads/')) return true
+  try {
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}, { message: 'Invalid url' })
+
 const templateSchema = z.object({
   name: z.string().min(2, 'Nome é obrigatório'),
   description: z.string().optional(),
   courseId: z.string().nullable().optional(),
-  backgroundImageUrl: z.string().url().optional(),
+  backgroundImageUrl: backgroundUrlSchema,
   layout: layoutSchema,
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional()

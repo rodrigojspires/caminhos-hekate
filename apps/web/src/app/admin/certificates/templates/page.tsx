@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import {
   Award,
   Plus,
-  RefreshCw,
   Save,
   Trash2
 } from 'lucide-react'
@@ -16,14 +15,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { resolveMediaUrl, normalizeMediaPath } from '@/lib/utils'
 
 type TemplateField = {
@@ -36,24 +27,6 @@ type TemplateField = {
   color?: string
   align?: 'left' | 'center' | 'right'
   maxWidth?: number
-}
-
-type CertificateTemplate = {
-  id: string
-  name: string
-  description?: string | null
-  courseId: string | null
-  backgroundImageUrl?: string | null
-  layout?: {
-    fields?: TemplateField[]
-    footerText?: string
-  } | null
-  isDefault: boolean
-  isActive: boolean
-  course?: { id: string; title: string } | null
-  _count?: { certificates: number }
-  updatedAt: string
-  createdAt: string
 }
 
 type CourseOption = { id: string; title: string }
@@ -81,9 +54,7 @@ const blankField: TemplateField = {
 }
 
 export default function CertificateTemplatesPage() {
-  const [templates, setTemplates] = useState<CertificateTemplate[]>([])
   const [courses, setCourses] = useState<CourseOption[]>([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [uploadingBg, setUploadingBg] = useState(false)
@@ -103,7 +74,6 @@ export default function CertificateTemplatesPage() {
   const [previewScale, setPreviewScale] = useState(1)
 
   useEffect(() => {
-    fetchTemplates()
     fetchCourses()
   }, [])
 
@@ -118,20 +88,6 @@ export default function CertificateTemplatesPage() {
     observer.observe(previewRef.current)
     return () => observer.disconnect()
   }, [])
-
-  const fetchTemplates = async () => {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/admin/certificate-templates')
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      setTemplates(data)
-    } catch (error) {
-      toast.error('Não foi possível carregar os templates')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchCourses = async () => {
     try {
@@ -193,41 +149,10 @@ export default function CertificateTemplatesPage() {
 
       toast.success(editingId ? 'Template atualizado' : 'Template criado')
       resetForm(true)
-      fetchTemplates()
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao salvar template')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const handleEdit = (template: CertificateTemplate) => {
-    setEditingId(template.id)
-    setFields(template.layout?.fields ? [...template.layout.fields] : [...DEFAULT_FIELDS])
-    setForm({
-      name: template.name,
-      description: template.description || '',
-      backgroundImageUrl: template.backgroundImageUrl || '',
-      courseId: template.courseId || '',
-      isDefault: template.isDefault,
-      isActive: template.isActive,
-      footerText: template.layout?.footerText || 'Valide a autenticidade em caminhosdehekate.com/certificados'
-    })
-    setShowForm(true)
-  }
-
-  const handleDelete = async (id: string) => {
-    const confirmed = confirm('Remover este template?')
-    if (!confirmed) return
-
-    try {
-      const res = await fetch(`/api/admin/certificate-templates/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error()
-      toast.success('Template removido')
-      if (editingId === id) resetForm(true)
-      fetchTemplates()
-    } catch (error) {
-      toast.error('Erro ao remover template')
     }
   }
 
@@ -313,10 +238,6 @@ export default function CertificateTemplatesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTemplates}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
           <Button
             onClick={() => {
               resetForm()
@@ -577,145 +498,66 @@ export default function CertificateTemplatesPage() {
         )}
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pré-visualização</CardTitle>
-              <CardDescription>Visual e listagem dos campos com as coordenadas aplicadas.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div
-                ref={previewRef}
-                className="relative w-full aspect-[210/297] border rounded-md overflow-hidden bg-muted"
-              >
-                {backgroundPreview && (
-                  <img
-                    src={backgroundPreview}
-                    alt="Fundo do certificado"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                )}
-                {fields.map((field, index) => {
-                  const left = (field.x || 0) * previewScale
-                  const top = (field.y || 0) * previewScale
-                  const width = (field.maxWidth || 495) * previewScale
-                  const fontSize = (field.fontSize || 14) * previewScale
-                  const textAlign = field.align || 'left'
-                  return (
-                    <div
-                      key={`${field.key}-${index}-preview`}
-                      className="absolute"
-                      style={{
-                        left,
-                        top,
-                        width,
-                        fontSize,
-                        color: field.color || '#111',
-                        textAlign
-                      }}
-                    >
-                      {previewFieldValue(field)}
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                A área acima usa escala relativa ao PDF A4 (595x842pt). Ajuste X/Y para posicionar com precisão.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {fieldPreview.map((field, index) => (
-                  <div key={`${field.key}-${index}`} className="border rounded-md p-3 text-sm space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{field.key}</span>
-                      <Badge variant="secondary">{field.align || 'left'}</Badge>
-                    </div>
-                    <p className="text-muted-foreground">{field.summary}</p>
-                    <p className="text-xs text-muted-foreground">Posição: {field.x}px / {field.y}px • Fonte: {field.fontSize || 14}px</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Templates existentes</CardTitle>
-              <CardDescription>Gerencie padrões por curso e acompanhe uso.</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Curso</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Atualizado</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{template.name}</span>
-                          {template.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">
-                              {template.description}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {template.course ? (
-                          <span>{template.course.title}</span>
-                        ) : (
-                          <Badge variant="outline">Padrão global</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="space-y-1">
-                        <div className="flex flex-wrap gap-1">
-                          {template.isActive ? (
-                            <Badge variant="secondary">Ativo</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
-                          )}
-                          {template.isDefault && <Badge variant="default">Padrão</Badge>}
-                          {template._count?.certificates ? (
-                            <Badge variant="outline">{template._count.certificates} certificados</Badge>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(template.updatedAt).toLocaleDateString('pt-BR')}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
-                          Editar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDelete(template.id)}
-                        >
-                          Remover
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {!templates.length && !loading && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        Nenhum template cadastrado ainda.
-                      </TableCell>
-                    </TableRow>
+          {showForm ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Pré-visualização</CardTitle>
+                <CardDescription>Visual e listagem dos campos com as coordenadas aplicadas.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div
+                  ref={previewRef}
+                  className="relative w-full aspect-[210/297] border rounded-md overflow-hidden bg-muted"
+                >
+                  {backgroundPreview && (
+                    <img
+                      src={backgroundPreview}
+                      alt="Fundo do certificado"
+                      className="absolute inset-0 h-full w-full object-contain"
+                    />
                   )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  {fields.map((field, index) => {
+                    const left = (field.x || 0) * previewScale
+                    const top = (field.y || 0) * previewScale
+                    const width = (field.maxWidth || 495) * previewScale
+                    const fontSize = (field.fontSize || 14) * previewScale
+                    const textAlign = field.align || 'left'
+                    return (
+                      <div
+                        key={`${field.key}-${index}-preview`}
+                        className="absolute"
+                        style={{
+                          left,
+                          top,
+                          width,
+                          fontSize,
+                          color: field.color || '#111',
+                          textAlign
+                        }}
+                      >
+                        {previewFieldValue(field)}
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A área acima usa escala relativa ao PDF A4 (595x842pt). Ajuste X/Y para posicionar com precisão.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {fieldPreview.map((field, index) => (
+                    <div key={`${field.key}-${index}`} className="border rounded-md p-3 text-sm space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{field.key}</span>
+                        <Badge variant="secondary">{field.align || 'left'}</Badge>
+                      </div>
+                      <p className="text-muted-foreground">{field.summary}</p>
+                      <p className="text-xs text-muted-foreground">Posição: {field.x}px / {field.y}px • Fonte: {field.fontSize || 14}px</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>
