@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import type { CertificateTemplate } from '@hekate/database'
 import PDFDocument from 'pdfkit'
-import { resolve as resolvePath } from 'path'
+import { join } from 'path'
 
 type TemplateField = {
   key: string
@@ -120,7 +120,7 @@ async function createPdfBuffer({
   return await new Promise<Buffer>(async (resolve) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 })
     try {
-      const helveticaPath = resolvePath(require.resolve('pdfkit/js/data/Helvetica.afm'))
+      const helveticaPath = join(process.cwd(), 'node_modules', 'pdfkit', 'js', 'data', 'Helvetica.afm')
       doc.registerFont('Helvetica', helveticaPath)
       doc.font('Helvetica')
     } catch {
