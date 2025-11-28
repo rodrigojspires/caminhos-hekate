@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { toast } from 'sonner'
 import {
   Award,
@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { resolveMediaUrl, normalizeMediaPath } from '@/lib/utils'
 
 type TemplateField = {
   key: string
@@ -84,6 +85,8 @@ export default function CertificateTemplatesPage() {
   const [courses, setCourses] = useState<CourseOption[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [uploadingBg, setUploadingBg] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [fields, setFields] = useState<TemplateField[]>(() => [...DEFAULT_FIELDS])
   const [form, setForm] = useState({
@@ -95,10 +98,25 @@ export default function CertificateTemplatesPage() {
     isActive: true,
     footerText: 'Valide a autenticidade em caminhosdehekate.com/certificados'
   })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
 
   useEffect(() => {
     fetchTemplates()
     fetchCourses()
+  }, [])
+
+  useEffect(() => {
+    if (!previewRef.current) return
+    const measure = () => {
+      const width = previewRef.current?.clientWidth || 1
+      setPreviewScale(width / 595)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(previewRef.current)
+    return () => observer.disconnect()
   }, [])
 
   const fetchTemplates = async () => {
@@ -126,7 +144,7 @@ export default function CertificateTemplatesPage() {
     }
   }
 
-  const resetForm = () => {
+  const resetForm = (hideForm: boolean = false) => {
     setEditingId(null)
     setFields(() => [...DEFAULT_FIELDS])
     setForm({
@@ -138,6 +156,7 @@ export default function CertificateTemplatesPage() {
       isActive: true,
       footerText: 'Valide a autenticidade em caminhosdehekate.com/certificados'
     })
+    if (hideForm) setShowForm(false)
   }
 
   const handleSubmit = async () => {
@@ -173,7 +192,7 @@ export default function CertificateTemplatesPage() {
       }
 
       toast.success(editingId ? 'Template atualizado' : 'Template criado')
-      resetForm()
+      resetForm(true)
       fetchTemplates()
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao salvar template')
@@ -194,6 +213,7 @@ export default function CertificateTemplatesPage() {
       isActive: template.isActive,
       footerText: template.layout?.footerText || 'Valide a autenticidade em caminhosdehekate.com/certificados'
     })
+    setShowForm(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -204,7 +224,7 @@ export default function CertificateTemplatesPage() {
       const res = await fetch(`/api/admin/certificate-templates/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
       toast.success('Template removido')
-      if (editingId === id) resetForm()
+      if (editingId === id) resetForm(true)
       fetchTemplates()
     } catch (error) {
       toast.error('Erro ao remover template')
@@ -237,6 +257,49 @@ export default function CertificateTemplatesPage() {
     [fields]
   )
 
+  const uploadBackground = async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('type', 'course-images')
+    setUploadingBg(true)
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        throw new Error(error?.message || 'Erro ao enviar imagem')
+      }
+      const data = await res.json()
+      const url = data.url as string
+      setForm((prev) => ({ ...prev, backgroundImageUrl: url }))
+      toast.success('Imagem de fundo enviada')
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro no upload')
+    } finally {
+      setUploadingBg(false)
+    }
+  }
+
+  const handleBackgroundFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    uploadBackground(file)
+    e.target.value = ''
+  }
+
+  const backgroundPreview = useMemo(
+    () => resolveMediaUrl(normalizeMediaPath(form.backgroundImageUrl || '')),
+    [form.backgroundImageUrl]
+  )
+
+  const previewFieldValue = (field: TemplateField) => {
+    if (field.text) return field.text
+    if (field.label) return `${field.label}: ${field.key}`
+    return field.key
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -254,7 +317,13 @@ export default function CertificateTemplatesPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Atualizar
           </Button>
-          <Button onClick={resetForm} variant="secondary">
+          <Button
+            onClick={() => {
+              resetForm()
+              setShowForm(true)
+            }}
+            variant="secondary"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Novo template
           </Button>
@@ -262,211 +331,296 @@ export default function CertificateTemplatesPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr,3fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? 'Editar template' : 'Novo template'}</CardTitle>
-            <CardDescription>
-              Defina um fundo e organize os campos (nome, curso, horas, data, número do certificado). Use {`{customText}`} para adicionar selos ou assinaturas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome do template</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Ex.: Certificado clássico, Certificado premium..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Curso (opcional)</Label>
-              <select
-                className="w-full border rounded-md px-3 py-2 bg-background"
-                value={form.courseId}
-                onChange={(e) => setForm((prev) => ({ ...prev, courseId: e.target.value }))}
-              >
-                <option value="">Aplicar como padrão global</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Imagem de fundo (URL)</Label>
-              <Input
-                value={form.backgroundImageUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, backgroundImageUrl: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Descrição interna</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Notas internas ou instruções para quem for editar."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Rodapé</Label>
-              <Input
-                value={form.footerText}
-                onChange={(e) => setForm((prev) => ({ ...prev, footerText: e.target.value }))}
-                placeholder="Texto de validação ou link de autenticidade."
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.isDefault}
-                  onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isDefault: checked }))}
+        {showForm ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{editingId ? 'Editar template' : 'Novo template'}</CardTitle>
+              <CardDescription>
+                Defina um fundo e organize os campos (nome, curso, horas, data, número do certificado). Use {`{customText}`} para adicionar selos ou assinaturas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome do template</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex.: Certificado clássico, Certificado premium..."
                 />
-                <Label>Definir como padrão para este curso</Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.isActive}
-                  onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isActive: checked }))}
-                />
-                <Label>Ativo</Label>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="font-medium">Campos</p>
-                <p className="text-xs text-muted-foreground">
-                  Ajuste posições (x, y) em pixels para o PDF A4. Alinhe conforme o design do fundo.
-                </p>
+              <div className="space-y-2">
+                <Label>Curso (opcional)</Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 bg-background"
+                  value={form.courseId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, courseId: e.target.value }))}
+                >
+                  <option value="">Aplicar como padrão global</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setFields((prev) => [...prev, { ...blankField, key: `custom-${prev.length + 1}` }])}>
-                <Plus className="w-4 h-4 mr-1" />
-                Adicionar campo
-              </Button>
-            </div>
 
-            <div className="space-y-3">
-              {fields.map((field, index) => (
-                <div key={`${field.key}-${index}`} className="grid gap-3 md:grid-cols-6 items-end border rounded-md p-3">
-                  <div className="space-y-1 md:col-span-2">
-                    <Label>Campo</Label>
+              <div className="space-y-2">
+                <Label>Imagem de fundo (URL) ou upload</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
                     <Input
-                      value={field.key}
-                      onChange={(e) => updateField(index, 'key', e.target.value)}
-                      placeholder="userName, courseTitle, issuedAt..."
+                      value={form.backgroundImageUrl}
+                      onChange={(e) => setForm((prev) => ({ ...prev, backgroundImageUrl: e.target.value }))}
+                      placeholder="https://... ou /uploads/course-images/arquivo.jpg"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Label</Label>
-                    <Input
-                      value={field.label || ''}
-                      onChange={(e) => updateField(index, 'label', e.target.value)}
-                      placeholder="Ex.: Concedido a"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Texto fixo</Label>
-                    <Input
-                      value={field.text || ''}
-                      onChange={(e) => updateField(index, 'text', e.target.value)}
-                      placeholder="Opcional"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Fonte</Label>
-                    <Input
-                      type="number"
-                      value={field.fontSize || ''}
-                      onChange={(e) => updateField(index, 'fontSize', e.target.value)}
-                      placeholder="14"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Alinhamento</Label>
-                    <select
-                      className="w-full border rounded-md px-3 py-2 bg-background"
-                      value={field.align || 'left'}
-                      onChange={(e) => updateField(index, 'align', e.target.value)}
-                    >
-                      <option value="left">Esquerda</option>
-                      <option value="center">Centralizado</option>
-                      <option value="right">Direita</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <Label>Cor</Label>
-                    <Input
-                      value={field.color || ''}
-                      onChange={(e) => updateField(index, 'color', e.target.value)}
-                      placeholder="#111111"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>X</Label>
-                    <Input
-                      type="number"
-                      value={field.x}
-                      onChange={(e) => updateField(index, 'x', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Y</Label>
-                    <Input
-                      type="number"
-                      value={field.y}
-                      onChange={(e) => updateField(index, 'y', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Largura</Label>
-                    <Input
-                      type="number"
-                      value={field.maxWidth || ''}
-                      onChange={(e) => updateField(index, 'maxWidth', e.target.value)}
-                      placeholder="500"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>&nbsp;</Label>
                     <Button
-                      variant="ghost"
-                      className="w-full text-red-600 hover:text-red-700"
-                      onClick={() => setFields((prev) => prev.filter((_, idx) => idx !== index))}
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingBg}
                     >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Remover
+                      {uploadingBg ? 'Enviando...' : 'Upload'}
                     </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleBackgroundFileChange}
+                    />
                   </div>
+                  {backgroundPreview && (
+                    <p className="text-xs text-muted-foreground">
+                      Pré-visualização abaixo usa a imagem e as coordenadas informadas.
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={resetForm}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSubmit} disabled={saving || !form.name}>
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Criar template'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label>Descrição interna</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Notas internas ou instruções para quem for editar."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Rodapé</Label>
+                <Input
+                  value={form.footerText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, footerText: e.target.value }))}
+                  placeholder="Texto de validação ou link de autenticidade."
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.isDefault}
+                    onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isDefault: checked }))}
+                  />
+                  <Label>Definir como padrão para este curso</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.isActive}
+                    onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isActive: checked }))}
+                  />
+                  <Label>Ativo</Label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-medium">Campos</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ajuste posições (x, y) em pixels para o PDF A4. Alinhe conforme o design do fundo.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setFields((prev) => [...prev, { ...blankField, key: `custom-${prev.length + 1}` }])}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Adicionar campo
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {fields.map((field, index) => (
+                  <div key={`${field.key}-${index}`} className="grid gap-3 md:grid-cols-6 items-end border rounded-md p-3">
+                    <div className="space-y-1 md:col-span-2">
+                      <Label>Campo</Label>
+                      <Input
+                        value={field.key}
+                        onChange={(e) => updateField(index, 'key', e.target.value)}
+                        placeholder="userName, courseTitle, issuedAt..."
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Label</Label>
+                      <Input
+                        value={field.label || ''}
+                        onChange={(e) => updateField(index, 'label', e.target.value)}
+                        placeholder="Ex.: Concedido a"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Texto fixo</Label>
+                      <Input
+                        value={field.text || ''}
+                        onChange={(e) => updateField(index, 'text', e.target.value)}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Fonte</Label>
+                      <Input
+                        type="number"
+                        value={field.fontSize || ''}
+                        onChange={(e) => updateField(index, 'fontSize', e.target.value)}
+                        placeholder="14"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Alinhamento</Label>
+                      <select
+                        className="w-full border rounded-md px-3 py-2 bg-background"
+                        value={field.align || 'left'}
+                        onChange={(e) => updateField(index, 'align', e.target.value)}
+                      >
+                        <option value="left">Esquerda</option>
+                        <option value="center">Centralizado</option>
+                        <option value="right">Direita</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label>Cor</Label>
+                      <Input
+                        value={field.color || ''}
+                        onChange={(e) => updateField(index, 'color', e.target.value)}
+                        placeholder="#111111"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>X</Label>
+                      <Input
+                        type="number"
+                        value={field.x}
+                        onChange={(e) => updateField(index, 'x', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Y</Label>
+                      <Input
+                        type="number"
+                        value={field.y}
+                        onChange={(e) => updateField(index, 'y', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Largura</Label>
+                      <Input
+                        type="number"
+                        value={field.maxWidth || ''}
+                        onChange={(e) => updateField(index, 'maxWidth', e.target.value)}
+                        placeholder="500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>&nbsp;</Label>
+                      <Button
+                        variant="ghost"
+                        className="w-full text-red-600 hover:text-red-700"
+                        onClick={() => setFields((prev) => prev.filter((_, idx) => idx !== index))}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => resetForm(true)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSubmit} disabled={saving || !form.name}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Criar template'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cadastre ou edite um template</CardTitle>
+              <CardDescription>Selecione um template na lista ao lado ou clique em “Novo template”.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">Nenhum template selecionado.</p>
+                <Button
+                  onClick={() => {
+                    resetForm()
+                    setShowForm(true)
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo template
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Pré-visualização textual</CardTitle>
-              <CardDescription>Use coordenadas e largura para aproximar o layout final.</CardDescription>
+              <CardTitle>Pré-visualização</CardTitle>
+              <CardDescription>Visual e listagem dos campos com as coordenadas aplicadas.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
+              <div
+                ref={previewRef}
+                className="relative w-full aspect-[210/297] border rounded-md overflow-hidden bg-muted"
+              >
+                {backgroundPreview && (
+                  <img
+                    src={backgroundPreview}
+                    alt="Fundo do certificado"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                {fields.map((field, index) => {
+                  const left = (field.x || 0) * previewScale
+                  const top = (field.y || 0) * previewScale
+                  const width = (field.maxWidth || 495) * previewScale
+                  const fontSize = (field.fontSize || 14) * previewScale
+                  const textAlign = field.align || 'left'
+                  return (
+                    <div
+                      key={`${field.key}-${index}-preview`}
+                      className="absolute"
+                      style={{
+                        left,
+                        top,
+                        width,
+                        fontSize,
+                        color: field.color || '#111',
+                        textAlign
+                      }}
+                    >
+                      {previewFieldValue(field)}
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A área acima usa escala relativa ao PDF A4 (595x842pt). Ajuste X/Y para posicionar com precisão.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {fieldPreview.map((field, index) => (
                   <div key={`${field.key}-${index}`} className="border rounded-md p-3 text-sm space-y-1">
