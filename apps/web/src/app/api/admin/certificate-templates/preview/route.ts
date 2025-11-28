@@ -96,7 +96,7 @@ async function createPdfBuffer({
   template?: CertificateTemplate | { backgroundImageUrl?: string | null; layout?: TemplateLayout; description?: string | null } | null
 }) {
   const pdfDoc = await PDFDocument.create()
-  const page = pdfDoc.addPage([595, 842]) // A4
+  const page = pdfDoc.addPage([842, 595]) // A4 landscape
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const { width, height } = page.getSize()
@@ -116,7 +116,16 @@ async function createPdfBuffer({
     if (background) {
       const isPng = background[0] === 0x89 && background[1] === 0x50
       const embedded = isPng ? await pdfDoc.embedPng(background) : await pdfDoc.embedJpg(background)
-      page.drawImage(embedded, { x: 0, y: 0, width, height })
+      // Alinha no topo, preservando proporção
+      const scale = Math.min(width / embedded.width, height / embedded.height)
+      const drawWidth = embedded.width * scale
+      const drawHeight = embedded.height * scale
+      page.drawImage(embedded, {
+        x: 0,
+        y: height - drawHeight,
+        width: drawWidth,
+        height: drawHeight
+      })
     }
   }
 
