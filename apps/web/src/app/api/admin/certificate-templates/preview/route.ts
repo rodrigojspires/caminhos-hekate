@@ -164,8 +164,8 @@ const layoutFieldSchema = z.object({
   key: z.string(),
   label: z.string().optional(),
   text: z.string().optional(),
-  x: z.number(),
-  y: z.number(),
+  x: z.number().optional(),
+  y: z.number().optional(),
   fontSize: z.number().optional(),
   color: z.string().optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
@@ -194,25 +194,36 @@ export const POST = withAdminAuth(async (_user, req: NextRequest) => {
 
     let template: CertificateTemplate | null = null
 
-    if (body.templateId) {
-      template = await prisma.certificateTemplate.findUnique({
-        where: { id: body.templateId }
-      })
-    } else if (body.template) {
-      template = {
-        id: 'preview',
-        name: body.template.name || 'Pré-visualização',
-        description: body.template.description || null,
-        backgroundImageUrl: body.template.backgroundImageUrl,
-        courseId: null,
-        isDefault: false,
-        isActive: true,
-        layout: body.template.layout || {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdById: null,
-        updatedById: null,
-        _count: { certificates: 0 }
+  if (body.templateId) {
+    template = await prisma.certificateTemplate.findUnique({
+      where: { id: body.templateId }
+    })
+  } else if (body.template) {
+    const normalizedFields = (body.template.layout?.fields || []).map((f) => ({
+      ...f,
+      x: f.x ?? 0,
+      y: f.y ?? 0,
+      fontSize: f.fontSize,
+      maxWidth: f.maxWidth
+    }))
+
+    template = {
+      id: 'preview',
+      name: body.template.name || 'Pré-visualização',
+      description: body.template.description || null,
+      backgroundImageUrl: body.template.backgroundImageUrl,
+      courseId: null,
+      isDefault: false,
+      isActive: true,
+      layout: {
+        ...body.template.layout,
+        fields: normalizedFields
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdById: null,
+      updatedById: null,
+      _count: { certificates: 0 }
       } as any
     }
 

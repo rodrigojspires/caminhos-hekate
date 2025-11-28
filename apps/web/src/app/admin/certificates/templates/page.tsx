@@ -272,6 +272,14 @@ export default function CertificateTemplatesPage() {
   const handleExport = async () => {
     setExporting(true)
     try {
+      const sanitizedFields = fields.map((f) => ({
+        ...f,
+        x: Number(f.x || 0),
+        y: Number(f.y || 0),
+        fontSize: f.fontSize ? Number(f.fontSize) : undefined,
+        maxWidth: f.maxWidth ? Number(f.maxWidth) : undefined
+      }))
+
       const payload = editingId
         ? { templateId: editingId }
         : {
@@ -280,17 +288,22 @@ export default function CertificateTemplatesPage() {
               description: form.description || undefined,
               backgroundImageUrl: form.backgroundImageUrl || undefined,
               layout: {
-                fields,
+                fields: sanitizedFields,
                 footerText: form.footerText || undefined
               }
             }
           }
 
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 20000)
+
       const res = await fetch('/api/admin/certificate-templates/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
+      clearTimeout(timer)
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -305,7 +318,11 @@ export default function CertificateTemplatesPage() {
       link.click()
       URL.revokeObjectURL(url)
     } catch (error: any) {
-      toast.error(error?.message || 'Erro ao exportar PDF')
+      if (error?.name === 'AbortError') {
+        toast.error('Tempo esgotado ao gerar o PDF de teste')
+      } else {
+        toast.error(error?.message || 'Erro ao exportar PDF')
+      }
     } finally {
       setExporting(false)
     }
