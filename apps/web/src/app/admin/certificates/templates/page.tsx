@@ -125,7 +125,8 @@ export default function CertificateTemplatesPage() {
     if (!previewRef.current) return
     const measure = () => {
       const width = previewRef.current?.clientWidth || 1
-      setPreviewScale(width / 595)
+      // Base para A4 landscape (842 x 595)
+      setPreviewScale(width / 842)
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -643,13 +644,13 @@ export default function CertificateTemplatesPage() {
               <CardContent className="space-y-3">
                 <div
                   ref={previewRef}
-                  className="relative w-full aspect-[210/297] border rounded-md overflow-hidden bg-muted"
+                  className="relative w-full aspect-[297/210] border rounded-md overflow-hidden bg-muted"
                 >
                   {backgroundPreview && (
                     <img
                       src={backgroundPreview}
                       alt="Fundo do certificado"
-                      className="absolute inset-0 h-full w-full object-contain"
+                      className="absolute inset-0 h-full w-full object-contain object-top"
                     />
                   )}
                   {fields.map((field, index) => {
@@ -660,16 +661,16 @@ export default function CertificateTemplatesPage() {
                     const textAlign = field.align || 'left'
                     return (
                       <div
-                        key={`${field.key}-${index}-preview`}
-                        className="absolute"
-                        style={{
-                          left,
-                          top,
-                          width,
-                          fontSize,
-                          color: field.color || '#111',
-                          textAlign
-                        }}
+                      key={`${field.key}-${index}-preview`}
+                      className="absolute"
+                      style={{
+                        left,
+                        top,
+                        width,
+                        fontSize,
+                        color: field.color || '#111',
+                        textAlign
+                      }}
                       >
                         {previewFieldValue(field)}
                       </div>
@@ -677,7 +678,7 @@ export default function CertificateTemplatesPage() {
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A área acima usa escala relativa ao PDF A4 (595x842pt). Ajuste X/Y para posicionar com precisão.
+                  A área acima usa escala relativa ao PDF A4 em paisagem (842x595pt). Ajuste X/Y para posicionar com precisão.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {fieldPreview.map((field, index) => (
