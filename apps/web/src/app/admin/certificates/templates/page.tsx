@@ -15,6 +15,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { resolveMediaUrl, normalizeMediaPath } from '@/lib/utils'
 
 type TemplateField = {
@@ -27,6 +35,24 @@ type TemplateField = {
   color?: string
   align?: 'left' | 'center' | 'right'
   maxWidth?: number
+}
+
+type CertificateTemplate = {
+  id: string
+  name: string
+  description?: string | null
+  courseId: string | null
+  backgroundImageUrl?: string | null
+  layout?: {
+    fields?: TemplateField[]
+    footerText?: string
+  } | null
+  isDefault: boolean
+  isActive: boolean
+  course?: { id: string; title: string } | null
+  _count?: { certificates: number }
+  updatedAt: string
+  createdAt: string
 }
 
 type CourseOption = { id: string; title: string }
@@ -54,6 +80,8 @@ const blankField: TemplateField = {
 }
 
 export default function CertificateTemplatesPage() {
+  const [templates, setTemplates] = useState<CertificateTemplate[]>([])
+  const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseOption[]>([])
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -72,8 +100,24 @@ export default function CertificateTemplatesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const [previewScale, setPreviewScale] = useState(1)
+  const [exporting, setExporting] = useState(false)
+
+  const fetchTemplates = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/admin/certificate-templates')
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setTemplates(data)
+    } catch (error) {
+      toast.error('Não foi possível carregar os templates')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
+    fetchTemplates()
     fetchCourses()
   }, [])
 
@@ -223,6 +267,78 @@ export default function CertificateTemplatesPage() {
     if (field.text) return field.text
     if (field.label) return `${field.label}: ${field.key}`
     return field.key
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const payload = editingId
+        ? { templateId: editingId }
+        : {
+            template: {
+              name: form.name || 'Pré-visualização',
+              description: form.description || undefined,
+              backgroundImageUrl: form.backgroundImageUrl || undefined,
+              layout: {
+                fields,
+                footerText: form.footerText || undefined
+              }
+            }
+          }
+
+      const res = await fetch('/api/admin/certificate-templates/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Falha ao gerar PDF de teste')
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'certificado-preview.pdf'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao exportar PDF')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleEdit = (template: CertificateTemplate) => {
+    setEditingId(template.id)
+    setFields(template.layout?.fields ? [...template.layout.fields] : [...DEFAULT_FIELDS])
+    setForm({
+      name: template.name,
+      description: template.description || '',
+      backgroundImageUrl: template.backgroundImageUrl || '',
+      courseId: template.courseId || '',
+      isDefault: template.isDefault,
+      isActive: template.isActive,
+      footerText: template.layout?.footerText || 'Valide a autenticidade em caminhosdehekate.com/certificados'
+    })
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    const confirmed = confirm('Remover este template?')
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`/api/admin/certificate-templates/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      toast.success('Template removido')
+      if (editingId === id) resetForm(true)
+      fetchTemplates()
+    } catch (error) {
+      toast.error('Erro ao remover template')
+    }
   }
 
   return (
@@ -463,7 +579,10 @@ export default function CertificateTemplatesPage() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
+                <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                  {exporting ? 'Gerando...' : 'Exportar PDF de teste'}
+                </Button>
                 <Button variant="outline" onClick={() => resetForm(true)}>
                   Cancelar
                 </Button>
@@ -558,6 +677,87 @@ export default function CertificateTemplatesPage() {
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Templates existentes</CardTitle>
+              <CardDescription>Selecione para editar ou remover.</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Atualizado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((template) => (
+                    <TableRow key={template.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{template.name}</span>
+                          {template.description && (
+                            <span className="text-xs text-muted-foreground line-clamp-1">
+                              {template.description}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {template.course ? (
+                          <span>{template.course.title}</span>
+                        ) : (
+                          <Badge variant="outline">Padrão global</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {template.isActive ? (
+                            <Badge variant="secondary">Ativo</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
+                          )}
+                          {template.isDefault && <Badge variant="default">Padrão</Badge>}
+                          {template._count?.certificates ? (
+                            <Badge variant="outline">{template._count.certificates} certificados</Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(template.updatedAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDelete(template.id)}
+                        >
+                          Remover
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!templates.length && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhum template cadastrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
