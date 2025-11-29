@@ -47,12 +47,14 @@ export async function GET(request: NextRequest) {
     const longestStreak = Math.max(...userStreaks.map(s => s.longestStreak), 0)
 
     // Get leaderboard rank
-    const leaderboardRank = await prisma.$queryRaw<[{ rank: number }]>`
-      SELECT 
-        RANK() OVER (ORDER BY "totalPoints" DESC) as rank
-      FROM "user_points" 
-      WHERE "userId" = ${userId}
-    `
+    const leaderboardRankRaw = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT RANK() OVER (ORDER BY "totalPoints" DESC) as rank
+      FROM "user_points"
+      WHERE "userId" = $1
+    `, userId)
+    const leaderboardRank = leaderboardRankRaw?.map((row) => ({
+      rank: Number(row.rank),
+    })) || []
 
     // Get recent activity stats (last 30 days)
     const thirtyDaysAgo = new Date()
