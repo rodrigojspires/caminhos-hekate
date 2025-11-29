@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
     // Get leaderboard rank
     const leaderboardRank = await prisma.$queryRaw<[{ rank: number }]>`
       SELECT 
-        RANK() OVER (ORDER BY total_points DESC) as rank
-      FROM user_points 
-      WHERE user_id = ${userId}
+        RANK() OVER (ORDER BY "totalPoints" DESC) as rank
+      FROM "user_points" 
+      WHERE "userId" = ${userId}
     `
 
     // Get recent activity stats (last 30 days)
