@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
 
     // Calcular receita total baseada nos preços dos cursos
     const enrollmentsWithCourse = await prisma.enrollment.findMany({
+      where: {
+        status: 'active' // só considerar inscrições ativas (pagas/liberadas)
+      },
       include: {
         course: {
           select: {
@@ -93,6 +96,9 @@ export async function GET(request: NextRequest) {
     // Receita por curso
     const revenueByCourse = await prisma.enrollment.groupBy({
       by: ['courseId'],
+      where: {
+        status: 'active' // manter consistência com cálculo de receita
+      },
       _count: {
         id: true
       }

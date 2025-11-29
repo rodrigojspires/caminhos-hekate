@@ -1,56 +1,65 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from "recharts"
-import { Calendar, TrendingUp, Clock, Target, Filter } from "lucide-react"
+import { useState } from "react"
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  PieChart, 
+  Pie, 
+  Cell 
+} from "recharts"
+import { Calendar, TrendingUp, Clock, Target, Filter, RefreshCw } from "lucide-react"
 
 interface ProgressData {
-  weeklyProgress: {
+  weeklyProgress: Array<{
     week: string
-    studyTime: number
-    lessonsCompleted: number
-    points: number
-  }[]
-  categoryProgress: {
+    lessons: number
+    points?: number
+    studyTime?: number
+  }>
+  categoryProgress: Array<{
     category: string
     completed: number
     total: number
     percentage: number
-  }[]
-  dailyActivity: {
+  }>
+  dailyActivity: Array<{
     date: string
     minutes: number
-    lessons: number
-  }[]
-  monthlyGoals: {
+    lessons?: number
+  }>
+  monthlyTrends: Array<{
     month: string
-    target: number
-    achieved: number
-  }[]
+    hours: number
+    lessons: number
+  }>
+  summary: {
+    totalLessonsCompleted: number
+    completionRate: number
+    totalCourses: number
+    completedCourses: number
+    inProgressCourses: number
+    totalPoints: number
+  }
 }
 
 interface ProgressChartsProps {
   data: ProgressData
   loading?: boolean
+  error?: string | null
+  onRetry?: () => void
 }
 
-export default function ProgressCharts({ data, loading = false }: ProgressChartsProps) {
-  const [activeChart, setActiveChart] = useState<'weekly' | 'category' | 'daily' | 'goals'>('weekly')
+export default function ProgressCharts({ data, loading = false, error, onRetry }: ProgressChartsProps) {
+  const [activeChart, setActiveChart] = useState<'weekly' | 'category' | 'daily' | 'monthly'>('weekly')
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d')
-
-  const weeklyData = data
-  const categoryData = data.categoryProgress.length > 0 ? [
-    { category: 'Matemática', progress: 85, lessons: 12 },
-    { category: 'Ciências', progress: 72, lessons: 8 },
-    { category: 'História', progress: 90, lessons: 15 },
-    { category: 'Literatura', progress: 68, lessons: 6 }
-  ] : []
-  const dailyData = data
-  const goalsData = data.monthlyGoals.length > 0 ? [
-    { goal: 'Lições Diárias', current: 3, target: 5, percentage: 60 },
-    { goal: 'Tempo de Estudo', current: 45, target: 60, percentage: 75 },
-    { goal: 'Sequência', current: 7, target: 30, percentage: 23 }
-  ] : []
 
   const COLORS = {
     primary: '#7C3AED',
@@ -79,46 +88,82 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
     )
   }
 
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Análise de Progresso</h2>
+            <p className="text-gray-600 mt-1">{error}</p>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border bg-white hover:bg-gray-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Tentar novamente
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const chartTabs = [
     { id: 'weekly', label: 'Progresso Semanal', icon: TrendingUp },
-    { id: 'category', label: 'Por Categoria', icon: Target },
+    { id: 'category', label: 'Por Curso/Categoria', icon: Target },
     { id: 'daily', label: 'Atividade Diária', icon: Calendar },
-    { id: 'goals', label: 'Metas Mensais', icon: Clock }
+    { id: 'monthly', label: 'Tendência Mensal', icon: Clock }
   ] as const
 
-  const renderWeeklyChart = () => (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data.weeklyProgress}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis 
-          dataKey="week" 
-          stroke="#6b7280"
-          fontSize={12}
-        />
-        <YAxis stroke="#6b7280" fontSize={12} />
-        <Tooltip 
-          contentStyle={{
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-          }}
-        />
-        <Bar 
-          dataKey="studyTime" 
-          fill={COLORS.primary} 
-          radius={[4, 4, 0, 0]}
-          name="Tempo de Estudo (min)"
-        />
-        <Bar 
-          dataKey="lessonsCompleted" 
-          fill={COLORS.secondary} 
-          radius={[4, 4, 0, 0]}
-          name="Lições Concluídas"
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  )
+  const renderWeeklyChart = () => {
+    if (!data.weeklyProgress.length) {
+      return (
+        <div className="text-center text-sm text-muted-foreground py-12">
+          Nenhum dado semanal ainda. Complete aulas para visualizar aqui.
+        </div>
+      )
+    }
+
+    const hasPoints = data.weeklyProgress.some((w) => typeof w.points === 'number')
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data.weeklyProgress}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="week" 
+            stroke="#6b7280"
+            fontSize={12}
+          />
+          <YAxis stroke="#6b7280" fontSize={12} />
+          <Tooltip 
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+          />
+          <Bar 
+            dataKey="lessons" 
+            fill={COLORS.primary} 
+            radius={[4, 4, 0, 0]}
+            name="Lições Concluídas"
+          />
+          {hasPoints && (
+            <Bar 
+              dataKey="points" 
+              fill={COLORS.secondary} 
+              radius={[4, 4, 0, 0]}
+              name="Pontos Ganhos"
+            />
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    )
+  }
 
   const renderCategoryChart = () => (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -145,12 +190,16 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
               }}
+              formatter={(value, _name, payload) => {
+                const category = data.categoryProgress.find((c) => c.category === payload.payload.category)
+                return [`${category?.percentage.toFixed(0)}%`, 'Progresso']
+              }}
             />
           </PieChart>
         </ResponsiveContainer>
       </div>
       <div className="lg:w-64">
-        <h4 className="font-medium text-gray-900 mb-4">Progresso por Categoria</h4>
+        <h4 className="font-medium text-gray-900 mb-4">Progresso por Curso/Categoria</h4>
         <div className="space-y-3">
           {data.categoryProgress.map((category, index) => (
             <div key={category.category} className="flex items-center justify-between">
@@ -166,11 +215,14 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
                   {category.completed}/{category.total}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {category.percentage}%
+                  {category.percentage.toFixed(0)}%
                 </div>
               </div>
             </div>
           ))}
+          {!data.categoryProgress.length && (
+            <p className="text-sm text-muted-foreground">Comece um curso para ver o progresso aqui.</p>
+          )}
         </div>
       </div>
     </div>
@@ -208,15 +260,15 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
           stroke={COLORS.primary}
           fill={COLORS.primary}
           fillOpacity={0.3}
-          name="Minutos de Estudo"
+          name="Minutos / Pontos"
         />
       </AreaChart>
     </ResponsiveContainer>
   )
 
-  const renderGoalsChart = () => (
+  const renderMonthlyChart = () => (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data.monthlyGoals}>
+      <BarChart data={data.monthlyTrends}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
         <XAxis 
           dataKey="month" 
@@ -233,16 +285,16 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
           }}
         />
         <Bar 
-          dataKey="target" 
-          fill="#e5e7eb" 
+          dataKey="hours" 
+          fill={COLORS.primary} 
           radius={[4, 4, 0, 0]}
-          name="Meta"
+          name="Horas de estudo"
         />
         <Bar 
-          dataKey="achieved" 
-          fill={COLORS.success} 
+          dataKey="lessons" 
+          fill={COLORS.secondary} 
           radius={[4, 4, 0, 0]}
-          name="Alcançado"
+          name="Aulas concluídas"
         />
       </BarChart>
     </ResponsiveContainer>
@@ -256,22 +308,11 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
         return renderCategoryChart()
       case 'daily':
         return renderDailyChart()
-      case 'goals':
-        return renderGoalsChart()
+      case 'monthly':
+        return renderMonthlyChart()
       default:
         return renderWeeklyChart()
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando dados de progresso...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -332,27 +373,27 @@ export default function ProgressCharts({ data, loading = false }: ProgressCharts
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {data.dailyActivity.reduce((sum, day) => sum + (day.minutes || 0), 0)}
+                {data.summary.totalLessonsCompleted}
               </div>
-              <div className="text-sm text-gray-600">Minutos Totais</div>
+              <div className="text-sm text-gray-600">Aulas concluídas</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {data.dailyActivity.reduce((sum, day) => sum + (day.lessons || 0), 0)}
+                {data.summary.completionRate}%
               </div>
-              <div className="text-sm text-gray-600">Lições Concluídas</div>
+              <div className="text-sm text-gray-600">Taxa de conclusão</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {data.categoryProgress.length > 0 ? Math.round(data.categoryProgress.reduce((acc, cat) => acc + cat.percentage, 0) / data.categoryProgress.length) : 0}%
+                {data.summary.totalCourses}
               </div>
-              <div className="text-sm text-gray-600">Progresso Médio</div>
+              <div className="text-sm text-gray-600">Cursos ativos</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {data.weeklyProgress.reduce((acc, week) => acc + week.points, 0)}
+                {data.summary.totalPoints}
               </div>
-              <div className="text-sm text-gray-600">Pontos Ganhos</div>
+              <div className="text-sm text-gray-600">Pontos ganhos</div>
             </div>
           </div>
         </div>

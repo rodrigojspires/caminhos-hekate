@@ -7,34 +7,77 @@ import ProgressInsights from '@/components/dashboard/progress/ProgressInsights'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Star, Trophy } from 'lucide-react'
 import { useGamificationStore } from '@/stores/gamificationStore'
 import RecentActivity from '@/components/gamification/dashboard/RecentActivity'
 import type { PointTransaction } from '@/types/gamification'
 
 interface ProgressData {
-  weeklyProgress: {
+  weeklyProgress: Array<{
     week: string
-    studyTime: number
-    lessonsCompleted: number
-    points: number
-  }[]
-  categoryProgress: {
+    lessons: number
+    points?: number
+  }>
+  categoryProgress: Array<{
     category: string
     completed: number
     total: number
     percentage: number
-  }[]
-  dailyActivity: {
+  }>
+  dailyActivity: Array<{
     date: string
     minutes: number
     lessons: number
-  }[]
-  monthlyGoals: {
+  }>
+  monthlyTrends: Array<{
     month: string
-    target: number
-    achieved: number
-  }[]
+    hours: number
+    lessons: number
+  }>
+  summary: {
+    totalLessonsCompleted: number
+    completionRate: number
+    totalCourses: number
+    completedCourses: number
+    inProgressCourses: number
+    totalPoints: number
+  }
+  courseProgress: Array<{
+    courseId: string
+    courseTitle: string
+    completedLessons: number
+    totalLessons: number
+    progress: number
+    lastAccessed?: string | null
+  }>
+}
+
+type Goal = {
+  id: string
+  title: string
+  description: string
+  type: 'daily' | 'weekly' | 'monthly' | 'custom'
+  target: number
+  current: number
+  unit: string
+  deadline: string
+  status: 'active' | 'completed' | 'paused' | 'overdue'
+  category: 'study_time' | 'courses' | 'certificates' | 'points' | 'streak'
+  createdAt: string
+}
+
+type Insight = {
+  id: string
+  type: 'achievement' | 'improvement' | 'warning' | 'milestone' | 'streak' | 'recommendation'
+  title: string
+  description: string
+  value?: string | number
+  change?: number
+  period?: string
+  actionable?: boolean
+  priority: 'high' | 'medium' | 'low'
+  createdAt: string
 }
 
 const ORDER_EVENT_LABELS: Record<string, string> = {
@@ -120,64 +163,310 @@ export default function ProgressPage() {
     weeklyProgress: [],
     categoryProgress: [],
     dailyActivity: [],
-    monthlyGoals: [],
+    monthlyTrends: [],
+    summary: {
+      totalLessonsCompleted: 0,
+      completionRate: 0,
+      totalCourses: 0,
+      completedCourses: 0,
+      inProgressCourses: 0,
+      totalPoints: 0,
+    },
+    courseProgress: [],
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [statsSnapshot, setStatsSnapshot] = useState<any | null>(null)
 
   useEffect(() => {
     const fetchProgressData = async () => {
       setLoading(true)
+      setError(null)
       try {
-        const statsResponse = await fetch('/api/gamification/stats')
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json()
+        const [statsResponse, userProgressResponse] = await Promise.all([
+          fetch('/api/gamification/stats'),
+          fetch('/api/user/progress'),
+        ])
 
-          const convertedData: ProgressData = {
-            weeklyProgress:
-              statsData.weeklyActivity?.map((day: any, index: number) => ({
-                week: `Semana ${Math.floor(index / 7) + 1}`,
-                studyTime: day.points * 2,
-                lessonsCompleted: Math.floor(day.points / 10),
-                points: day.points,
-              })) || [],
-            categoryProgress:
-              statsData.categoryProgress?.map((cat: any) => ({
-                category: cat.name,
-                completed: cat.unlocked,
-                total: cat.total,
-                percentage: cat.progress,
-              })) || [],
-            dailyActivity:
-              statsData.weeklyActivity?.map((day: any) => ({
-                date: day.date,
-                minutes: day.points * 2,
-                lessons: Math.floor(day.points / 10),
-              })) || [],
-            monthlyGoals: [
-              {
-                month: 'Janeiro',
-                target: 1000,
-                achieved: statsData.totalPoints || 0,
-              },
-            ],
-          }
-
-          setProgressData(convertedData)
+        if (!statsResponse.ok || !userProgressResponse.ok) {
+          throw new Error('Não foi possível carregar os dados de progresso')
         }
-      } catch (error) {
+
+        const statsData = await statsResponse.json()
+        const userProgressData = await userProgressResponse.json()
+
+        const weeklyProgress =
+          userProgressData.weeklyProgress?.map((week: any) => ({
+            week: week.week,
+            lessons: week.lessons,
+          })) || []
+
+        const dailyActivity =
+          statsData.weeklyActivity?.map((day: any) => ({
+            date: day.date,
+            minutes: day.points,
+            lessons: Math.floor(day.points / 10),
+          })) || []
+
+        const categoryProgress =
+          statsData.categoryProgress?.map((cat: any) => ({
+            category: cat.name,
+            completed: cat.unlocked,
+            total: cat.total,
+            percentage: cat.progress,
+          })) ||
+          (userProgressData.courseProgress || []).map((course: any) => ({
+            category: course.courseTitle,
+            completed: course.completedLessons,
+            total: course.totalLessons,
+            percentage: course.progress,
+          }))
+
+        const monthlyTrends =
+          userProgressData.monthlyData?.map((month: any) => ({
+            month: month.month,
+            hours: month.hours,
+            lessons: month.lessons,
+          })) || []
+
+        const convertedData: ProgressData = {
+          weeklyProgress,
+          categoryProgress,
+          dailyActivity,
+          monthlyTrends,
+          summary: {
+            totalLessonsCompleted: userProgressData.overview?.totalLessonsCompleted || 0,
+            completionRate: userProgressData.overview?.completionRate || 0,
+            totalCourses: userProgressData.overview?.totalCourses || 0,
+            completedCourses: userProgressData.overview?.completedCourses || 0,
+            inProgressCourses: userProgressData.overview?.inProgressCourses || 0,
+            totalPoints: statsData.totalPoints || 0,
+          },
+          courseProgress: userProgressData.courseProgress || [],
+        }
+
+        setProgressData(convertedData)
+        setStatsSnapshot(statsData)
+        setInsights(buildInsights(convertedData, statsData))
+        updateGoalProgressWithData(convertedData, statsData)
+      } catch (error: any) {
         console.error('Error fetching progress data:', error)
+        setError(error?.message || 'Erro ao carregar dados de progresso')
       } finally {
         setLoading(false)
       }
     }
 
     fetchProgressData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     fetchUserPoints()
     fetchAchievements()
   }, [fetchUserPoints, fetchAchievements])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storedGoals = localStorage.getItem('hekate-progress-goals')
+    if (storedGoals) {
+      setGoals(JSON.parse(storedGoals))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('hekate-progress-goals', JSON.stringify(goals))
+  }, [goals])
+
+  useEffect(() => {
+    if (progressData && statsSnapshot) {
+      updateGoalProgressWithData(progressData, statsSnapshot)
+      setInsights(buildInsights(progressData, statsSnapshot))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressData, statsSnapshot])
+
+  useEffect(() => {
+    if (!loading && !error && goals.length === 0) {
+      const starterGoals: Goal[] = [
+        {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          title: 'Completar 5 aulas na semana',
+          description: 'Mantenha o ritmo de estudo semanal.',
+          type: 'weekly',
+          target: 5,
+          current: 0,
+          unit: 'aulas',
+          deadline: '',
+          status: 'active',
+          category: 'courses',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + 1),
+          title: 'Ganhar 300 pontos',
+          description: 'Acumule pontos participando das atividades.',
+          type: 'monthly',
+          target: 300,
+          current: 0,
+          unit: 'pontos',
+          deadline: '',
+          status: 'active',
+          category: 'points',
+          createdAt: new Date().toISOString(),
+        },
+      ]
+      persistGoals(starterGoals)
+      updateGoalProgressWithData(progressData, statsSnapshot)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, error])
+
+  const persistGoals = (nextGoals: Goal[]) => {
+    setGoals(nextGoals)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hekate-progress-goals', JSON.stringify(nextGoals))
+    }
+  }
+
+  const metricsFromData = (data: ProgressData, stats?: any) => {
+    const totalMinutes = data.dailyActivity.reduce((sum, day) => sum + (day.minutes || 0), 0)
+    return {
+      totalMinutes,
+      totalLessonsCompleted: data.summary.totalLessonsCompleted,
+      completedCourses: data.summary.completedCourses,
+      points: stats?.totalPoints || 0,
+      streak: stats?.activeStreaks || 0,
+    }
+  }
+
+  const updateGoalProgressWithData = (data: ProgressData, stats?: any) => {
+    const metrics = metricsFromData(data, stats)
+    setGoals((prev) =>
+      prev.map((goal) => {
+        let current = goal.current
+        if (goal.category === 'study_time') current = metrics.totalMinutes
+        if (goal.category === 'courses') current = metrics.completedCourses
+        if (goal.category === 'points') current = metrics.points
+        if (goal.category === 'streak') current = metrics.streak
+
+        const deadlineDate = goal.deadline ? new Date(goal.deadline) : null
+        const isOverdue = deadlineDate ? deadlineDate.getTime() < Date.now() && current < goal.target : false
+        const status = current >= goal.target ? 'completed' : isOverdue ? 'overdue' : goal.status
+        return { ...goal, current, status }
+      })
+    )
+  }
+
+  const handleCreateGoal = (goal: Omit<Goal, 'id' | 'current' | 'status' | 'createdAt'>) => {
+    const metrics = metricsFromData(progressData)
+    let current = 0
+    if (goal.category === 'study_time') current = metrics.totalMinutes
+    if (goal.category === 'courses') current = metrics.completedCourses
+    if (goal.category === 'points') current = metrics.points
+    if (goal.category === 'streak') current = metrics.streak
+
+    const newGoal: Goal = {
+      ...goal,
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      current,
+      status: current >= goal.target ? 'completed' : 'active',
+      createdAt: new Date().toISOString(),
+    }
+    const nextGoals = [...goals, newGoal]
+    persistGoals(nextGoals)
+  }
+
+  const handleUpdateGoal = (id: string, updates: Partial<Goal>) => {
+    persistGoals(goals.map((goal) => (goal.id === id ? { ...goal, ...updates } : goal)))
+  }
+
+  const handleDeleteGoal = (id: string) => {
+    persistGoals(goals.filter((goal) => goal.id !== id))
+  }
+
+  const buildInsights = (data: ProgressData, stats: any): Insight[] => {
+    const insightsList: Insight[] = []
+    const now = new Date().toISOString()
+
+    if (data.weeklyProgress.length >= 2) {
+      const last = data.weeklyProgress[data.weeklyProgress.length - 1]
+      const prev = data.weeklyProgress[data.weeklyProgress.length - 2]
+      const change = last.lessons - prev.lessons
+      if (change > 0) {
+        insightsList.push({
+          id: 'weekly-improvement',
+          type: 'improvement',
+          title: 'Ritmo crescente',
+          description: `Você concluiu ${change} aulas a mais na última semana.`,
+          change: Math.round((change / Math.max(prev.lessons, 1)) * 100),
+          priority: 'medium',
+          createdAt: now,
+        })
+      } else if (change < 0) {
+        insightsList.push({
+          id: 'weekly-drop',
+          type: 'warning',
+          title: 'Queda no ritmo',
+          description: 'Seu volume de aulas caiu em relação à semana anterior.',
+          change: Math.round((change / Math.max(prev.lessons, 1)) * 100),
+          priority: 'high',
+          createdAt: now,
+        })
+      }
+    }
+
+    const nearFinishCourse = data.courseProgress.find((course) => course.progress >= 70 && course.progress < 100)
+    if (nearFinishCourse) {
+      insightsList.push({
+        id: `course-${nearFinishCourse.courseId}`,
+        type: 'recommendation',
+        title: 'Finalize um curso',
+        description: `${nearFinishCourse.courseTitle} está ${nearFinishCourse.progress}% concluído. Termine para liberar o certificado.`,
+        priority: 'medium',
+        createdAt: now,
+      })
+    }
+
+    if (stats?.activeStreaks > 0) {
+      insightsList.push({
+        id: 'streak-active',
+        type: 'streak',
+        title: 'Sequência ativa',
+        description: `Você mantém ${stats.activeStreaks} sequência(s) ativa(s). Não pare agora!`,
+        priority: 'low',
+        createdAt: now,
+      })
+    }
+
+    if (data.summary.completionRate >= 50) {
+      insightsList.push({
+        id: 'halfway',
+        type: 'milestone',
+        title: 'Metade do caminho',
+        description: 'Você já concluiu mais de 50% das aulas disponíveis.',
+        priority: 'medium',
+        createdAt: now,
+      })
+    }
+
+    if (stats?.recentAchievements?.length) {
+      const recent = stats.recentAchievements[0]
+      insightsList.push({
+        id: `achievement-${recent.id}`,
+        type: 'achievement',
+        title: `Conquista: ${recent.title}`,
+        description: recent.description || 'Conquista desbloqueada recentemente.',
+        priority: 'low',
+        createdAt: now,
+      })
+    }
+
+    return insightsList
+  }
 
   const timelineEvents = useMemo(() => {
     const transactionEvents = (recentTransactions || []).map((tx: PointTransaction) => {
@@ -217,10 +506,29 @@ export default function ProgressPage() {
       })
       .filter(Boolean) as any[]
 
-    return [...transactionEvents, ...achievementEvents].sort(
+    const courseEvents =
+      progressData.courseProgress
+        .map((course) => {
+          const date = course.lastAccessed || new Date().toISOString()
+          return {
+            id: `course-${course.courseId}`,
+            type: course.progress >= 100 ? 'course_complete' : 'course_start',
+            title: course.courseTitle,
+            description: `Progresso: ${course.progress}% (${course.completedLessons}/${course.totalLessons} aulas)`,
+            date,
+            status: course.progress >= 100 ? 'completed' : 'current',
+            metadata: {
+              progress: course.progress,
+              courseName: course.courseTitle,
+            },
+          }
+        })
+        .filter(Boolean) || []
+
+    return [...transactionEvents, ...achievementEvents, ...courseEvents].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )
-  }, [recentTransactions, achievements])
+  }, [recentTransactions, achievements, progressData.courseProgress])
 
   const totalPoints = userPoints?.totalPoints ?? 0
   const currentLevel = userPoints?.currentLevel ?? 1
@@ -305,7 +613,12 @@ export default function ProgressPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <ProgressCharts data={progressData} loading={loading} />
+          <ProgressCharts
+            data={progressData}
+            loading={loading}
+            error={error}
+            onRetry={() => location.reload()}
+          />
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-6">
@@ -318,15 +631,25 @@ export default function ProgressPage() {
 
         <TabsContent value="goals" className="space-y-6">
           <ProgressGoals
-            goals={[]}
-            onCreateGoal={() => {}}
-            onUpdateGoal={() => {}}
-            onDeleteGoal={() => {}}
+            goals={goals}
+            onCreateGoal={handleCreateGoal}
+            onUpdateGoal={handleUpdateGoal}
+            onDeleteGoal={handleDeleteGoal}
           />
         </TabsContent>
 
         <TabsContent value="insights" className="space-y-6">
-          <ProgressInsights insights={[]} />
+          <ProgressInsights insights={insights} loading={loading} />
+          {error && (
+            <Card>
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="text-sm text-muted-foreground">{error}</div>
+                <Button variant="outline" size="sm" onClick={() => location.reload()}>
+                  Recarregar
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
