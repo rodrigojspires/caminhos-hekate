@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
+import { useCallback } from 'react'
 import ProgressCharts from '@/components/dashboard/progress/ProgressCharts'
 import ProgressTimeline from '@/components/dashboard/progress/ProgressTimeline'
 import ProgressGoals from '@/components/dashboard/progress/ProgressGoals'
@@ -180,88 +181,101 @@ export default function ProgressPage() {
   const [insights, setInsights] = useState<Insight[]>([])
   const [statsSnapshot, setStatsSnapshot] = useState<any | null>(null)
 
-  useEffect(() => {
-    const fetchProgressData = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [statsResponse, userProgressResponse] = await Promise.all([
-          fetch('/api/gamification/stats'),
-          fetch('/api/user/progress'),
-        ])
+  const fetchProgressData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [statsResult, userProgressResult] = await Promise.allSettled([
+        fetch('/api/gamification/stats'),
+        fetch('/api/user/progress'),
+      ])
 
-        if (!statsResponse.ok || !userProgressResponse.ok) {
-          throw new Error('Não foi possível carregar os dados de progresso')
-        }
+      const statsOk = statsResult.status === 'fulfilled' && statsResult.value.ok
+      const progressOk = userProgressResult.status === 'fulfilled' && userProgressResult.value.ok
 
-        const statsData = await statsResponse.json()
-        const userProgressData = await userProgressResponse.json()
-
-        const weeklyProgress =
-          userProgressData.weeklyProgress?.map((week: any) => ({
-            week: week.week,
-            lessons: week.lessons,
-          })) || []
-
-        const dailyActivity =
-          statsData.weeklyActivity?.map((day: any) => ({
-            date: day.date,
-            minutes: day.points,
-            lessons: Math.floor(day.points / 10),
-          })) || []
-
-        const categoryProgress =
-          statsData.categoryProgress?.map((cat: any) => ({
-            category: cat.name,
-            completed: cat.unlocked,
-            total: cat.total,
-            percentage: cat.progress,
-          })) ||
-          (userProgressData.courseProgress || []).map((course: any) => ({
-            category: course.courseTitle,
-            completed: course.completedLessons,
-            total: course.totalLessons,
-            percentage: course.progress,
-          }))
-
-        const monthlyTrends =
-          userProgressData.monthlyData?.map((month: any) => ({
-            month: month.month,
-            hours: month.hours,
-            lessons: month.lessons,
-          })) || []
-
-        const convertedData: ProgressData = {
-          weeklyProgress,
-          categoryProgress,
-          dailyActivity,
-          monthlyTrends,
-          summary: {
-            totalLessonsCompleted: userProgressData.overview?.totalLessonsCompleted || 0,
-            completionRate: userProgressData.overview?.completionRate || 0,
-            totalCourses: userProgressData.overview?.totalCourses || 0,
-            completedCourses: userProgressData.overview?.completedCourses || 0,
-            inProgressCourses: userProgressData.overview?.inProgressCourses || 0,
-            totalPoints: statsData.totalPoints || 0,
-          },
-          courseProgress: userProgressData.courseProgress || [],
-        }
-
-        setProgressData(convertedData)
-        setStatsSnapshot(statsData)
-        setInsights(buildInsights(convertedData, statsData))
-        updateGoalProgressWithData(convertedData, statsData)
-      } catch (error: any) {
-        console.error('Error fetching progress data:', error)
-        setError(error?.message || 'Erro ao carregar dados de progresso')
-      } finally {
-        setLoading(false)
+      if (!statsOk && !progressOk) {
+        throw new Error('Não foi possível carregar os dados de progresso')
       }
-    }
 
-    fetchProgressData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      const statsData = statsOk ? await statsResult.value.json() : null
+      const userProgressData = progressOk ? await userProgressResult.value.json() : null
+
+      const weeklyProgress =
+        userProgressData?.weeklyProgress?.map((week: any) => ({
+          week: week.week,
+          lessons: week.lessons,
+        })) ||
+        statsData?.weeklyActivity?.map((day: any, index: number) => ({
+          week: `Semana ${index + 1}`,
+          lessons: Math.floor((day.points || 0) / 10),
+          points: day.points,
+        })) ||
+        []
+
+      const dailyActivity =
+        statsData?.weeklyActivity?.map((day: any) => ({
+          date: day.date,
+          minutes: day.points,
+          lessons: Math.floor(day.points / 10),
+        })) || []
+
+      const categoryProgress =
+        statsData?.categoryProgress?.map((cat: any) => ({
+          category: cat.name,
+          completed: cat.unlocked,
+          total: cat.total,
+          percentage: cat.progress,
+        })) ||
+        (userProgressData?.courseProgress || []).map((course: any) => ({
+          category: course.courseTitle,
+          completed: course.completedLessons,
+          total: course.totalLessons,
+          percentage: course.progress,
+        }))
+
+      const monthlyTrends =
+        userProgressData?.monthlyData?.map((month: any) => ({
+          month: month.month,
+          hours: month.hours,
+          lessons: month.lessons,
+        })) ||
+        []
+
+      const convertedData: ProgressData = {
+        weeklyProgress,
+        categoryProgress,
+        dailyActivity,
+        monthlyTrends,
+        summary: {
+          totalLessonsCompleted: userProgressData?.overview?.totalLessonsCompleted || 0,
+          completionRate: userProgressData?.overview?.completionRate || 0,
+          totalCourses: userProgressData?.overview?.totalCourses || 0,
+          completedCourses: userProgressData?.overview?.completedCourses || 0,
+          inProgressCourses: userProgressData?.overview?.inProgressCourses || 0,
+          totalPoints: statsData?.totalPoints || 0,
+        },
+        courseProgress: userProgressData?.courseProgress || [],
+      }
+
+      setProgressData(convertedData)
+      if (statsData) setStatsSnapshot(statsData)
+      setInsights(buildInsights(convertedData, statsData))
+      updateGoalProgressWithData(convertedData, statsData)
+
+      if (!statsOk || !progressOk) {
+        setError('Alguns dados não foram carregados. Tente atualizar para ver tudo.')
+      }
+    } catch (error: any) {
+      console.error('Error fetching progress data:', error)
+      setError(error?.message || 'Erro ao carregar dados de progresso')
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    fetchProgressData()
+  }, [fetchProgressData])
 
   useEffect(() => {
     fetchUserPoints()
@@ -617,7 +631,7 @@ export default function ProgressPage() {
             data={progressData}
             loading={loading}
             error={error}
-            onRetry={() => location.reload()}
+            onRetry={fetchProgressData}
           />
         </TabsContent>
 
@@ -644,7 +658,7 @@ export default function ProgressPage() {
             <Card>
               <CardContent className="flex items-center justify-between py-4">
                 <div className="text-sm text-muted-foreground">{error}</div>
-                <Button variant="outline" size="sm" onClick={() => location.reload()}>
+                <Button variant="outline" size="sm" onClick={fetchProgressData}>
                   Recarregar
                 </Button>
               </CardContent>
