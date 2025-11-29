@@ -26,7 +26,7 @@ interface ProgressTimelineProps {
 
 export default function ProgressTimeline({ events, loading = false }: ProgressTimelineProps) {
   const getEventIcon = (type: TimelineEvent['type'], status: TimelineEvent['status']) => {
-    const iconClass = status === 'completed' ? 'text-green-600' : status === 'current' ? 'text-purple-600' : 'text-gray-400'
+    const iconClass = status === 'completed' ? 'text-green-400' : status === 'current' ? 'text-indigo-400' : 'text-slate-400'
     
     switch (type) {
       case 'milestone':
@@ -47,13 +47,13 @@ export default function ProgressTimeline({ events, loading = false }: ProgressTi
   const getEventColor = (status: TimelineEvent['status']) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-50 border-green-200'
+        return 'bg-green-900/30 border-green-600'
       case 'current':
-        return 'bg-purple-50 border-purple-200'
+        return 'bg-indigo-900/30 border-indigo-600'
       case 'upcoming':
-        return 'bg-gray-50 border-gray-200'
+        return 'bg-slate-800 border-slate-700'
       default:
-        return 'bg-gray-50 border-gray-200'
+        return 'bg-slate-800 border-slate-700'
     }
   }
 
@@ -70,18 +70,18 @@ export default function ProgressTimeline({ events, loading = false }: ProgressTi
     return (
       <div className="bg-slate-900 text-slate-100 rounded-lg shadow-sm border border-slate-800">
         <div className="p-6 border-b border-slate-800">
-          <div className="h-6 bg-gray-200 rounded mb-2 w-1/3 animate-pulse"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+          <div className="h-6 bg-slate-700 rounded mb-2 w-1/3 animate-pulse"></div>
+          <div className="h-4 bg-slate-700 rounded w-2/3 animate-pulse"></div>
         </div>
         <div className="p-6">
           <div className="space-y-6">
             {[...Array(5)].map((_, index) => (
               <div key={index} className="flex gap-4 animate-pulse">
-                <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
+                <div className="w-10 h-10 bg-slate-700 rounded-full flex-shrink-0"></div>
                 <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-slate-700 rounded mb-2"></div>
+                  <div className="h-3 bg-slate-700 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-slate-700 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -99,7 +99,8 @@ export default function ProgressTimeline({ events, loading = false }: ProgressTi
           <p className="text-slate-300 mt-1">Acompanhe seu progresso ao longo do tempo</p>
         </div>
         <div className="p-12 text-center">
-          <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+          <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">Nenhum evento ainda</h3>
           <p className="text-slate-300 mb-6">
             Comece sua jornada de aprendizado para ver seu progresso aqui.
