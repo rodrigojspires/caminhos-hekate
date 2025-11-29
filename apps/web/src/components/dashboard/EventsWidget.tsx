@@ -244,3 +244,4 @@ export function EventsWidget() {
       </CardContent>
     </Card>
   )
+}
