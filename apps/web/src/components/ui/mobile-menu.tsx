@@ -98,8 +98,8 @@ const dashboardNavigation: NavigationItem[] = [
     icon: Award
   },
   {
-    title: 'Agenda',
-    href: '/dashboard/calendar',
+    title: 'Analytics',
+    href: '/dashboard/analytics',
     icon: Calendar
   },
   {
@@ -113,13 +113,13 @@ const dashboardNavigation: NavigationItem[] = [
   },
   {
     title: 'Comunidade',
-    href: '/dashboard/community',
+    href: '/dashboard/grupos',
     icon: Users,
     badge: '12'
   },
   {
     title: 'Notificações',
-    href: '/dashboard/notifications',
+    href: '/dashboard',
     icon: Bell,
     badge: '5'
   }

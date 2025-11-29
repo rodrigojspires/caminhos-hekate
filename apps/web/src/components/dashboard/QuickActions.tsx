@@ -171,12 +171,6 @@ export function QuickActions() {
       badge: undefined
     },
     {
-      title: 'Agendar Sessão',
-      description: 'Marque uma mentoria',
-      icon: Calendar,
-      href: '/dashboard/calendar'
-    },
-    {
       title: 'Buscar Conteúdo',
       description: 'Encontre novos cursos',
       icon: Search,
@@ -203,10 +197,10 @@ export function QuickActions() {
       href: '/forum'
     },
     {
-      title: 'Relatórios',
-      description: 'Analise seu progresso',
+      title: 'Meu Progresso',
+      description: 'Veja seus resultados',
       icon: FileText,
-      href: '/dashboard/reports'
+      href: '/dashboard/progress'
     }
   ]
 

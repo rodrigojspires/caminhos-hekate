@@ -15,7 +15,8 @@ import {
   TrendingUp,
   User,
   X,
-  Wrench
+  Wrench,
+  Award
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -44,14 +45,14 @@ const navigation = [
     icon: TrendingUp,
   },
   {
-    name: 'Calendário',
-    href: '/dashboard/calendar',
-    icon: Calendar,
-  },
-  {
     name: 'Meus Pedidos',
     href: '/dashboard/orders',
     icon: ShoppingBag,
+  },
+  {
+    name: 'Certificados',
+    href: '/dashboard/certificates',
+    icon: Award,
   },
   {
     name: 'Ferramentas: Horas Planetárias',
@@ -63,11 +64,6 @@ const navigation = [
     href: '/dashboard/tools/magic-square-sigil',
     icon: Wrench,
   },
-  {
-    name: 'Relatórios',
-    href: '/dashboard/reports',
-    icon: BarChart3,
-  },
 ]
 
 const secondaryNavigation = [
@@ -78,7 +74,7 @@ const secondaryNavigation = [
   },
   {
     name: 'Personalização',
-    href: '/dashboard/customization',
+    href: '/dashboard/settings',
     icon: Palette,
   },
   {
