@@ -27,10 +27,6 @@ export default function CourseStats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
   const fetchStats = async () => {
     try {
       setLoading(true)
@@ -41,7 +37,24 @@ export default function CourseStats() {
       }
       
       const data = await response.json()
-      setStats(data)
+      // API retorna os números dentro de "overview"; normalizamos aqui
+      setStats({
+        totalCourses: data?.overview?.totalCourses ?? 0,
+        totalEnrollments: data?.overview?.totalEnrollments ?? 0,
+        totalRevenue: data?.overview?.totalRevenue ?? 0,
+        averagePrice: data?.overview?.averagePrice ?? 0,
+        coursesByStatus: {
+          PUBLISHED: data?.coursesByStatus?.PUBLISHED ?? 0,
+          DRAFT: data?.coursesByStatus?.DRAFT ?? 0,
+          ARCHIVED: data?.coursesByStatus?.ARCHIVED ?? 0
+        },
+        coursesByLevel: {
+          BEGINNER: data?.coursesByLevel?.BEGINNER ?? 0,
+          INTERMEDIATE: data?.coursesByLevel?.INTERMEDIATE ?? 0,
+          ADVANCED: data?.coursesByLevel?.ADVANCED ?? 0,
+          EXPERT: data?.coursesByLevel?.EXPERT ?? 0
+        }
+      })
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error)
       setError('Erro ao carregar estatísticas')
@@ -49,6 +62,10 @@ export default function CourseStats() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
 
   if (loading) {
     return (
