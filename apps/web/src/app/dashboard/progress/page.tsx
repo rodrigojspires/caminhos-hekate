@@ -180,6 +180,10 @@ export default function ProgressPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
   const [statsSnapshot, setStatsSnapshot] = useState<any | null>(null)
+  const [leaderboardSnapshot, setLeaderboardSnapshot] = useState<number | null>(null)
+  const [missions, setMissions] = useState<
+    Array<{ id: string; title: string; description: string; target: number; current: number; unit: string; status: 'active' | 'completed'; type: 'lessons' | 'points' | 'days' }>
+  >([])
 
   const fetchProgressData = useCallback(async () => {
     setLoading(true)
@@ -262,6 +266,19 @@ export default function ProgressPage() {
       setInsights(buildInsights(convertedData, statsData))
       updateGoalProgressWithData(convertedData, statsData)
 
+      // Leaderboard snapshot diff
+      if (typeof window !== 'undefined') {
+        const storedRank = window.localStorage.getItem('hekate-leaderboard-rank')
+        const prevRank = storedRank ? Number(storedRank) : null
+        if (statsData?.leaderboardRank) {
+          window.localStorage.setItem('hekate-leaderboard-rank', String(statsData.leaderboardRank))
+          setLeaderboardSnapshot(prevRank)
+        }
+      }
+
+      // Generate or load weekly missions
+      hydrateMissions(convertedData, statsData)
+
       if (!statsOk || !progressOk) {
         setError('Alguns dados não foram carregados. Tente atualizar para ver tudo.')
       }
@@ -299,6 +316,7 @@ export default function ProgressPage() {
     if (progressData && statsSnapshot) {
       updateGoalProgressWithData(progressData, statsSnapshot)
       setInsights(buildInsights(progressData, statsSnapshot))
+      hydrateMissions(progressData, statsSnapshot)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressData, statsSnapshot])
@@ -405,6 +423,9 @@ export default function ProgressPage() {
   const buildInsights = (data: ProgressData, stats: any): Insight[] => {
     const insightsList: Insight[] = []
     const now = new Date().toISOString()
+    const totalHours = data.monthlyTrends.reduce((sum, m) => sum + (m.hours || 0), 0)
+    const totalLessons = data.summary.totalLessonsCompleted
+    const totalCourses = data.summary.completedCourses
 
     if (data.weeklyProgress.length >= 2) {
       const last = data.weeklyProgress[data.weeklyProgress.length - 1]
@@ -479,7 +500,199 @@ export default function ProgressPage() {
       })
     }
 
+    // Leaderboard variation insight
+    if (stats?.leaderboardRank && leaderboardSnapshot && leaderboardSnapshot !== stats.leaderboardRank) {
+      const diff = leaderboardSnapshot - stats.leaderboardRank
+      insightsList.push({
+        id: 'leaderboard-variation',
+        type: diff > 0 ? 'improvement' : 'warning',
+        title: 'Variação na leaderboard',
+        description: diff > 0 ? `Você subiu ${Math.abs(diff)} posições!` : `Você caiu ${Math.abs(diff)} posições.`,
+        priority: diff > 0 ? 'medium' : 'high',
+        change: diff,
+        createdAt: now,
+      })
+    }
+
+    // Hours studied milestones
+    const hourMilestones = [1, 5, 10, 50]
+    const nextHour = hourMilestones.find((h) => totalHours < h)
+    if (nextHour) {
+      insightsList.push({
+        id: 'hours-next',
+        type: 'recommendation',
+        title: 'Próximo marco de horas',
+        description: `Faltam ${(nextHour - totalHours).toFixed(1)}h para atingir ${nextHour}h de estudo.`,
+        priority: 'low',
+        createdAt: now,
+      })
+    }
+
+    // Lessons milestone
+    const lessonMilestones = [10, 25, 50, 100]
+    const nextLessons = lessonMilestones.find((m) => totalLessons < m)
+    if (nextLessons) {
+      insightsList.push({
+        id: 'lessons-next',
+        type: 'recommendation',
+        title: 'Próximo marco de aulas',
+        description: `Faltam ${nextLessons - totalLessons} aulas para ${nextLessons}.`,
+        priority: 'low',
+        createdAt: now,
+      })
+    }
+
+    // Courses milestone
+    const courseMilestones = [1, 3, 5, 10]
+    const nextCourse = courseMilestones.find((c) => totalCourses < c)
+    if (nextCourse) {
+      insightsList.push({
+        id: 'courses-next',
+        type: 'recommendation',
+        title: 'Próximo marco de cursos',
+        description: `Complete mais ${nextCourse - totalCourses} curso(s) para atingir ${nextCourse}.`,
+        priority: 'medium',
+        createdAt: now,
+      })
+    }
+
+    // Streak reminder
+    if (stats?.activeStreaks === 0) {
+      insightsList.push({
+        id: 'streak-reminder',
+        type: 'streak',
+        title: 'Inicie uma sequência',
+        description: 'Registre uma atividade hoje para começar uma nova sequência.',
+        priority: 'medium',
+        createdAt: now,
+      })
+    }
+
     return insightsList
+  }
+
+  const hydrateMissions = (data: ProgressData, stats?: any) => {
+    if (typeof window === 'undefined') return
+    const weekKey = `missions-week-${new Date().getFullYear()}-${new Date().getWeek?.() || new Date().toDateString().slice(0, 7)}`
+    const stored = localStorage.getItem(weekKey)
+    if (stored) {
+      setMissions(JSON.parse(stored))
+      return
+    }
+
+    const totalLessons = data.summary.totalLessonsCompleted
+    const totalPoints = stats?.totalPoints || 0
+
+    const generated: typeof missions = [
+      {
+        id: 'mission-lessons-5',
+        title: 'Conclua 5 aulas esta semana',
+        description: 'Mantenha o ritmo de estudos.',
+        target: 5,
+        current: 0,
+        unit: 'aulas',
+        status: 'active',
+        type: 'lessons',
+      },
+      {
+        id: 'mission-points-200',
+        title: 'Ganhe 200 pontos',
+        description: 'Participe de atividades para acumular pontos.',
+        target: 200,
+        current: 0,
+        unit: 'pontos',
+        status: 'active',
+        type: 'points',
+      },
+    ]
+
+    const enriched = generated.map((mission) => {
+      let current = mission.current
+      if (mission.type === 'lessons') current = totalLessons % mission.target
+      if (mission.type === 'points') current = totalPoints % mission.target
+      const status = current >= mission.target ? 'completed' : 'active'
+      return { ...mission, current, status }
+    })
+
+    setMissions(enriched)
+    localStorage.setItem(weekKey, JSON.stringify(enriched))
+  }
+
+  const buildMilestoneEvents = (data: ProgressData, stats?: any) => {
+    const events: any[] = []
+    const totalHours = data.monthlyTrends.reduce((sum, m) => sum + (m.hours || 0), 0)
+    const totalLessons = data.summary.totalLessonsCompleted
+    const totalCourses = data.summary.completedCourses
+    const now = new Date().toISOString()
+
+    const addEvent = (id: string, title: string, description: string, type: any, metadata?: any) => {
+      events.push({
+        id,
+        type,
+        title,
+        description,
+        date: now,
+        status: 'completed' as const,
+        metadata,
+      })
+    }
+
+    // Hours milestones
+    const hourMilestones = [1, 5, 10, 50]
+    hourMilestones.forEach((h) => {
+      if (totalHours >= h) addEvent(`hours-${h}`, `Marco de ${h}h`, `Você acumulou ${h} horas de estudo.`, 'achievement')
+    })
+
+    // Lessons milestones
+    const lessonMilestones = [10, 25, 50, 100]
+    lessonMilestones.forEach((m) => {
+      if (totalLessons >= m) addEvent(`lessons-${m}`, `${m} aulas concluídas`, `Você concluiu ${m} aulas.`, 'achievement')
+    })
+
+    // Courses milestones
+    const courseMilestones = [1, 3, 5, 10]
+    courseMilestones.forEach((c) => {
+      if (totalCourses >= c) addEvent(`courses-${c}`, `${c} curso(s) concluído(s)`, `Você finalizou ${c} curso(s).`, 'achievement')
+    })
+
+    // Course near finish
+    data.courseProgress
+      .filter((course) => course.progress >= 80 && course.progress < 100)
+      .forEach((course) => {
+        addEvent(
+          `course-near-${course.courseId}`,
+          `Quase lá: ${course.courseTitle}`,
+          `Você completou ${course.progress}% deste curso.`,
+          'course_start',
+          { progress: course.progress, courseName: course.courseTitle }
+        )
+      })
+
+    // Streaks
+    if (stats?.activeStreaks > 0) {
+      addEvent('streak-active', 'Sequência ativa', `Você mantém ${stats.activeStreaks} sequência(s) ativa(s).`, 'streak')
+    }
+    if (stats?.longestStreak) {
+      addEvent('streak-record', 'Recorde de sequência', `Seu recorde é de ${stats.longestStreak} dias.`, 'streak')
+    }
+
+    // Missions completed
+    missions.filter((m) => m.status === 'completed').forEach((mission) => {
+      addEvent(`mission-${mission.id}`, mission.title, 'Missão semanal concluída.', 'milestone')
+    })
+
+    // Leaderboard change
+    if (stats?.leaderboardRank && leaderboardSnapshot && leaderboardSnapshot !== stats.leaderboardRank) {
+      const diff = leaderboardSnapshot - stats.leaderboardRank
+      addEvent(
+        'leaderboard-change',
+        'Atualização na leaderboard',
+        diff > 0 ? `Você subiu ${Math.abs(diff)} posições.` : `Você caiu ${Math.abs(diff)} posições.`,
+        'milestone'
+      )
+    }
+
+    return events
   }
 
   const timelineEvents = useMemo(() => {
@@ -539,10 +752,12 @@ export default function ProgressPage() {
         })
         .filter(Boolean) || []
 
-    return [...transactionEvents, ...achievementEvents, ...courseEvents].sort(
+    const milestoneEvents = buildMilestoneEvents(progressData, statsSnapshot)
+
+    return [...transactionEvents, ...achievementEvents, ...courseEvents, ...milestoneEvents].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )
-  }, [recentTransactions, achievements, progressData.courseProgress])
+  }, [recentTransactions, achievements, progressData.courseProgress, missions, statsSnapshot, leaderboardSnapshot])
 
   const totalPoints = userPoints?.totalPoints ?? 0
   const currentLevel = userPoints?.currentLevel ?? 1

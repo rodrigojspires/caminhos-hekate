@@ -76,8 +76,8 @@ export default function ProgressCharts({ data, loading = false, error, onRetry }
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-slate-900 text-slate-100 rounded-lg shadow-sm border border-slate-800">
+        <div className="p-6 border-b border-slate-800">
           <div className="h-6 bg-gray-200 rounded mb-2 w-1/3 animate-pulse"></div>
           <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
         </div>
@@ -90,16 +90,16 @@ export default function ProgressCharts({ data, loading = false, error, onRetry }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-slate-900 text-slate-100 rounded-lg shadow-sm border border-slate-800">
+        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Análise de Progresso</h2>
-            <p className="text-gray-600 mt-1">{error}</p>
+            <h2 className="text-xl font-semibold">Análise de Progresso</h2>
+            <p className="text-slate-300 mt-1">{error}</p>
           </div>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border bg-white hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-100"
             >
               <RefreshCw className="w-4 h-4" />
               Tentar novamente
@@ -316,23 +316,23 @@ export default function ProgressCharts({ data, loading = false, error, onRetry }
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Análise de Progresso</h2>
-            <p className="text-gray-600 mt-1">Visualize seu desempenho ao longo do tempo</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select 
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="7d">Últimos 7 dias</option>
-              <option value="30d">Últimos 30 dias</option>
+      <div className="bg-slate-900 text-slate-100 rounded-lg shadow-sm border border-slate-800">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Análise de Progresso</h2>
+              <p className="text-slate-300 mt-1">Visualize seu desempenho ao longo do tempo</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-slate-400" />
+              <select 
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
+                className="px-3 py-2 border border-slate-700 rounded-lg text-sm bg-slate-800 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
               <option value="90d">Últimos 90 dias</option>
             </select>
           </div>
@@ -350,8 +350,8 @@ export default function ProgressCharts({ data, loading = false, error, onRetry }
                 onClick={() => setActiveChart(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   activeChart === tab.id
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -369,31 +369,31 @@ export default function ProgressCharts({ data, loading = false, error, onRetry }
 
       {/* Summary Stats */}
       <div className="px-6 pb-6">
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-indigo-400">
                 {data.summary.totalLessonsCompleted}
               </div>
-              <div className="text-sm text-gray-600">Aulas concluídas</div>
+              <div className="text-sm text-slate-300">Aulas concluídas</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-green-400">
                 {data.summary.completionRate}%
               </div>
-              <div className="text-sm text-gray-600">Taxa de conclusão</div>
+              <div className="text-sm text-slate-300">Taxa de conclusão</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-blue-400">
                 {data.summary.totalCourses}
               </div>
-              <div className="text-sm text-gray-600">Cursos ativos</div>
+              <div className="text-sm text-slate-300">Cursos ativos</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-orange-400">
                 {data.summary.totalPoints}
               </div>
-              <div className="text-sm text-gray-600">Pontos ganhos</div>
+              <div className="text-sm text-slate-300">Pontos ganhos</div>
             </div>
           </div>
         </div>
