@@ -25,6 +25,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
+    const isAdmin = session?.user?.role === 'ADMIN'
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -72,7 +73,7 @@ export async function GET(
     })
 
     // Apenas o criador ou participantes confirmados podem ver a lista
-    if (!isCreator && !isRegistered && !event.isPublic) {
+    if (!isCreator && !isAdmin && !isRegistered && !event.isPublic) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -94,8 +95,8 @@ export async function GET(
       eventId
     }
 
-    // Apenas o criador pode ver todas as inscrições
-    if (!isCreator) {
+    // Apenas criador ou admin pode ver todos os status
+    if (!isCreator && !isAdmin) {
       where.status = EventRegistrationStatus.CONFIRMED
     } else if (status && status.length > 0) {
       where.status = { in: status }
@@ -121,7 +122,7 @@ export async function GET(
             select: {
               id: true,
               name: true,
-              email: isCreator, // Email apenas para o criador
+              email: isCreator || isAdmin, // Email apenas para criador/admin
               image: true
             }
           }
@@ -148,7 +149,7 @@ export async function GET(
         hasPrev
       },
       permissions: {
-        canManage: isCreator
+        canManage: isCreator || isAdmin
       }
     })
   } catch (error) {

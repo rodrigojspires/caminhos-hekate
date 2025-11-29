@@ -2,6 +2,7 @@ import { prisma } from '@hekate/database';
 import { PaymentTransactionStatus, SubscriptionStatus, WebhookLogStatus } from '@prisma/client';
 import { logWebhook, updateWebhookStatus } from './webhook-utils';
 import { GamificationEngine } from '@/lib/gamification-engine';
+import notificationService from '@/lib/notifications/notification-service';
 
 // Interfaces para os eventos dos webhooks
 export interface MercadoPagoWebhookEvent {
@@ -20,6 +21,8 @@ export interface MercadoPagoWebhookEvent {
 }
 
 const COURSE_PURCHASE_POINTS = 120;
+const PAID_EVENT_ENROLL_POINTS = 40;
+const FREE_EVENT_ENROLL_POINTS = 10;
 
 export interface AsaasWebhookEvent {
   event: string;
@@ -215,6 +218,92 @@ export class MercadoPagoWebhookProcessor {
                     courseId,
                     uniqueKey
                   }
+                })
+              }
+            }
+
+            // Registrar usuário em eventos pagos
+            const metaEventIds: any[] = []
+            if (Array.isArray(fromOrderMeta.eventIds)) metaEventIds.push(...fromOrderMeta.eventIds)
+            if (Array.isArray(fromTxMeta.eventIds)) metaEventIds.push(...fromTxMeta.eventIds)
+
+            // Buscar eventIds de itens (metadata.eventId)
+            order.items.forEach((item) => {
+              const evId = (item.metadata as any)?.eventId
+              if (evId) metaEventIds.push(evId)
+            })
+
+            const eventIds = Array.from(
+              new Set(
+                metaEventIds
+                  .map((id) => (id != null ? String(id) : null))
+                  .filter((id): id is string => !!id && id.trim().length > 0)
+              )
+            )
+
+            for (const eventId of eventIds) {
+              const event = await prisma.event.findUnique({
+                where: { id: eventId },
+                select: { id: true, title: true, status: true, accessType: true }
+              })
+              if (!event || event.status !== 'PUBLISHED') continue
+
+              await prisma.eventRegistration.upsert({
+                where: { eventId_userId: { eventId, userId: order.userId } },
+                create: {
+                  eventId,
+                  userId: order.userId,
+                  status: 'CONFIRMED',
+                  registeredAt: new Date(),
+                  metadata: { orderId: order.id, orderNumber: order.orderNumber }
+                },
+                update: {
+                  status: 'CONFIRMED',
+                  metadata: { orderId: order.id, orderNumber: order.orderNumber }
+                }
+              })
+
+              const uniqueKey = `event_purchase_${order.id}_${eventId}`
+              const existingTx = await prisma.pointTransaction.findFirst({
+                where: {
+                  userId: order.userId,
+                  metadata: {
+                    path: ['uniqueKey'],
+                    equals: uniqueKey
+                  }
+                }
+              })
+
+              const isPaidEvent = event.accessType === 'PAID'
+              const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : FREE_EVENT_ENROLL_POINTS
+
+              if (!existingTx && pointsToAward > 0) {
+                await GamificationEngine.awardPoints(order.userId, pointsToAward, 'EVENT_ENROLLED', {
+                  eventId,
+                  eventTitle: event.title,
+                  paid: isPaidEvent,
+                  reasonLabel: isPaidEvent ? 'Inscrição em evento pago' : 'Inscrição em evento gratuito',
+                  uniqueKey
+                })
+
+                const userPoints = await prisma.userPoints.findUnique({
+                  where: { userId: order.userId },
+                  select: { totalPoints: true }
+                })
+
+                await notificationService.createNotification({
+                  userId: order.userId,
+                  type: 'SPECIAL_EVENT' as any,
+                  title: 'Pontos ganhos no evento',
+                  message: `Você ganhou ${pointsToAward} pontos ao confirmar ${event.title}.`,
+                  data: {
+                    points: pointsToAward,
+                    eventId,
+                    eventTitle: event.title,
+                    paid: isPaidEvent,
+                    totalPoints: userPoints?.totalPoints ?? undefined
+                  },
+                  priority: isPaidEvent ? 'MEDIUM' : 'LOW'
                 })
               }
             }

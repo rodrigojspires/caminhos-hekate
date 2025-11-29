@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Calendar, Clock, MapPin, Video, Users, Tag, Plus, X } from 'lucide-react'
+import { Calendar, Clock, MapPin, Video, Users, Tag, Plus, X, CreditCard } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -24,10 +24,10 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EventType, CreateEventRequest, RecurrenceRule } from '@/types/events'
+import { EventType, CreateEventRequest, RecurrenceRule, EventAccessType, EventMode } from '@/types/events'
 import { useEventsStore } from '@/stores/eventsStore'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { SubscriptionTier } from '@hekate/database'
 
 interface CreateEventModalProps {
   open: boolean
@@ -49,10 +49,12 @@ const RECURRENCE_OPTIONS = [
   { value: 'daily', label: 'Diariamente' },
   { value: 'weekly', label: 'Semanalmente' },
   { value: 'monthly', label: 'Mensalmente' },
-  { value: 'yearly', label: 'Anualmente' }
+  { value: 'yearly', label: 'Anualmente' },
+  { value: 'lunar_full', label: 'Lua cheia' },
+  { value: 'lunar_new', label: 'Lua nova' }
 ]
 
-type RecurrenceUIType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+type RecurrenceUIType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'lunar_full' | 'lunar_new'
 
 interface CreateEventFormData {
   title: string
@@ -66,6 +68,10 @@ interface CreateEventFormData {
   isPublic: boolean
   requiresApproval: boolean
   tags: string[]
+  accessType: EventAccessType
+  price?: number
+  freeTiers: SubscriptionTier[]
+  mode: EventMode
   recurrence?: {
     type: RecurrenceUIType
     interval?: number
@@ -95,6 +101,10 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
       maxAttendees: undefined,
       isPublic: true,
       requiresApproval: false,
+      accessType: EventAccessType.FREE,
+      price: undefined,
+      freeTiers: [],
+      mode: EventMode.ONLINE,
       tags: [],
       recurrence: {
         type: 'none',
@@ -139,6 +149,18 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
     }))
   }
 
+  const toggleTier = (tier: SubscriptionTier) => {
+    setFormData((prev) => {
+      const exists = prev.freeTiers.includes(tier)
+      return {
+        ...prev,
+        freeTiers: exists
+          ? prev.freeTiers.filter((t) => t !== tier)
+          : [...prev.freeTiers, tier]
+      }
+    })
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -173,6 +195,26 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
     if (formData.maxAttendees && formData.maxAttendees < 1) {
       return 'Número máximo de participantes deve ser maior que 0'
     }
+
+    if (formData.accessType === EventAccessType.PAID && (!formData.price || formData.price <= 0)) {
+      return 'Defina um preço para eventos pagos'
+    }
+
+    if (formData.accessType === EventAccessType.TIER && formData.freeTiers.length === 0) {
+      return 'Selecione ao menos um tier com acesso incluído'
+    }
+
+    if (formData.mode === EventMode.IN_PERSON && !formData.location?.trim()) {
+      return 'Informe o local para eventos presenciais'
+    }
+
+    if (formData.mode === EventMode.ONLINE && !formData.virtualLink?.trim()) {
+      return 'Informe o link para eventos online'
+    }
+
+    if (formData.mode === EventMode.HYBRID && (!formData.location?.trim() || !formData.virtualLink?.trim())) {
+      return 'Eventos híbridos precisam de local e link'
+    }
     
     return null
   }
@@ -195,13 +237,16 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
           daily: 'DAILY',
           weekly: 'WEEKLY',
           monthly: 'MONTHLY',
-          yearly: 'YEARLY'
+          yearly: 'YEARLY',
+          lunar_full: 'LUNAR',
+          lunar_new: 'LUNAR'
         }
         recurrenceRule = {
           freq: freqMap[formData.recurrence.type as Exclude<RecurrenceUIType, 'none'>],
           interval: formData.recurrence.interval || 1,
           count: formData.recurrence.count,
-          until: formData.recurrence.endDate ? new Date(formData.recurrence.endDate) : undefined
+          until: formData.recurrence.endDate ? new Date(formData.recurrence.endDate) : undefined,
+          lunarPhase: formData.recurrence.type === 'lunar_full' ? 'FULL' : formData.recurrence.type === 'lunar_new' ? 'NEW' : undefined
         }
       }
 
@@ -217,6 +262,10 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
         isPublic: formData.isPublic!,
         requiresApproval: formData.requiresApproval!,
         tags: formData.tags || [],
+        accessType: formData.accessType,
+        price: formData.price,
+        freeTiers: formData.freeTiers,
+        mode: formData.mode,
         recurrence: recurrenceRule
       }
       
@@ -369,6 +418,23 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
                 <span>Local</span>
               </h3>
               
+              <div>
+                <Label>Formato</Label>
+                <Select
+                  value={formData.mode}
+                  onValueChange={(value) => handleInputChange('mode', value as EventMode)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione o formato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EventMode.ONLINE}>Online</SelectItem>
+                    <SelectItem value={EventMode.IN_PERSON}>Presencial</SelectItem>
+                    <SelectItem value={EventMode.HYBRID}>Híbrido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="location">Local Físico</Label>
@@ -395,6 +461,73 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
                   </div>
                 </div>
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Acesso e preço */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center space-x-2">
+                <CreditCard className="h-4 w-4" />
+                <span>Acesso e Preço</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Acesso</Label>
+                  <Select
+                    value={formData.accessType}
+                    onValueChange={(value) => handleInputChange('accessType', value as EventAccessType)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecione o tipo de acesso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EventAccessType.FREE}>Gratuito</SelectItem>
+                      <SelectItem value={EventAccessType.PAID}>Pago (checkout)</SelectItem>
+                      <SelectItem value={EventAccessType.TIER}>Incluído em tiers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Preço (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    disabled={formData.accessType !== EventAccessType.PAID}
+                    value={formData.price ?? ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleInputChange('price', e.target.value ? parseFloat(e.target.value) : undefined)
+                    }
+                    placeholder="0,00"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {formData.accessType === EventAccessType.TIER && (
+                <div className="space-y-2">
+                  <Label>Tiers com acesso incluído</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[SubscriptionTier.INICIADO, SubscriptionTier.ADEPTO, SubscriptionTier.SACERDOCIO].map((tier) => {
+                      const isActive = formData.freeTiers.includes(tier)
+                      return (
+                        <Button
+                          key={tier}
+                          type="button"
+                          variant={isActive ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleTier(tier)}
+                        >
+                          {tier}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />

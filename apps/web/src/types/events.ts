@@ -11,11 +11,23 @@ export enum EventType {
   TRAINING = 'TRAINING'
 }
 
+export enum EventMode {
+  ONLINE = 'ONLINE',
+  IN_PERSON = 'IN_PERSON',
+  HYBRID = 'HYBRID'
+}
+
 export enum EventStatus {
   DRAFT = 'DRAFT',
   PUBLISHED = 'PUBLISHED',
   CANCELED = 'CANCELED',
   COMPLETED = 'COMPLETED'
+}
+
+export enum EventAccessType {
+  FREE = 'FREE',
+  PAID = 'PAID',
+  TIER = 'TIER'
 }
 
 export enum EventRegistrationStatus {
@@ -55,6 +67,10 @@ export interface Event {
   maxAttendees?: number
   isPublic: boolean
   requiresApproval: boolean
+  accessType: EventAccessType
+  price?: number | string | null
+  freeTiers?: string[]
+  mode: EventMode
   tags: string[]
   metadata?: Record<string, any>
   createdBy: string
@@ -91,6 +107,10 @@ export interface CalendarEvent {
   maxAttendees?: number
   // UI convenience fields (optional)
   tags?: string[]
+  accessType?: EventAccessType
+  price?: number | string | null
+  mode?: EventMode
+  freeTiers?: string[]
   creator?: {
     id: string
     name?: string
@@ -128,13 +148,14 @@ export interface EventReminder {
 }
 
 export interface RecurrenceRule {
-  freq: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+  freq: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'LUNAR'
   interval?: number
   byweekday?: number[]
   bymonthday?: number[]
   bymonth?: number[]
   count?: number
   until?: Date
+  lunarPhase?: 'FULL' | 'NEW'
 }
 
 export interface RecurringEvent {
@@ -158,6 +179,10 @@ export interface CreateEventRequest {
   maxAttendees?: number
   isPublic?: boolean
   requiresApproval?: boolean
+  accessType?: EventAccessType
+  price?: number
+  freeTiers?: string[]
+  mode?: EventMode
   tags?: string[]
   metadata?: Record<string, any>
   recurrence?: RecurrenceRule

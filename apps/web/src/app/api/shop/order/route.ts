@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
-import { Prisma } from '@prisma/client'
+import { Prisma, ProductType } from '@prisma/client'
 import { getCartFromCookie, computeTotals, clearCart } from '@/lib/shop/cart'
 import { calculateShipping } from '@/lib/shop/shipping'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       shippingAddressId,
       notes,
       enrollCourseIds,
+      eventIds,
     } = body as {
       customer: { name: string; email: string; phone?: string; document?: string; userId?: string | null }
       billingAddress?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string }
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       shippingAddressId?: string | null
       notes?: string
       enrollCourseIds?: string[]
+      eventIds?: string[]
     }
 
     if (!customer?.name || !customer?.email) {
@@ -41,7 +43,11 @@ export async function POST(request: NextRequest) {
     }
 
     const cart = getCartFromCookie()
-    if (!cart.items.length) return NextResponse.json({ error: 'Carrinho vazio' }, { status: 400 })
+    const hasCartItems = cart.items.length > 0
+    const uniqueEventIds = Array.isArray(eventIds) ? Array.from(new Set(eventIds)) : []
+    if (!hasCartItems && uniqueEventIds.length === 0) {
+      return NextResponse.json({ error: 'Nenhum item no checkout' }, { status: 400 })
+    }
 
     if (cart.shipping?.cep) {
       try {
@@ -55,7 +61,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Eventos pagos passados via query do checkout
+    const events = uniqueEventIds.length
+      ? await prisma.event.findMany({
+          where: {
+            id: { in: uniqueEventIds },
+            status: 'PUBLISHED',
+            accessType: 'PAID'
+          },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            price: true
+          }
+        })
+      : []
+
+    const validEvents = events.filter((ev) => ev.price != null && Number(ev.price) > 0)
+
+    if (uniqueEventIds.length && validEvents.length === 0) {
+      return NextResponse.json({ error: 'Eventos inválidos ou sem preço' }, { status: 400 })
+    }
+
+    const eventSubtotal = validEvents.reduce((sum, ev) => sum + Number(ev.price), 0)
+
     const totals = await computeTotals(cart)
+    totals.subtotal += eventSubtotal
+    totals.total += eventSubtotal
 
     if (totals.total <= 0) {
       return NextResponse.json({ error: 'Total do pedido inválido.' }, { status: 400 })
@@ -114,21 +147,12 @@ export async function POST(request: NextRequest) {
 
     const orderNumber = generateOrderNumber()
 
-    const itemsToCreate = itemDetails.map(({ item, variant }) => {
-      const lineTotal = Number(variant.price) * item.quantity
-      return {
-        productId: variant.productId,
-        variantId: variant.id,
-        name: `${variant.product.name}${variant.name ? ` - ${variant.name}` : ''}`,
-        price: variant.price,
-        quantity: item.quantity,
-        total: lineTotal,
-      }
-    })
-
     const metadata: Record<string, any> = {}
     if (enrollCourseIds && Array.isArray(enrollCourseIds) && enrollCourseIds.length > 0) {
       metadata.enrollCourseIds = enrollCourseIds
+    }
+    if (uniqueEventIds.length > 0) {
+      metadata.eventIds = uniqueEventIds
     }
     if (cart.shipping?.serviceId) {
       metadata.shippingOption = {
@@ -160,6 +184,45 @@ export async function POST(request: NextRequest) {
           zipCode: payload.zipCode,
         },
       })
+    }
+
+    const ensureEventProductAndVariant = async (
+      tx: Prisma.TransactionClient,
+      event: { id: string; title: string; description: string | null; price: any }
+    ) => {
+      const slug = `evento-${event.id}`
+      const sku = `EVENT-${event.id}`
+
+      let product = await tx.product.findUnique({ where: { slug } })
+      if (!product) {
+        product = await tx.product.create({
+          data: {
+            name: `Evento: ${event.title}`,
+            slug,
+            description: event.description || `Evento ${event.title}`,
+            shortDescription: event.description?.slice(0, 180) ?? null,
+            type: ProductType.DIGITAL,
+            images: [],
+            active: true
+          }
+        })
+      }
+
+      let variant = await tx.productVariant.findUnique({ where: { sku } })
+      if (!variant) {
+        variant = await tx.productVariant.create({
+          data: {
+            productId: product.id,
+            sku,
+            name: 'Ingresso',
+            price: new Prisma.Decimal(event.price),
+            stock: 0,
+            active: true
+          }
+        })
+      }
+
+      return { product, variant }
     }
 
     const { order } = await prisma.$transaction(async (tx) => {
@@ -202,6 +265,40 @@ export async function POST(request: NextRequest) {
 
       const billingRecord = await ensureAddress(billingAddressId, billingAddress, 'Cobrança')
       const shippingRecord = await ensureAddress(shippingAddressId, shippingAddress, 'Entrega')
+
+      const eventVariants = await Promise.all(
+        validEvents.map((ev) => ensureEventProductAndVariant(tx, ev))
+      )
+
+      const itemsToCreate = [
+        ...itemDetails.map(({ item, variant }) => {
+          const lineTotal = Number(variant.price) * item.quantity
+          return {
+            productId: variant.productId,
+            variantId: variant.id,
+            name: `${variant.product.name}${variant.name ? ` - ${variant.name}` : ''}`,
+            price: variant.price,
+            quantity: item.quantity,
+            total: lineTotal,
+          }
+        }),
+        ...validEvents.map((ev, idx) => {
+          const variant = eventVariants[idx].variant
+          const price = new Prisma.Decimal(ev.price)
+          return {
+            productId: variant.productId,
+            variantId: variant.id,
+            name: `Evento: ${ev.title}`,
+            price,
+            quantity: 1,
+            total: price,
+            metadata: {
+              eventId: ev.id,
+              eventTitle: ev.title
+            }
+          }
+        })
+      ]
 
       const orderData: any = {
         orderNumber,

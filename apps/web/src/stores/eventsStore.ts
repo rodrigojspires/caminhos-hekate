@@ -114,8 +114,8 @@ export const useEventsStore = create<EventsState>()(devtools(
         const calendarEvents: CalendarEvent[] = data.events.map((event: Event) => ({
           id: event.id,
           title: event.title,
-          start: event.startDate,
-          end: event.endDate,
+          start: new Date(event.startDate),
+          end: new Date(event.endDate),
           allDay: false,
           type: event.type,
           status: event.status,
@@ -124,6 +124,10 @@ export const useEventsStore = create<EventsState>()(devtools(
           description: event.description,
           attendeeCount: 0,
           maxAttendees: event.maxAttendees,
+          accessType: event.accessType,
+          price: event.price ? Number(event.price) : null,
+          mode: event.mode,
+          freeTiers: event.freeTiers
         }))
         
         set({ 
@@ -344,7 +348,15 @@ export const useEventsStore = create<EventsState>()(devtools(
         })
         
         if (!response.ok) {
-          const errorData = await response.json()
+          const errorData = await response.json().catch(() => ({}))
+
+          if (response.status === 402 && errorData.checkoutUrl) {
+            // Evento pago -> redirecionar para checkout
+            window.location.href = errorData.checkoutUrl
+            set({ loading: false })
+            return false
+          }
+
           throw new Error(errorData.error || 'Falha ao se inscrever no evento')
         }
         

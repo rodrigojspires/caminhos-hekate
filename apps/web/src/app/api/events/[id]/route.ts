@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus } from '@prisma/client'
+import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@prisma/client'
+import { notificationService } from '@/lib/notifications/notification-service'
 
 // Schema de validação para atualização de eventos
 const updateEventSchema = z.object({
@@ -19,9 +20,53 @@ const updateEventSchema = z.object({
   maxAttendees: z.number().positive().optional(),
   isPublic: z.boolean().optional(),
   requiresApproval: z.boolean().optional(),
+  accessType: z.nativeEnum(EventAccessType).optional(),
+  price: z.number().nonnegative().optional(),
+  freeTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
+  mode: z.nativeEnum(EventMode).optional(),
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.any()).optional()
 })
+
+async function notifyEventPublication(event: { id: string; title: string; slug?: string }) {
+  try {
+    const recipients = await prisma.user.findMany({
+      where: { role: Role.MEMBER },
+      select: { id: true }
+    })
+
+    if (!recipients.length) return
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || ''
+    const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : ''
+    const eventUrl = event.slug
+      ? `${normalizedBase}/eventos/${event.slug}`
+      : `${normalizedBase}/eventos/${event.id}`
+
+    const title = `Novo evento disponível: ${event.title}`
+    const message = `O evento "${event.title}" foi publicado. Confira os detalhes.`
+
+    await Promise.all(
+      recipients.map(({ id: userId }) =>
+        notificationService.createNotification({
+          userId,
+          type: 'SYSTEM_ANNOUNCEMENT' as any,
+          title,
+          message,
+          data: {
+            actionUrl: eventUrl,
+            actionLabel: 'Ver evento',
+            eventId: event.id
+          },
+          priority: 'MEDIUM',
+          isPush: false
+        })
+      )
+    )
+  } catch (error) {
+    console.error('Erro ao enviar broadcast de evento:', error)
+  }
+}
 
 // GET /api/events/[id] - Obter evento específico
 export async function GET(
@@ -127,7 +172,19 @@ export async function PUT(
     // Verificar se o evento existe e se o usuário é o criador
     const existingEvent = await prisma.event.findUnique({
       where: { id },
-      select: { id: true, createdBy: true, startDate: true }
+      select: {
+        id: true,
+        createdBy: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        location: true,
+        virtualLink: true,
+        accessType: true,
+        freeTiers: true,
+        mode: true,
+        price: true
+      }
     })
 
     if (!existingEvent) {
@@ -150,7 +207,7 @@ export async function PUT(
     // Validar datas se fornecidas
     if (validatedData.startDate || validatedData.endDate) {
       const startDate = validatedData.startDate ? new Date(validatedData.startDate) : existingEvent.startDate
-      const endDate = validatedData.endDate ? new Date(validatedData.endDate) : new Date(existingEvent.startDate)
+      const endDate = validatedData.endDate ? new Date(validatedData.endDate) : existingEvent.endDate
 
       if (startDate >= endDate) {
         return NextResponse.json(
@@ -160,6 +217,41 @@ export async function PUT(
       }
     }
 
+    const modeToUse = validatedData.mode ?? existingEvent.mode
+    const locationToUse = validatedData.location ?? existingEvent.location
+    const virtualLinkToUse = validatedData.virtualLink ?? existingEvent.virtualLink
+    const accessTypeToUse = validatedData.accessType ?? existingEvent.accessType
+    const priceToUse = validatedData.price ?? existingEvent.price
+    const freeTiersToUse = validatedData.freeTiers ?? existingEvent.freeTiers
+
+    if (accessTypeToUse === EventAccessType.PAID && (!priceToUse || priceToUse <= 0)) {
+      return NextResponse.json(
+        { error: 'Defina um preço para eventos pagos' },
+        { status: 400 }
+      )
+    }
+
+    if (accessTypeToUse === EventAccessType.TIER && (!freeTiersToUse || freeTiersToUse.length === 0)) {
+      return NextResponse.json(
+        { error: 'Selecione ao menos um tier que terá acesso gratuito' },
+        { status: 400 }
+      )
+    }
+
+    if (modeToUse === EventMode.IN_PERSON && !locationToUse) {
+      return NextResponse.json(
+        { error: 'Informe o local para eventos presenciais' },
+        { status: 400 }
+      )
+    }
+
+    if (modeToUse === EventMode.ONLINE && !virtualLinkToUse) {
+      return NextResponse.json(
+        { error: 'Informe o link para eventos online' },
+        { status: 400 }
+      )
+    }
+
     // Atualizar evento
     const updatedEvent = await prisma.event.update({
       where: { id },
@@ -167,6 +259,8 @@ export async function PUT(
         ...validatedData,
         startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
         endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
+        price: validatedData.price,
+        freeTiers: validatedData.freeTiers,
         updatedAt: new Date()
       },
       include: {
@@ -185,6 +279,10 @@ export async function PUT(
         }
       }
     })
+
+    if (updatedEvent.status === EventStatus.PUBLISHED && existingEvent.status !== EventStatus.PUBLISHED) {
+      await notifyEventPublication({ id: updatedEvent.id, title: updatedEvent.title, slug: (updatedEvent as any).slug })
+    }
 
     return NextResponse.json(updatedEvent)
   } catch (error) {

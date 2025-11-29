@@ -5,11 +5,16 @@ import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { EventRegistrationStatus } from '@hekate/shared'
 import { ReminderType, ReminderStatus } from '@prisma/client'
+import { GamificationEngine } from '@/lib/gamification-engine'
+import notificationService from '@/lib/notifications/notification-service'
 
 // Schema de validação para registro
 const registerSchema = z.object({
   metadata: z.record(z.any()).optional()
 })
+
+const PAID_EVENT_ENROLL_POINTS = 40
+const FREE_EVENT_ENROLL_POINTS = 10
 
 // POST /api/events/[id]/register - Registrar-se em um evento
 export async function POST(
@@ -38,7 +43,16 @@ export async function POST(
     // Verificar se o evento existe e está disponível
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        startDate: true,
+        maxAttendees: true,
+        requiresApproval: true,
+        accessType: true,
+        freeTiers: true,
+        price: true,
         _count: {
           select: {
             registrations: {
@@ -74,6 +88,29 @@ export async function POST(
         { error: 'Não é possível se inscrever em eventos que já começaram' },
         { status: 400 }
       )
+    }
+
+    // Verificar acesso pago ou por tier
+    if (event.accessType === 'PAID') {
+      const checkoutUrl = `/checkout?eventId=${eventId}`
+      return NextResponse.json(
+        { error: 'Evento pago - finalize a inscrição pelo checkout', checkoutUrl },
+        { status: 402 }
+      )
+    }
+
+    if (event.accessType === 'TIER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { subscriptionTier: true }
+      })
+
+      if (!user || !event.freeTiers.includes(user.subscriptionTier)) {
+        return NextResponse.json(
+          { error: 'Seu plano não inclui acesso a este evento' },
+          { status: 403 }
+        )
+      }
     }
 
     // Verificar se já está inscrito
@@ -139,6 +176,57 @@ export async function POST(
         }
       }
     })
+
+    // Pontuação por inscrição
+    try {
+      const isPaidEvent = event.accessType === 'PAID'
+      const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : FREE_EVENT_ENROLL_POINTS
+
+      const existingTx = await prisma.pointTransaction.findFirst({
+        where: {
+          userId: session.user.id,
+          metadata: {
+            path: ['eventId'],
+            equals: eventId
+          }
+        }
+      })
+
+      if (!existingTx && pointsToAward > 0) {
+        const reasonLabel = isPaidEvent ? 'Inscrição em evento pago' : 'Inscrição em evento gratuito'
+        const uniqueKey = `event_enrolled_${session.user.id}_${eventId}`
+
+        await GamificationEngine.awardPoints(session.user.id, pointsToAward, 'EVENT_ENROLLED', {
+          eventId,
+          eventTitle: event.title,
+          paid: isPaidEvent,
+          reasonLabel,
+          uniqueKey
+        })
+
+        const userPoints = await prisma.userPoints.findUnique({
+          where: { userId: session.user.id },
+          select: { totalPoints: true }
+        })
+
+        await notificationService.createNotification({
+          userId: session.user.id,
+          type: 'SPECIAL_EVENT' as any,
+          title: 'Pontos ganhos no evento',
+          message: `Você ganhou ${pointsToAward} pontos ao se inscrever em ${event.title}.`,
+          data: {
+            points: pointsToAward,
+            eventId,
+            eventTitle: event.title,
+            paid: isPaidEvent,
+            totalPoints: userPoints?.totalPoints ?? undefined
+          },
+          priority: isPaidEvent ? 'MEDIUM' : 'LOW'
+        })
+      }
+    } catch (e) {
+      console.error('Gamificação ao inscrever em evento falhou:', e)
+    }
 
     // Criar lembrete automático (24h antes do evento)
     const reminderTime = new Date(event.startDate.getTime() - 24 * 60 * 60 * 1000)

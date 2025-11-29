@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Calendar, Clock, MapPin, Users, Video, ExternalLink } from 'lucide-react'
+import { Calendar, Clock, MapPin, Users, Video, ExternalLink, Wifi, CreditCard } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,8 @@ export function EventCard({
   const isUpcoming = startDate > new Date()
   const isOngoing = startDate <= new Date() && endDate >= new Date()
   const isPast = endDate < new Date()
+  const isPaid = event.accessType === 'PAID'
+  const isTier = event.accessType === 'TIER'
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pt-BR', {
@@ -85,6 +87,21 @@ export function EventCard({
     if (onClick) {
       onClick()
     }
+  }
+
+  const formatPrice = (value?: number | string | null) => {
+    if (value === undefined || value === null) return 'Gratuito'
+    const parsed = typeof value === 'string' ? parseFloat(value) : value
+    if (!parsed || parsed === 0) return 'Gratuito'
+    return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
+  const handlePrimaryAction = () => {
+    if (isPaid) {
+      window.location.href = `/checkout?eventId=${event.id}`
+      return
+    }
+    handleCardClick()
   }
 
   const handleActionClick = (e: React.MouseEvent, action: () => void) => {
@@ -180,6 +197,14 @@ export function EventCard({
               >
                 {EVENT_TYPE_LABELS[event.type]}
               </Badge>
+              <Badge variant="secondary" className="gap-1">
+                {event.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
+              </Badge>
+              <Badge variant={isPaid ? 'outline' : 'default'} className="gap-1">
+                <CreditCard className="h-3 w-3" />
+                {isPaid ? formatPrice(event.price) : isTier ? 'Incluído no plano' : 'Gratuito'}
+              </Badge>
             </div>
           </div>
         </div>
@@ -243,12 +268,9 @@ export function EventCard({
             <div className="flex items-center space-x-2">
               <Button 
                 size="sm" 
-                onClick={(e) => handleActionClick(e, () => {
-                  // Implementar registro
-                  console.log('Registrar no evento:', event.id)
-                })}
+                onClick={(e) => handleActionClick(e, handlePrimaryAction)}
               >
-                Inscrever-se
+                {isPaid ? 'Ir para o checkout' : 'Inscrever-se'}
               </Button>
             </div>
 

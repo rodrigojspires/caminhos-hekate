@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus } from '@prisma/client'
+import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier } from '@prisma/client'
 
 // Schema para criar série recorrente
 const createRecurringSeriesSchema = z.object({
@@ -18,16 +18,21 @@ const createRecurringSeriesSchema = z.object({
   maxAttendees: z.number().positive().optional(),
   isPublic: z.boolean().default(true),
   requiresApproval: z.boolean().default(false),
+  accessType: z.nativeEnum(EventAccessType).default(EventAccessType.FREE),
+  price: z.number().nonnegative().optional(),
+  freeTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
+  mode: z.nativeEnum(EventMode).default(EventMode.ONLINE),
   tags: z.array(z.string()).default([]),
   metadata: z.record(z.any()).optional(),
   recurrence: z.object({
-    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'LUNAR']),
     interval: z.number().positive().default(1),
     byweekday: z.array(z.number().min(0).max(6)).optional(),
     bymonthday: z.array(z.number().min(1).max(31)).optional(),
     bymonth: z.array(z.number().min(1).max(12)).optional(),
     count: z.number().positive().optional(),
-    until: z.string().datetime().optional()
+    until: z.string().datetime().optional(),
+    lunarPhase: z.enum(['FULL', 'NEW']).optional()
   })
 })
 
@@ -227,6 +232,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (validatedData.accessType === EventAccessType.PAID && (!validatedData.price || validatedData.price <= 0)) {
+      return NextResponse.json(
+        { error: 'Defina um preço para eventos pagos' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.accessType === EventAccessType.TIER && (!validatedData.freeTiers || validatedData.freeTiers.length === 0)) {
+      return NextResponse.json(
+        { error: 'Selecione ao menos um tier com acesso incluído' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.mode === EventMode.IN_PERSON && !validatedData.location) {
+      return NextResponse.json(
+        { error: 'Informe o local para eventos presenciais' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.mode === EventMode.ONLINE && !validatedData.virtualLink) {
+      return NextResponse.json(
+        { error: 'Informe o link para eventos online' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.recurrence.freq === 'LUNAR' && !validatedData.recurrence.lunarPhase) {
+      validatedData.recurrence.lunarPhase = 'FULL'
+    }
+
     // Usar transação para criar evento pai e série recorrente
     const result = await prisma.$transaction(async (tx) => {
       // Criar evento pai (template)
@@ -244,6 +281,10 @@ export async function POST(request: NextRequest) {
           maxAttendees: validatedData.maxAttendees,
           isPublic: validatedData.isPublic,
           requiresApproval: validatedData.requiresApproval,
+          accessType: validatedData.accessType,
+          price: validatedData.price ?? null,
+          freeTiers: validatedData.freeTiers ?? [],
+          mode: validatedData.mode,
           tags: validatedData.tags,
           metadata: validatedData.metadata,
           createdBy: session.user.id

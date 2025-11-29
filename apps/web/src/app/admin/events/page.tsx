@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Plus, Loader2 } from 'lucide-react'
+import { Calendar, Plus, Loader2, Users } from 'lucide-react'
 
 interface EventItem {
   id: string
@@ -62,16 +62,25 @@ export default function AdminEventsPage() {
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {events.map((ev) => (
-              <div key={ev.id} className="py-4 flex items-center justify-between">
-                <div>
+              <div key={ev.id} className="py-4 flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="font-medium text-gray-900 dark:text-gray-100">{ev.title}</div>
                   {ev.description && (
                     <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ev.description}</div>
                   )}
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {ev.startDate ? new Date(ev.startDate).toLocaleDateString('pt-BR') : '--'}
+                    {ev.endDate ? ` — ${new Date(ev.endDate).toLocaleDateString('pt-BR')}` : ''}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {ev.startDate ? new Date(ev.startDate).toLocaleDateString('pt-BR') : '--'}
-                  {ev.endDate ? ` — ${new Date(ev.endDate).toLocaleDateString('pt-BR')}` : ''}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(`/admin/events/${ev.id}/attendees`)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <Users className="w-4 h-4" />
+                    Inscritos
+                  </button>
                 </div>
               </div>
             ))}

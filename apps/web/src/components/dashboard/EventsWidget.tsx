@@ -1,12 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, List, Loader2, MapPin, RefreshCw } from 'lucide-react'
+import { CalendarDays, List, Loader2, MapPin, RefreshCw, Wifi } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-type EventStatus = 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | string
+type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELED' | 'COMPLETED' | string
 
 interface EventItem {
   id: string
@@ -16,15 +16,19 @@ interface EventItem {
   endDate?: string
   status?: EventStatus
   category?: string | null
+  accessType?: 'FREE' | 'PAID' | 'TIER'
+  price?: number | string | null
+  freeTiers?: string[]
+  mode?: 'ONLINE' | 'IN_PERSON' | 'HYBRID'
 }
 
 type ViewMode = 'list' | 'calendar'
 
 const STATUS_COLORS: Record<EventStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  UPCOMING: 'bg-blue-100 text-blue-700',
+  PUBLISHED: 'bg-green-100 text-green-700',
+  DRAFT: 'bg-yellow-100 text-yellow-700',
   COMPLETED: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700'
+  CANCELED: 'bg-red-100 text-red-700'
 }
 
 const formatDate = (value?: string) => {
@@ -33,6 +37,23 @@ const formatDate = (value?: string) => {
     day: '2-digit',
     month: 'short'
   })
+}
+
+const formatPrice = (value?: number | string | null) => {
+  if (value === undefined || value === null) return 'Gratuito'
+  const parsed = typeof value === 'string' ? parseFloat(value) : value
+  if (!parsed || parsed === 0) return 'Gratuito'
+  return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+const getAccessLabel = (event: EventItem) => {
+  if (event.accessType === 'PAID') {
+    return formatPrice(event.price)
+  }
+  if (event.accessType === 'TIER') {
+    return `Incluído (${event.freeTiers?.join(', ') || 'tiers'})`
+  }
+  return 'Gratuito'
 }
 
 export function EventsWidget() {
@@ -47,7 +68,7 @@ export function EventsWidget() {
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/gamification/events?limit=50')
+      const res = await fetch('/api/events?limit=50&status=PUBLISHED')
       if (!res.ok) throw new Error('Erro ao carregar eventos')
       const data = await res.json()
       setEvents(data.events || [])
@@ -171,13 +192,16 @@ export function EventsWidget() {
                     <span className="text-sm font-medium text-foreground">{event.title}</span>
                     {event.status && (
                       <Badge className={STATUS_COLORS[event.status] || 'bg-gray-100 text-gray-700'}>
-                        {event.status === 'UPCOMING'
-                          ? 'Em breve'
-                          : event.status === 'ACTIVE'
-                          ? 'Ativo'
-                          : event.status}
+                        {event.status}
                       </Badge>
                     )}
+                    {event.mode && (
+                      <Badge variant="secondary" className="gap-1">
+                        {event.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                        {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
+                      </Badge>
+                    )}
+                    <Badge variant="outline">{getAccessLabel(event)}</Badge>
                   </div>
                   {event.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>

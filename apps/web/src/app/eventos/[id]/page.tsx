@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   Calendar,
   Clock,
@@ -17,7 +18,9 @@ import {
   CheckCircle,
   XCircle,
   UserPlus,
-  UserMinus
+  UserMinus,
+  Wifi,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,11 +33,13 @@ import { CalendarIntegrations } from '@/components/events/CalendarIntegrations';
 import { useEventsStore } from '@/stores/eventsStore';
 import { CalendarEvent } from '@/types/events';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 export default function EventDetailsPage() {
   const params = useParams();
   const eventId = params?.id as string;
   const router = useRouter();
+  const { data: session } = useSession();
 
   const {
     selectedEvent,
@@ -49,6 +54,8 @@ export default function EventDetailsPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
+  const [attendees, setAttendees] = useState<any[]>([]);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -56,8 +63,33 @@ export default function EventDetailsPage() {
     }
   }, [eventId, fetchEventById]);
 
+  const loadAttendees = async () => {
+    if (!eventId) return;
+    setAttendeesLoading(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/attendees?limit=100`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAttendees(data.attendees || []);
+    } catch (e) {
+      console.error('Erro ao carregar inscritos do evento', e);
+    } finally {
+      setAttendeesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAttendees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
   const handleRegister = async () => {
     if (!selectedEvent) return;
+
+    if (selectedEvent.accessType === 'PAID') {
+      window.location.href = `/checkout?eventId=${selectedEvent.id}`;
+      return;
+    }
     
     setIsRegistering(true);
     try {
@@ -171,7 +203,16 @@ export default function EventDetailsPage() {
   );
   const confirmedCount = (selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length ?? 0;
   const isEventFull = selectedEvent.maxAttendees !== undefined && confirmedCount >= selectedEvent.maxAttendees;
-  const isCreator = selectedEvent.createdBy === 'current-user-id'; // Replace with actual user ID check
+  const isCreator = session?.user?.id && selectedEvent.createdBy === session.user.id;
+  const isPaid = selectedEvent.accessType === 'PAID';
+  const isTier = selectedEvent.accessType === 'TIER';
+
+  const formatPrice = (value?: number | string | null) => {
+    if (value === undefined || value === null) return 'Gratuito';
+    const parsed = typeof value === 'string' ? parseFloat(value) : value;
+    if (!parsed || parsed === 0) return 'Gratuito';
+    return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
@@ -198,6 +239,14 @@ export default function EventDetailsPage() {
                   className="text-sm"
                 >
                   {selectedEvent.status}
+                </Badge>
+                <Badge variant="secondary" className="text-sm gap-1">
+                  {selectedEvent.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                  {selectedEvent.mode === 'IN_PERSON' ? 'Presencial' : selectedEvent.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
+                </Badge>
+                <Badge variant={isPaid ? 'outline' : 'default'} className="text-sm gap-1">
+                  <CreditCard className="h-3 w-3" />
+                  {isPaid ? formatPrice((selectedEvent as any).price ?? selectedEvent.price) : isTier ? 'Incluído no plano' : 'Gratuito'}
                 </Badge>
                 {isEventPast && (
                   <Badge variant="destructive" className="text-sm">
@@ -277,7 +326,7 @@ export default function EventDetailsPage() {
                       ) : (
                         <UserPlus className="h-4 w-4" />
                       )}
-                      {isEventFull ? 'Evento Lotado' : 'Inscrever-se'}
+                      {isEventFull ? 'Evento Lotado' : isPaid ? 'Ir para o checkout' : 'Inscrever-se'}
                     </Button>
                   )}
                 </>
@@ -377,35 +426,41 @@ export default function EventDetailsPage() {
             )}
 
             {/* Participants */}
-            {(selectedEvent as any).registrations && (selectedEvent as any).registrations.length > 0 && (
+            {(isCreator || attendees.length > 0) && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Participantes Confirmados</CardTitle>
+                <CardHeader className="flex items-center justify-between">
+                  <CardTitle>Participantes</CardTitle>
+                  {attendeesLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(selectedEvent as any).registrations
-                      .filter((reg: any) => reg.status === 'CONFIRMED')
-                      .map((registration: any, index: number) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                  {attendees.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum inscrito ainda.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {attendees.map((registration: any) => (
+                        <div key={registration.id} className="flex items-center gap-3 p-3 border rounded-lg">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={registration.user?.image} alt={registration.user?.name || 'Usuário'} />
                             <AvatarFallback>
                               {registration.user?.name?.charAt(0) || registration.guestName?.charAt(0) || 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium text-sm">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
                               {registration.user?.name || registration.guestName || 'Usuário'}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 truncate">
                               {registration.user?.email || registration.guestEmail}
                             </p>
+                            <p className="text-[11px] text-muted-foreground">{registration.status}</p>
                           </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(registration.registeredAt).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
-                      ))
-                    }
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

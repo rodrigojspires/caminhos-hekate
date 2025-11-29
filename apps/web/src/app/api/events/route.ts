@@ -3,13 +3,15 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus } from '@prisma/client'
+import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@prisma/client'
+import { notificationService } from '@/lib/notifications/notification-service'
 
 // Schema de validação para criação de eventos
 const createEventSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório').max(200),
   description: z.string().optional(),
   type: z.nativeEnum(EventType),
+  status: z.nativeEnum(EventStatus).default(EventStatus.PUBLISHED),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
   timezone: z.string().default('America/Sao_Paulo'),
@@ -18,18 +20,63 @@ const createEventSchema = z.object({
   maxAttendees: z.number().positive().optional(),
   isPublic: z.boolean().default(true),
   requiresApproval: z.boolean().default(false),
+  accessType: z.nativeEnum(EventAccessType).default(EventAccessType.FREE),
+  price: z.number().nonnegative().optional(),
+  freeTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
+  mode: z.nativeEnum(EventMode).default(EventMode.ONLINE),
   tags: z.array(z.string()).default([]),
   metadata: z.record(z.any()).optional(),
   recurrence: z.object({
-    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'LUNAR']),
     interval: z.number().positive().default(1),
     byweekday: z.array(z.number().min(0).max(6)).optional(),
     bymonthday: z.array(z.number().min(1).max(31)).optional(),
     bymonth: z.array(z.number().min(1).max(12)).optional(),
     count: z.number().positive().optional(),
-    until: z.string().datetime().optional()
+    until: z.string().datetime().optional(),
+    lunarPhase: z.enum(['FULL', 'NEW']).optional()
   }).optional()
 })
+
+async function notifyEventPublication(event: { id: string; title: string; slug?: string }) {
+  try {
+    const recipients = await prisma.user.findMany({
+      where: { role: Role.MEMBER },
+      select: { id: true }
+    })
+
+    if (!recipients.length) return
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || ''
+    const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : ''
+    const eventUrl = event.slug
+      ? `${normalizedBase}/eventos/${event.slug}`
+      : `${normalizedBase}/eventos/${event.id}`
+
+    const title = `Novo evento disponível: ${event.title}`
+    const message = `O evento "${event.title}" foi publicado. Confira os detalhes.`
+
+    await Promise.all(
+      recipients.map(({ id: userId }) =>
+        notificationService.createNotification({
+          userId,
+          type: 'SYSTEM_ANNOUNCEMENT' as any,
+          title,
+          message,
+          data: {
+            actionUrl: eventUrl,
+            actionLabel: 'Ver evento',
+            eventId: event.id
+          },
+          priority: 'MEDIUM',
+          isPush: false
+        })
+      )
+    )
+  } catch (error) {
+    console.error('Erro ao enviar broadcast de evento:', error)
+  }
+}
 
 // Schema de validação para filtros
 const filtersSchema = z.object({
@@ -206,13 +253,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validar acesso e preço
+    if (validatedData.accessType === EventAccessType.PAID && (!validatedData.price || validatedData.price <= 0)) {
+      return NextResponse.json(
+        { error: 'Defina um preço para eventos pagos' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.accessType === EventAccessType.TIER && (!validatedData.freeTiers || validatedData.freeTiers.length === 0)) {
+      return NextResponse.json(
+        { error: 'Selecione ao menos um tier que terá acesso gratuito' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.mode === EventMode.IN_PERSON && !validatedData.location) {
+      return NextResponse.json(
+        { error: 'Informe o local para eventos presenciais' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.mode === EventMode.ONLINE && !validatedData.virtualLink) {
+      return NextResponse.json(
+        { error: 'Informe o link para eventos online' },
+        { status: 400 }
+      )
+    }
+
+    if (validatedData.recurrence?.freq === 'LUNAR' && !validatedData.recurrence.lunarPhase) {
+      validatedData.recurrence.lunarPhase = 'FULL'
+    }
+
     // Criar evento
     const event = await prisma.event.create({
       data: {
         title: validatedData.title,
         description: validatedData.description,
         type: validatedData.type,
-        status: EventStatus.DRAFT,
+        status: validatedData.status || EventStatus.PUBLISHED,
         startDate,
         endDate,
         timezone: validatedData.timezone,
@@ -221,6 +301,10 @@ export async function POST(request: NextRequest) {
         maxAttendees: validatedData.maxAttendees,
         isPublic: validatedData.isPublic,
         requiresApproval: validatedData.requiresApproval,
+        accessType: validatedData.accessType,
+        price: validatedData.price ?? null,
+        freeTiers: validatedData.freeTiers ?? [],
+        mode: validatedData.mode,
         tags: validatedData.tags,
         metadata: validatedData.metadata,
         createdBy: session.user.id
@@ -254,6 +338,10 @@ export async function POST(request: NextRequest) {
           isActive: true
         }
       })
+    }
+
+    if (event.status === EventStatus.PUBLISHED) {
+      await notifyEventPublication({ id: event.id, title: event.title, slug: (event as any).slug })
     }
 
     return NextResponse.json(event, { status: 201 })

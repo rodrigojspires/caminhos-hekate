@@ -64,6 +64,8 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const [enrollCourseIds, setEnrollCourseIds] = useState<string[]>([])
   const hasProcessedEnroll = useRef(false)
+  const [eventItem, setEventItem] = useState<{ id: string; title: string; price: number } | null>(null)
+  const hasProcessedEvent = useRef(false)
 
   useEffect(() => {
     try {
@@ -72,6 +74,26 @@ export default function CheckoutPage() {
       if (ids && ids.length > 0) setEnrollCourseIds(ids)
       else if (single) setEnrollCourseIds([single])
     } catch {}
+  }, [searchParams])
+
+  useEffect(() => {
+    const eventId = searchParams?.get('eventId')
+    if (!eventId || hasProcessedEvent.current) return
+    hasProcessedEvent.current = true
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/events/${eventId}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data?.id && data?.price != null) {
+          setEventItem({
+            id: data.id,
+            title: data.title,
+            price: Number(data.price)
+          })
+        }
+      } catch {}
+    })()
   }, [searchParams])
 
   // Quando vem de um fluxo de curso, garante item no carrinho
@@ -431,6 +453,9 @@ export default function CheckoutPage() {
     if (enrollCourseIds.length > 0) {
       orderPayload.enrollCourseIds = enrollCourseIds
     }
+    if (eventItem) {
+      orderPayload.eventIds = [eventItem.id]
+    }
 
     const res = await fetch('/api/shop/order', {
       method: 'POST',
@@ -444,6 +469,10 @@ export default function CheckoutPage() {
   }
 
   if (!cart || !totals) return <div className="container mx-auto py-8">Carregando...</div>
+
+  const eventTotal = eventItem ? Number(eventItem.price) : 0
+  const grandTotal = totals ? totals.total : eventTotal
+  const formatCurrency = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   return (
     <>
@@ -552,8 +581,14 @@ export default function CheckoutPage() {
         </div>
         <div className="border rounded p-4 h-fit">
           <h2 className="font-semibold mb-3">Resumo</h2>
-          <div className="flex justify-between"><span>Subtotal</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.subtotal)}</span></div>
-          <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.discount)}</span></div>
+          <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+          {eventItem && (
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Evento: {eventItem.title}</span>
+              <span>{formatCurrency(eventTotal)}</span>
+            </div>
+          )}
+          <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {formatCurrency(totals.discount)}</span></div>
           <div className="mt-3 rounded border border-dashed border-muted-foreground/30 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -577,7 +612,7 @@ export default function CheckoutPage() {
               </div>
               <div className="text-right">
                 <div className="font-semibold">
-                  {Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.shipping)}
+                  {formatCurrency(totals.shipping)}
                 </div>
                 {cart?.shipping?.options?.length > 1 && (
                   <button
@@ -599,7 +634,7 @@ export default function CheckoutPage() {
               </span>
             </div>
           )}
-          <div className="flex justify-between font-bold mt-2"><span>Total</span><span>{Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.total)}</span></div>
+          <div className="flex justify-between font-bold mt-2"><span>Total</span><span>{formatCurrency(grandTotal)}</span></div>
           <button disabled={loading || status !== 'authenticated'} onClick={submit} className="mt-4 w-full btn-mystic-enhanced disabled:opacity-60">{loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}</button>
         </div>
       </div>

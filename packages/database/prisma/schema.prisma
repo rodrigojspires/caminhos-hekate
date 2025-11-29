@@ -1813,6 +1813,10 @@ model Event {
   maxAttendees      Int?
   isPublic          Boolean             @default(true)
   requiresApproval  Boolean             @default(false)
+  accessType        EventAccessType     @default(FREE) @map("access_type")
+  price             Decimal?            @db.Decimal(10, 2)
+  freeTiers         SubscriptionTier[]  @default([]) @map("free_tiers")
+  mode              EventMode           @default(ONLINE)
   tags              String[]
   metadata          Json?
   createdBy         String
@@ -1941,11 +1945,23 @@ enum EventType {
   TRAINING
 }
 
+enum EventMode {
+  ONLINE
+  IN_PERSON
+  HYBRID
+}
+
 enum EventStatus {
   DRAFT
   PUBLISHED
   CANCELED
   COMPLETED
+}
+
+enum EventAccessType {
+  FREE
+  PAID
+  TIER
 }
 
 enum EventRegistrationStatus {
