@@ -50,11 +50,6 @@ const navigation = [
     icon: ShoppingBag,
   },
   {
-    name: 'Certificados',
-    href: '/dashboard/certificates',
-    icon: Award,
-  },
-  {
     name: 'Ferramentas: Horas Planetárias',
     href: '/dashboard/tools/planetary-hours',
     icon: Wrench,

@@ -4,6 +4,7 @@ import { ProgressOverview } from '@/components/dashboard/ProgressOverview'
 import { RecommendedCourses } from '@/components/dashboard/RecommendedCourses'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { QuickActions } from '@/components/dashboard/QuickActions'
+import { EventsWidget } from '@/components/dashboard/EventsWidget'
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard'
 
 export const metadata: Metadata = {
@@ -19,6 +20,9 @@ export default function DashboardPage() {
       
       {/* Quick Actions */}
       <QuickActions />
+      
+      {/* Events */}
+      <EventsWidget />
       
       {/* Stats Overview */}
       <DashboardStats />

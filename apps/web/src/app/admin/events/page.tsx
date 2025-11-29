@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Calendar, Plus, Loader2 } from 'lucide-react'
 
 interface EventItem {
@@ -13,6 +14,7 @@ interface EventItem {
 }
 
 export default function AdminEventsPage() {
+  const router = useRouter()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -39,7 +41,10 @@ export default function AdminEventsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Eventos</h1>
           <p className="text-gray-600 dark:text-gray-400">Gerencie eventos e atividades da plataforma</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+        <button
+          onClick={() => router.push('/admin/events/new')}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+        >
           <Plus className="w-4 h-4" /> Novo Evento
         </button>
       </div>
@@ -76,4 +81,3 @@ export default function AdminEventsPage() {
     </div>
   )
 }
-
