@@ -2,21 +2,31 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar as CalendarIcon, Save, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calendar as CalendarIcon, Save, Loader2, CreditCard, MapPin, Wifi } from 'lucide-react'
 import { toast } from 'sonner'
+import { SubscriptionTier } from '@hekate/database'
 
-type EventType = 'COMPETITION' | 'CHALLENGE' | 'TOURNAMENT'
+type EventType = 'WEBINAR' | 'WORKSHOP' | 'MEETING' | 'COMMUNITY' | 'CONFERENCE'
+type EventAccessType = 'FREE' | 'PAID' | 'TIER'
+type EventMode = 'ONLINE' | 'IN_PERSON' | 'HYBRID'
 
 interface EventFormState {
   title: string
   description: string
-  eventType: EventType
+  type: EventType
   category: string
   startDate: string
   endDate: string
   maxParticipants: string
-  entryFeePoints: string
-  prizePoolPoints: string
+  location: string
+  virtualLink: string
+  accessType: EventAccessType
+  price: string
+  freeTiers: SubscriptionTier[]
+  mode: EventMode
+  isPublic: boolean
+  requiresApproval: boolean
+  tags: string
   rules: string
   metadata: string
 }
@@ -24,13 +34,20 @@ interface EventFormState {
 const defaultFormState: EventFormState = {
   title: '',
   description: '',
-  eventType: 'COMPETITION',
+  type: 'WEBINAR',
   category: '',
   startDate: '',
   endDate: '',
   maxParticipants: '',
-  entryFeePoints: '',
-  prizePoolPoints: '',
+  location: '',
+  virtualLink: '',
+  accessType: 'FREE',
+  price: '',
+  freeTiers: [],
+  mode: 'ONLINE',
+  isPublic: true,
+  requiresApproval: false,
+  tags: '',
   rules: '',
   metadata: ''
 }
@@ -69,11 +86,10 @@ export default function NewAdminEventPage() {
       return
     }
 
-    const numericFields = ['maxParticipants', 'entryFeePoints', 'prizePoolPoints'] as const
+    const numericFields = ['maxParticipants', 'price'] as const
     const numericLabels: Record<typeof numericFields[number], string> = {
       maxParticipants: 'Máx. participantes',
-      entryFeePoints: 'Taxa de entrada',
-      prizePoolPoints: 'Premiação'
+      price: 'Preço'
     }
     for (const field of numericFields) {
       const raw = form[field].trim()
@@ -83,24 +99,59 @@ export default function NewAdminEventPage() {
       }
     }
 
+    if (form.accessType === 'PAID' && (!form.price || Number(form.price) <= 0)) {
+      toast.error('Defina um preço para eventos pagos')
+      return
+    }
+
+    if (form.accessType === 'TIER' && form.freeTiers.length === 0) {
+      toast.error('Selecione ao menos um tier com acesso incluído')
+      return
+    }
+
+    if (form.mode === 'IN_PERSON' && !form.location.trim()) {
+      toast.error('Informe o local para eventos presenciais')
+      return
+    }
+
+    if (form.mode === 'ONLINE' && !form.virtualLink.trim()) {
+      toast.error('Informe o link para eventos online')
+      return
+    }
+
+    if (form.mode === 'HYBRID' && (!form.location.trim() || !form.virtualLink.trim())) {
+      toast.error('Eventos híbridos precisam de local e link')
+      return
+    }
+
     try {
       setSaving(true)
 
       const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
-        eventType: form.eventType,
+        type: form.type,
         category: form.category.trim() || null,
         startDate: form.startDate,
         endDate: form.endDate,
-        maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : null,
-        entryFeePoints: form.entryFeePoints ? Number(form.entryFeePoints) : 0,
-        prizePoolPoints: form.prizePoolPoints ? Number(form.prizePoolPoints) : 0,
+        maxAttendees: form.maxParticipants ? Number(form.maxParticipants) : null,
+        location: form.location.trim() || null,
+        virtualLink: form.virtualLink.trim() || null,
+        accessType: form.accessType,
+        price: form.price ? Number(form.price) : undefined,
+        freeTiers: form.freeTiers,
+        mode: form.mode,
+        isPublic: form.isPublic,
+        requiresApproval: form.requiresApproval,
+        tags: form.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(Boolean),
         rules: parseJsonField(form.rules, 'regras'),
         metadata: parseJsonField(form.metadata, 'metadados')
       }
 
-      const response = await fetch('/api/gamification/events', {
+      const response = await fetch('/api/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -215,13 +266,15 @@ export default function NewAdminEventPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de evento</label>
                 <select
-                  value={form.eventType}
-                  onChange={(e) => handleChange('eventType', e.target.value as EventType)}
+                  value={form.type}
+                  onChange={(e) => handleChange('type', e.target.value as EventType)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
-                  <option value="COMPETITION">Competição</option>
-                  <option value="CHALLENGE">Desafio</option>
-                  <option value="TOURNAMENT">Torneio</option>
+                  <option value="WEBINAR">Webinar</option>
+                  <option value="WORKSHOP">Workshop</option>
+                  <option value="MEETING">Reunião</option>
+                  <option value="COMMUNITY">Comunidade</option>
+                  <option value="CONFERENCE">Conferência</option>
                 </select>
               </div>
               <div>
@@ -255,31 +308,141 @@ export default function NewAdminEventPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taxa de entrada (pontos)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.entryFeePoints}
-                  onChange={(e) => handleChange('entryFeePoints', e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato</label>
+                <select
+                  value={form.mode}
+                  onChange={(e) => handleChange('mode', e.target.value as EventMode)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
+                >
+                  <option value="ONLINE">Online</option>
+                  <option value="IN_PERSON">Presencial</option>
+                  <option value="HYBRID">Híbrido</option>
+                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Premiação (pontos)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.prizePoolPoints}
-                  onChange={(e) => handleChange('prizePoolPoints', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Endereço (obrigatório se presencial)"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link virtual</label>
+                <div className="flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={form.virtualLink}
+                    onChange={(e) => handleChange('virtualLink', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="https://meet..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Acesso e preço
+            </h3>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Acesso</label>
+                  <select
+                    value={form.accessType}
+                    onChange={(e) => handleChange('accessType', e.target.value as EventAccessType)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="FREE">Gratuito</option>
+                    <option value="PAID">Pago</option>
+                    <option value="TIER">Incluído em tiers</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço (R$)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    disabled={form.accessType !== 'PAID'}
+                    value={form.price}
+                    onChange={(e) => handleChange('price', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {form.accessType === 'TIER' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tiers com acesso incluído</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[SubscriptionTier.INICIADO, SubscriptionTier.ADEPTO, SubscriptionTier.SACERDOCIO].map((tier) => {
+                      const active = form.freeTiers.includes(tier)
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              freeTiers: active ? prev.freeTiers.filter((t) => t !== tier) : [...prev.freeTiers, tier]
+                            }))
+                          }
+                          className={`px-3 py-1 rounded border text-sm ${
+                            active
+                              ? 'bg-purple-600 text-white border-purple-600'
+                              : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+                          }`}
+                        >
+                          {tier}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isPublic}
+                    onChange={(e) => setForm((prev) => ({ ...prev, isPublic: e.target.checked }))}
+                  />
+                  Evento público
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.requiresApproval}
+                    onChange={(e) => setForm((prev) => ({ ...prev, requiresApproval: e.target.checked }))}
+                  />
+                  Requer aprovação
+                </label>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (separadas por vírgula)</label>
+              <input
+                type="text"
+                value={form.tags}
+                onChange={(e) => handleChange('tags', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="ex: ritual, online, lua cheia"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Regras (JSON opcional)</label>
               <textarea
