@@ -166,6 +166,7 @@ export async function GET(request: NextRequest) {
       prisma.event.findMany({
         where,
         include: {
+          recurringEvents: true,
           creator: {
             select: {
               id: true,
@@ -187,13 +188,89 @@ export async function GET(request: NextRequest) {
       prisma.event.count({ where })
     ])
 
-    // Calcular paginação
+    // Expandir recorrência (gera instâncias futuras leves)
+    const expandRecurring = (event: any) => {
+      if (!event.recurringEvents || event.recurringEvents.length === 0) return [event]
+      const occurrences: any[] = [event]
+
+      for (const recurring of event.recurringEvents) {
+        const rule = recurring.recurrenceRule as any
+        const freq = rule?.freq
+        if (!freq) continue
+
+        const baseStart = new Date(event.startDate)
+        const baseEnd = new Date(event.endDate)
+        const interval = Number(rule.interval || 1)
+        const count = Number(rule.count || 6)
+        const until = rule.until ? new Date(rule.until) : null
+
+        const addOccurrence = (index: number, offsetMs: number) => {
+          const start = new Date(baseStart.getTime() + offsetMs)
+          const end = new Date(baseEnd.getTime() + offsetMs)
+          if (until && start > until) return
+          occurrences.push({
+            ...event,
+            id: `${event.id}-r${index}`,
+            startDate: start,
+            endDate: end
+          })
+        }
+
+        for (let i = 1; i <= count; i++) {
+          let offset = 0
+          switch (freq) {
+            case 'DAILY':
+              offset = i * interval * 24 * 60 * 60 * 1000
+              break
+            case 'WEEKLY':
+              offset = i * interval * 7 * 24 * 60 * 60 * 1000
+              break
+            case 'MONTHLY': {
+              const start = new Date(baseStart)
+              start.setMonth(start.getMonth() + i * interval)
+              const end = new Date(baseEnd)
+              end.setMonth(end.getMonth() + i * interval)
+              if (until && start > until) continue
+              occurrences.push({ ...event, id: `${event.id}-r${i}`, startDate: start, endDate: end })
+              continue
+            }
+            case 'YEARLY': {
+              const start = new Date(baseStart)
+              start.setFullYear(start.getFullYear() + i * interval)
+              const end = new Date(baseEnd)
+              end.setFullYear(end.getFullYear() + i * interval)
+              if (until && start > until) continue
+              occurrences.push({ ...event, id: `${event.id}-r${i}`, startDate: start, endDate: end })
+              continue
+            }
+            case 'LUNAR': {
+              const lunarDays = 29.53
+              offset = Math.round(i * interval * lunarDays * 24 * 60 * 60 * 1000)
+              break
+            }
+            default:
+              continue
+          }
+          if (freq !== 'MONTHLY' && freq !== 'YEARLY') {
+            addOccurrence(i, offset)
+          }
+        }
+      }
+
+      return occurrences
+    }
+
+    const expandedEvents = events.flatMap(expandRecurring).sort((a: any, b: any) => {
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    })
+
+    // Calcular paginação (mantém total base)
     const totalPages = Math.ceil(total / limit)
     const hasNext = page < totalPages
     const hasPrev = page > 1
 
     return NextResponse.json({
-      events,
+      events: expandedEvents,
       pagination: {
         page,
         limit,
