@@ -78,7 +78,7 @@ export default function NewAdminEventPage() {
     }
   }
 
-  const handleSave = async () => {
+  async function handleSave() {
     if (!form.title.trim()) {
       toast.error('Título é obrigatório')
       return
@@ -191,7 +191,7 @@ export default function NewAdminEventPage() {
     } finally {
       setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
