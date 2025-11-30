@@ -56,6 +56,12 @@ export default function NewAdminEventPage() {
   const router = useRouter()
   const [form, setForm] = useState<EventFormState>(defaultFormState)
   const [saving, setSaving] = useState(false)
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false)
+  const [recurrenceType, setRecurrenceType] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'LUNAR' | 'none'>('none')
+  const [recurrenceInterval, setRecurrenceInterval] = useState('1')
+  const [recurrenceUntil, setRecurrenceUntil] = useState('')
+  const [recurrenceCount, setRecurrenceCount] = useState('')
+  const [recurrenceLunarPhase, setRecurrenceLunarPhase] = useState<'FULL' | 'NEW' | ''>('')
 
   const handleChange = (field: keyof EventFormState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -63,7 +69,7 @@ export default function NewAdminEventPage() {
 
   const parseJsonField = (value: string, label: string) => {
     const trimmed = value.trim()
-    if (!trimmed) return null
+    if (!trimmed) return undefined
 
     try {
       return JSON.parse(trimmed)
@@ -127,16 +133,27 @@ export default function NewAdminEventPage() {
     try {
       setSaving(true)
 
+      let recurrence
+      if (recurrenceEnabled && recurrenceType !== 'none') {
+        recurrence = {
+          freq: recurrenceType,
+          interval: recurrenceInterval ? Number(recurrenceInterval) : 1,
+          until: recurrenceUntil ? new Date(recurrenceUntil).toISOString() : undefined,
+          count: recurrenceCount ? Number(recurrenceCount) : undefined,
+          lunarPhase: recurrenceType === 'LUNAR' ? (recurrenceLunarPhase || 'FULL') : undefined
+        }
+      }
+
       const payload = {
         title: form.title.trim(),
-        description: form.description.trim() || null,
+        description: form.description.trim() || undefined,
         type: form.type,
-        category: form.category.trim() || null,
+        category: form.category.trim() || undefined,
         startDate: form.startDate,
         endDate: form.endDate,
-        maxAttendees: form.maxParticipants ? Number(form.maxParticipants) : null,
-        location: form.location.trim() || null,
-        virtualLink: form.virtualLink.trim() || null,
+        maxAttendees: form.maxParticipants ? Number(form.maxParticipants) : undefined,
+        location: form.location.trim() || undefined,
+        virtualLink: form.virtualLink.trim() || undefined,
         accessType: form.accessType,
         price: form.price ? Number(form.price) : undefined,
         freeTiers: form.freeTiers,
@@ -148,7 +165,8 @@ export default function NewAdminEventPage() {
           .map(tag => tag.trim())
           .filter(Boolean),
         rules: parseJsonField(form.rules, 'regras'),
-        metadata: parseJsonField(form.metadata, 'metadados')
+        metadata: parseJsonField(form.metadata, 'metadados'),
+        recurrence
       }
 
       const response = await fetch('/api/events', {
@@ -463,6 +481,93 @@ export default function NewAdminEventPage() {
                 placeholder='Ex: {"banner":"/images/evento.png","cta":"Participar agora"}'
               />
             </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white">Recorrência</label>
+                <p className="text-xs text-muted-foreground">Configure eventos recorrentes (diários, semanais, mensais, anuais ou lua cheia/nova)</p>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={recurrenceEnabled}
+                  onChange={(e) => setRecurrenceEnabled(e.target.checked)}
+                />
+                Ativar
+              </label>
+            </div>
+
+            {recurrenceEnabled && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select
+                      value={recurrenceType}
+                      onChange={(e) => setRecurrenceType(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="none">Não repetir</option>
+                      <option value="DAILY">Diário</option>
+                      <option value="WEEKLY">Semanal</option>
+                      <option value="MONTHLY">Mensal</option>
+                      <option value="YEARLY">Anual</option>
+                      <option value="LUNAR">Lunar (lua cheia/nova)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Intervalo</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={recurrenceInterval}
+                      onChange={(e) => setRecurrenceInterval(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {recurrenceType === 'LUNAR' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fase</label>
+                    <select
+                      value={recurrenceLunarPhase}
+                      onChange={(e) => setRecurrenceLunarPhase(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="FULL">Lua Cheia</option>
+                      <option value="NEW">Lua Nova</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até (data opcional)</label>
+                    <input
+                      type="datetime-local"
+                      value={recurrenceUntil}
+                      onChange={(e) => setRecurrenceUntil(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ocorrências (opcional)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={recurrenceCount}
+                      onChange={(e) => setRecurrenceCount(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Ex: 5"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
