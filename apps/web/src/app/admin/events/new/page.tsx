@@ -191,7 +191,7 @@ export default function NewAdminEventPage() {
     } finally {
       setSaving(false)
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
