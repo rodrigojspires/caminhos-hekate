@@ -309,265 +309,269 @@ export default function NewAdminEventPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Configurações</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Configurações</h3>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Máx. participantes</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.maxParticipants}
-                  onChange={(e) => handleChange('maxParticipants', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Ilimitado se vazio"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato</label>
-                <select
-                  value={form.mode}
-                  onChange={(e) => handleChange('mode', e.target.value as EventMode)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="ONLINE">Online</option>
-                  <option value="IN_PERSON">Presencial</option>
-                  <option value="HYBRID">Híbrido</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local</label>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={form.location}
-                    onChange={(e) => handleChange('location', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Endereço (obrigatório se presencial)"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link virtual</label>
-                <div className="flex items-center gap-2">
-                  <Wifi className="w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={form.virtualLink}
-                    onChange={(e) => handleChange('virtualLink', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="https://meet..."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <CreditCard className="w-4 h-4" /> Acesso e preço
-            </h3>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Acesso</label>
-                  <select
-                    value={form.accessType}
-                    onChange={(e) => handleChange('accessType', e.target.value as EventAccessType)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="FREE">Gratuito</option>
-                    <option value="PAID">Pago</option>
-                    <option value="TIER">Incluído em tiers</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço (R$)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Máx. participantes</label>
                   <input
                     type="number"
                     min={0}
-                    step="0.01"
-                    disabled={form.accessType !== 'PAID'}
-                    value={form.price}
-                    onChange={(e) => handleChange('price', e.target.value)}
+                    value={form.maxParticipants}
+                    onChange={(e) => handleChange('maxParticipants', e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Ilimitado se vazio"
                   />
                 </div>
-              </div>
-
-              {form.accessType === 'TIER' && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tiers com acesso incluído</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[SubscriptionTier.INICIADO, SubscriptionTier.ADEPTO, SubscriptionTier.SACERDOCIO].map((tier) => {
-                      const active = form.freeTiers.includes(tier)
-                      return (
-                        <button
-                          key={tier}
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              freeTiers: active ? prev.freeTiers.filter((t) => t !== tier) : [...prev.freeTiers, tier]
-                            }))
-                          }
-                          className={`px-3 py-1 rounded border text-sm ${
-                            active
-                              ? 'bg-purple-600 text-white border-purple-600'
-                              : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200'
-                          }`}
-                        >
-                          {tier}
-                        </button>
-                      )
-                    })}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato</label>
+                  <select
+                    value={form.mode}
+                    onChange={(e) => handleChange('mode', e.target.value as EventMode)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="ONLINE">Online</option>
+                    <option value="IN_PERSON">Presencial</option>
+                    <option value="HYBRID">Híbrido</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local</label>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={form.location}
+                      onChange={(e) => handleChange('location', e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Endereço (obrigatório se presencial)"
+                    />
                   </div>
                 </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.isPublic}
-                    onChange={(e) => setForm((prev) => ({ ...prev, isPublic: e.target.checked }))}
-                  />
-                  Evento público
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.requiresApproval}
-                    onChange={(e) => setForm((prev) => ({ ...prev, requiresApproval: e.target.checked }))}
-                  />
-                  Requer aprovação
-                </label>
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link virtual</label>
+                  <div className="flex items-center gap-2">
+                    <Wifi className="w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={form.virtualLink}
+                      onChange={(e) => handleChange('virtualLink', e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus-border-transparent"
+                      placeholder="https://meet..."
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (separadas por vírgula)</label>
-              <input
-                type="text"
-                value={form.tags}
-                onChange={(e) => handleChange('tags', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="ex: ritual, online, lua cheia"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Regras (JSON opcional)</label>
-              <textarea
-                rows={3}
-                value={form.rules}
-                onChange={(e) => handleChange('rules', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder='Ex: {"minLevel":1,"requirements":["Concluir módulo X"]}'
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Metadados (JSON opcional)</label>
-              <textarea
-                rows={3}
-                value={form.metadata}
-                onChange={(e) => handleChange('metadata', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder='Ex: {"banner":"/images/evento.png","cta":"Participar agora"}'
-              />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white">Recorrência</label>
-                <p className="text-xs text-muted-foreground">Configure eventos recorrentes (diários, semanais, mensais, anuais ou lua cheia/nova)</p>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (separadas por vírgula)</label>
                 <input
-                  type="checkbox"
-                  checked={recurrenceEnabled}
-                  onChange={(e) => setRecurrenceEnabled(e.target.checked)}
+                  type="text"
+                  value={form.tags}
+                  onChange={(e) => handleChange('tags', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="ex: ritual, online, lua cheia"
                 />
-                Ativar
-              </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Regras (JSON opcional)</label>
+                <textarea
+                  rows={3}
+                  value={form.rules}
+                  onChange={(e) => handleChange('rules', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder='Ex: {"minLevel":1,"requirements":["Concluir módulo X"]}'
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Metadados (JSON opcional)</label>
+                <textarea
+                  rows={3}
+                  value={form.metadata}
+                  onChange={(e) => handleChange('metadata', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder='Ex: {"banner":"/images/evento.png","cta":"Participar agora"}'
+                />
+              </div>
             </div>
+          </div>
 
-            {recurrenceEnabled && (
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <CreditCard className="w-4 h-4" /> Acesso e preço
+              </h3>
+
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Acesso</label>
                     <select
-                      value={recurrenceType}
-                      onChange={(e) => setRecurrenceType(e.target.value as any)}
+                      value={form.accessType}
+                      onChange={(e) => handleChange('accessType', e.target.value as EventAccessType)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                      <option value="none">Não repetir</option>
-                      <option value="DAILY">Diário</option>
-                      <option value="WEEKLY">Semanal</option>
-                      <option value="MONTHLY">Mensal</option>
-                      <option value="YEARLY">Anual</option>
-                      <option value="LUNAR">Lunar (lua cheia/nova)</option>
+                      <option value="FREE">Gratuito</option>
+                      <option value="PAID">Pago</option>
+                      <option value="TIER">Incluído em tiers</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Intervalo</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço (R$)</label>
                     <input
                       type="number"
-                      min={1}
-                      value={recurrenceInterval}
-                      onChange={(e) => setRecurrenceInterval(e.target.value)}
+                      min={0}
+                      step="0.01"
+                      disabled={form.accessType !== 'PAID'}
+                      value={form.price}
+                      onChange={(e) => handleChange('price', e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
-                {recurrenceType === 'LUNAR' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fase</label>
-                    <select
-                      value={recurrenceLunarPhase}
-                      onChange={(e) => setRecurrenceLunarPhase(e.target.value as any)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">Selecione</option>
-                      <option value="FULL">Lua Cheia</option>
-                      <option value="NEW">Lua Nova</option>
-                    </select>
+                {form.accessType === 'TIER' && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tiers com acesso incluído</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[SubscriptionTier.INICIADO, SubscriptionTier.ADEPTO, SubscriptionTier.SACERDOCIO].map((tier) => {
+                        const active = form.freeTiers.includes(tier)
+                        return (
+                          <button
+                            key={tier}
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                freeTiers: active ? prev.freeTiers.filter((t) => t !== tier) : [...prev.freeTiers, tier]
+                              }))
+                            }
+                            className={`px-3 py-1 rounded border text-sm ${
+                              active
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+                            }`}
+                          >
+                            {tier}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até (data opcional)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 text-sm">
                     <input
-                      type="datetime-local"
-                      value={recurrenceUntil}
-                      onChange={(e) => setRecurrenceUntil(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      type="checkbox"
+                      checked={form.isPublic}
+                      onChange={(e) => setForm((prev) => ({ ...prev, isPublic: e.target.checked }))}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ocorrências (opcional)</label>
+                    Evento público
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
                     <input
-                      type="number"
-                      min={1}
-                      value={recurrenceCount}
-                      onChange={(e) => setRecurrenceCount(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Ex: 5"
+                      type="checkbox"
+                      checked={form.requiresApproval}
+                      onChange={(e) => setForm((prev) => ({ ...prev, requiresApproval: e.target.checked }))}
                     />
-                  </div>
+                    Requer aprovação
+                  </label>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">Recorrência</label>
+                  <p className="text-xs text-muted-foreground">Configure eventos recorrentes (diários, semanais, mensais, anuais ou lua cheia/nova)</p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={recurrenceEnabled}
+                    onChange={(e) => setRecurrenceEnabled(e.target.checked)}
+                  />
+                  Ativar
+                </label>
+              </div>
+
+              {recurrenceEnabled && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                      <select
+                        value={recurrenceType}
+                        onChange={(e) => setRecurrenceType(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="none">Não repetir</option>
+                        <option value="DAILY">Diário</option>
+                        <option value="WEEKLY">Semanal</option>
+                        <option value="MONTHLY">Mensal</option>
+                        <option value="YEARLY">Anual</option>
+                        <option value="LUNAR">Lunar (lua cheia/nova)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Intervalo</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={recurrenceInterval}
+                        onChange={(e) => setRecurrenceInterval(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {recurrenceType === 'LUNAR' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fase</label>
+                      <select
+                        value={recurrenceLunarPhase}
+                        onChange={(e) => setRecurrenceLunarPhase(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="FULL">Lua Cheia</option>
+                        <option value="NEW">Lua Nova</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até (data opcional)</label>
+                      <input
+                        type="datetime-local"
+                        value={recurrenceUntil}
+                        onChange={(e) => setRecurrenceUntil(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ocorrências (opcional)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark-border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Ex: 5"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

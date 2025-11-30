@@ -21,11 +21,12 @@ export default function AdminEventsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Reutiliza a API pública de eventos gamificados, se disponível
-        const res = await fetch('/api/gamification/events')
+        const res = await fetch('/api/events?limit=50')
         if (res.ok) {
           const data = await res.json()
-          setEvents(data?.data?.events || [])
+          setEvents(data?.events || [])
+        } else {
+          setEvents([])
         }
       } finally {
         setLoading(false)
