@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -14,7 +14,6 @@ import {
   Bell,
   Download,
   ArrowLeft,
-  CheckCircle,
   XCircle,
   UserPlus,
   UserMinus,
@@ -24,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventReminders } from '@/components/events/EventReminders';
@@ -36,8 +34,10 @@ import { useSession } from 'next-auth/react';
 
 export default function EventDetailsPage() {
   const params = useParams();
-  const eventId = params?.id as string;
+  const rawEventId = params?.id as string;
+  const baseEventId = rawEventId?.replace(/-r\d+$/, '');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   const {
@@ -57,16 +57,16 @@ export default function EventDetailsPage() {
   const [attendeesLoading, setAttendeesLoading] = useState(false);
 
   useEffect(() => {
-    if (eventId) {
-      fetchEventById(eventId);
+    if (baseEventId) {
+      fetchEventById(baseEventId);
     }
-  }, [eventId, fetchEventById]);
+  }, [baseEventId, fetchEventById]);
 
   const loadAttendees = async () => {
-    if (!eventId) return;
+    if (!baseEventId) return;
     setAttendeesLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/attendees?limit=100`);
+      const res = await fetch(`/api/events/${baseEventId}/attendees?limit=100`);
       if (!res.ok) return;
       const data = await res.json();
       setAttendees(data.attendees || []);
@@ -80,7 +80,7 @@ export default function EventDetailsPage() {
   useEffect(() => {
     loadAttendees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [baseEventId]);
 
   const handleRegister = async () => {
     if (!selectedEvent) return;
@@ -92,7 +92,12 @@ export default function EventDetailsPage() {
     
     setIsRegistering(true);
     try {
-      await registerForEvent(selectedEvent.id);
+      const occurrenceStart = searchParams?.get('occurrenceStart');
+      const occurrenceId = searchParams?.get('occurrenceId');
+      await registerForEvent(selectedEvent.id, {
+        recurrenceInstanceStart: occurrenceStart || undefined,
+        recurrenceInstanceId: occurrenceId || undefined
+      });
       toast.success('Inscrição realizada com sucesso!');
     } catch (error) {
       toast.error('Erro ao se inscrever no evento');
@@ -144,9 +149,19 @@ export default function EventDetailsPage() {
     }
   };
 
+  const occurrenceStart = useMemo(() => {
+    const value = searchParams?.get('occurrenceStart');
+    return value ? new Date(value) : null;
+  }, [searchParams]);
+
+  const occurrenceEnd = useMemo(() => {
+    const value = searchParams?.get('occurrenceEnd');
+    return value ? new Date(value) : null;
+  }, [searchParams]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-background text-foreground">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -158,15 +173,15 @@ export default function EventDetailsPage() {
 
   if (error || !selectedEvent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-background text-foreground">
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-12 text-center">
               <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 Evento não encontrado
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 {error || 'O evento que você está procurando não existe ou foi removido.'}
               </p>
               <Button onClick={() => router.push('/eventos')}>
@@ -179,12 +194,15 @@ export default function EventDetailsPage() {
     );
   }
 
+  const displayStartDate = occurrenceStart || new Date(selectedEvent.startDate);
+  const displayEndDate = occurrenceEnd || new Date(selectedEvent.endDate);
+
   // Build CalendarEvent for integrations from selectedEvent (full Event)
   const calendarEventForIntegration: CalendarEvent = {
     id: selectedEvent.id,
     title: selectedEvent.title,
-    start: new Date(selectedEvent.startDate),
-    end: new Date(selectedEvent.endDate),
+    start: displayStartDate,
+    end: displayEndDate,
     type: selectedEvent.type as any,
     status: selectedEvent.status as any,
     location: selectedEvent.location,
@@ -196,7 +214,7 @@ export default function EventDetailsPage() {
     maxAttendees: selectedEvent.maxAttendees
   };
 
-  const isEventPast = new Date(selectedEvent.endDate) < new Date();
+  const isEventPast = displayEndDate < new Date();
   const isUserRegistered = (selectedEvent as any).registrations?.some(
     (reg: any) => reg.status === 'CONFIRMED' || reg.status === 'REGISTERED'
   );
@@ -214,7 +232,7 @@ export default function EventDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -254,15 +272,15 @@ export default function EventDetailsPage() {
                 )}
               </div>
 
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              <h1 className="text-4xl font-bold mb-4">
                 {selectedEvent.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-6 text-gray-600">
+              <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   <span>
-                    {new Date(selectedEvent.startDate).toLocaleDateString('pt-BR', {
+                    {displayStartDate.toLocaleDateString('pt-BR', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
@@ -273,12 +291,12 @@ export default function EventDetailsPage() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   <span>
-                    {new Date(selectedEvent.startDate).toLocaleTimeString('pt-BR', {
+                    {displayStartDate.toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit'
                     })}
                     {' - '}
-                    {new Date(selectedEvent.endDate).toLocaleTimeString('pt-BR', {
+                    {displayEndDate.toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit'
                     })}
@@ -374,7 +392,7 @@ export default function EventDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="prose max-w-none">
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     {selectedEvent.description || 'Nenhuma descrição disponível.'}
                   </p>
                 </div>
@@ -448,7 +466,7 @@ export default function EventDetailsPage() {
                             <p className="font-medium text-sm truncate">
                               {registration.user?.name || registration.guestName || 'Usuário'}
                             </p>
-                            <p className="text-xs text-gray-500 truncate">
+                            <p className="text-xs text-muted-foreground truncate">
                               {registration.user?.email || registration.guestEmail}
                             </p>
                             {(registration.metadata?.recurrenceInstanceStart ||
@@ -479,45 +497,34 @@ export default function EventDetailsPage() {
             {/* Event Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Informações do Evento</CardTitle>
+                <CardTitle>Resumo do Evento</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={(selectedEvent as any).creator?.image} alt={(selectedEvent as any).creator?.name || 'Criador do evento'} />
-                    <AvatarFallback>
-                      {(selectedEvent as any).creator?.name?.charAt(0) || 'O'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-sm">Organizador</p>
-                    <p className="text-sm text-gray-600">
-                      {(selectedEvent as any).creator?.name || 'Organizador'}
-                    </p>
-                  </div>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tipo:</span>
+                  <span>{selectedEvent.type}</span>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Criado em:</span>
-                    <span>
-                      {new Date(selectedEvent.createdAt).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Timezone:</span>
-                    <span>{selectedEvent.timezone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Público:</span>
-                    <span>{selectedEvent.isPublic ? 'Sim' : 'Não'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Requer Aprovação:</span>
-                    <span>{selectedEvent.requiresApproval ? 'Sim' : 'Não'}</span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Acesso:</span>
+                  <span>
+                    {selectedEvent.accessType === 'PAID'
+                      ? 'Pago'
+                      : selectedEvent.accessType === 'TIER'
+                        ? 'Por tier'
+                        : 'Gratuito'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Formato:</span>
+                  <span>{selectedEvent.mode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Vagas:</span>
+                  <span>{selectedEvent.maxAttendees ? `${selectedEvent.maxAttendees}` : 'Ilimitado'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Timezone:</span>
+                  <span>{selectedEvent.timezone}</span>
                 </div>
               </CardContent>
             </Card>
@@ -554,7 +561,7 @@ export default function EventDetailsPage() {
       {/* Reminders Modal */}
       {showReminders && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
+          <div className="bg-background text-foreground rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto border border-border">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Lembretes do Evento</h2>
@@ -565,7 +572,7 @@ export default function EventDetailsPage() {
                   <XCircle className="h-5 w-5" />
                 </Button>
               </div>
-              <EventReminders eventId={selectedEvent.id} eventTitle={selectedEvent.title} eventStartDate={new Date(selectedEvent.startDate)} />
+              <EventReminders eventId={selectedEvent.id} eventTitle={selectedEvent.title} eventStartDate={displayStartDate} />
             </div>
           </div>
         </div>
@@ -574,7 +581,7 @@ export default function EventDetailsPage() {
       {/* Calendar Integrations Modal */}
       {showIntegrations && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
+          <div className="bg-background text-foreground rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto border border-border">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Exportar para Calendário</h2>

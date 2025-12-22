@@ -20,6 +20,12 @@ export default function DashboardEventsPage() {
     fetchEvents()
   }, [fetchEvents])
 
+  useEffect(() => {
+    if (tabValue === 'list') {
+      fetchEvents()
+    }
+  }, [tabValue, fetchEvents])
+
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
       return new Date(a.start).getTime() - new Date(b.start).getTime()
@@ -51,15 +57,20 @@ export default function DashboardEventsPage() {
     return true
   }
 
-  const handleRegister = async (eventId: string) => {
-    setRegisteringId(eventId)
+  const handleRegister = async (event: typeof events[number]) => {
+    setRegisteringId(event.id)
     try {
-      await registerForEvent(eventId)
+      await registerForEvent(getBaseEventId(event.id), {
+        recurrenceInstanceStart: new Date(event.start).toISOString(),
+        recurrenceInstanceId: event.id
+      })
       await fetchEvents()
     } finally {
       setRegisteringId(null)
     }
   }
+
+  const getBaseEventId = (id: string) => id.replace(/-r\d+$/, '')
 
   const renderEventRow = (event: typeof events[number]) => (
     <Card key={event.id} className="border border-border/70">
@@ -98,13 +109,24 @@ export default function DashboardEventsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.push(`/eventos/${event.id}`)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const baseId = getBaseEventId(event.id)
+              const params = new URLSearchParams()
+              params.set('occurrenceStart', new Date(event.start).toISOString())
+              params.set('occurrenceEnd', new Date(event.end).toISOString())
+              params.set('occurrenceId', event.id)
+              router.push(`/eventos/${baseId}?${params.toString()}`)
+            }}
+          >
             Ver detalhes
           </Button>
           {canRegister(event) && (
             <Button
               size="sm"
-              onClick={() => handleRegister(event.id)}
+              onClick={() => handleRegister(event)}
               disabled={registeringId === event.id}
             >
               {registeringId === event.id ? 'Inscrevendo...' : 'Inscrever-se'}

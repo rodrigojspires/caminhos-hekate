@@ -97,11 +97,22 @@ export async function GET(request: NextRequest) {
 
     // Construir filtros
     const where: any = {
-      startDate: {
-        gte: startDate,
-        lte: endDate
-      },
-      status: EventStatus.PUBLISHED
+      status: EventStatus.PUBLISHED,
+      OR: [
+        {
+          startDate: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        {
+          recurringEvents: {
+            some: {
+              isActive: true
+            }
+          }
+        }
+      ]
     }
 
     // Filtrar por tipos se especificado
@@ -161,6 +172,7 @@ export async function GET(request: NextRequest) {
             registeredAt: true
           }
         },
+        recurringEvents: true,
         _count: {
           select: {
             registrations: true
@@ -179,14 +191,129 @@ export async function GET(request: NextRequest) {
     })
 
     // Transformar eventos para formato de calendário
-    const calendarEvents = events.map(event => ({
+    const dayMs = 24 * 60 * 60 * 1000
+    const weekMs = 7 * dayMs
+
+    const getStartIndex = (freq: string, baseStart: Date, interval: number) => {
+      const diffMs = startDate.getTime() - baseStart.getTime()
+      if (diffMs <= 0) return 1
+
+      switch (freq) {
+        case 'DAILY': {
+          const days = Math.floor(diffMs / dayMs)
+          return Math.floor(days / interval)
+        }
+        case 'WEEKLY': {
+          const weeks = Math.floor(diffMs / weekMs)
+          return Math.floor(weeks / interval)
+        }
+        case 'MONTHLY': {
+          const months =
+            (startDate.getFullYear() - baseStart.getFullYear()) * 12 +
+            (startDate.getMonth() - baseStart.getMonth())
+          return Math.floor(months / interval)
+        }
+        case 'YEARLY': {
+          const years = startDate.getFullYear() - baseStart.getFullYear()
+          return Math.floor(years / interval)
+        }
+        case 'LUNAR': {
+          const lunarDays = 29.53
+          const cycles = Math.floor(diffMs / (lunarDays * dayMs))
+          return Math.floor(cycles / interval)
+        }
+        default:
+          return 1
+      }
+    }
+
+    const expandRecurring = (event: typeof events[number]) => {
+      const occurrences: typeof events[number][] = []
+      const baseStart = new Date(event.startDate)
+      const baseEnd = new Date(event.endDate)
+
+      if (baseStart >= startDate && baseStart <= endDate) {
+        occurrences.push(event)
+      }
+
+      if (!event.recurringEvents || event.recurringEvents.length === 0) {
+        return occurrences
+      }
+
+      for (const recurring of event.recurringEvents) {
+        const rule = recurring.recurrenceRule as any
+        const freq = rule?.freq
+        if (!freq) continue
+
+        const interval = Number(rule.interval || 1)
+        const count = rule.count ? Number(rule.count) : null
+        const until = rule.until ? new Date(rule.until) : null
+        const startIndex = Math.max(1, getStartIndex(freq, baseStart, interval))
+        const maxIndex = count ?? Number.POSITIVE_INFINITY
+
+        for (let i = startIndex; i <= maxIndex; i++) {
+          let occStart = new Date(baseStart)
+          let occEnd = new Date(baseEnd)
+          switch (freq) {
+            case 'DAILY':
+              occStart = new Date(baseStart.getTime() + i * interval * dayMs)
+              occEnd = new Date(baseEnd.getTime() + i * interval * dayMs)
+              break
+            case 'WEEKLY':
+              occStart = new Date(baseStart.getTime() + i * interval * weekMs)
+              occEnd = new Date(baseEnd.getTime() + i * interval * weekMs)
+              break
+            case 'MONTHLY':
+              occStart = new Date(baseStart)
+              occStart.setMonth(occStart.getMonth() + i * interval)
+              occEnd = new Date(baseEnd)
+              occEnd.setMonth(occEnd.getMonth() + i * interval)
+              break
+            case 'YEARLY':
+              occStart = new Date(baseStart)
+              occStart.setFullYear(occStart.getFullYear() + i * interval)
+              occEnd = new Date(baseEnd)
+              occEnd.setFullYear(occEnd.getFullYear() + i * interval)
+              break
+            case 'LUNAR': {
+              const lunarDays = 29.53
+              const offset = Math.round(i * interval * lunarDays * dayMs)
+              occStart = new Date(baseStart.getTime() + offset)
+              occEnd = new Date(baseEnd.getTime() + offset)
+              break
+            }
+            default:
+              continue
+          }
+
+          if (until && occStart > until) break
+          if (occStart > endDate) break
+          if (occStart < startDate) continue
+
+          occurrences.push({
+            ...event,
+            id: `${event.id}-r${i}`,
+            startDate: occStart,
+            endDate: occEnd
+          })
+        }
+      }
+
+      return occurrences
+    }
+
+    const expandedEvents = events.flatMap(expandRecurring).sort((a, b) => {
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    })
+
+    const calendarEvents = expandedEvents.map(event => ({
       id: event.id,
       title: event.title,
       description: event.description,
       type: event.type,
       status: event.status,
-      start: event.startDate.toISOString(),
-      end: event.endDate.toISOString(),
+      start: new Date(event.startDate).toISOString(),
+      end: new Date(event.endDate).toISOString(),
       allDay: false,
       location: event.location,
       virtualLink: event.virtualLink,
@@ -198,7 +325,7 @@ export async function GET(request: NextRequest) {
       isCreator: event.createdBy === session.user.id,
       userRegistration: event.registrations[0] || null,
       canRegister: !event.registrations[0] && 
-                   event.startDate > new Date() && 
+                   new Date(event.startDate) > new Date() && 
                    (!event.maxAttendees || event._count.registrations < event.maxAttendees),
       backgroundColor: getEventColor(event.type),
       borderColor: getEventColor(event.type, true)

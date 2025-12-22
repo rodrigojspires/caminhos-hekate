@@ -117,6 +117,8 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
     return null
   }
 
+  const getBaseEventId = (id: string) => id.replace(/-r\d+$/, '')
+
   const handleRegister = async () => {
     if (!user) {
       toast.error('Você precisa estar logado para se inscrever')
@@ -125,7 +127,10 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
 
     setIsRegistering(true)
     try {
-      await registerForEvent(event.id)
+      await registerForEvent(getBaseEventId(event.id), {
+        recurrenceInstanceStart: new Date(event.start).toISOString(),
+        recurrenceInstanceId: event.id
+      })
       toast.success('Inscrição realizada com sucesso!')
     } catch (error) {
       toast.error('Erro ao realizar inscrição')
@@ -139,7 +144,7 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
 
     setIsRegistering(true)
     try {
-      await cancelRegistration(event.id)
+      await cancelRegistration(getBaseEventId(event.id))
       toast.success('Inscrição cancelada com sucesso!')
     } catch (error) {
       toast.error('Erro ao cancelar inscrição')
@@ -153,7 +158,7 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
 
     setIsDeleting(true)
     try {
-      await deleteEvent(event.id)
+      await deleteEvent(getBaseEventId(event.id))
       toast.success('Evento excluído com sucesso!')
       onOpenChange(false)
     } catch (error) {

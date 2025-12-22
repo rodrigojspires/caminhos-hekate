@@ -9,7 +9,7 @@ import { EventCard } from './EventCard'
 import { CreateEventModal } from './CreateEventModal'
 import { EventModal } from './EventModal'
 import { CalendarFilters } from './CalendarFilters'
-import { RecurrenceIndicator, RecurrenceSeriesIndicator } from '@/components/calendar/RecurrenceIndicator'
+import { RecurrenceIndicator } from '@/components/calendar/RecurrenceIndicator'
 import { useEventsStore } from '@/stores/eventsStore'
 import { CalendarEvent, RecurrenceRule } from '@/types/events'
 
@@ -251,6 +251,74 @@ export function Calendar({
     )
   }
 
+  const getViewRange = (v: CalendarView, baseDate: Date) => {
+    const start = new Date(baseDate)
+    const end = new Date(baseDate)
+
+    switch (v) {
+      case 'day':
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+        break
+      case 'week': {
+        const weekStart = new Date(baseDate)
+        weekStart.setDate(baseDate.getDate() - baseDate.getDay())
+        weekStart.setHours(0, 0, 0, 0)
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+        weekEnd.setHours(23, 59, 59, 999)
+        return { start: weekStart, end: weekEnd }
+      }
+      case 'month': {
+        const monthStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1)
+        monthStart.setHours(0, 0, 0, 0)
+        const monthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0)
+        monthEnd.setHours(23, 59, 59, 999)
+        return { start: monthStart, end: monthEnd }
+      }
+      case 'agenda': {
+        const agendaStart = new Date(baseDate)
+        agendaStart.setHours(0, 0, 0, 0)
+        const agendaEnd = new Date(baseDate)
+        agendaEnd.setDate(baseDate.getDate() + 30)
+        agendaEnd.setHours(23, 59, 59, 999)
+        return { start: agendaStart, end: agendaEnd }
+      }
+      default:
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+    }
+
+    return { start, end }
+  }
+
+  const renderRangeView = (rangeView: 'week' | 'day') => {
+    const { start, end } = getViewRange(rangeView, currentDate)
+    const rangeEvents = [...events]
+      .filter((event) => new Date(event.start) >= start && new Date(event.start) <= end)
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+
+    if (rangeEvents.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          Nenhum evento encontrado.
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        {rangeEvents.map((event) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            onClick={() => setSelectedEvent(event)}
+          />
+        ))}
+      </div>
+    )
+  }
+
   // Renderizar visualização mensal
   const renderMonthView = () => {
     const days = generateMonthDays()
@@ -301,7 +369,7 @@ export function Calendar({
                   return (
                     <div
                       key={event.id}
-                      className="text-xs p-1 rounded cursor-pointer hover:opacity-80 relative"
+                      className="text-xs p-1 rounded cursor-pointer hover:opacity-80 relative text-slate-900"
                       style={{ backgroundColor: event.backgroundColor }}
                       onClick={() => setSelectedEvent(event)}
                     >
@@ -316,7 +384,7 @@ export function Calendar({
                               />
                             )}
                           </div>
-                          <div className="text-muted-foreground">
+                          <div className="text-slate-700">
                             {new Date(event.start).toLocaleTimeString('pt-BR', { 
                               hour: '2-digit', 
                               minute: '2-digit' 
@@ -393,11 +461,8 @@ export function Calendar({
         <CardContent className="p-6">
           {view === 'month' && renderMonthView()}
           {view === 'agenda' && renderAgendaView()}
-          {(view === 'week' || view === 'day') && (
-            <div className="text-center py-12 text-muted-foreground">
-              Visualização {view === 'week' ? 'semanal' : 'diária'} em desenvolvimento
-            </div>
-          )}
+          {view === 'week' && renderRangeView('week')}
+          {view === 'day' && renderRangeView('day')}
         </CardContent>
       </Card>
 
