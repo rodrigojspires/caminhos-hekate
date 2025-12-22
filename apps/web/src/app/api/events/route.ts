@@ -189,6 +189,49 @@ export async function GET(request: NextRequest) {
     ])
 
     // Expandir recorrência (gera instâncias futuras leves)
+    const now = new Date()
+    const windowStart = startDate ? new Date(startDate) : now
+    const windowEnd = endDate ? new Date(endDate) : new Date(now.getTime())
+    if (!endDate) {
+      windowEnd.setMonth(windowEnd.getMonth() + 6)
+    }
+
+    const dayMs = 24 * 60 * 60 * 1000
+    const weekMs = 7 * dayMs
+
+    const getStartIndex = (freq: string, baseStart: Date, interval: number) => {
+      const diffMs = windowStart.getTime() - baseStart.getTime()
+      if (diffMs <= 0) return 1
+
+      switch (freq) {
+        case 'DAILY': {
+          const days = Math.floor(diffMs / dayMs)
+          return Math.floor(days / interval)
+        }
+        case 'WEEKLY': {
+          const weeks = Math.floor(diffMs / weekMs)
+          return Math.floor(weeks / interval)
+        }
+        case 'MONTHLY': {
+          const months =
+            (windowStart.getFullYear() - baseStart.getFullYear()) * 12 +
+            (windowStart.getMonth() - baseStart.getMonth())
+          return Math.floor(months / interval)
+        }
+        case 'YEARLY': {
+          const years = windowStart.getFullYear() - baseStart.getFullYear()
+          return Math.floor(years / interval)
+        }
+        case 'LUNAR': {
+          const lunarDays = 29.53
+          const cycles = Math.floor(diffMs / (lunarDays * dayMs))
+          return Math.floor(cycles / interval)
+        }
+        default:
+          return 1
+      }
+    }
+
     const expandRecurring = (event: any) => {
       if (!event.recurringEvents || event.recurringEvents.length === 0) return [event]
       const occurrences: any[] = [event]
@@ -201,13 +244,15 @@ export async function GET(request: NextRequest) {
         const baseStart = new Date(event.startDate)
         const baseEnd = new Date(event.endDate)
         const interval = Number(rule.interval || 1)
-        const count = Number(rule.count || 6)
+        const count = rule.count ? Number(rule.count) : null
         const until = rule.until ? new Date(rule.until) : null
+        const startIndex = Math.max(1, getStartIndex(freq, baseStart, interval))
+        const maxIndex = count ?? Number.POSITIVE_INFINITY
 
-        const addOccurrence = (index: number, offsetMs: number) => {
-          const start = new Date(baseStart.getTime() + offsetMs)
-          const end = new Date(baseEnd.getTime() + offsetMs)
+        const addOccurrence = (index: number, start: Date, end: Date) => {
           if (until && start > until) return
+          if (start > windowEnd) return
+          if (start < windowStart) return
           occurrences.push({
             ...event,
             id: `${event.id}-r${index}`,
@@ -216,44 +261,45 @@ export async function GET(request: NextRequest) {
           })
         }
 
-        for (let i = 1; i <= count; i++) {
-          let offset = 0
+        for (let i = startIndex; i <= maxIndex; i++) {
+          let start = new Date(baseStart)
+          let end = new Date(baseEnd)
           switch (freq) {
             case 'DAILY':
-              offset = i * interval * 24 * 60 * 60 * 1000
+              start = new Date(baseStart.getTime() + i * interval * dayMs)
+              end = new Date(baseEnd.getTime() + i * interval * dayMs)
               break
             case 'WEEKLY':
-              offset = i * interval * 7 * 24 * 60 * 60 * 1000
+              start = new Date(baseStart.getTime() + i * interval * weekMs)
+              end = new Date(baseEnd.getTime() + i * interval * weekMs)
               break
             case 'MONTHLY': {
-              const start = new Date(baseStart)
+              start = new Date(baseStart)
               start.setMonth(start.getMonth() + i * interval)
-              const end = new Date(baseEnd)
+              end = new Date(baseEnd)
               end.setMonth(end.getMonth() + i * interval)
-              if (until && start > until) continue
-              occurrences.push({ ...event, id: `${event.id}-r${i}`, startDate: start, endDate: end })
-              continue
+              break
             }
             case 'YEARLY': {
-              const start = new Date(baseStart)
+              start = new Date(baseStart)
               start.setFullYear(start.getFullYear() + i * interval)
-              const end = new Date(baseEnd)
+              end = new Date(baseEnd)
               end.setFullYear(end.getFullYear() + i * interval)
-              if (until && start > until) continue
-              occurrences.push({ ...event, id: `${event.id}-r${i}`, startDate: start, endDate: end })
-              continue
+              break
             }
             case 'LUNAR': {
               const lunarDays = 29.53
-              offset = Math.round(i * interval * lunarDays * 24 * 60 * 60 * 1000)
+              const offset = Math.round(i * interval * lunarDays * dayMs)
+              start = new Date(baseStart.getTime() + offset)
+              end = new Date(baseEnd.getTime() + offset)
               break
             }
             default:
               continue
           }
-          if (freq !== 'MONTHLY' && freq !== 'YEARLY') {
-            addOccurrence(i, offset)
-          }
+          if (until && start > until) break
+          if (start > windowEnd) break
+          addOccurrence(i, start, end)
         }
       }
 
