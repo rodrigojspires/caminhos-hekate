@@ -451,6 +451,15 @@ export default function EventDetailsPage() {
                             <p className="text-xs text-gray-500 truncate">
                               {registration.user?.email || registration.guestEmail}
                             </p>
+                            {(registration.metadata?.recurrenceInstanceStart ||
+                              registration.metadata?.recurrenceInstanceId) && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Recorrência:{' '}
+                                {registration.metadata?.recurrenceInstanceStart
+                                  ? new Date(registration.metadata.recurrenceInstanceStart).toLocaleString('pt-BR')
+                                  : registration.metadata?.recurrenceInstanceId}
+                              </p>
+                            )}
                             <p className="text-[11px] text-muted-foreground">{registration.status}</p>
                           </div>
                           <span className="text-xs text-muted-foreground">

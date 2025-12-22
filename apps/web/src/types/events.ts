@@ -184,6 +184,7 @@ export interface CreateEventRequest {
   freeTiers?: string[]
   mode?: EventMode
   tags?: string[]
+  rules?: Record<string, any>
   metadata?: Record<string, any>
   recurrence?: RecurrenceRule
 }
@@ -196,6 +197,8 @@ export interface EventRegistrationRequest {
   guestEmail?: string
   guestName?: string
   metadata?: Record<string, any>
+  recurrenceInstanceStart?: string
+  recurrenceInstanceId?: string
 }
 
 export interface EventFilters {

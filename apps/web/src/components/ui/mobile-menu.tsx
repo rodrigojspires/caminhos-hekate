@@ -98,6 +98,11 @@ const dashboardNavigation: NavigationItem[] = [
     icon: Award
   },
   {
+    title: 'Eventos',
+    href: '/dashboard/eventos',
+    icon: Calendar
+  },
+  {
     title: 'Analytics',
     href: '/dashboard/analytics',
     icon: Calendar

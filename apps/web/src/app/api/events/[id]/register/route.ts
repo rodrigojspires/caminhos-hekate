@@ -10,7 +10,9 @@ import notificationService from '@/lib/notifications/notification-service'
 
 // Schema de validação para registro
 const registerSchema = z.object({
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.any()).optional(),
+  recurrenceInstanceStart: z.string().datetime().optional(),
+  recurrenceInstanceId: z.string().optional()
 })
 
 const PAID_EVENT_ENROLL_POINTS = 40
@@ -147,12 +149,22 @@ export async function POST(
       : EventRegistrationStatus.CONFIRMED
 
     // Criar registro
+    const recurrenceMetadata = {
+      ...(validatedData.metadata || {}),
+      ...(validatedData.recurrenceInstanceStart
+        ? { recurrenceInstanceStart: validatedData.recurrenceInstanceStart }
+        : {}),
+      ...(validatedData.recurrenceInstanceId
+        ? { recurrenceInstanceId: validatedData.recurrenceInstanceId }
+        : {})
+    }
+
     const registration = await prisma.eventRegistration.create({
       data: {
         eventId,
         userId: session.user.id,
         status: initialStatus,
-        metadata: validatedData.metadata,
+        metadata: Object.keys(recurrenceMetadata).length > 0 ? recurrenceMetadata : undefined,
         registeredAt: new Date()
       },
       include: {

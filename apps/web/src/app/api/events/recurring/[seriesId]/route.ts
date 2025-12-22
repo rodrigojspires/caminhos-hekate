@@ -18,13 +18,14 @@ const updateRecurringSeriesSchema = z.object({
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.any()).optional(),
   recurrence: z.object({
-    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+    freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'LUNAR']),
     interval: z.number().positive().default(1),
     byweekday: z.array(z.number().min(0).max(6)).optional(),
     bymonthday: z.array(z.number().min(1).max(31)).optional(),
     bymonth: z.array(z.number().min(1).max(12)).optional(),
     count: z.number().positive().optional(),
-    until: z.string().datetime().optional()
+    until: z.string().datetime().optional(),
+    lunarPhase: z.enum(['FULL', 'NEW']).optional()
   }).optional(),
   updateFutureEvents: z.boolean().default(false)
 })

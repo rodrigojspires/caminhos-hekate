@@ -110,6 +110,15 @@ export async function GET(
         reminders: {
           orderBy: { createdAt: 'asc' }
         },
+        recurringEvents: {
+          select: {
+            id: true,
+            recurrenceRule: true,
+            endDate: true,
+            maxOccurrences: true,
+            isActive: true
+          }
+        },
         _count: {
           select: {
             registrations: true

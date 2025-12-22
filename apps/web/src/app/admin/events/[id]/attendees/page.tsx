@@ -13,6 +13,10 @@ interface Attendee {
   id: string
   status: string
   registeredAt: string
+  metadata?: {
+    recurrenceInstanceStart?: string
+    recurrenceInstanceId?: string
+  } | null
   user?: {
     id: string
     name?: string | null
@@ -148,6 +152,14 @@ export default function AdminEventAttendeesPage() {
                     <p className="text-xs text-muted-foreground truncate">
                       {att.user?.email || att.guestEmail || 'Email não informado'}
                     </p>
+                    {(att.metadata?.recurrenceInstanceStart || att.metadata?.recurrenceInstanceId) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Recorrência:{' '}
+                        {att.metadata?.recurrenceInstanceStart
+                          ? new Date(att.metadata.recurrenceInstanceStart).toLocaleString('pt-BR')
+                          : att.metadata?.recurrenceInstanceId}
+                      </p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">
                       Inscrito em {new Date(att.registeredAt).toLocaleString('pt-BR')}
                     </p>
