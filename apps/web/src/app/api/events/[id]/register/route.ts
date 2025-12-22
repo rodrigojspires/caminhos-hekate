@@ -83,8 +83,12 @@ export async function POST(
       )
     }
 
+    const occurrenceStartDate = validatedData.recurrenceInstanceStart
+      ? new Date(validatedData.recurrenceInstanceStart)
+      : event.startDate
+
     // Verificar se o evento já passou
-    if (event.startDate < new Date()) {
+    if (occurrenceStartDate < new Date()) {
       return NextResponse.json(
         { error: 'Não é possível se inscrever em eventos que já começaram' },
         { status: 400 }
@@ -240,7 +244,7 @@ export async function POST(
     }
 
     // Criar lembrete automático (24h antes do evento)
-    const reminderTime = new Date(event.startDate.getTime() - 24 * 60 * 60 * 1000)
+    const reminderTime = new Date(occurrenceStartDate.getTime() - 24 * 60 * 60 * 1000)
     
     if (reminderTime > new Date()) {
       await prisma.eventReminder.create({

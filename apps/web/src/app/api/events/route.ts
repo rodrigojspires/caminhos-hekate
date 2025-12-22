@@ -303,7 +303,19 @@ export async function GET(request: NextRequest) {
               const lunarDays = 29.53
               const offset = Math.round(i * interval * lunarDays * dayMs)
               start = new Date(baseStart.getTime() + offset)
+              start.setHours(
+                baseStart.getHours(),
+                baseStart.getMinutes(),
+                baseStart.getSeconds(),
+                baseStart.getMilliseconds()
+              )
               end = new Date(baseEnd.getTime() + offset)
+              end.setHours(
+                baseEnd.getHours(),
+                baseEnd.getMinutes(),
+                baseEnd.getSeconds(),
+                baseEnd.getMilliseconds()
+              )
               break
             }
             default:

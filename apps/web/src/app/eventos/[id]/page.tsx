@@ -11,8 +11,6 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Bell,
-  Download,
   ArrowLeft,
   XCircle,
   UserPlus,
@@ -24,11 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EventReminders } from '@/components/events/EventReminders';
-import { CalendarIntegrations } from '@/components/events/CalendarIntegrations';
 import { useEventsStore } from '@/stores/eventsStore';
-import { CalendarEvent } from '@/types/events';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 
@@ -51,8 +45,6 @@ export default function EventDetailsPage() {
   } = useEventsStore();
 
   const [isRegistering, setIsRegistering] = useState(false);
-  const [showReminders, setShowReminders] = useState(false);
-  const [showIntegrations, setShowIntegrations] = useState(false);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
 
@@ -197,29 +189,13 @@ export default function EventDetailsPage() {
   const displayStartDate = occurrenceStart || new Date(selectedEvent.startDate);
   const displayEndDate = occurrenceEnd || new Date(selectedEvent.endDate);
 
-  // Build CalendarEvent for integrations from selectedEvent (full Event)
-  const calendarEventForIntegration: CalendarEvent = {
-    id: selectedEvent.id,
-    title: selectedEvent.title,
-    start: displayStartDate,
-    end: displayEndDate,
-    type: selectedEvent.type as any,
-    status: selectedEvent.status as any,
-    location: selectedEvent.location,
-    virtualLink: selectedEvent.virtualLink,
-    description: selectedEvent.description,
-    attendeeCount: (selectedEvent as any).registrations
-      ? (selectedEvent as any).registrations.filter((reg: any) => reg.status === 'CONFIRMED').length
-      : (selectedEvent as any).attendeeCount ?? 0,
-    maxAttendees: selectedEvent.maxAttendees
-  };
-
   const isEventPast = displayEndDate < new Date();
   const isUserRegistered = (selectedEvent as any).registrations?.some(
     (reg: any) => reg.status === 'CONFIRMED' || reg.status === 'REGISTERED'
   );
   const confirmedCount = (selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length ?? 0;
-  const isEventFull = selectedEvent.maxAttendees !== undefined && confirmedCount >= selectedEvent.maxAttendees;
+  const maxAttendeesValue = typeof selectedEvent.maxAttendees === 'number' ? selectedEvent.maxAttendees : null;
+  const isEventFull = maxAttendeesValue !== null && maxAttendeesValue > 0 && confirmedCount >= maxAttendeesValue;
   const isCreator = session?.user?.id && selectedEvent.createdBy === session.user.id;
   const isPaid = selectedEvent.accessType === 'PAID';
   const isTier = selectedEvent.accessType === 'TIER';
@@ -229,6 +205,30 @@ export default function EventDetailsPage() {
     const parsed = typeof value === 'string' ? parseFloat(value) : value;
     if (!parsed || parsed === 0) return 'Gratuito';
     return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const typeLabels: Record<string, string> = {
+    WEBINAR: 'Webinar',
+    WORKSHOP: 'Workshop',
+    COURSE: 'Curso',
+    MEETING: 'Reunião',
+    COMMUNITY: 'Comunidade',
+    CONFERENCE: 'Conferência',
+    NETWORKING: 'Networking',
+    TRAINING: 'Treinamento'
+  };
+
+  const modeLabels: Record<string, string> = {
+    ONLINE: 'Online',
+    IN_PERSON: 'Presencial',
+    HYBRID: 'Híbrido'
+  };
+
+  const statusLabels: Record<string, string> = {
+    DRAFT: 'Rascunho',
+    PUBLISHED: 'Publicado',
+    CANCELED: 'Cancelado',
+    COMPLETED: 'Finalizado'
   };
 
   return (
@@ -249,17 +249,17 @@ export default function EventDetailsPage() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
                 <Badge variant="outline" className="text-sm">
-                  {selectedEvent.type}
+                  {typeLabels[selectedEvent.type] || selectedEvent.type}
                 </Badge>
                 <Badge 
                   variant={selectedEvent.status === 'PUBLISHED' ? 'default' : 'secondary'}
                   className="text-sm"
                 >
-                  {selectedEvent.status}
+                  {statusLabels[selectedEvent.status] || selectedEvent.status}
                 </Badge>
                 <Badge variant="secondary" className="text-sm gap-1">
                   {selectedEvent.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
-                  {selectedEvent.mode === 'IN_PERSON' ? 'Presencial' : selectedEvent.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
+                  {modeLabels[selectedEvent.mode] || selectedEvent.mode}
                 </Badge>
                 <Badge variant={isPaid ? 'outline' : 'default'} className="text-sm gap-1">
                   <CreditCard className="h-3 w-3" />
@@ -312,7 +312,7 @@ export default function EventDetailsPage() {
                   <Users className="h-5 w-5" />
                   <span>
                     {(selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length || 0}
-                    {selectedEvent.maxAttendees && ` / ${selectedEvent.maxAttendees}`}
+                    {maxAttendeesValue ? ` / ${maxAttendeesValue}` : ''}
                     {' participantes'}
                   </span>
                 </div>
@@ -336,7 +336,8 @@ export default function EventDetailsPage() {
                     <Button
                       onClick={handleRegister}
                       disabled={isRegistering || isEventFull}
-                      className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                      variant={isEventFull ? 'outline' : 'default'}
+                      className="flex items-center gap-2"
                     >
                       {isRegistering ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -410,16 +411,23 @@ export default function EventDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-3">
-                    <code className="flex-1 p-3 bg-gray-100 rounded-md text-sm">
+                    <code className="flex-1 p-3 bg-muted text-foreground rounded-md text-sm break-all border border-border">
                       {selectedEvent.virtualLink}
                     </code>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.open(selectedEvent.virtualLink, '_blank')}
-                    >
-                      Abrir
-                    </Button>
+                    {isUserRegistered && (
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(selectedEvent.virtualLink, '_blank')}
+                      >
+                        Abrir
+                      </Button>
+                    )}
                   </div>
+                  {!isUserRegistered && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      O link fica disponível após a inscrição.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -502,7 +510,7 @@ export default function EventDetailsPage() {
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tipo:</span>
-                  <span>{selectedEvent.type}</span>
+                  <span>{typeLabels[selectedEvent.type] || selectedEvent.type}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Acesso:</span>
@@ -516,11 +524,11 @@ export default function EventDetailsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Formato:</span>
-                  <span>{selectedEvent.mode}</span>
+                  <span>{modeLabels[selectedEvent.mode] || selectedEvent.mode}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Vagas:</span>
-                  <span>{selectedEvent.maxAttendees ? `${selectedEvent.maxAttendees}` : 'Ilimitado'}</span>
+                  <span>{maxAttendeesValue ? `${maxAttendeesValue}` : 'Ilimitado'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Timezone:</span>
@@ -528,75 +536,9 @@ export default function EventDetailsPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ações Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setShowReminders(true)}
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Gerenciar Lembretes
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setShowIntegrations(true)}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar Calendário
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
-
-      {/* Reminders Modal */}
-      {showReminders && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background text-foreground rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto border border-border">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Lembretes do Evento</h2>
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowReminders(false)}
-                >
-                  <XCircle className="h-5 w-5" />
-                </Button>
-              </div>
-              <EventReminders eventId={selectedEvent.id} eventTitle={selectedEvent.title} eventStartDate={displayStartDate} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Calendar Integrations Modal */}
-      {showIntegrations && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-background text-foreground rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto border border-border">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Exportar para Calendário</h2>
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowIntegrations(false)}
-                >
-                  <XCircle className="h-5 w-5" />
-                </Button>
-              </div>
-              <CalendarIntegrations event={calendarEventForIntegration} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
