@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventRegistrationStatus } from '@hekate/shared'
+import { EventRegistrationStatus } from '@prisma/client'
 
 // Schema de validação para filtros
 const filtersSchema = z.object({

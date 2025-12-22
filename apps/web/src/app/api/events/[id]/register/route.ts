@@ -83,6 +83,9 @@ export async function POST(
       )
     }
 
+    const body = await request.json().catch(() => ({}))
+    const validatedData = registerSchema.parse(body)
+
     const occurrenceStartDate = validatedData.recurrenceInstanceStart
       ? new Date(validatedData.recurrenceInstanceStart)
       : event.startDate
@@ -142,9 +145,6 @@ export async function POST(
         { status: 400 }
       )
     }
-
-    const body = await request.json().catch(() => ({}))
-    const validatedData = registerSchema.parse(body)
 
     // Determinar status inicial
     const initialStatus = event.requiresApproval 
