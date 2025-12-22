@@ -1,16 +1,20 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar as CalendarIcon, List } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Calendar as CalendarIcon, List, MapPin, Clock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/events/Calendar'
-import { EventCard } from '@/components/events/EventCard'
 import { useEventsStore } from '@/stores/eventsStore'
 
 export default function DashboardEventsPage() {
-  const { events, loading, error, fetchEvents } = useEventsStore()
+  const router = useRouter()
+  const { events, loading, error, fetchEvents, registerForEvent } = useEventsStore()
   const [tabValue, setTabValue] = useState<'list' | 'calendar'>('list')
+  const [registeringId, setRegisteringId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -21,6 +25,95 @@ export default function DashboardEventsPage() {
       return new Date(a.start).getTime() - new Date(b.start).getTime()
     })
   }, [events])
+
+  const myEvents = useMemo(() => sortedEvents.filter((event) => event.userRegistration), [sortedEvents])
+
+  const formatDateTime = (date: Date) =>
+    new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+  const formatPrice = (value?: number | string | null) => {
+    if (value === undefined || value === null) return 'Gratuito'
+    const parsed = typeof value === 'string' ? parseFloat(value) : value
+    if (!parsed || parsed === 0) return 'Gratuito'
+    return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
+  const canRegister = (event: typeof events[number]) => {
+    if (event.userRegistration) return false
+    if (new Date(event.start) <= new Date()) return false
+    if (event.maxAttendees && event.attendeeCount >= event.maxAttendees) return false
+    return true
+  }
+
+  const handleRegister = async (eventId: string) => {
+    setRegisteringId(eventId)
+    try {
+      await registerForEvent(eventId)
+      await fetchEvents()
+    } finally {
+      setRegisteringId(null)
+    }
+  }
+
+  const renderEventRow = (event: typeof events[number]) => (
+    <Card key={event.id} className="border border-border/70">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold">{event.title}</h3>
+              {event.userRegistration && (
+                <Badge variant="secondary">Inscrito</Badge>
+              )}
+            </div>
+            {event.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+            )}
+          </div>
+          <Badge variant="outline">{formatPrice(event.price)}</Badge>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            {formatDateTime(event.start)}
+          </span>
+          {event.location && (
+            <span className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              {event.location}
+            </span>
+          )}
+          {event.virtualLink && (
+            <span className="truncate">
+              Online
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => router.push(`/eventos/${event.id}`)}>
+            Ver detalhes
+          </Button>
+          {canRegister(event) && (
+            <Button
+              size="sm"
+              onClick={() => handleRegister(event.id)}
+              disabled={registeringId === event.id}
+            >
+              {registeringId === event.id ? 'Inscrevendo...' : 'Inscrever-se'}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="space-y-6">
@@ -63,10 +156,34 @@ export default function DashboardEventsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {sortedEvents.map((event) => (
-                <EventCard key={event.id} event={event} compact />
-              ))}
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Meus eventos</h2>
+                  <span className="text-sm text-muted-foreground">{myEvents.length} inscrito(s)</span>
+                </div>
+                {myEvents.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-4 text-sm text-muted-foreground">
+                      Você ainda não está inscrito em nenhum evento.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {myEvents.map(renderEventRow)}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Todos os eventos</h2>
+                  <span className="text-sm text-muted-foreground">{sortedEvents.length} eventos</span>
+                </div>
+                <div className="space-y-3">
+                  {sortedEvents.map(renderEventRow)}
+                </div>
+              </div>
             </div>
           )}
         </TabsContent>

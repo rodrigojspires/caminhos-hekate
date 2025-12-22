@@ -95,6 +95,7 @@ const filtersSchema = z.object({
 // GET /api/events - Listar eventos
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
     const { searchParams } = new URL(request.url)
     const params = Object.fromEntries(searchParams.entries())
     
@@ -162,6 +163,16 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
 
     // Buscar eventos
+    const sessionUserId = session?.user?.id
+    const includeRegistrations = sessionUserId
+      ? {
+          registrations: {
+            where: { userId: sessionUserId },
+            select: { id: true, status: true, registeredAt: true }
+          }
+        }
+      : {}
+
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where,
@@ -175,6 +186,7 @@ export async function GET(request: NextRequest) {
               image: true
             }
           },
+          ...includeRegistrations,
           _count: {
             select: {
               registrations: true

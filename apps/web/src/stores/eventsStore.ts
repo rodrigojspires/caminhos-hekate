@@ -122,12 +122,15 @@ export const useEventsStore = create<EventsState>()(devtools(
           location: event.location,
           virtualLink: event.virtualLink,
           description: event.description,
-          attendeeCount: 0,
+          attendeeCount: (event as any).attendeeCount ?? (event as any)._count?.registrations ?? 0,
           maxAttendees: event.maxAttendees,
           accessType: event.accessType,
           price: event.price ? Number(event.price) : null,
           mode: event.mode,
-          freeTiers: event.freeTiers
+          freeTiers: event.freeTiers,
+          tags: event.tags,
+          creator: (event as any).creator,
+          userRegistration: (event as any).userRegistration ?? (event as any).registrations?.[0]
         }))
         
         set({ 
@@ -168,7 +171,8 @@ export const useEventsStore = create<EventsState>()(devtools(
           throw new Error('Falha ao buscar eventos do calendário')
         }
         
-        const apiEvents: any[] = await response.json()
+        const payload = await response.json()
+        const apiEvents: any[] = Array.isArray(payload) ? payload : payload?.events || []
         
         // Mapear para o formato esperado pela UI
         const calendarEvents: CalendarEvent[] = apiEvents.map((e: any) => ({
