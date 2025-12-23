@@ -169,7 +169,8 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             status: true,
-            registeredAt: true
+            registeredAt: true,
+            recurrenceInstanceId: true
           }
         },
         recurringEvents: true,
@@ -227,13 +228,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const filterRegistrations = (event: typeof events[number], occurrenceId: string) => {
+      if (!event.registrations) return event.registrations
+      return event.registrations.filter((registration: any) => {
+        return registration.recurrenceInstanceId === occurrenceId
+      })
+    }
+
     const expandRecurring = (event: typeof events[number]) => {
       const occurrences: typeof events[number][] = []
       const baseStart = new Date(event.startDate)
       const baseEnd = new Date(event.endDate)
 
       if (baseStart >= startDate && baseStart <= endDate) {
-        occurrences.push(event)
+        occurrences.push({
+          ...event,
+          registrations: filterRegistrations(event, event.id)
+        })
       }
 
       if (!event.recurringEvents || event.recurringEvents.length === 0) {
@@ -306,7 +317,8 @@ export async function GET(request: NextRequest) {
             ...event,
             id: `${event.id}-r${i}`,
             startDate: occStart,
-            endDate: occEnd
+            endDate: occEnd,
+            registrations: filterRegistrations(event, `${event.id}-r${i}`)
           })
         }
       }

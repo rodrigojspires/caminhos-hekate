@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       ? {
           registrations: {
             where: { userId: sessionUserId },
-            select: { id: true, status: true, registeredAt: true }
+            select: { id: true, status: true, registeredAt: true, recurrenceInstanceId: true }
           }
         }
       : {}
@@ -244,9 +244,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const filterRegistrations = (event: any, occurrenceId: string) => {
+      if (!event.registrations) return event.registrations
+      return event.registrations.filter((registration: any) => {
+        return registration.recurrenceInstanceId === occurrenceId
+      })
+    }
+
     const expandRecurring = (event: any) => {
-      if (!event.recurringEvents || event.recurringEvents.length === 0) return [event]
-      const occurrences: any[] = [event]
+      if (!event.recurringEvents || event.recurringEvents.length === 0) {
+        return [
+          {
+            ...event,
+            registrations: filterRegistrations(event, event.id)
+          }
+        ]
+      }
+      const occurrences: any[] = [
+        {
+          ...event,
+          registrations: filterRegistrations(event, event.id)
+        }
+      ]
 
       for (const recurring of event.recurringEvents) {
         const rule = recurring.recurrenceRule as any
@@ -269,7 +288,8 @@ export async function GET(request: NextRequest) {
             ...event,
             id: `${event.id}-r${index}`,
             startDate: start,
-            endDate: end
+            endDate: end,
+            registrations: filterRegistrations(event, `${event.id}-r${index}`)
           })
         }
 

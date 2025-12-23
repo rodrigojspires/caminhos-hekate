@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Users, Calendar as CalendarIcon, RefreshCw, Trash2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -46,6 +46,7 @@ export default function AdminEventAttendeesPage() {
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [eventInfo, setEventInfo] = useState<{ title: string; startDate?: string; endDate?: string } | null>(null)
+  const [selectedOccurrenceId, setSelectedOccurrenceId] = useState<string>('all')
 
   const loadEvent = async () => {
     try {
@@ -109,6 +110,25 @@ export default function AdminEventAttendeesPage() {
     loadAttendees()
   }, [eventId])
 
+  const occurrenceOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    attendees.forEach((att) => {
+      const occurrenceId = att.metadata?.recurrenceInstanceId
+      if (!occurrenceId) return
+      const label = att.metadata?.recurrenceInstanceStart
+        ? new Date(att.metadata.recurrenceInstanceStart).toLocaleString('pt-BR')
+        : occurrenceId
+      map.set(occurrenceId, label)
+    })
+
+    return Array.from(map.entries()).map(([id, label]) => ({ id, label }))
+  }, [attendees])
+
+  const filteredAttendees = useMemo(() => {
+    if (selectedOccurrenceId === 'all') return attendees
+    return attendees.filter((att) => att.metadata?.recurrenceInstanceId === selectedOccurrenceId)
+  }, [attendees, selectedOccurrenceId])
+
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       CONFIRMED: 'bg-green-100 text-green-700',
@@ -154,17 +174,34 @@ export default function AdminEventAttendeesPage() {
         </CardHeader>
         <Separator />
         <CardContent>
+          {occurrenceOptions.length > 0 && (
+            <div className="mb-4 flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Recorrência:</span>
+              <select
+                value={selectedOccurrenceId}
+                onChange={(e) => setSelectedOccurrenceId(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
+              >
+                <option value="all">Todas</option>
+                {occurrenceOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando inscritos...
             </div>
-          ) : attendees.length === 0 ? (
+          ) : filteredAttendees.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               Nenhum inscrito encontrado.
             </div>
           ) : (
             <div className="space-y-3">
-              {attendees.map((att) => (
+              {filteredAttendees.map((att) => (
                 <div key={att.id} className="flex items-center gap-3 p-3 border rounded-lg">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={att.user?.image || undefined} alt={att.user?.name || 'Usuário'} />
