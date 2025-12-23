@@ -21,6 +21,7 @@ interface CalendarProps {
   defaultView?: CalendarView
   showCreateButton?: boolean
   showFilters?: boolean
+  onEventClick?: (event: CalendarEvent) => void
 }
 
 const DAYS_OF_WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -33,7 +34,8 @@ export function Calendar({
   className, 
   defaultView = 'month',
   showCreateButton = true,
-  showFilters = true 
+  showFilters = true,
+  onEventClick
 }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<CalendarView>(defaultView)
@@ -48,6 +50,14 @@ export function Calendar({
     fetchCalendarEvents,
     setFilters
   } = useEventsStore()
+
+  const handleEventClick = (event: CalendarEvent) => {
+    if (onEventClick) {
+      onEventClick(event)
+      return
+    }
+    setSelectedEvent(event)
+  }
 
   // Carregar eventos quando a data ou filtros mudarem
   useEffect(() => {
@@ -312,7 +322,7 @@ export function Calendar({
           <EventCard
             key={event.id}
             event={event}
-            onClick={() => setSelectedEvent(event)}
+            onClick={() => handleEventClick(event)}
           />
         ))}
       </div>
@@ -371,7 +381,7 @@ export function Calendar({
                       key={event.id}
                       className="text-xs p-1 rounded cursor-pointer hover:opacity-80 relative text-slate-900"
                       style={{ backgroundColor: event.backgroundColor }}
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => handleEventClick(event)}
                     >
                       <div className="flex items-start justify-between gap-1">
                         <div className="flex-1 min-w-0">
@@ -430,7 +440,7 @@ export function Calendar({
           <EventCard
             key={event.id}
             event={event}
-            onClick={() => setSelectedEvent(event)}
+            onClick={() => handleEventClick(event)}
           />
         ))}
       </div>
@@ -472,7 +482,7 @@ export function Calendar({
         onOpenChange={setShowCreateModal}
       />
       
-      {selectedEvent && (
+      {!onEventClick && selectedEvent && (
         <EventModal
           event={selectedEvent}
           open={!!selectedEvent}

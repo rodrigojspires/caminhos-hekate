@@ -1,20 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Calendar as CalendarIcon, List, MapPin, Clock } from 'lucide-react'
+import { Calendar as CalendarIcon, List, MapPin } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/events/Calendar'
+import { EventModal } from '@/components/events/EventModal'
 import { useEventsStore } from '@/stores/eventsStore'
+import { CalendarEvent } from '@/types/events'
 
 export default function DashboardEventsPage() {
-  const router = useRouter()
   const { events, loading, error, fetchEvents, registerForEvent } = useEventsStore()
   const [tabValue, setTabValue] = useState<'list' | 'calendar'>('list')
+  const [listTab, setListTab] = useState<'all' | 'mine'>('all')
   const [registeringId, setRegisteringId] = useState<string | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -34,14 +36,15 @@ export default function DashboardEventsPage() {
 
   const myEvents = useMemo(() => sortedEvents.filter((event) => event.userRegistration), [sortedEvents])
 
-  const formatDateTime = (date: Date) =>
-    new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const formatDateParts = (date: Date) => {
+    const parsed = new Date(date)
+    return {
+      day: parsed.toLocaleDateString('pt-BR', { day: '2-digit' }),
+      month: parsed.toLocaleDateString('pt-BR', { month: 'short' }),
+      year: parsed.toLocaleDateString('pt-BR', { year: 'numeric' }),
+      time: parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    }
+  }
 
   const formatPrice = (value?: number | string | null) => {
     if (value === undefined || value === null) return 'Gratuito'
@@ -72,70 +75,69 @@ export default function DashboardEventsPage() {
 
   const getBaseEventId = (id: string) => id.replace(/-r\d+$/, '')
 
-  const renderEventRow = (event: typeof events[number]) => (
-    <Card key={event.id} className="border border-border/70">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold">{event.title}</h3>
-              {event.userRegistration && (
-                <Badge variant="secondary">Inscrito</Badge>
-              )}
+  const renderEventRow = (event: typeof events[number]) => {
+    const dateParts = formatDateParts(event.start)
+
+    return (
+      <Card key={event.id} className="border border-border/70">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex gap-4">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/60 px-3 py-2 text-center">
+                <span className="text-2xl font-bold leading-none">{dateParts.day}</span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">{dateParts.month}</span>
+                <span className="text-[11px] text-muted-foreground">{dateParts.year}</span>
+                <span className="mt-1 text-xs font-semibold">{dateParts.time}</span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-semibold">{event.title}</h3>
+                  {event.userRegistration && <Badge variant="secondary">Inscrito</Badge>}
+                </div>
+                {event.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                )}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  {event.location && (
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {event.location}
+                    </span>
+                  )}
+                  {event.virtualLink && <span>Online</span>}
+                </div>
+              </div>
             </div>
-            {event.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
-            )}
+
+            <div className="flex items-center gap-3 md:flex-col md:items-end">
+              <Badge variant="outline">{formatPrice(event.price)}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedEvent(event)
+                  }}
+                >
+                  Ver detalhes
+                </Button>
+                {canRegister(event) && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleRegister(event)}
+                    disabled={registeringId === event.id}
+                  >
+                    {registeringId === event.id ? 'Inscrevendo...' : 'Inscrever-se'}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-          <Badge variant="outline">{formatPrice(event.price)}</Badge>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            {formatDateTime(event.start)}
-          </span>
-          {event.location && (
-            <span className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              {event.location}
-            </span>
-          )}
-          {event.virtualLink && (
-            <span className="truncate">
-              Online
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const baseId = getBaseEventId(event.id)
-              const params = new URLSearchParams()
-              params.set('occurrenceStart', new Date(event.start).toISOString())
-              params.set('occurrenceEnd', new Date(event.end).toISOString())
-              params.set('occurrenceId', event.id)
-              router.push(`/eventos/${baseId}?${params.toString()}`)
-            }}
-          >
-            Ver detalhes
-          </Button>
-          {canRegister(event) && (
-            <Button
-              size="sm"
-              onClick={() => handleRegister(event)}
-              disabled={registeringId === event.id}
-            >
-              {registeringId === event.id ? 'Inscrevendo...' : 'Inscrever-se'}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -178,34 +180,35 @@ export default function DashboardEventsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Meus eventos</h2>
-                  <span className="text-sm text-muted-foreground">{myEvents.length} inscrito(s)</span>
-                </div>
-                {myEvents.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-4 text-sm text-muted-foreground">
-                      Você ainda não está inscrito em nenhum evento.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {myEvents.map(renderEventRow)}
-                  </div>
-                )}
-              </div>
+            <div className="space-y-4">
+              <Tabs value={listTab} onValueChange={(value) => setListTab(value as 'all' | 'mine')}>
+                <TabsList className="grid w-full max-w-sm grid-cols-2">
+                  <TabsTrigger value="all">Todos os eventos</TabsTrigger>
+                  <TabsTrigger value="mine">Meus eventos</TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Todos os eventos</h2>
-                  <span className="text-sm text-muted-foreground">{sortedEvents.length} eventos</span>
-                </div>
+              {listTab === 'all' && (
                 <div className="space-y-3">
                   {sortedEvents.map(renderEventRow)}
                 </div>
-              </div>
+              )}
+
+              {listTab === 'mine' && (
+                <>
+                  {myEvents.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-4 text-sm text-muted-foreground">
+                        Você ainda não está inscrito em nenhum evento.
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {myEvents.map(renderEventRow)}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </TabsContent>
@@ -218,12 +221,23 @@ export default function DashboardEventsPage() {
                   defaultView="month"
                   showCreateButton={false}
                   showFilters={false}
+                  onEventClick={(event) => setSelectedEvent(event)}
                 />
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          open={!!selectedEvent}
+          onOpenChange={(open) => {
+            if (!open) setSelectedEvent(null)
+          }}
+        />
+      )}
     </div>
   )
 }
