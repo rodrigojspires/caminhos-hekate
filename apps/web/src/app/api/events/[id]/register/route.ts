@@ -121,13 +121,14 @@ export async function POST(
       }
     }
 
-    // Verificar se já está inscrito
-    const existingRegistration = await prisma.eventRegistration.findUnique({
+    const recurrenceInstanceIdForRegistration = validatedData.recurrenceInstanceId || eventId
+
+    // Verificar se já está inscrito na ocorrência
+    const existingRegistration = await prisma.eventRegistration.findFirst({
       where: {
-        eventId_userId: {
-          eventId,
-          userId: session.user.id
-        }
+        eventId,
+        userId: session.user.id,
+        recurrenceInstanceId: recurrenceInstanceIdForRegistration
       }
     })
 
@@ -138,8 +139,22 @@ export async function POST(
       )
     }
 
-    // Verificar limite de participantes
-    if (event.maxAttendees && event._count.registrations >= event.maxAttendees) {
+    // Verificar limite de participantes (por ocorrência)
+    if (event.maxAttendees) {
+      const occurrenceCount = await prisma.eventRegistration.count({
+        where: {
+          eventId,
+          recurrenceInstanceId: recurrenceInstanceIdForRegistration,
+          status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
+        }
+      })
+      if (occurrenceCount >= event.maxAttendees) {
+        return NextResponse.json(
+          { error: 'Evento lotado' },
+          { status: 400 }
+        )
+      }
+    }
       return NextResponse.json(
         { error: 'Evento lotado' },
         { status: 400 }
@@ -165,6 +180,7 @@ export async function POST(
     const registration = await prisma.eventRegistration.create({
       data: {
         eventId,
+        recurrenceInstanceId: recurrenceInstanceIdForRegistration,
         userId: session.user.id,
         status: initialStatus,
         metadata: Object.keys(recurrenceMetadata).length > 0 ? recurrenceMetadata : undefined,
@@ -303,13 +319,15 @@ export async function DELETE(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const recurrenceInstanceId = searchParams.get('recurrenceInstanceId') || eventId
+
     // Verificar se a inscrição existe
-    const registration = await prisma.eventRegistration.findUnique({
+    const registration = await prisma.eventRegistration.findFirst({
       where: {
-        eventId_userId: {
-          eventId,
-          userId: session.user.id
-        }
+        eventId,
+        userId: session.user.id,
+        recurrenceInstanceId
       },
       include: {
         event: {
@@ -329,7 +347,10 @@ export async function DELETE(
     }
 
     // Verificar se ainda é possível cancelar (até 2 horas antes do evento)
-    const cancelDeadline = new Date(registration.event.startDate.getTime() - 2 * 60 * 60 * 1000)
+    const registrationOccurrenceStart = (registration.metadata as any)?.recurrenceInstanceStart
+      ? new Date((registration.metadata as any).recurrenceInstanceStart)
+      : registration.event.startDate
+    const cancelDeadline = new Date(registrationOccurrenceStart.getTime() - 2 * 60 * 60 * 1000)
     
     if (new Date() > cancelDeadline) {
       return NextResponse.json(
@@ -341,12 +362,11 @@ export async function DELETE(
     // Cancelar inscrição e remover lembretes
     await prisma.$transaction(async (tx) => {
       // Atualizar status da inscrição
-      await tx.eventRegistration.update({
+      await tx.eventRegistration.updateMany({
         where: {
-          eventId_userId: {
-            eventId,
-            userId: session.user.id
-          }
+          eventId,
+          userId: session.user.id,
+          recurrenceInstanceId
         },
         data: {
           status: EventRegistrationStatus.CANCELED

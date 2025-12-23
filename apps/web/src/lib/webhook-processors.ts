@@ -249,9 +249,16 @@ export class MercadoPagoWebhookProcessor {
               if (!event || event.status !== 'PUBLISHED') continue
 
               await prisma.eventRegistration.upsert({
-                where: { eventId_userId: { eventId, userId: order.userId } },
+                where: {
+                  eventId_userId_recurrenceInstanceId: {
+                    eventId,
+                    userId: order.userId,
+                    recurrenceInstanceId: eventId
+                  }
+                },
                 create: {
                   eventId,
+                  recurrenceInstanceId: eventId,
                   userId: order.userId,
                   status: 'CONFIRMED',
                   registeredAt: new Date(),

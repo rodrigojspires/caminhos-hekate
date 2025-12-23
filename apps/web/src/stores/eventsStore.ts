@@ -40,7 +40,7 @@ interface EventsState {
   updateEvent: (id: string, eventData: UpdateEventRequest) => Promise<CalendarEvent | null>
   deleteEvent: (id: string) => Promise<boolean>
   registerForEvent: (eventId: string, registrationData?: EventRegistrationRequest) => Promise<boolean>
-  cancelRegistration: (eventId: string) => Promise<boolean>
+  cancelRegistration: (eventId: string, options?: { recurrenceInstanceId?: string }) => Promise<boolean>
   approveRegistration: (eventId: string, userId: string) => Promise<boolean>
   rejectRegistration: (eventId: string, userId: string) => Promise<boolean>
   fetchEventAttendees: (eventId: string) => Promise<EventRegistration[]>
@@ -383,11 +383,15 @@ export const useEventsStore = create<EventsState>()(devtools(
       }
     },
     
-    cancelRegistration: async (eventId) => {
+    cancelRegistration: async (eventId, options) => {
       set({ loading: true, error: null })
       
       try {
-        const response = await fetch(`/api/events/${eventId}/register`, {
+        const params = new URLSearchParams()
+        if (options?.recurrenceInstanceId) {
+          params.set('recurrenceInstanceId', options.recurrenceInstanceId)
+        }
+        const response = await fetch(`/api/events/${eventId}/register${params.toString() ? `?${params.toString()}` : ''}`, {
           method: 'DELETE'
         })
         

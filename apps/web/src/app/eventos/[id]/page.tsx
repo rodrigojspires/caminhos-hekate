@@ -102,7 +102,10 @@ export default function EventDetailsPage() {
     if (!selectedEvent) return;
     
     try {
-      await cancelRegistration(selectedEvent.id);
+      const occurrenceId = searchParams?.get('occurrenceId');
+      await cancelRegistration(selectedEvent.id, {
+        recurrenceInstanceId: occurrenceId || selectedEvent.id
+      });
       toast.success('Inscrição cancelada com sucesso!');
     } catch (error) {
       toast.error('Erro ao cancelar inscrição');
@@ -151,6 +154,12 @@ export default function EventDetailsPage() {
     return value ? new Date(value) : null;
   }, [searchParams]);
 
+  const attendeesForOccurrence = useMemo(() => {
+    const occurrenceId = searchParams?.get('occurrenceId');
+    if (!occurrenceId) return attendees;
+    return attendees.filter((registration: any) => registration.metadata?.recurrenceInstanceId === occurrenceId);
+  }, [attendees, searchParams]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
@@ -190,10 +199,15 @@ export default function EventDetailsPage() {
   const displayEndDate = occurrenceEnd || new Date(selectedEvent.endDate);
 
   const isEventPast = displayEndDate < new Date();
-  const isUserRegistered = (selectedEvent as any).registrations?.some(
+  const occurrenceId = searchParams?.get('occurrenceId');
+  const registrations = (selectedEvent as any).registrations || [];
+  const registrationsForOccurrence = occurrenceId
+    ? registrations.filter((reg: any) => reg.metadata?.recurrenceInstanceId === occurrenceId)
+    : registrations;
+  const isUserRegistered = registrationsForOccurrence.some(
     (reg: any) => reg.status === 'CONFIRMED' || reg.status === 'REGISTERED'
   );
-  const confirmedCount = (selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length ?? 0;
+  const confirmedCount = registrationsForOccurrence.filter((reg: any) => reg.status === 'CONFIRMED').length ?? 0;
   const maxAttendeesValue = typeof selectedEvent.maxAttendees === 'number' ? selectedEvent.maxAttendees : null;
   const isEventFull = maxAttendeesValue !== null && maxAttendeesValue > 0 && confirmedCount >= maxAttendeesValue;
   const isCreator = session?.user?.id && selectedEvent.createdBy === session.user.id;
@@ -451,18 +465,18 @@ export default function EventDetailsPage() {
             )}
 
             {/* Participants */}
-            {(isCreator || attendees.length > 0) && (
+            {(isCreator || attendeesForOccurrence.length > 0) && (
               <Card>
                 <CardHeader className="flex items-center justify-between">
                   <CardTitle>Participantes</CardTitle>
                   {attendeesLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
                 </CardHeader>
                 <CardContent>
-                  {attendees.length === 0 ? (
+                  {attendeesForOccurrence.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhum inscrito ainda.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {attendees.map((registration: any) => (
+                      {attendeesForOccurrence.map((registration: any) => (
                         <div key={registration.id} className="flex items-center gap-3 p-3 border rounded-lg">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={registration.user?.image} alt={registration.user?.name || 'Usuário'} />

@@ -63,12 +63,10 @@ export async function GET(
 
     // Verificar permissões
     const isCreator = event.createdBy === session.user.id
-    const isRegistered = await prisma.eventRegistration.findUnique({
+    const isRegistered = await prisma.eventRegistration.findFirst({
       where: {
-        eventId_userId: {
-          eventId,
-          userId: session.user.id
-        }
+        eventId,
+        userId: session.user.id
       }
     })
 

@@ -144,7 +144,9 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
 
     setIsRegistering(true)
     try {
-      await cancelRegistration(getBaseEventId(event.id))
+      await cancelRegistration(getBaseEventId(event.id), {
+        recurrenceInstanceId: event.id
+      })
       toast.success('Inscrição cancelada com sucesso!')
     } catch (error) {
       toast.error('Erro ao cancelar inscrição')

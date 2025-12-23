@@ -1847,6 +1847,7 @@ model Event {
 model EventRegistration {
   id           String                  @id @default(cuid())
   eventId      String
+  recurrenceInstanceId String
   userId       String?
   guestEmail   String?
   guestName    String?
@@ -1859,10 +1860,11 @@ model EventRegistration {
   event        Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user         User?                   @relation(fields: [userId], references: [id])
 
-  @@unique([eventId, userId])
-  @@unique([eventId, guestEmail])
+  @@unique([eventId, userId, recurrenceInstanceId])
+  @@unique([eventId, guestEmail, recurrenceInstanceId])
   @@index([eventId])
   @@index([userId])
+  @@index([recurrenceInstanceId])
   @@index([status])
   @@index([guestEmail])
   @@map("event_registrations")

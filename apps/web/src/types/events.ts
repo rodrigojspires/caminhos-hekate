@@ -126,6 +126,7 @@ export interface CalendarEvent {
 export interface EventRegistration {
   id: string
   eventId: string
+  recurrenceInstanceId?: string
   userId?: string
   guestEmail?: string
   guestName?: string
