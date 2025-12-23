@@ -164,7 +164,8 @@ export async function GET(request: NextRequest) {
       include: {
         registrations: {
           where: {
-            userId: session.user.id
+            userId: session.user.id,
+            status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
           },
           select: {
             id: true,

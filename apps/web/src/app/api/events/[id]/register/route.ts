@@ -128,7 +128,8 @@ export async function POST(
       where: {
         eventId,
         userId: session.user.id,
-        recurrenceInstanceId: recurrenceInstanceIdForRegistration
+        recurrenceInstanceId: recurrenceInstanceIdForRegistration,
+        status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
       }
     })
 
@@ -172,36 +173,74 @@ export async function POST(
         : {})
     }
 
-    const registration = await prisma.eventRegistration.create({
-      data: {
+    const canceledRegistration = await prisma.eventRegistration.findFirst({
+      where: {
         eventId,
-        recurrenceInstanceId: recurrenceInstanceIdForRegistration,
         userId: session.user.id,
-        status: initialStatus,
-        metadata: Object.keys(recurrenceMetadata).length > 0 ? recurrenceMetadata : undefined,
-        registeredAt: new Date()
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
-        },
-        event: {
-          select: {
-            id: true,
-            title: true,
-            startDate: true,
-            endDate: true,
-            location: true,
-            virtualLink: true
-          }
-        }
+        recurrenceInstanceId: recurrenceInstanceIdForRegistration,
+        status: EventRegistrationStatus.CANCELED
       }
     })
+
+    const registration = canceledRegistration
+      ? await prisma.eventRegistration.update({
+          where: { id: canceledRegistration.id },
+          data: {
+            status: initialStatus,
+            metadata: Object.keys(recurrenceMetadata).length > 0 ? recurrenceMetadata : undefined,
+            registeredAt: new Date()
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true
+              }
+            },
+            event: {
+              select: {
+                id: true,
+                title: true,
+                startDate: true,
+                endDate: true,
+                location: true,
+                virtualLink: true
+              }
+            }
+          }
+        })
+      : await prisma.eventRegistration.create({
+          data: {
+            eventId,
+            recurrenceInstanceId: recurrenceInstanceIdForRegistration,
+            userId: session.user.id,
+            status: initialStatus,
+            metadata: Object.keys(recurrenceMetadata).length > 0 ? recurrenceMetadata : undefined,
+            registeredAt: new Date()
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true
+              }
+            },
+            event: {
+              select: {
+                id: true,
+                title: true,
+                startDate: true,
+                endDate: true,
+                location: true,
+                virtualLink: true
+              }
+            }
+          }
+        })
 
     // Pontuação por inscrição
     try {

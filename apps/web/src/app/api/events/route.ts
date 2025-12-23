@@ -167,7 +167,10 @@ export async function GET(request: NextRequest) {
     const includeRegistrations = sessionUserId
       ? {
           registrations: {
-            where: { userId: sessionUserId },
+            where: {
+              userId: sessionUserId,
+              status: { in: ['CONFIRMED', 'REGISTERED'] as any }
+            },
             select: { id: true, status: true, registeredAt: true, recurrenceInstanceId: true }
           }
         }
