@@ -19,14 +19,14 @@ interface EventCardProps {
 }
 
 const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  [EventType.WEBINAR]: 'Webinar',
+  [EventType.WEBINAR]: 'Ritual',
   [EventType.WORKSHOP]: 'Workshop',
   [EventType.COURSE]: 'Curso',
-  [EventType.MEETING]: 'Reunião',
-  [EventType.COMMUNITY]: 'Comunidade',
-  [EventType.CONFERENCE]: 'Conferência',
-  [EventType.NETWORKING]: 'Networking',
-  [EventType.TRAINING]: 'Treinamento'
+  [EventType.MEETING]: 'Terapia',
+  [EventType.COMMUNITY]: 'Ritual',
+  [EventType.CONFERENCE]: 'Ritual',
+  [EventType.NETWORKING]: 'Ritual',
+  [EventType.TRAINING]: 'Workshop'
 }
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {

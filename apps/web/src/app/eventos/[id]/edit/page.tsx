@@ -8,7 +8,7 @@ import { SubscriptionTier } from '@hekate/database'
 import { useEventsStore } from '@/stores/eventsStore'
 import { UpdateEventRequest } from '@/types/events'
 
-type EventType = 'WEBINAR' | 'WORKSHOP' | 'MEETING' | 'COMMUNITY' | 'CONFERENCE'
+type EventType = 'WEBINAR' | 'WORKSHOP' | 'COURSE' | 'MEETING'
 type EventAccessType = 'FREE' | 'PAID' | 'TIER'
 type EventMode = 'ONLINE' | 'IN_PERSON' | 'HYBRID'
 type RecurrenceType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'LUNAR' | 'none'
@@ -352,11 +352,10 @@ export default function EditEventPage() {
                 onChange={(e) => handleChange('type', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="WEBINAR">Webinar</option>
+                <option value="WEBINAR">Ritual</option>
                 <option value="WORKSHOP">Workshop</option>
-                <option value="MEETING">Reunião</option>
-                <option value="COMMUNITY">Comunidade</option>
-                <option value="CONFERENCE">Conferência</option>
+                <option value="COURSE">Curso</option>
+                <option value="MEETING">Terapia</option>
               </select>
             </div>
             <div>

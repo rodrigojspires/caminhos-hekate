@@ -222,14 +222,14 @@ export default function EventDetailsPage() {
   };
 
   const typeLabels: Record<string, string> = {
-    WEBINAR: 'Webinar',
+    WEBINAR: 'Ritual',
     WORKSHOP: 'Workshop',
     COURSE: 'Curso',
-    MEETING: 'Reunião',
-    COMMUNITY: 'Comunidade',
-    CONFERENCE: 'Conferência',
-    NETWORKING: 'Networking',
-    TRAINING: 'Treinamento'
+    MEETING: 'Terapia',
+    COMMUNITY: 'Ritual',
+    CONFERENCE: 'Ritual',
+    NETWORKING: 'Ritual',
+    TRAINING: 'Workshop'
   };
 
   const modeLabels: Record<string, string> = {

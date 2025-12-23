@@ -36,11 +36,10 @@ interface CalendarFiltersProps {
 }
 
 const EVENT_TYPE_OPTIONS = [
-  { value: EventType.WEBINAR, label: 'Webinar', color: 'bg-blue-100 text-blue-800' },
+  { value: EventType.WEBINAR, label: 'Ritual', color: 'bg-blue-100 text-blue-800' },
   { value: EventType.WORKSHOP, label: 'Workshop', color: 'bg-green-100 text-green-800' },
   { value: EventType.COURSE, label: 'Curso', color: 'bg-purple-100 text-purple-800' },
-  { value: EventType.MEETING, label: 'Reunião', color: 'bg-yellow-100 text-yellow-800' },
-  { value: EventType.COMMUNITY, label: 'Comunidade', color: 'bg-red-100 text-red-800' }
+  { value: EventType.MEETING, label: 'Terapia', color: 'bg-yellow-100 text-yellow-800' }
 ]
 
 const TIME_FILTER_OPTIONS = [

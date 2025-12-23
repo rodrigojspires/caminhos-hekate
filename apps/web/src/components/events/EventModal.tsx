@@ -5,17 +5,13 @@ import {
   Calendar, 
   Clock, 
   MapPin, 
-  Users, 
   Video, 
   ExternalLink, 
   Share2, 
-  Download,
   Edit,
   Trash2,
   UserPlus,
-  UserMinus,
-  Bell,
-  BellOff
+  UserMinus
 } from 'lucide-react'
 import {
   Dialog,
@@ -27,9 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { CalendarEvent, EventType, EventRegistrationStatus } from '@/types/events'
 import { cn } from '@/lib/utils'
@@ -45,14 +39,14 @@ interface EventModalProps {
 }
 
 const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  [EventType.WEBINAR]: 'Webinar',
+  [EventType.WEBINAR]: 'Ritual',
   [EventType.WORKSHOP]: 'Workshop',
   [EventType.COURSE]: 'Curso',
-  [EventType.MEETING]: 'Reunião',
-  [EventType.COMMUNITY]: 'Comunidade',
-  [EventType.CONFERENCE]: 'Conferência',
-  [EventType.NETWORKING]: 'Networking',
-  [EventType.TRAINING]: 'Treinamento'
+  [EventType.MEETING]: 'Terapia',
+  [EventType.COMMUNITY]: 'Ritual',
+  [EventType.CONFERENCE]: 'Ritual',
+  [EventType.NETWORKING]: 'Ritual',
+  [EventType.TRAINING]: 'Workshop'
 }
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
@@ -93,16 +87,6 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
     })
   }
 
-  const formatDuration = () => {
-    const diffMs = endDate.getTime() - startDate.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-    
-    if (diffHours > 0) {
-      return `${diffHours}h${diffMinutes > 0 ? ` ${diffMinutes}min` : ''}`
-    }
-    return `${diffMinutes}min`
-  }
 
   const getStatusBadge = () => {
     if (isOngoing) {
@@ -244,9 +228,6 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
               <Button variant="ghost" size="sm" onClick={handleShare}>
                 <Share2 className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleExportToCalendar}>
-                <Download className="h-4 w-4" />
-              </Button>
               {isCreator && (
                 <>
                   <Button variant="ghost" size="sm" onClick={onEdit}>
@@ -267,82 +248,80 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
         </DialogHeader>
 
         <ScrollArea className="flex-1">
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="details">Detalhes</TabsTrigger>
-              <TabsTrigger value="attendees">Participantes</TabsTrigger>
-              <TabsTrigger value="reminders">Lembretes</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="details" className="space-y-6 mt-6">
-              {/* Informações básicas */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Data e Horário</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDateTime(startDate)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Duração: {formatDuration()}
-                    </p>
-                  </div>
-                </div>
-
-                {event.location && (
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Local</p>
-                      <p className="text-sm text-muted-foreground">{event.location}</p>
-                    </div>
-                  </div>
-                )}
-
-                {event.virtualLink && (
-                  <div className="flex items-center space-x-3">
-                    <Video className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Link Virtual</p>
-                      <Button 
-                        variant="link" 
-                        className="p-0 h-auto text-sm"
-                        onClick={() => window.open(event.virtualLink, '_blank')}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Acessar evento online
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-3">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Participantes</p>
-                    <p className="text-sm text-muted-foreground">
-                      {event.attendeeCount} inscrito{event.attendeeCount !== 1 ? 's' : ''}
-                      {event.maxAttendees && ` de ${event.maxAttendees} vagas`}
-                    </p>
-                  </div>
+          <div className="space-y-6 mt-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Data e Horário</p>
+                  <p className="text-sm text-muted-foreground">
+                    {startDate.toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {startDate.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}{' '}
+                    -{' '}
+                    {endDate.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Formato: {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Hibrido' : 'Online'}
+                  </p>
                 </div>
               </div>
 
-              <Separator />
+              {event.location && (
+                <div className="flex items-center space-x-3">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Local</p>
+                    <p className="text-sm text-muted-foreground">{event.location}</p>
+                  </div>
+                </div>
+              )}
 
-              {/* Descrição */}
-              {event.description && (
+              {event.virtualLink && event.userRegistration && (
+                <div className="flex items-center space-x-3">
+                  <Video className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Link Virtual</p>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-sm"
+                      onClick={() => window.open(event.virtualLink, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Acessar evento online
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {event.description && (
+              <>
+                <Separator />
                 <div>
                   <h3 className="font-semibold mb-2">Descrição</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">
                     {event.description}
                   </p>
                 </div>
-              )}
+              </>
+            )}
 
-              {/* Tags */}
-              {event.tags && event.tags.length > 0 && (
+            {event.tags && event.tags.length > 0 && (
+              <>
+                <Separator />
                 <div>
                   <h3 className="font-semibold mb-2">Tags</h3>
                   <div className="flex flex-wrap gap-2">
@@ -353,70 +332,9 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
                     ))}
                   </div>
                 </div>
-              )}
-
-              <Separator />
-
-              {/* Criador */}
-              <div>
-                <h3 className="font-semibold mb-2">Organizador</h3>
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage src={event.creator?.image || ''} alt={event.creator?.name || 'Criador do evento'} />
-                    <AvatarFallback>
-                      {event.creator?.name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{event.creator?.name || 'Organização'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {event.creator?.email || ''}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="attendees" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">
-                    Participantes ({event.attendeeCount})
-                  </h3>
-                  {isCreator && (
-                    <Button size="sm" variant="outline">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Convidar
-                    </Button>
-                  )}
-                </div>
-                
-                {/* Lista de participantes seria carregada aqui */}
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Lista de participantes será carregada aqui</p>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="reminders" className="mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Lembretes</h3>
-                  <Button size="sm" variant="outline">
-                    <Bell className="h-4 w-4 mr-2" />
-                    Adicionar Lembrete
-                  </Button>
-                </div>
-                
-                {/* Lista de lembretes seria carregada aqui */}
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum lembrete configurado</p>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+              </>
+            )}
+          </div>
         </ScrollArea>
 
         <DialogFooter>

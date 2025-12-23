@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar as CalendarIcon, Save, Loader2, CreditCard, MapPin,
 import { toast } from 'sonner'
 import { SubscriptionTier } from '@hekate/database'
 
-type EventType = 'WEBINAR' | 'WORKSHOP' | 'MEETING' | 'COMMUNITY' | 'CONFERENCE'
+type EventType = 'WEBINAR' | 'WORKSHOP' | 'COURSE' | 'MEETING'
 type EventAccessType = 'FREE' | 'PAID' | 'TIER'
 type EventMode = 'ONLINE' | 'IN_PERSON' | 'HYBRID'
 type RecurrenceType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'LUNAR' | 'none'
@@ -262,11 +262,10 @@ export default function NewAdminEventPage() {
                 onChange={(e) => handleChange('type', e.target.value as EventType)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="WEBINAR">Webinar</option>
+                <option value="WEBINAR">Ritual</option>
                 <option value="WORKSHOP">Workshop</option>
-                <option value="MEETING">Reunião</option>
-                <option value="COMMUNITY">Comunidade</option>
-                <option value="CONFERENCE">Conferência</option>
+                <option value="COURSE">Curso</option>
+                <option value="MEETING">Terapia</option>
               </select>
             </div>
             <div>

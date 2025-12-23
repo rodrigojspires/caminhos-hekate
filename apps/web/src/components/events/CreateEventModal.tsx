@@ -37,11 +37,10 @@ interface CreateEventModalProps {
 }
 
 const EVENT_TYPE_OPTIONS = [
-  { value: EventType.WEBINAR, label: 'Webinar', description: 'Apresentação online ao vivo' },
+  { value: EventType.WEBINAR, label: 'Ritual', description: 'Encontro espiritual guiado' },
   { value: EventType.WORKSHOP, label: 'Workshop', description: 'Sessão prática e interativa' },
   { value: EventType.COURSE, label: 'Curso', description: 'Programa educacional estruturado' },
-  { value: EventType.MEETING, label: 'Reunião', description: 'Encontro para discussão' },
-  { value: EventType.COMMUNITY, label: 'Comunidade', description: 'Evento da comunidade' }
+  { value: EventType.MEETING, label: 'Terapia', description: 'Sessão terapêutica em grupo ou individual' }
 ]
 
 const RECURRENCE_OPTIONS = [
