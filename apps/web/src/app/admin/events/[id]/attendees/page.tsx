@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Users, Calendar as CalendarIcon, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, Calendar as CalendarIcon, RefreshCw, Trash2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,7 @@ export default function AdminEventAttendeesPage() {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [loading, setLoading] = useState(true)
+  const [removingId, setRemovingId] = useState<string | null>(null)
   const [eventInfo, setEventInfo] = useState<{ title: string; startDate?: string; endDate?: string } | null>(null)
 
   const loadEvent = async () => {
@@ -74,6 +75,31 @@ export default function AdminEventAttendeesPage() {
       setAttendees([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRemove = async (registrationId: string) => {
+    if (!eventId) return
+    if (!confirm('Deseja remover este participante?')) return
+
+    try {
+      setRemovingId(registrationId)
+      const res = await fetch(`/api/events/${eventId}/attendees`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registrationId })
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Erro ao remover participante')
+      }
+
+      await loadAttendees(pagination?.page || 1)
+    } catch (error) {
+      console.error('Erro ao remover participante', error)
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -164,6 +190,15 @@ export default function AdminEventAttendeesPage() {
                       Inscrito em {new Date(att.registeredAt).toLocaleString('pt-BR')}
                     </p>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleRemove(att.id)}
+                    disabled={removingId === att.id}
+                    title="Remover participante"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>

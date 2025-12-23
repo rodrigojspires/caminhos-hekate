@@ -206,7 +206,7 @@ export async function POST(
     // Pontuação por inscrição
     try {
       const isPaidEvent = event.accessType === 'PAID'
-      const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : FREE_EVENT_ENROLL_POINTS
+      const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : 0
 
       const existingTx = await prisma.pointTransaction.findFirst({
         where: {
@@ -219,7 +219,7 @@ export async function POST(
       })
 
       if (!existingTx && pointsToAward > 0) {
-        const reasonLabel = isPaidEvent ? 'Inscrição em evento pago' : 'Inscrição em evento gratuito'
+        const reasonLabel = 'Inscrição em evento pago'
         const uniqueKey = `event_enrolled_${session.user.id}_${eventId}`
 
         await GamificationEngine.awardPoints(session.user.id, pointsToAward, 'EVENT_ENROLLED', {
@@ -247,7 +247,7 @@ export async function POST(
             paid: isPaidEvent,
             totalPoints: userPoints?.totalPoints ?? undefined
           },
-          priority: isPaidEvent ? 'MEDIUM' : 'LOW'
+          priority: 'MEDIUM'
         })
       }
     } catch (e) {

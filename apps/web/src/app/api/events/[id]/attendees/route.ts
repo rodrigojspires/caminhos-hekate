@@ -18,6 +18,11 @@ const updateRegistrationSchema = z.object({
   status: z.nativeEnum(EventRegistrationStatus)
 })
 
+// Schema para remover inscrição
+const deleteRegistrationSchema = z.object({
+  registrationId: z.string()
+})
+
 // GET /api/events/[id]/attendees - Listar participantes
 export async function GET(
   request: NextRequest,
@@ -261,6 +266,91 @@ export async function PUT(
     })
   } catch (error) {
     console.error('Erro ao atualizar inscrições:', error)
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/events/[id]/attendees - Remover inscrição (apenas criador)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const { id: eventId } = params
+    
+    if (!eventId) {
+      return NextResponse.json(
+        { error: 'ID do evento é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        createdBy: true
+      }
+    })
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Evento não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    if (event.createdBy !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Apenas o criador pode remover inscrições' },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const validatedData = deleteRegistrationSchema.parse(body)
+
+    const existing = await prisma.eventRegistration.findFirst({
+      where: {
+        id: validatedData.registrationId,
+        eventId
+      }
+    })
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Inscrição não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    await prisma.eventRegistration.delete({
+      where: { id: validatedData.registrationId }
+    })
+
+    return NextResponse.json({ message: 'Inscrição removida com sucesso' })
+  } catch (error) {
+    console.error('Erro ao remover inscrição:', error)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
