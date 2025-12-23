@@ -155,11 +155,6 @@ export async function POST(
         )
       }
     }
-      return NextResponse.json(
-        { error: 'Evento lotado' },
-        { status: 400 }
-      )
-    }
 
     // Determinar status inicial
     const initialStatus = event.requiresApproval 
