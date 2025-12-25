@@ -107,12 +107,14 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
 
   useEffect(() => {
     let isMounted = true
+    const now = new Date()
+    const end = new Date(now)
+    end.setMonth(end.getMonth() + 6)
     const params = new URLSearchParams({
-      startDate: new Date().toISOString(),
-      status: 'PUBLISHED',
-      limit: '200'
+      startDate: now.toISOString(),
+      endDate: end.toISOString()
     })
-    fetch(`/api/events?${params.toString()}`, { cache: 'no-store' })
+    fetch(`/api/calendar?${params.toString()}`, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) return null
         const data = await res.json()
@@ -120,7 +122,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
       })
       .then((events) => {
         if (!isMounted || !Array.isArray(events)) return
-        const count = events.filter((event) => Array.isArray(event.registrations) && event.registrations.length > 0).length
+        const count = events.filter((event) => event.userRegistration && new Date(event.end) > new Date()).length
         setUpcomingRegisteredCount(count)
       })
       .catch(() => {})
