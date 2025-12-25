@@ -463,7 +463,12 @@ export default function CheckoutPage() {
       body: JSON.stringify(orderPayload),
     })
     setLoading(false)
-    if (!res.ok) return alert('Erro ao criar pedido')
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      const message = errorData?.error || 'Erro ao criar pedido'
+      alert(message)
+      return
+    }
     const data = await res.json()
     window.location.href = data.paymentUrl
   }

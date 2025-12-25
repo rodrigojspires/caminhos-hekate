@@ -74,6 +74,7 @@ export default function EditEventPage() {
   const [recurrenceCount, setRecurrenceCount] = useState('')
   const [recurrenceLunarPhase, setRecurrenceLunarPhase] = useState<'FULL' | 'NEW' | ''>('')
   const [privateLink, setPrivateLink] = useState('')
+  const [generatingLink, setGeneratingLink] = useState(false)
 
   useEffect(() => {
     if (eventId) {
@@ -127,6 +128,21 @@ export default function EditEventPage() {
       setPrivateLink('')
     }
   }, [selectedEvent])
+
+  const handleGeneratePrivateLink = async () => {
+    if (!selectedEvent || form.isPublic) return
+    const token = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    setGeneratingLink(true)
+    await updateEvent(selectedEvent.id, {
+      metadata: {
+        ...(selectedEvent as any).metadata,
+        accessToken: token
+      }
+    })
+    setGeneratingLink(false)
+  }
 
   const handleChange = (field: keyof EventFormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -574,26 +590,37 @@ export default function EditEventPage() {
                 </label>
               </div>
 
-              {!form.isPublic && privateLink && (
+              {!form.isPublic && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Link privado
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={privateLink}
-                      className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200"
-                    />
+                  {privateLink ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={privateLink}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(privateLink)}
+                        className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => navigator.clipboard.writeText(privateLink)}
+                      onClick={handleGeneratePrivateLink}
+                      disabled={generatingLink}
                       className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm"
                     >
-                      Copiar
+                      {generatingLink ? 'Gerando...' : 'Gerar link privado'}
                     </button>
-                  </div>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Compartilhe este link apenas com as pessoas autorizadas.
                   </p>
