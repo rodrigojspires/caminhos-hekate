@@ -471,7 +471,11 @@ export default function CheckoutPage() {
   if (!cart || !totals) return <div className="container mx-auto py-8">Carregando...</div>
 
   const eventTotal = eventItem ? Number(eventItem.price) : 0
-  const grandTotal = totals ? totals.total : eventTotal
+  const cartSubtotal = totals?.subtotal ?? 0
+  const cartDiscount = totals?.discount ?? 0
+  const cartShipping = totals?.shipping ?? 0
+  const effectiveSubtotal = cartSubtotal + eventTotal
+  const grandTotal = cartSubtotal - cartDiscount + cartShipping + eventTotal
   const formatCurrency = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   return (
@@ -581,14 +585,14 @@ export default function CheckoutPage() {
         </div>
         <div className="border rounded p-4 h-fit">
           <h2 className="font-semibold mb-3">Resumo</h2>
-          <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+          <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(effectiveSubtotal)}</span></div>
           {eventItem && (
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Evento: {eventItem.title}</span>
               <span>{formatCurrency(eventTotal)}</span>
             </div>
           )}
-          <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {formatCurrency(totals.discount)}</span></div>
+          <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {formatCurrency(cartDiscount)}</span></div>
           <div className="mt-3 rounded border border-dashed border-muted-foreground/30 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -612,7 +616,7 @@ export default function CheckoutPage() {
               </div>
               <div className="text-right">
                 <div className="font-semibold">
-                  {formatCurrency(totals.shipping)}
+                  {formatCurrency(cartShipping)}
                 </div>
                 {cart?.shipping?.options?.length > 1 && (
                   <button
