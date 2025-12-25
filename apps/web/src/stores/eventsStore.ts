@@ -53,7 +53,8 @@ const defaultFilters: EventFilters = {
   type: [],
   tags: [],
   createdBy: undefined,
-  status: undefined
+  status: undefined,
+  modes: []
 }
 
 export const useEventsStore = create<EventsState>()(devtools(

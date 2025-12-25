@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus, EventRegistrationStatus } from '@prisma/client'
+import { EventType, EventStatus, EventRegistrationStatus, EventMode } from '@prisma/client'
 
 // Schema de validação para parâmetros do calendário
 const calendarParamsSchema = z.object({
@@ -12,6 +12,7 @@ const calendarParamsSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   types: z.array(z.nativeEnum(EventType)).optional(),
+  modes: z.array(z.nativeEnum(EventMode)).optional(),
   myEvents: z.boolean().default(false),
   myRegistrations: z.boolean().default(false)
 })
@@ -72,15 +73,21 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const params = Object.fromEntries(searchParams.entries())
+    const listParam = (key: string) => {
+      const values = searchParams.getAll(key)
+      if (!values.length) return undefined
+      return values.flatMap((value) => value.split(',').map((item) => item.trim()).filter(Boolean))
+    }
     
     const parsedParams = calendarParamsSchema.parse({
       ...params,
-      types: params.types ? params.types.split(',') : undefined,
+      types: listParam('types'),
+      modes: listParam('modes'),
       myEvents: params.myEvents === 'true',
       myRegistrations: params.myRegistrations === 'true'
     })
 
-    const { view, date, startDate: customStartDate, endDate: customEndDate, types, myEvents, myRegistrations } = parsedParams
+    const { view, date, startDate: customStartDate, endDate: customEndDate, types, modes, myEvents, myRegistrations } = parsedParams
 
     // Calcular intervalo de datas
     let startDate: Date
@@ -118,6 +125,10 @@ export async function GET(request: NextRequest) {
     // Filtrar por tipos se especificado
     if (types && types.length > 0) {
       where.type = { in: types }
+    }
+
+    if (modes && modes.length > 0) {
+      where.mode = { in: modes }
     }
 
     // Filtrar por eventos do usuário ou inscrições

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Filter, X, Calendar, Users, Tag, Clock } from 'lucide-react'
+import { BookOpen, Calendar, Clock, Filter, Hammer, HeartPulse, MapPin, Shuffle, Sparkles, Tag, Users, Wifi, X } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -23,7 +23,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EventType, EventFilters } from '@/types/events'
+import { EventMode, EventType, EventFilters } from '@/types/events'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface CalendarFiltersProps {
@@ -36,10 +37,16 @@ interface CalendarFiltersProps {
 }
 
 const EVENT_TYPE_OPTIONS = [
-  { value: EventType.WEBINAR, label: 'Ritual', color: 'bg-blue-100 text-blue-800' },
-  { value: EventType.WORKSHOP, label: 'Workshop', color: 'bg-green-100 text-green-800' },
-  { value: EventType.COURSE, label: 'Curso', color: 'bg-purple-100 text-purple-800' },
-  { value: EventType.MEETING, label: 'Terapia', color: 'bg-yellow-100 text-yellow-800' }
+  { value: EventType.WEBINAR, label: 'Ritual', color: 'bg-blue-100 text-blue-800', icon: Sparkles },
+  { value: EventType.WORKSHOP, label: 'Workshop', color: 'bg-green-100 text-green-800', icon: Hammer },
+  { value: EventType.COURSE, label: 'Curso', color: 'bg-purple-100 text-purple-800', icon: BookOpen },
+  { value: EventType.MEETING, label: 'Terapia', color: 'bg-yellow-100 text-yellow-800', icon: HeartPulse }
+]
+
+const EVENT_MODE_OPTIONS = [
+  { value: EventMode.IN_PERSON, label: 'Presencial', color: 'bg-amber-100 text-amber-900', icon: MapPin },
+  { value: EventMode.HYBRID, label: 'Hibrido', color: 'bg-slate-100 text-slate-900', icon: Shuffle },
+  { value: EventMode.ONLINE, label: 'Online', color: 'bg-cyan-100 text-cyan-900', icon: Wifi }
 ]
 
 const TIME_FILTER_OPTIONS = [
@@ -88,6 +95,15 @@ export function CalendarFilters({
     updateFilter('types', newTypes.length > 0 ? newTypes : undefined)
   }
 
+  const toggleEventMode = (mode: EventMode) => {
+    const currentModes = filters.modes || []
+    const newModes = currentModes.includes(mode)
+      ? currentModes.filter(m => m !== mode)
+      : [...currentModes, mode]
+
+    updateFilter('modes', newModes.length > 0 ? newModes : undefined)
+  }
+
   const toggleTag = (tag: string) => {
     const currentTags = filters.tags || []
     const newTags = currentTags.includes(tag)
@@ -112,6 +128,7 @@ export function CalendarFilters({
   const getActiveFiltersCount = () => {
     let count = 0
     if (filters.types?.length) count++
+    if (filters.modes?.length) count++
     if (filters.tags?.length) count++
     if (filters.search) count++
     if (filters.timeFilter) count++
@@ -252,6 +269,7 @@ export function CalendarFilters({
               <div className="space-y-2">
                 {EVENT_TYPE_OPTIONS.map((option) => {
                   const isSelected = filters.types?.includes(option.value) || false
+                  const Icon = option.icon as LucideIcon
                   
                   return (
                     <div key={option.value} className="flex items-center space-x-2">
@@ -267,11 +285,12 @@ export function CalendarFilters({
                         <Badge 
                           variant="outline" 
                           className={cn(
-                            "transition-colors",
+                            "transition-colors gap-1",
                             isSelected ? option.color : "bg-muted text-muted-foreground"
                           )}
                         >
-                          {option.label}
+                          <Icon className="h-3 w-3" />
+                          <span>{option.label}</span>
                         </Badge>
                       </Label>
                     </div>
@@ -286,6 +305,62 @@ export function CalendarFilters({
                     variant="ghost" 
                     size="sm" 
                     onClick={() => updateFilter('types', undefined)}
+                    className="h-auto p-0 text-xs"
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Formato */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium flex items-center space-x-2">
+                <Wifi className="h-4 w-4" />
+                <span>Formato</span>
+              </Label>
+              
+              <div className="space-y-2">
+                {EVENT_MODE_OPTIONS.map((option) => {
+                  const isSelected = filters.modes?.includes(option.value) || false
+                  const Icon = option.icon as LucideIcon
+                  
+                  return (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`mode-${option.value}`}
+                        checked={isSelected}
+                        onCheckedChange={() => toggleEventMode(option.value)}
+                      />
+                      <Label 
+                        htmlFor={`mode-${option.value}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "transition-colors gap-1",
+                            isSelected ? option.color : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          <Icon className="h-3 w-3" />
+                          <span>{option.label}</span>
+                        </Badge>
+                      </Label>
+                    </div>
+                  )
+                })}
+              </div>
+              
+              {filters.modes && filters.modes.length > 0 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{filters.modes.length} formato(s) selecionado(s)</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => updateFilter('modes', undefined)}
                     className="h-auto p-0 text-xs"
                   >
                     Limpar
@@ -400,6 +475,22 @@ export function CalendarFilters({
                           variant="ghost" 
                           size="sm" 
                           onClick={() => updateFilter('participationFilter', undefined)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {filters.modes && filters.modes.length > 0 && (
+                      <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <span className="text-sm">
+                          Formato: {filters.modes.length} selecionado(s)
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => updateFilter('modes', undefined)}
                           className="h-6 w-6 p-0"
                         >
                           <X className="h-3 w-3" />

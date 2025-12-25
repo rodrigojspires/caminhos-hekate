@@ -87,6 +87,7 @@ const filtersSchema = z.object({
   tags: z.array(z.string()).optional(),
   createdBy: z.string().optional(),
   isPublic: z.coerce.boolean().optional(),
+  modes: z.array(z.nativeEnum(EventMode)).optional(),
   search: z.string().optional(),
   page: z.coerce.number().positive().default(1),
   limit: z.coerce.number().positive().max(100).default(20)
@@ -98,13 +99,19 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     const { searchParams } = new URL(request.url)
     const params = Object.fromEntries(searchParams.entries())
+    const listParam = (keys: string[]) => {
+      const values = keys.flatMap((key) => searchParams.getAll(key))
+      if (!values.length) return undefined
+      return values.flatMap((value) => value.split(',').map((item) => item.trim()).filter(Boolean))
+    }
     
     // Parse dos parâmetros de query
     const parsedParams = filtersSchema.parse({
       ...params,
-      type: params.type ? params.type.split(',') : undefined,
-      status: params.status ? params.status.split(',') : undefined,
-      tags: params.tags ? params.tags.split(',') : undefined
+      type: listParam(['type', 'types']),
+      status: listParam(['status']),
+      tags: listParam(['tags']),
+      modes: listParam(['modes'])
     })
 
     const {
@@ -115,6 +122,7 @@ export async function GET(request: NextRequest) {
       tags,
       createdBy,
       isPublic,
+      modes,
       search,
       page,
       limit
@@ -129,6 +137,10 @@ export async function GET(request: NextRequest) {
 
     if (status && status.length > 0) {
       where.status = { in: status }
+    }
+
+    if (modes && modes.length > 0) {
+      where.mode = { in: modes }
     }
 
     if (startDate) {

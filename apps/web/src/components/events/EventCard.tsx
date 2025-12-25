@@ -1,14 +1,14 @@
 'use client'
 
 import React from 'react'
-import { Calendar, Clock, MapPin, Users, Video, ExternalLink, Wifi, CreditCard } from 'lucide-react'
+import { BookOpen, Calendar, Clock, CreditCard, ExternalLink, Hammer, HeartPulse, MapPin, Shuffle, Sparkles, Users, Video, Wifi } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { CalendarEvent, EventType } from '@/types/events'
 import { RecurrenceIndicator } from '@/components/calendar/RecurrenceIndicator'
 import { cn } from '@/lib/utils'
+import type { LucideIcon } from 'lucide-react'
 
 interface EventCardProps {
   event: CalendarEvent
@@ -27,6 +27,29 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
   [EventType.CONFERENCE]: 'Ritual',
   [EventType.NETWORKING]: 'Ritual',
   [EventType.TRAINING]: 'Workshop'
+}
+
+const EVENT_TYPE_ICONS: Record<EventType, LucideIcon> = {
+  [EventType.WEBINAR]: Sparkles,
+  [EventType.WORKSHOP]: Hammer,
+  [EventType.COURSE]: BookOpen,
+  [EventType.MEETING]: HeartPulse,
+  [EventType.COMMUNITY]: Sparkles,
+  [EventType.CONFERENCE]: Sparkles,
+  [EventType.NETWORKING]: Sparkles,
+  [EventType.TRAINING]: Hammer
+}
+
+const EVENT_MODE_LABELS: Record<string, string> = {
+  IN_PERSON: 'Presencial',
+  HYBRID: 'Hibrido',
+  ONLINE: 'Online'
+}
+
+const EVENT_MODE_ICONS: Record<string, LucideIcon> = {
+  IN_PERSON: MapPin,
+  HYBRID: Shuffle,
+  ONLINE: Wifi
 }
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
@@ -54,6 +77,10 @@ export function EventCard({
   const isPast = endDate < new Date()
   const isPaid = event.accessType === 'PAID'
   const isTier = event.accessType === 'TIER'
+  const typeLabel = EVENT_TYPE_LABELS[event.type]
+  const TypeIcon = EVENT_TYPE_ICONS[event.type]
+  const modeLabel = event.mode ? EVENT_MODE_LABELS[event.mode] || event.mode : undefined
+  const ModeIcon = event.mode ? EVENT_MODE_ICONS[event.mode] || Wifi : undefined
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pt-BR', {
@@ -148,12 +175,21 @@ export function EventCard({
             </div>
           </div>
           
-          <Badge 
-            className={cn("text-xs", EVENT_TYPE_COLORS[event.type])}
-            variant="outline"
-          >
-            {EVENT_TYPE_LABELS[event.type]}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge 
+              className={cn("text-xs gap-1", EVENT_TYPE_COLORS[event.type])}
+              variant="outline"
+            >
+              <TypeIcon className="h-3 w-3" />
+              <span>Tipo: {typeLabel}</span>
+            </Badge>
+            {modeLabel && ModeIcon && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <ModeIcon className="h-3 w-3" />
+                <span>Formato: {modeLabel}</span>
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -192,15 +228,18 @@ export function EventCard({
               </div>
               
               <Badge 
-                className={EVENT_TYPE_COLORS[event.type]}
+                className={cn("gap-1", EVENT_TYPE_COLORS[event.type])}
                 variant="outline"
               >
-                {EVENT_TYPE_LABELS[event.type]}
+                <TypeIcon className="h-3 w-3" />
+                <span>Tipo: {typeLabel}</span>
               </Badge>
-              <Badge variant="secondary" className="gap-1">
-                {event.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
-                {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
-              </Badge>
+              {modeLabel && ModeIcon && (
+                <Badge variant="secondary" className="gap-1">
+                  <ModeIcon className="h-3 w-3" />
+                  <span>Formato: {modeLabel}</span>
+                </Badge>
+              )}
               <Badge variant={isPaid ? 'outline' : 'default'} className="gap-1">
                 <CreditCard className="h-3 w-3" />
                 {isPaid ? formatPrice(event.price) : isTier ? 'Incluído no plano' : 'Gratuito'}

@@ -52,6 +52,7 @@ export default function CalendarioPage() {
   const [filters, setFilters] = useState<EventFilters>({
     search: '',
     types: [],
+    modes: [],
     status: [],
     tags: []
   });
@@ -76,6 +77,11 @@ export default function CalendarioPage() {
 
     // Type filter
     if (filters.types && filters.types.length > 0 && !filters.types.includes(event.type)) {
+      return false;
+    }
+
+    // Mode filter
+    if (filters.modes && filters.modes.length > 0 && (!event.mode || !filters.modes.includes(event.mode))) {
       return false;
     }
 

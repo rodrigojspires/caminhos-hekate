@@ -211,6 +211,7 @@ export interface EventFilters {
   tags?: string[]
   createdBy?: string
   isPublic?: boolean
+  modes?: EventMode[]
   search?: string
   
   // UI-facing filters used in components (e.g., CalendarFilters)
