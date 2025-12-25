@@ -397,9 +397,9 @@ export default function EventDetailsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="space-y-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="space-y-8">
             {/* Description */}
             <Card>
               <CardHeader>
@@ -457,92 +457,6 @@ export default function EventDetailsPage() {
               </Card>
             )}
 
-            {/* Participants */}
-            {(isCreator || attendeesForOccurrence.length > 0) && (
-              <Card>
-                <CardHeader className="flex items-center justify-between">
-                  <CardTitle>Participantes</CardTitle>
-                  {attendeesLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
-                </CardHeader>
-                <CardContent>
-                  {attendeesForOccurrence.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum inscrito ainda.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {attendeesForOccurrence.map((registration: any) => (
-                        <div key={registration.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={registration.user?.image} alt={registration.user?.name || 'Usuário'} />
-                            <AvatarFallback>
-                              {registration.user?.name?.charAt(0) || registration.guestName?.charAt(0) || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {registration.user?.name || registration.guestName || 'Usuário'}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {registration.user?.email || registration.guestEmail}
-                            </p>
-                            {(registration.metadata?.recurrenceInstanceStart ||
-                              registration.metadata?.recurrenceInstanceId) && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Recorrência:{' '}
-                                {registration.metadata?.recurrenceInstanceStart
-                                  ? new Date(registration.metadata.recurrenceInstanceStart).toLocaleString('pt-BR')
-                                  : registration.metadata?.recurrenceInstanceId}
-                              </p>
-                            )}
-                            <p className="text-[11px] text-muted-foreground">{registration.status}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(registration.registeredAt).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Event Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo do Evento</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tipo:</span>
-                  <span>{typeLabels[selectedEvent.type] || selectedEvent.type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Acesso:</span>
-                  <span>
-                    {selectedEvent.accessType === 'PAID'
-                      ? `Pago${hasTierAccess ? ' ou por tier' : ''}`
-                      : hasTierAccess
-                        ? 'Por tier'
-                        : 'Gratuito'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Formato:</span>
-                  <span>{modeLabels[selectedEvent.mode] || selectedEvent.mode}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Vagas:</span>
-                  <span>{maxAttendeesValue ? `${maxAttendeesValue}` : 'Ilimitado'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Timezone:</span>
-                  <span>{selectedEvent.timezone}</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

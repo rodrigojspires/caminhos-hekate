@@ -29,8 +29,9 @@ const updateEventSchema = z.object({
   metadata: z.record(z.any()).optional()
 })
 
-async function notifyEventPublication(event: { id: string; title: string; slug?: string }) {
+async function notifyEventPublication(event: { id: string; title: string; slug?: string; isPublic: boolean }) {
   try {
+    if (!event.isPublic) return
     const recipients = await prisma.user.findMany({
       where: { role: Role.MEMBER },
       select: { id: true }
@@ -142,7 +143,12 @@ export async function GET(
     
     if (!event.isPublic && (!session?.user?.id || session.user.id !== event.createdBy)) {
       const tokenMatches = accessTokenParam && (event.metadata as any)?.accessToken === accessTokenParam
-      if (!tokenMatches) {
+      const isRegistered = !!session?.user?.id && event.registrations?.some(
+        (registration) =>
+          registration.userId === session.user.id &&
+          (registration.status === 'CONFIRMED' || registration.status === 'REGISTERED')
+      )
+      if (!tokenMatches && !isRegistered) {
         return NextResponse.json(
           { error: 'Acesso negado' },
           { status: 403 }
@@ -150,7 +156,7 @@ export async function GET(
       }
     }
 
-    if (event.accessType === EventAccessType.TIER) {
+    if (!event.isPublic && event.accessType === EventAccessType.TIER) {
       if (!session?.user?.id) {
         return NextResponse.json(
           { error: 'Acesso negado' },
@@ -333,7 +339,12 @@ export async function PUT(
     })
 
     if (updatedEvent.status === EventStatus.PUBLISHED && existingEvent.status !== EventStatus.PUBLISHED) {
-      await notifyEventPublication({ id: updatedEvent.id, title: updatedEvent.title, slug: (updatedEvent as any).slug })
+      await notifyEventPublication({
+        id: updatedEvent.id,
+        title: updatedEvent.title,
+        slug: (updatedEvent as any).slug,
+        isPublic: updatedEvent.isPublic
+      })
     }
 
     return NextResponse.json(updatedEvent)

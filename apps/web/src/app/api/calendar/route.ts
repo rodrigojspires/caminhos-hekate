@@ -150,7 +150,20 @@ export async function GET(request: NextRequest) {
       where.AND = [
         ...(where.AND || []),
         { OR: accessConditions },
-        { OR: [{ isPublic: true }, { createdBy: session.user.id }] }
+        {
+          OR: [
+            { isPublic: true },
+            { createdBy: session.user.id },
+            {
+              registrations: {
+                some: {
+                  userId: session.user.id,
+                  status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
+                }
+              }
+            }
+          ]
+        }
       ]
     }
 

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@prisma/client'
+import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role, EventRegistrationStatus } from '@prisma/client'
 import { randomUUID } from 'crypto'
 import { notificationService } from '@/lib/notifications/notification-service'
 
@@ -39,8 +39,9 @@ const createEventSchema = z.object({
   }).optional()
 })
 
-async function notifyEventPublication(event: { id: string; title: string; slug?: string }) {
+async function notifyEventPublication(event: { id: string; title: string; slug?: string; isPublic: boolean }) {
   try {
+    if (!event.isPublic) return
     const recipients = await prisma.user.findMany({
       where: { role: Role.MEMBER },
       select: { id: true }
@@ -202,6 +203,14 @@ export async function GET(request: NextRequest) {
       const visibilityConditions: any[] = [{ isPublic: true }]
       if (sessionUserId) {
         visibilityConditions.push({ createdBy: sessionUserId })
+        visibilityConditions.push({
+          registrations: {
+            some: {
+              userId: sessionUserId,
+              status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
+            }
+          }
+        })
       }
 
       where.AND = [
@@ -563,7 +572,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (event.status === EventStatus.PUBLISHED) {
-      await notifyEventPublication({ id: event.id, title: event.title, slug: (event as any).slug })
+      await notifyEventPublication({ id: event.id, title: event.title, slug: (event as any).slug, isPublic: event.isPublic })
     }
 
     return NextResponse.json(event, { status: 201 })

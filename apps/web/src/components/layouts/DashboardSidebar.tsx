@@ -87,6 +87,7 @@ const secondaryNavigation = [
 export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
   const [courseCount, setCourseCount] = useState<number | null>(null)
+  const [upcomingRegisteredCount, setUpcomingRegisteredCount] = useState<number | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -99,6 +100,28 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
       })
       .then((count) => {
         if (isMounted && typeof count === 'number') setCourseCount(count)
+      })
+      .catch(() => {})
+    return () => { isMounted = false }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    const params = new URLSearchParams({
+      startDate: new Date().toISOString(),
+      status: 'PUBLISHED',
+      limit: '200'
+    })
+    fetch(`/api/events?${params.toString()}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null
+        const data = await res.json()
+        return Array.isArray(data?.events) ? data.events : []
+      })
+      .then((events) => {
+        if (!isMounted || !Array.isArray(events)) return
+        const count = events.filter((event) => Array.isArray(event.registrations) && event.registrations.length > 0).length
+        setUpcomingRegisteredCount(count)
       })
       .catch(() => {})
     return () => { isMounted = false }
@@ -140,6 +163,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
           {navigation.map((item) => {
             const isActive = pathname === item.href
             const isCourses = item.href === '/dashboard/courses'
+            const isEvents = item.href === '/dashboard/eventos'
             return (
               <Link
                 key={item.name}
@@ -157,6 +181,10 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
                 {(isCourses && !!courseCount) ? (
                   <Badge variant="secondary" className="ml-auto">
                     {courseCount}
+                  </Badge>
+                ) : (isEvents && !!upcomingRegisteredCount) ? (
+                  <Badge variant="secondary" className="ml-auto">
+                    {upcomingRegisteredCount}
                   </Badge>
                 ) : item.badge ? (
                   <Badge variant="secondary" className="ml-auto">
