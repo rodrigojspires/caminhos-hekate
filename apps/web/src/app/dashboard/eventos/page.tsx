@@ -1,22 +1,24 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar as CalendarIcon, List, MapPin } from 'lucide-react'
+import { Calendar as CalendarIcon, CreditCard, Filter, List, MapPin } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/events/Calendar'
 import { EventModal } from '@/components/events/EventModal'
+import { CalendarFilters } from '@/components/events/CalendarFilters'
 import { useEventsStore } from '@/stores/eventsStore'
 import { CalendarEvent } from '@/types/events'
 
 export default function DashboardEventsPage() {
-  const { events, loading, error, fetchEvents, registerForEvent } = useEventsStore()
+  const { events, loading, error, filters, fetchEvents, setFilters, registerForEvent } = useEventsStore()
   const [tabValue, setTabValue] = useState<'list' | 'calendar'>('list')
   const [listTab, setListTab] = useState<'all' | 'mine'>('all')
   const [registeringId, setRegisteringId] = useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     fetchEvents()
@@ -26,7 +28,7 @@ export default function DashboardEventsPage() {
     if (tabValue === 'list') {
       fetchEvents()
     }
-  }, [tabValue, fetchEvents])
+  }, [tabValue, filters, fetchEvents])
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
@@ -53,11 +55,26 @@ export default function DashboardEventsPage() {
     return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
+  const getAccessLabel = (event: typeof events[number]) => {
+    const hasTierAccess = (event.freeTiers?.length ?? 0) > 0 || event.accessType === 'TIER'
+    if (event.accessType === 'PAID') {
+      return `${formatPrice(event.price)}${hasTierAccess ? ' ou incluído no plano' : ''}`
+    }
+    if (hasTierAccess) {
+      return 'Incluído no plano'
+    }
+    return 'Gratuito'
+  }
+
   const canRegister = (event: typeof events[number]) => {
     if (event.userRegistration) return false
     if (new Date(event.start) <= new Date()) return false
     if (event.maxAttendees && event.attendeeCount >= event.maxAttendees) return false
     return true
+  }
+
+  const handleFiltersChange = (newFilters: Partial<typeof filters>) => {
+    setFilters({ ...filters, ...newFilters })
   }
 
   const handleRegister = async (event: typeof events[number]) => {
@@ -111,7 +128,10 @@ export default function DashboardEventsPage() {
             </div>
 
             <div className="flex items-center gap-3 md:flex-col md:items-end">
-              <Badge variant="outline">{formatPrice(event.price)}</Badge>
+              <Badge variant="outline" className="flex items-center gap-2">
+                <CreditCard className="h-3 w-3" />
+                {getAccessLabel(event)}
+              </Badge>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
@@ -153,17 +173,35 @@ export default function DashboardEventsPage() {
         onValueChange={(value) => setTabValue(value as 'list' | 'calendar')}
         className="space-y-4"
       >
-        <TabsList className="grid w-full max-w-sm grid-cols-2">
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            Lista
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4" />
-            Calendario
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-full max-w-sm grid-cols-2">
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Lista
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              Calendario
+            </TabsTrigger>
+          </TabsList>
 
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={() => setShowFilters((prev) => !prev)}
+          >
+            <Filter className="h-4 w-4" />
+            Filtros
+          </Button>
+        </div>
+
+        {showFilters && (
+          <CalendarFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+          />
+        )}
         <TabsContent value="list">
           {loading ? (
             <div className="flex items-center justify-center py-12">

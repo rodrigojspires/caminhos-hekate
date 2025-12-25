@@ -76,11 +76,6 @@ export default function EventDetailsPage() {
 
   const handleRegister = async () => {
     if (!selectedEvent) return;
-
-    if (selectedEvent.accessType === 'PAID') {
-      window.location.href = `/checkout?eventId=${selectedEvent.id}`;
-      return;
-    }
     
     setIsRegistering(true);
     try {
@@ -212,7 +207,7 @@ export default function EventDetailsPage() {
   const isEventFull = maxAttendeesValue !== null && maxAttendeesValue > 0 && confirmedCount >= maxAttendeesValue;
   const isCreator = session?.user?.id && selectedEvent.createdBy === session.user.id;
   const isPaid = selectedEvent.accessType === 'PAID';
-  const isTier = selectedEvent.accessType === 'TIER';
+  const hasTierAccess = (selectedEvent.freeTiers?.length ?? 0) > 0 || selectedEvent.accessType === 'TIER';
 
   const formatPrice = (value?: number | string | null) => {
     if (value === undefined || value === null) return 'Gratuito';
@@ -277,7 +272,11 @@ export default function EventDetailsPage() {
                 </Badge>
                 <Badge variant={isPaid ? 'outline' : 'default'} className="text-sm gap-1">
                   <CreditCard className="h-3 w-3" />
-                  {isPaid ? formatPrice((selectedEvent as any).price ?? selectedEvent.price) : isTier ? 'Incluído no plano' : 'Gratuito'}
+                  {isPaid
+                    ? `${formatPrice((selectedEvent as any).price ?? selectedEvent.price)}${hasTierAccess ? ' ou incluído no plano' : ''}`
+                    : hasTierAccess
+                      ? 'Incluído no plano'
+                      : 'Gratuito'}
                 </Badge>
                 {isEventPast && (
                   <Badge variant="destructive" className="text-sm">
@@ -358,7 +357,7 @@ export default function EventDetailsPage() {
                       ) : (
                         <UserPlus className="h-4 w-4" />
                       )}
-                      {isEventFull ? 'Evento Lotado' : isPaid ? 'Ir para o checkout' : 'Inscrever-se'}
+                      {isEventFull ? 'Evento Lotado' : isPaid && !hasTierAccess ? 'Ir para o checkout' : 'Inscrever-se'}
                     </Button>
                   )}
                 </>
@@ -415,7 +414,7 @@ export default function EventDetailsPage() {
             </Card>
 
             {/* Virtual Link */}
-            {selectedEvent.virtualLink && (
+            {selectedEvent.virtualLink && isUserRegistered && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -428,20 +427,13 @@ export default function EventDetailsPage() {
                     <code className="flex-1 p-3 bg-muted text-foreground rounded-md text-sm break-all border border-border">
                       {selectedEvent.virtualLink}
                     </code>
-                    {isUserRegistered && (
-                      <Button
-                        variant="outline"
-                        onClick={() => window.open(selectedEvent.virtualLink, '_blank')}
-                      >
-                        Abrir
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(selectedEvent.virtualLink, '_blank')}
+                    >
+                      Abrir
+                    </Button>
                   </div>
-                  {!isUserRegistered && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      O link fica disponível após a inscrição.
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             )}
@@ -530,8 +522,8 @@ export default function EventDetailsPage() {
                   <span className="text-muted-foreground">Acesso:</span>
                   <span>
                     {selectedEvent.accessType === 'PAID'
-                      ? 'Pago'
-                      : selectedEvent.accessType === 'TIER'
+                      ? `Pago${hasTierAccess ? ' ou por tier' : ''}`
+                      : hasTierAccess
                         ? 'Por tier'
                         : 'Gratuito'}
                   </span>

@@ -47,10 +47,11 @@ const formatPrice = (value?: number | string | null) => {
 }
 
 const getAccessLabel = (event: EventItem) => {
+  const hasTierAccess = (event.freeTiers?.length ?? 0) > 0 || event.accessType === 'TIER'
   if (event.accessType === 'PAID') {
-    return formatPrice(event.price)
+    return `${formatPrice(event.price)}${hasTierAccess ? ' ou incluído no plano' : ''}`
   }
-  if (event.accessType === 'TIER') {
+  if (hasTierAccess) {
     return `Incluído (${event.freeTiers?.join(', ') || 'tiers'})`
   }
   return 'Gratuito'

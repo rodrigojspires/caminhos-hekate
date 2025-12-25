@@ -24,6 +24,8 @@ interface EventFormState {
   location: string
   virtualLink: string
   accessType: EventAccessType
+  accessPaid: boolean
+  accessTier: boolean
   price: string
   freeTiers: SubscriptionTier[]
   mode: EventMode
@@ -45,6 +47,8 @@ const defaultFormState: EventFormState = {
   location: '',
   virtualLink: '',
   accessType: 'FREE',
+  accessPaid: false,
+  accessTier: false,
   price: '',
   freeTiers: [],
   mode: 'ONLINE',
@@ -93,6 +97,8 @@ export default function EditEventPage() {
       location: selectedEvent.location || '',
       virtualLink: selectedEvent.virtualLink || '',
       accessType: (selectedEvent.accessType || 'FREE') as EventAccessType,
+      accessPaid: selectedEvent.accessType === 'PAID',
+      accessTier: (selectedEvent.freeTiers as SubscriptionTier[])?.length > 0 || selectedEvent.accessType === 'TIER',
       price: selectedEvent.price ? String(selectedEvent.price) : '',
       freeTiers: (selectedEvent.freeTiers as SubscriptionTier[]) || [],
       mode: (selectedEvent.mode || 'ONLINE') as EventMode,
@@ -150,10 +156,10 @@ export default function EditEventPage() {
       }
     }
 
-    if (form.accessType === 'PAID' && (!form.price || Number(form.price) <= 0)) {
+    if (form.accessPaid && (!form.price || Number(form.price) <= 0)) {
       return toast.error('Defina um preço para eventos pagos')
     }
-    if (form.accessType === 'TIER' && form.freeTiers.length === 0) {
+    if (form.accessTier && form.freeTiers.length === 0) {
       return toast.error('Selecione ao menos um tier com acesso incluído')
     }
     if (form.mode === 'IN_PERSON' && !form.location.trim()) {
@@ -180,6 +186,8 @@ export default function EditEventPage() {
             }
           : undefined
 
+      const resolvedAccessType = form.accessPaid ? 'PAID' : form.accessTier ? 'TIER' : 'FREE'
+
       const payload: UpdateEventRequest = {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
@@ -189,9 +197,9 @@ export default function EditEventPage() {
         maxAttendees: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         location: form.location.trim() || undefined,
         virtualLink: form.virtualLink.trim() || undefined,
-        accessType: form.accessType as any,
-        price: form.price ? Number(form.price) : undefined,
-        freeTiers: form.freeTiers,
+        accessType: resolvedAccessType as any,
+        price: form.accessPaid && form.price ? Number(form.price) : undefined,
+        freeTiers: form.accessTier ? form.freeTiers : [],
         mode: form.mode as any,
         isPublic: form.isPublic,
         requiresApproval: form.requiresApproval,
@@ -474,15 +482,27 @@ export default function EditEventPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Acesso</label>
-                  <select
-                    value={form.accessType}
-                    onChange={(e) => handleChange('accessType', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="FREE">Gratuito</option>
-                    <option value="PAID">Pago</option>
-                    <option value="TIER">Incluído em tiers</option>
-                  </select>
+                  <div className="space-y-2 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={form.accessPaid}
+                        onChange={(e) => setForm((prev) => ({ ...prev, accessPaid: e.target.checked }))}
+                      />
+                      Pago (checkout)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={form.accessTier}
+                        onChange={(e) => setForm((prev) => ({ ...prev, accessTier: e.target.checked }))}
+                      />
+                      Incluído em tiers
+                    </label>
+                    {!form.accessPaid && !form.accessTier && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Sem seleção: evento gratuito.</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço (R$)</label>
@@ -490,7 +510,7 @@ export default function EditEventPage() {
                     type="number"
                     min={0}
                     step="0.01"
-                    disabled={form.accessType !== 'PAID'}
+                    disabled={!form.accessPaid}
                     value={form.price}
                     onChange={(e) => handleChange('price', e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -498,7 +518,7 @@ export default function EditEventPage() {
                 </div>
               </div>
 
-              {form.accessType === 'TIER' && (
+              {form.accessTier && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tiers com acesso incluído</label>
                   <div className="flex flex-wrap gap-2">

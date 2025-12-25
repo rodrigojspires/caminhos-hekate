@@ -144,6 +144,30 @@ export async function GET(
       )
     }
 
+    if (event.accessType === EventAccessType.TIER) {
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          { error: 'Acesso negado' },
+          { status: 403 }
+        )
+      }
+
+      const isPrivileged = session.user.role === Role.ADMIN || session.user.role === Role.EDITOR
+      if (!isPrivileged && session.user.id !== event.createdBy) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { subscriptionTier: true }
+        })
+
+        if (!user || !event.freeTiers.includes(user.subscriptionTier)) {
+          return NextResponse.json(
+            { error: 'Acesso negado' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     return NextResponse.json(event)
   } catch (error) {
     console.error('Erro ao buscar evento:', error)

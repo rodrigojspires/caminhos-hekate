@@ -68,6 +68,8 @@ interface CreateEventFormData {
   requiresApproval: boolean
   tags: string[]
   accessType: EventAccessType
+  accessPaid: boolean
+  accessTier: boolean
   price?: number
   freeTiers: SubscriptionTier[]
   mode: EventMode
@@ -101,6 +103,8 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
       isPublic: true,
       requiresApproval: false,
       accessType: EventAccessType.FREE,
+      accessPaid: false,
+      accessTier: false,
       price: undefined,
       freeTiers: [],
       mode: EventMode.ONLINE,
@@ -195,11 +199,11 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
       return 'Número máximo de participantes deve ser maior que 0'
     }
 
-    if (formData.accessType === EventAccessType.PAID && (!formData.price || formData.price <= 0)) {
+    if (formData.accessPaid && (!formData.price || formData.price <= 0)) {
       return 'Defina um preço para eventos pagos'
     }
 
-    if (formData.accessType === EventAccessType.TIER && formData.freeTiers.length === 0) {
+    if (formData.accessTier && formData.freeTiers.length === 0) {
       return 'Selecione ao menos um tier com acesso incluído'
     }
 
@@ -249,6 +253,12 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
         }
       }
 
+      const resolvedAccessType = formData.accessPaid
+        ? EventAccessType.PAID
+        : formData.accessTier
+          ? EventAccessType.TIER
+          : EventAccessType.FREE
+
       const eventData: CreateEventRequest = {
         title: formData.title!,
         description: formData.description || '',
@@ -261,9 +271,9 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
         isPublic: formData.isPublic!,
         requiresApproval: formData.requiresApproval!,
         tags: formData.tags || [],
-        accessType: formData.accessType,
-        price: formData.price,
-        freeTiers: formData.freeTiers,
+        accessType: resolvedAccessType,
+        price: formData.accessPaid ? formData.price : undefined,
+        freeTiers: formData.accessTier ? formData.freeTiers : [],
         mode: formData.mode,
         recurrence: recurrenceRule
       }
@@ -295,6 +305,12 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
           isPublic: true,
           requiresApproval: false,
           tags: [],
+          accessType: EventAccessType.FREE,
+          accessPaid: false,
+          accessTier: false,
+          price: undefined,
+          freeTiers: [],
+          mode: EventMode.ONLINE,
           recurrence: {
             type: 'none',
             interval: 1,
@@ -474,19 +490,29 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Acesso</Label>
-                  <Select
-                    value={formData.accessType}
-                    onValueChange={(value) => handleInputChange('accessType', value as EventAccessType)}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione o tipo de acesso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={EventAccessType.FREE}>Gratuito</SelectItem>
-                      <SelectItem value={EventAccessType.PAID}>Pago (checkout)</SelectItem>
-                      <SelectItem value={EventAccessType.TIER}>Incluído em tiers</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-2 space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={formData.accessPaid}
+                        onChange={(e) => handleInputChange('accessPaid', e.target.checked)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      Pago (checkout)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={formData.accessTier}
+                        onChange={(e) => handleInputChange('accessTier', e.target.checked)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      Incluído em tiers
+                    </label>
+                    {!formData.accessPaid && !formData.accessTier && (
+                      <p className="text-xs text-muted-foreground">Sem seleção: evento gratuito.</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -495,7 +521,7 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
                     type="number"
                     step="0.01"
                     min="0"
-                    disabled={formData.accessType !== EventAccessType.PAID}
+                    disabled={!formData.accessPaid}
                     value={formData.price ?? ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleInputChange('price', e.target.value ? parseFloat(e.target.value) : undefined)
@@ -506,7 +532,7 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
                 </div>
               </div>
 
-              {formData.accessType === EventAccessType.TIER && (
+              {formData.accessTier && (
                 <div className="space-y-2">
                   <Label>Tiers com acesso incluído</Label>
                   <div className="flex flex-wrap gap-2">

@@ -76,7 +76,7 @@ export function EventCard({
   const isOngoing = startDate <= new Date() && endDate >= new Date()
   const isPast = endDate < new Date()
   const isPaid = event.accessType === 'PAID'
-  const isTier = event.accessType === 'TIER'
+  const hasTierAccess = (event.freeTiers?.length ?? 0) > 0 || event.accessType === 'TIER'
   const typeLabel = EVENT_TYPE_LABELS[event.type]
   const TypeIcon = EVENT_TYPE_ICONS[event.type]
   const modeLabel = event.mode ? EVENT_MODE_LABELS[event.mode] || event.mode : undefined
@@ -124,7 +124,7 @@ export function EventCard({
   }
 
   const handlePrimaryAction = () => {
-    if (isPaid) {
+    if (isPaid && !hasTierAccess) {
       window.location.href = `/checkout?eventId=${event.id}`
       return
     }
@@ -242,7 +242,11 @@ export function EventCard({
               )}
               <Badge variant={isPaid ? 'outline' : 'default'} className="gap-1">
                 <CreditCard className="h-3 w-3" />
-                {isPaid ? formatPrice(event.price) : isTier ? 'Incluído no plano' : 'Gratuito'}
+                {isPaid
+                  ? `${formatPrice(event.price)}${hasTierAccess ? ' ou incluído no plano' : ''}`
+                  : hasTierAccess
+                    ? 'Incluído no plano'
+                    : 'Gratuito'}
               </Badge>
             </div>
           </div>
@@ -309,7 +313,7 @@ export function EventCard({
                 size="sm" 
                 onClick={(e) => handleActionClick(e, handlePrimaryAction)}
               >
-                {isPaid ? 'Ir para o checkout' : 'Inscrever-se'}
+                {isPaid && !hasTierAccess ? 'Ir para o checkout' : 'Inscrever-se'}
               </Button>
             </div>
 

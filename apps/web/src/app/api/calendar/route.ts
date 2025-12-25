@@ -88,6 +88,12 @@ export async function GET(request: NextRequest) {
     })
 
     const { view, date, startDate: customStartDate, endDate: customEndDate, types, modes, myEvents, myRegistrations } = parsedParams
+    const isPrivileged = session?.user?.role === 'ADMIN' || session?.user?.role === 'EDITOR'
+    const userTierRecord = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { subscriptionTier: true }
+    })
+    const userTier = userTierRecord?.subscriptionTier
 
     // Calcular intervalo de datas
     let startDate: Date
@@ -129,6 +135,19 @@ export async function GET(request: NextRequest) {
 
     if (modes && modes.length > 0) {
       where.mode = { in: modes }
+    }
+
+    if (!isPrivileged) {
+      const accessConditions: any[] = [
+        { accessType: { not: 'TIER' } },
+        { createdBy: session.user.id }
+      ]
+
+      if (userTier) {
+        accessConditions.push({ freeTiers: { has: userTier } })
+      }
+
+      where.AND = [...(where.AND || []), { OR: accessConditions }]
     }
 
     // Filtrar por eventos do usuário ou inscrições

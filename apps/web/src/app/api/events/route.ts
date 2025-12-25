@@ -176,6 +176,30 @@ export async function GET(request: NextRequest) {
 
     // Buscar eventos
     const sessionUserId = session?.user?.id
+    const isPrivileged = session?.user?.role === Role.ADMIN || session?.user?.role === Role.EDITOR
+    const userTierRecord = sessionUserId
+      ? await prisma.user.findUnique({
+          where: { id: sessionUserId },
+          select: { subscriptionTier: true }
+        })
+      : null
+    const userTier = userTierRecord?.subscriptionTier
+
+    if (!isPrivileged) {
+      const accessConditions: any[] = [
+        { accessType: { not: EventAccessType.TIER } }
+      ]
+
+      if (sessionUserId) {
+        accessConditions.push({ createdBy: sessionUserId })
+      }
+
+      if (sessionUserId && userTier) {
+        accessConditions.push({ freeTiers: { has: userTier } })
+      }
+
+      where.AND = [...(where.AND || []), { OR: accessConditions }]
+    }
     const includeRegistrations = sessionUserId
       ? {
           registrations: {
@@ -267,28 +291,25 @@ export async function GET(request: NextRequest) {
     }
 
     const expandRecurring = (event: any) => {
-      if (!event.recurringEvents || event.recurringEvents.length === 0) {
-        return [
-          {
-            ...event,
-            registrations: filterRegistrations(event, event.id)
-          }
-        ]
-      }
-      const occurrences: any[] = [
-        {
+      const baseStart = new Date(event.startDate)
+      const baseEnd = new Date(event.endDate)
+      const occurrences: any[] = []
+
+      if (baseStart >= windowStart && baseStart <= windowEnd) {
+        occurrences.push({
           ...event,
           registrations: filterRegistrations(event, event.id)
-        }
-      ]
+        })
+      }
+
+      if (!event.recurringEvents || event.recurringEvents.length === 0) {
+        return occurrences
+      }
 
       for (const recurring of event.recurringEvents) {
         const rule = recurring.recurrenceRule as any
         const freq = rule?.freq
         if (!freq) continue
-
-        const baseStart = new Date(event.startDate)
-        const baseEnd = new Date(event.endDate)
         const interval = Number(rule.interval || 1)
         const count = rule.count ? Number(rule.count) : null
         const until = rule.until ? new Date(rule.until) : null

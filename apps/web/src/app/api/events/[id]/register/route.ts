@@ -98,13 +98,32 @@ export async function POST(
       )
     }
 
+    const hasTierAccess = Array.isArray(event.freeTiers) && event.freeTiers.length > 0
+
     // Verificar acesso pago ou por tier
     if (event.accessType === 'PAID') {
-      const checkoutUrl = `/checkout?eventId=${eventId}`
-      return NextResponse.json(
-        { error: 'Evento pago - finalize a inscrição pelo checkout', checkoutUrl },
-        { status: 402 }
-      )
+      if (hasTierAccess) {
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { subscriptionTier: true }
+        })
+
+        if (user && event.freeTiers.includes(user.subscriptionTier)) {
+          // Plano inclui acesso, permite inscrição direta
+        } else {
+          const checkoutUrl = `/checkout?eventId=${eventId}`
+          return NextResponse.json(
+            { error: 'Evento pago - finalize a inscrição pelo checkout', checkoutUrl },
+            { status: 402 }
+          )
+        }
+      } else {
+        const checkoutUrl = `/checkout?eventId=${eventId}`
+        return NextResponse.json(
+          { error: 'Evento pago - finalize a inscrição pelo checkout', checkoutUrl },
+          { status: 402 }
+        )
+      }
     }
 
     if (event.accessType === 'TIER') {
