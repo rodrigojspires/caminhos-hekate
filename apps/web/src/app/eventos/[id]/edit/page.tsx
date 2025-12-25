@@ -73,6 +73,7 @@ export default function EditEventPage() {
   const [recurrenceUntil, setRecurrenceUntil] = useState('')
   const [recurrenceCount, setRecurrenceCount] = useState('')
   const [recurrenceLunarPhase, setRecurrenceLunarPhase] = useState<'FULL' | 'NEW' | ''>('')
+  const [privateLink, setPrivateLink] = useState('')
 
   useEffect(() => {
     if (eventId) {
@@ -118,6 +119,12 @@ export default function EditEventPage() {
       setRecurrenceUntil(recurrenceRule.until ? new Date(recurrenceRule.until).toISOString().slice(0, 16) : '')
       setRecurrenceCount(recurrenceRule.count ? String(recurrenceRule.count) : '')
       setRecurrenceLunarPhase(recurrenceRule.lunarPhase || '')
+    }
+
+    if (typeof window !== 'undefined' && !selectedEvent.isPublic && metadata?.accessToken) {
+      setPrivateLink(`${window.location.origin}/eventos/${selectedEvent.id}?access=${metadata.accessToken}`)
+    } else {
+      setPrivateLink('')
     }
   }, [selectedEvent])
 
@@ -382,8 +389,8 @@ export default function EditEventPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Configurações</h3>
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Configurações</h3>
 
             <div className="space-y-3">
               <div>
@@ -566,6 +573,32 @@ export default function EditEventPage() {
                   Requer aprovação
                 </label>
               </div>
+
+              {!form.isPublic && privateLink && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Link privado
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={privateLink}
+                      className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(privateLink)}
+                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Compartilhe este link apenas com as pessoas autorizadas.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

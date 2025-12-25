@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@prisma/client'
+import { randomUUID } from 'crypto'
 import { notificationService } from '@/lib/notifications/notification-service'
 
 // Schema de validação para criação de eventos
@@ -198,7 +199,16 @@ export async function GET(request: NextRequest) {
         accessConditions.push({ freeTiers: { has: userTier } })
       }
 
-      where.AND = [...(where.AND || []), { OR: accessConditions }]
+      const visibilityConditions: any[] = [{ isPublic: true }]
+      if (sessionUserId) {
+        visibilityConditions.push({ createdBy: sessionUserId })
+      }
+
+      where.AND = [
+        ...(where.AND || []),
+        { OR: accessConditions },
+        { OR: visibilityConditions }
+      ]
     }
     const includeRegistrations = sessionUserId
       ? {
@@ -437,6 +447,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const validatedData = createEventSchema.parse(body)
+    const baseMetadata = validatedData.metadata && typeof validatedData.metadata === 'object'
+      ? validatedData.metadata
+      : {}
+    const metadata = validatedData.isPublic
+      ? baseMetadata
+      : {
+          ...baseMetadata,
+          accessToken: (baseMetadata as any).accessToken || randomUUID()
+        }
 
     // Validar datas
     const startDate = new Date(validatedData.startDate)
@@ -509,7 +528,7 @@ export async function POST(request: NextRequest) {
         freeTiers: validatedData.freeTiers ?? [],
         mode: validatedData.mode,
         tags: validatedData.tags,
-        metadata: validatedData.metadata,
+        metadata,
         createdBy: session.user.id
       },
       include: {

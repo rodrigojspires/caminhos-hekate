@@ -147,7 +147,11 @@ export async function GET(request: NextRequest) {
         accessConditions.push({ freeTiers: { has: userTier } })
       }
 
-      where.AND = [...(where.AND || []), { OR: accessConditions }]
+      where.AND = [
+        ...(where.AND || []),
+        { OR: accessConditions },
+        { OR: [{ isPublic: true }, { createdBy: session.user.id }] }
+      ]
     }
 
     // Filtrar por eventos do usuário ou inscrições

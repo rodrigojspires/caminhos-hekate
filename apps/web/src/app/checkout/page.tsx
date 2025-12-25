@@ -639,7 +639,17 @@ export default function CheckoutPage() {
             </div>
           )}
           <div className="flex justify-between font-bold mt-2"><span>Total</span><span>{formatCurrency(grandTotal)}</span></div>
-          <button disabled={loading || status !== 'authenticated'} onClick={submit} className="mt-4 w-full btn-mystic-enhanced disabled:opacity-60">{loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}</button>
+          <button
+            type="button"
+            disabled={loading || status !== 'authenticated'}
+            onClick={(event) => {
+              event.preventDefault()
+              submit()
+            }}
+            className="mt-4 w-full btn-mystic-enhanced disabled:opacity-60"
+          >
+            {loading ? 'Criando pedido...' : 'Pagar com Mercado Pago'}
+          </button>
         </div>
       </div>
     </div>

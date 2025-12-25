@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@prisma/client'
+import { randomUUID } from 'crypto'
 import { notificationService } from '@/lib/notifications/notification-service'
 
 // Schema de validação para atualização de eventos
@@ -75,6 +76,8 @@ export async function GET(
 ) {
   try {
     const { id } = params
+    const { searchParams } = new URL(request.url)
+    const accessTokenParam = searchParams.get('access')
 
     if (!id) {
       return NextResponse.json(
@@ -138,10 +141,13 @@ export async function GET(
     const session = await getServerSession(authOptions)
     
     if (!event.isPublic && (!session?.user?.id || session.user.id !== event.createdBy)) {
-      return NextResponse.json(
-        { error: 'Acesso negado' },
-        { status: 403 }
-      )
+      const tokenMatches = accessTokenParam && (event.metadata as any)?.accessToken === accessTokenParam
+      if (!tokenMatches) {
+        return NextResponse.json(
+          { error: 'Acesso negado' },
+          { status: 403 }
+        )
+      }
     }
 
     if (event.accessType === EventAccessType.TIER) {
@@ -216,7 +222,9 @@ export async function PUT(
         accessType: true,
         freeTiers: true,
         mode: true,
-        price: true
+        price: true,
+        isPublic: true,
+        metadata: true
       }
     })
 
@@ -286,6 +294,16 @@ export async function PUT(
     }
 
     // Atualizar evento
+    const baseMetadata = validatedData.metadata && typeof validatedData.metadata === 'object'
+      ? validatedData.metadata
+      : existingEvent.metadata || {}
+    const metadata = (validatedData.isPublic ?? existingEvent.isPublic)
+      ? baseMetadata
+      : {
+          ...baseMetadata,
+          accessToken: (baseMetadata as any).accessToken || randomUUID()
+        }
+
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
@@ -294,6 +312,7 @@ export async function PUT(
         endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
         price: validatedData.price,
         freeTiers: validatedData.freeTiers,
+        metadata,
         updatedAt: new Date()
       },
       include: {

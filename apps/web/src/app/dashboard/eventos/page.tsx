@@ -37,6 +37,10 @@ export default function DashboardEventsPage() {
   }, [events])
 
   const myEvents = useMemo(() => sortedEvents.filter((event) => event.userRegistration), [sortedEvents])
+  const availableEvents = useMemo(
+    () => sortedEvents.filter((event) => !event.userRegistration),
+    [sortedEvents]
+  )
 
   const formatDateParts = (date: Date) => {
     const parsed = new Date(date)
@@ -228,7 +232,7 @@ export default function DashboardEventsPage() {
 
               {listTab === 'all' && (
                 <div className="space-y-3">
-                  {sortedEvents.map(renderEventRow)}
+                  {availableEvents.map(renderEventRow)}
                 </div>
               )}
 
