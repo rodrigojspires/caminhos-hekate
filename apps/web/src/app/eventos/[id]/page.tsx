@@ -33,6 +33,7 @@ export default function EventDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const accessToken = searchParams?.get('access') || undefined;
 
   const {
     selectedEvent,
@@ -50,9 +51,9 @@ export default function EventDetailsPage() {
 
   useEffect(() => {
     if (baseEventId) {
-      fetchEventById(baseEventId);
+      fetchEventById(baseEventId, { accessToken });
     }
-  }, [baseEventId, fetchEventById]);
+  }, [baseEventId, accessToken, fetchEventById]);
 
   const loadAttendees = async () => {
     if (!baseEventId) return;

@@ -35,7 +35,7 @@ interface EventsState {
   // Ações de API
   fetchEvents: (filters?: Partial<EventFilters>) => Promise<void>
   fetchCalendarEvents: (startDate: Date, endDate: Date, filters?: Partial<EventFilters>) => Promise<void>
-  fetchEventById: (id: string) => Promise<void>
+  fetchEventById: (id: string, options?: { accessToken?: string }) => Promise<void>
   createEvent: (eventData: CreateEventRequest) => Promise<CalendarEvent | null>
   updateEvent: (id: string, eventData: UpdateEventRequest) => Promise<CalendarEvent | null>
   deleteEvent: (id: string) => Promise<boolean>
@@ -218,10 +218,14 @@ export const useEventsStore = create<EventsState>()(devtools(
       }
     },
 
-    fetchEventById: async (id) => {
+    fetchEventById: async (id, options) => {
       set({ loading: true, error: null })
       try {
-        const response = await fetch(`/api/events/${id}`)
+        const params = new URLSearchParams()
+        if (options?.accessToken) {
+          params.set('access', options.accessToken)
+        }
+        const response = await fetch(`/api/events/${id}${params.toString() ? `?${params.toString()}` : ''}`)
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
           throw new Error(errorData.error || 'Falha ao buscar evento')
