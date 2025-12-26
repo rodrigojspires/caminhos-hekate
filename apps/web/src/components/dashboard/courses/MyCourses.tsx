@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle, Award } from "lucide-react"
+import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle, Award, Sparkles } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -52,7 +52,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
       case 'completed':
         return 'Concluído'
       case 'in_progress':
-        return 'Em Progresso'
+        return 'Em Andamento'
       case 'not_started':
         return 'Não Iniciado'
     }
@@ -72,11 +72,11 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   const getLevelText = (level: Course['level']) => {
     switch (level) {
       case 'beginner':
-        return 'Iniciante'
+        return 'Neófito'
       case 'intermediate':
-        return 'Intermediário'
+        return 'Iniciado'
       case 'advanced':
-        return 'Avançado'
+        return 'Adepto'
     }
   }
 
@@ -106,14 +106,14 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   if (courses.length === 0) {
     return (
       <div className="text-center py-12">
-        <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum curso encontrado</h3>
-        <p className="text-muted-foreground mb-6">Explore nosso catálogo e comece sua jornada de aprendizado.</p>
+        <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum Ritual Iniciado</h3>
+        <p className="text-muted-foreground mb-6">Seu Grimório aguarda suas primeiras inscrições. Explore os mistérios disponíveis e inicie sua jornada.</p>
         <Link
           href="/cursos"
           className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
-          Explorar Cursos
+          Explorar Rituais
         </Link>
       </div>
     )
@@ -191,7 +191,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       {/* Rating removido por ausência de sistema de avaliação */}
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Calendar className="w-4 h-4" />
-                        <span className="text-sm">{course.completedLessons}/{course.totalLessons} aulas</span>
+                        <span className="text-sm">{course.completedLessons}/{course.totalLessons} passos</span>
                       </div>
                     </div>
 
@@ -201,35 +201,35 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                           type="button"
                           disabled
                           className="inline-flex items-center gap-2 px-4 py-2 border border-dashed border-muted-foreground/40 text-muted-foreground/80 rounded-lg cursor-not-allowed"
-                          title="Conclua o curso para liberar o certificado"
+                          title="Conclua o ritual para liberar o selo"
                         >
                           <Award className="w-4 h-4" />
-                          Certificado bloqueado
+                          Selo bloqueado
                         </button>
                       ) : (
                         <a
                           href={course.certificateUrl || `/api/certificates/${course.id}`}
                           className="inline-flex items-center gap-2 px-4 py-2 border border-emerald-300 text-emerald-800 rounded-lg hover:bg-emerald-50 transition-colors"
                           title={
-                            (course.certificateIssuedAt ? 'Baixar certificado' : 'Emitir certificado') +
+                            (course.certificateIssuedAt ? 'Baixar Selo' : 'Emitir Selo') +
                             (course.certificateTemplateName ? ` • ${course.certificateTemplateName}` : '')
                           }
                         >
                           <Award className="w-4 h-4" />
-                          {course.certificateIssuedAt ? 'Baixar certificado' : 'Emitir certificado'}
+                          {course.certificateIssuedAt ? 'Baixar Selo' : 'Emitir Selo'}
                         </a>
                       )}
                       <Link
                         href={`/cursos/${course.slug}?view=content`}
                         className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                       >
-                        Continuar
+                        Continuar Ritual
                       </Link>
                       <Link
                         href={`/cursos/${course.slug}?view=overview`}
                         className="px-4 py-2 border border-input rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
                       >
-                        Detalhes
+                        Ver Detalhes
                       </Link>
                       {course.enrollmentStatus === 'pending' && course.hasFreeLessons && (
                         <Link

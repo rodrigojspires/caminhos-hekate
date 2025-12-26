@@ -1,3 +1,4 @@
+
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -19,39 +20,39 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Cores místicas de Hekate
         hekate: {
-          black: "#0B0B0F",
-          gold: "#DAA520",
-          goldLight: "#F4E4BC",
-          goldDark: "#B8941C",
-          pearl: "#F8F6F0",
-          pearlDark: "#E8E6E0",
+          black: "#0A0A0A",
+          silver: "#C0C0C0",
+          gold: "#FFD700",
+          goldLight: "#FFEEB3",
+          goldDark: "#B8860B",
+          pearl: "#F5F5DC",
+          pearlDark: "#D3D3D3",
           gray: {
-            50: "#FAFAFA",
-            100: "#F5F5F5",
-            200: "#E5E5E5",
-            300: "#D4D4D4",
-            400: "#A3A3A3",
-            500: "#737373",
-            600: "#525252",
-            700: "#404040",
-            800: "#262626",
-            900: "#171717",
-            950: "#0A0A0A",
+            50: "#F9FAFB",
+            100: "#F3F4F6",
+            200: "#E5E7EB",
+            300: "#D1D5DB",
+            400: "#9CA3AF",
+            500: "#6B7280",
+            600: "#4B5563",
+            700: "#374151",
+            800: "#1F2937",
+            900: "#111827",
+            950: "#030712",
           },
           purple: {
-            50: "#FAF5FF",
-            100: "#F3E8FF",
-            200: "#E9D5FF",
-            300: "#D8B4FE",
-            400: "#C084FC",
-            500: "#A855F7",
-            600: "#9333EA",
-            700: "#7E22CE",
-            800: "#6B21A8",
-            900: "#581C87",
-            950: "#3B0764",
+            50: "#F5F3FF",
+            100: "#EDE9FE",
+            200: "#DDD6FE",
+            300: "#C4B5FD",
+            400: "#A78BFA",
+            500: "#8B5CF6",
+            600: "#7C3AED",
+            700: "#6D28D9",
+            800: "#5B21B6",
+            900: "#4C1D95",
+            950: "#2E1065",
           }
         },
         border: "hsl(var(--border))",
@@ -132,10 +133,10 @@ const config: Config = {
         },
         glow: {
           '0%, 100%': {
-            'box-shadow': '0 0 20px rgba(218, 165, 32, 0.3), 0 0 40px rgba(218, 165, 32, 0.2)',
+            'box-shadow': '0 0 20px rgba(255, 215, 0, 0.3), 0 0 40px rgba(255, 215, 0, 0.2)',
           },
           '50%': {
-            'box-shadow': '0 0 30px rgba(218, 165, 32, 0.5), 0 0 60px rgba(218, 165, 32, 0.3)',
+            'box-shadow': '0 0 30px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.3)',
           },
         },
       },
@@ -152,8 +153,9 @@ const config: Config = {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-mystic': 'linear-gradient(135deg, #0B0B0F 0%, #1A1A2E 50%, #0B0B0F 100%)',
-        'gradient-gold': 'linear-gradient(135deg, #DAA520 0%, #F4E4BC 50%, #DAA520 100%)',
+        'gradient-mystic': 'linear-gradient(135deg, #0A0A0A 0%, #1F2937 50%, #0A0A0A 100%)',
+        'gradient-gold': 'linear-gradient(135deg, #FFD700 0%, #FFEEB3 50%, #FFD700 100%)',
+        'gradient-celestial': 'radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%)',
       },
     },
   },

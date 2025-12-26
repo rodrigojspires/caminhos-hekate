@@ -1,25 +1,26 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { KeyIcon, StrophalosIcon, TorchIcon } from '@/components/icons/Esoteric'
+import { TorchIcon, StrophalosIcon, KeyIcon } from '@/components/icons/Esoteric'
 
-const portais = [
+const features = [
   {
     icon: TorchIcon,
-    title: 'Fundamentos 🕯️',
-    description: 'Base mágica, rituais de entrada.',
+    title: 'Autoconhecimento',
+    subtitle: 'A Chave da Tocha',
+    description: 'Ilumine as sombras da sua alma. A Chave da Tocha te convida a olhar para dentro, a desvendar seus próprios mistérios e a encontrar a luz que reside na escuridão.',
   },
   {
     icon: StrophalosIcon,
-    title: 'Travessias 🔮',
-    description: 'Jornadas profundas, oráculos, rituais maiores.',
+    title: 'Poder Pessoal',
+    subtitle: 'A Chave do Strophalos',
+    description: 'Gire a roda do seu destino. A Chave do Strophalos te ensina a dançar com as energias do universo, a manifestar sua vontade e a se tornar o eixo do seu próprio mundo.',
   },
   {
     icon: KeyIcon,
-    title: 'Iniciação 🔥',
-    description: 'Sacerdócio, liderança espiritual.',
+    title: 'Soberania Espiritual',
+    subtitle: 'A Chave da Encruzilhada',
+    description: 'Reclame seu poder na encruzilhada da vida. A Chave da Encruzilhada te consagra como sacerdote ou sacerdotisa da sua própria existência, mestre do seu caminho.',
   },
 ]
 
@@ -27,70 +28,63 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
+    transition: { staggerChildren: 0.2, delayChildren: 0.2 },
+  },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 30, scale: 0.98 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.6
-    }
-  }
+    scale: 1,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+  },
 }
 
 export function Features() {
   return (
-    <section id="portais" className="py-20 bg-transparent">
+    <section className="relative py-24 sm:py-32 bg-black">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-hekate-gold/30 to-transparent" />
       <div className="container">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-hekate-gold mb-2">
-            Portais da Escola
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-hekate-goldLight to-hekate-gold mb-4">
+            As Três Chaves de Hekate
           </h2>
-          <div className="h-px w-48 mx-auto bg-gradient-to-r from-transparent via-hekate-gold to-transparent" />
+          <p className="max-w-3xl mx-auto text-lg text-hekate-pearl/80">
+            Sua jornada de soberania se desdobra em três grandes atos, cada um guardado por uma chave sagrada.
+          </p>
         </motion.div>
 
-        {/* Portais Grid */}
+        {/* Features Grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          viewport={{ once: true, amount: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
         >
-          {portais.map((portal, index) => {
-            const Icon = portal.icon
+          {features.map((feature) => {
+            const Icon = feature.icon
             return (
-              <motion.div key={portal.title} variants={itemVariants}>
-                <Card className="h-full group bg-transparent border border-hekate-gold/30 rounded-xl hover:border-hekate-gold/60 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="p-2.5 rounded-lg bg-hekate-gold/10 group-hover:scale-110 transition-transform duration-300">
-                        <Icon className="h-7 w-7 text-hekate-gold" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-serif text-xl font-semibold text-hekate-gold mb-1">
-                          {portal.title}
-                        </h3>
-                        <p className="text-sm text-hekate-pearl/80 leading-relaxed">
-                          {portal.description}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <motion.div
+                key={feature.title}
+                variants={itemVariants}
+                className="glass rounded-2xl p-8 text-center flex flex-col items-center border border-hekate-gold/20 hover:border-hekate-gold/40 transition-colors duration-300"
+              >
+                <div className="mb-6 bg-hekate-gold/10 p-4 rounded-full">
+                  <Icon className="h-10 w-10 text-hekate-gold" />
+                </div>
+                <h3 className="text-xl font-bold font-serif text-hekate-goldLight mb-2">{feature.title}</h3>
+                <p className="text-sm text-hekate-purple-300 uppercase tracking-widest mb-4">{feature.subtitle}</p>
+                <p className="text-hekate-pearl/80 flex-grow">{feature.description}</p>
               </motion.div>
             )
           })}

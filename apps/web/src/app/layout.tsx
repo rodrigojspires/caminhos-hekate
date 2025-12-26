@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, EB_Garamond } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeProvider as CustomThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,12 +10,14 @@ import "./globals.css";
 
 const inter = Inter({ 
   subsets: ["latin"],
-  variable: "--font-inter"
+  variable: "--font-sans",
+  display: 'swap',
 });
 
-const playfair = Playfair_Display({ 
+const ebGaramond = EB_Garamond({ 
   subsets: ["latin"],
-  variable: "--font-playfair"
+  variable: "--font-serif",
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -61,11 +63,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${ebGaramond.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          forcedTheme="dark"
           disableTransitionOnChange
         >
           <QueryProvider>

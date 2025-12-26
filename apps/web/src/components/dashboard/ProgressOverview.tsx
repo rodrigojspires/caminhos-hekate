@@ -21,36 +21,21 @@ import {
   Bar
 } from 'recharts'
 import { motion } from 'framer-motion'
-import { BookOpen, Clock, Target, TrendingUp, AlertCircle } from 'lucide-react'
+import { BookOpen, Clock, Target, TrendingUp, AlertCircle, Compass } from 'lucide-react'
 import { toast } from 'sonner'
 
-const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#f97316']
+const COLORS = ['#c084fc', '#5eead4', '#a7f3d0', '#fde047', '#fda4af', '#fb923c']
 
 interface ProgressData {
-  overview: {
-    totalCourses: number
-    completedCourses: number
-    inProgressCourses: number
-    totalLessonsCompleted: number
-    totalLessons: number
-    completionRate: number
-  }
-  weeklyProgress: Array<{
-    week: string
-    lessons: number
-  }>
-  monthlyData: Array<{
-    month: string
-    lessons: number
-    hours: number
-  }>
+  overview: {}
+  weeklyProgress: Array<{ week: string; lessons: number }>
+  monthlyData: Array<{ month: string; lessons: number; hours: number }>
   courseProgress: Array<{
     courseId: string
     courseTitle: string
     completedLessons: number
     totalLessons: number
     progress: number
-    lastAccessed: string // Changed from Date to string to match API response
   }>
 }
 
@@ -59,79 +44,60 @@ export function ProgressOverview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchProgressData()
-  }, [])
-
   const fetchProgressData = async () => {
     try {
       setLoading(true)
       setError(null)
-      
       const response = await fetch('/api/user/progress')
-      
-      if (!response.ok) {
-        throw new Error('Erro ao carregar dados de progresso')
-      }
-      
+      if (!response.ok) throw new Error('Erro ao carregar dados de progresso')
       const data = await response.json()
       setProgressData(data)
     } catch (error) {
       console.error('Erro ao buscar progresso:', error)
       setError('Não foi possível carregar os dados de progresso')
-      toast.error('Erro ao carregar dados de progresso')
+      toast.error('Erro ao carregar sua trilha')
     } finally {
       setLoading(false)
     }
   }
 
+  useEffect(() => {
+    fetchProgressData()
+  }, [])
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <Card className="glass-dark border border-hekate-gold/20">
+        <CardHeader>
           <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-9 w-40" />
-        </div>
-        <div className="space-y-6">
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-4 w-80 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Skeleton className="h-56 w-full" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-56 w-full" />
+            <Skeleton className="h-56 w-full" />
           </div>
-          <Skeleton className="h-80 w-full" />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 
   if (error || !progressData) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Visão Geral do Progresso</h2>
-          <Button variant="outline" size="sm" onClick={fetchProgressData}>
-            Tentar Novamente
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-              <div>
-                <h3 className="text-lg font-semibold">Erro ao carregar dados</h3>
-                <p className="text-muted-foreground">{error}</p>
-              </div>
-              <Button onClick={fetchProgressData}>
-                Tentar Novamente
-              </Button>
-            </div>
+       <Card className="glass-dark border border-red-500/30">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-red-400/80 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-hekate-pearl">Falha ao Consultar os Oráculos</h3>
+            <p className="text-hekate-pearl/70 text-sm max-w-sm mx-auto">Não foi possível carregar sua trilha de ascensão. As energias podem estar instáveis.</p>
+            <Button onClick={fetchProgressData} variant="outline" className="mt-6">
+              Tentar Novamente
+            </Button>
           </CardContent>
         </Card>
-      </div>
     )
   }
 
-  // Preparar dados para os gráficos
   const courseProgressChartData = progressData.courseProgress.map((course, index) => ({
     name: course.courseTitle,
     value: course.progress,
@@ -139,126 +105,85 @@ export function ProgressOverview() {
   }))
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Visão Geral do Progresso</h2>
-        <Button variant="outline" size="sm" onClick={fetchProgressData}>
-          Atualizar Dados
-        </Button>
-      </div>
+    <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <h2 className="text-2xl font-bold font-serif tracking-tight text-hekate-goldLight">Sua Trilha de Ascensão</h2>
+                <p className="text-hekate-pearl/70">Uma visão detalhada da sua jornada evolutiva.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchProgressData} disabled={loading}>
+                {loading ? 'Atualizando...' : 'Atualizar Trilha'}
+            </Button>
+        </div>
 
       {/* Current Courses Progress */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <Card className="glass-dark border border-hekate-gold/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Progresso dos Cursos Atuais
+            <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
+              <BookOpen className="h-5 w-5 text-hekate-purple-300" />
+              Seus Rituais em Andamento
             </CardTitle>
-            <CardDescription>
-              Acompanhe seu desenvolvimento em cada curso
-            </CardDescription>
+            <CardDescription className="text-hekate-pearl/70">Visualize sua jornada em cada portal de conhecimento.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-2">
             {progressData.courseProgress.length > 0 ? (
               progressData.courseProgress.map((course, index) => (
-                <motion.div
-                  key={course.courseId}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="space-y-2"
-                >
-                  <div className="flex items-center justify-between">
+                <motion.div key={course.courseId} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: index * 0.1 }} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      />
-                      <span className="font-medium">{course.courseTitle}</span>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}/>
+                      <span className="font-medium text-hekate-pearl/90">{course.courseTitle}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{course.progress}%</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {course.completedLessons}/{course.totalLessons}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-hekate-pearl/60">
+                        {course.completedLessons}/{course.totalLessons} ritos
                       </span>
+                      <Badge variant="secondary" className="bg-hekate-purple/20 text-hekate-purple-300 border border-hekate-purple/40 font-bold">{course.progress}%</Badge>
                     </div>
                   </div>
-                  <Progress value={course.progress} className="h-2" />
+                  <Progress value={course.progress} className="h-2" indicatorClassName={`bg-gradient-to-r from-hekate-purple to-hekate-gold`} />
                 </motion.div>
               ))
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum curso em progresso</p>
-                <p className="text-sm">Comece um curso para ver seu progresso aqui</p>
+              <div className="text-center py-8 text-hekate-pearl/60">
+                <Compass className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-semibold">Nenhum ritual iniciado.</p>
+                <p className="text-sm">Escolha um portal para começar sua jornada.</p>
               </div>
             )}
           </CardContent>
         </Card>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Weekly Activity Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <Card>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+          <Card className="glass-dark border border-hekate-gold/20 h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Atividade Semanal
+              <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
+                <Clock className="h-5 w-5 text-hekate-purple-300" />
+                Ritmo da Semana
               </CardTitle>
-              <CardDescription>
-                Horas de estudo nos últimos 7 dias
-              </CardDescription>
+              <CardDescription className="text-hekate-pearl/70">Sua dedicação e rito nos últimos 7 dias.</CardDescription>
             </CardHeader>
             <CardContent>
-              {progressData.weeklyProgress && progressData.weeklyProgress.length > 0 ? (
+              {progressData.weeklyProgress && progressData.weeklyProgress.length > 1 ? (
                 <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={progressData.weeklyProgress}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis 
-                      dataKey="week" 
-                      axisLine={false}
-                      tickLine={false}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      className="text-xs"
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      formatter={(value) => [`${value} lições`, 'Lições Completadas']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="lessons"
-                      stroke="#8b5cf6"
-                      fill="#8b5cf6"
-                      fillOpacity={0.2}
-                      strokeWidth={2}
-                    />
+                  <AreaChart data={progressData.weeklyProgress} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsla(0, 0%, 100%, 0.1)" />
+                    <XAxis dataKey="week" axisLine={false} tickLine={false} className="text-xs" stroke="hsla(0, 0%, 100%, 0.5)"/>
+                    <YAxis axisLine={false} tickLine={false} className="text-xs" stroke="hsla(0, 0%, 100%, 0.5)" />
+                    <Tooltip contentStyle={{ backgroundColor: '#110E19', border: '1px solid #4d2d6c', borderRadius: '8px' }} formatter={(value) => [`${value} lições`, 'Ritos Completados']} />
+                    <Area type="monotone" dataKey="lessons" stroke="#c084fc" fill="#c084fc" fillOpacity={0.2} strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-48 text-muted-foreground">
+                <div className="flex items-center justify-center h-48 text-hekate-pearl/60">
                   <div className="text-center">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhuma atividade semanal registrada</p>
-                    <p className="text-sm">Continue estudando para ver seus dados aqui</p>
+                    <p className="font-semibold">O rito da semana ainda não começou.</p>
+                    <p className="text-sm">Dedique-se aos estudos para registrar seu ritmo.</p>
                   </div>
                 </div>
               )}
@@ -267,59 +192,30 @@ export function ProgressOverview() {
         </motion.div>
 
         {/* Course Distribution */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <Card>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+          <Card className="glass-dark border border-hekate-gold/20 h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Distribuição de Tempo
+              <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
+                <Target className="h-5 w-5 text-hekate-purple-300" />
+                Foco da Alma
               </CardTitle>
-              <CardDescription>
-                Como você está dividindo seu tempo de estudo
-              </CardDescription>
+              <CardDescription className="text-hekate-pearl/70">Onde sua energia está sendo canalizada.</CardDescription>
             </CardHeader>
             <CardContent>
               {courseProgressChartData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={courseProgressChartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {courseProgressChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, 'Progresso']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex justify-center gap-4 mt-4 flex-wrap">
-                    {courseProgressChartData.map((course, index) => (
-                      <div key={course.name} className="flex items-center gap-2 text-sm">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: course.color }}
-                        />
-                        <span className="text-muted-foreground">{course.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={courseProgressChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                      {courseProgressChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} stroke={entry.color} />))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`${value}%`, 'Foco']} contentStyle={{ backgroundColor: '#110E19', border: '1px solid #4d2d6c', borderRadius: '8px' }}/>
+                  </PieChart>
+                </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-48 text-muted-foreground">
+                 <div className="flex items-center justify-center h-48 text-hekate-pearl/60">
                   <div className="text-center">
                     <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum dado de distribuição disponível</p>
+                    <p>Nenhum foco definido.</p>
                   </div>
                 </div>
               )}
@@ -329,69 +225,37 @@ export function ProgressOverview() {
       </div>
 
       {/* Monthly Progress Trend */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        <Card>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
+        <Card className="glass-dark border border-hekate-gold/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Tendência Mensal
+            <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
+              <TrendingUp className="h-5 w-5 text-hekate-purple-300" />
+              Ciclos de Evolução
             </CardTitle>
-            <CardDescription>
-              Seu progresso geral ao longo dos meses
-            </CardDescription>
+            <CardDescription className="text-hekate-pearl/70">Observe a sua evolução através das luas.</CardDescription>
           </CardHeader>
           <CardContent>
-            {progressData.monthlyData && progressData.monthlyData.length > 0 ? (
+            {progressData.monthlyData && progressData.monthlyData.length > 1 ? (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={progressData.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="month" 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs"
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-xs"
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value, name) => {
-                      if (name === 'lessons') return [`${value} lições`, 'Lições Completadas']
-                      if (name === 'hours') return [`${value}h`, 'Horas de Estudo']
+                <BarChart data={progressData.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsla(0, 0%, 100%, 0.1)" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" stroke="hsla(0, 0%, 100%, 0.5)" />
+                  <YAxis axisLine={false} tickLine={false} className="text-xs" stroke="hsla(0, 0%, 100%, 0.5)" />
+                  <Tooltip contentStyle={{ backgroundColor: '#110E19', border: '1px solid #4d2d6c', borderRadius: '8px' }} formatter={(value, name) => {
+                      if (name === 'lessons') return [`${value} ritos`, 'Ritos Completados']
+                      if (name === 'hours') return [`${value}h`, 'Horas em Rito']
                       return [value, name]
-                    }}
-                  />
-                  <Bar 
-                    dataKey="lessons" 
-                    fill="#8b5cf6" 
-                    radius={[4, 4, 0, 0]}
-                    name="lessons"
-                  />
-                  <Bar 
-                    dataKey="hours" 
-                    fill="#06b6d4" 
-                    radius={[4, 4, 0, 0]}
-                    name="hours"
-                  />
+                    }} />
+                  <Bar dataKey="lessons" fill="#a78bfa" radius={[4, 4, 0, 0]} name="lessons"/>
+                  <Bar dataKey="hours" fill="#5eead4" radius={[4, 4, 0, 0]} name="hours" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-60 text-muted-foreground">
+              <div className="flex items-center justify-center h-60 text-hekate-pearl/60">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum dado mensal disponível</p>
-                  <p className="text-sm">Continue estudando para ver sua tendência de progresso</p>
+                  <p className="font-semibold">Ainda não há ciclos para mostrar.</p>
+                  <p className="text-sm">Sua jornada mensal será registrada aqui.</p>
                 </div>
               </div>
             )}

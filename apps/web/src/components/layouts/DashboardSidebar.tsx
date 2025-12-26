@@ -16,7 +16,12 @@ import {
   User,
   X,
   Wrench,
-  Award
+  Award,
+  Sparkles,
+  Moon,
+  Orbit,
+  PencilRuler,
+  CookingPot
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -29,56 +34,55 @@ interface DashboardSidebarProps {
 
 const navigation = [
   {
-    name: 'Minha Escola',
+    name: 'Santuário',
     href: '/dashboard',
-    icon: Home,
+    icon: Sparkles,
   },
   {
-    name: 'Meus Cursos',
+    name: 'Meus Rituais',
     href: '/dashboard/courses',
     icon: BookOpen,
-    // badge removido: será dinâmico via estado
   },
   {
-    name: 'Progresso',
+    name: 'Trilha de Ascensão',
     href: '/dashboard/progress',
     icon: TrendingUp,
   },
   {
-    name: 'Meus Pedidos',
+    name: 'Meu Caldeirão',
     href: '/dashboard/orders',
-    icon: ShoppingBag,
+    icon: CookingPot,
   },
   {
-    name: 'Eventos',
+    name: 'Ritos Sazonais',
     href: '/dashboard/eventos',
-    icon: Calendar,
+    icon: Moon,
   },
   {
-    name: 'Ferramentas: Horas Planetárias',
+    name: 'Oráculo Planetário',
     href: '/dashboard/tools/planetary-hours',
-    icon: Wrench,
+    icon: Orbit,
   },
   {
-    name: 'Ferramentas: Sigilo (Quadrado Mágico)',
+    name: 'Oficina de Sigilos',
     href: '/dashboard/tools/magic-square-sigil',
-    icon: Wrench,
+    icon: PencilRuler,
   },
 ]
 
 const secondaryNavigation = [
   {
-    name: 'Perfil',
+    name: 'Eu Astral',
     href: '/dashboard/profile',
     icon: User,
   },
   {
-    name: 'Personalização',
+    name: 'Altar Pessoal',
     href: '/dashboard/settings',
     icon: Palette,
   },
   {
-    name: 'Configurações',
+    name: 'Ajustes Arcanos',
     href: '/dashboard/settings',
     icon: Settings,
   },
@@ -142,7 +146,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
               className="object-contain"
             />
           </div>
-          <span className="font-semibold text-lg">Minha Escola</span>
+          <span className="font-semibold text-lg">Grimório</span>
         </Link>
         
         {onClose && (
@@ -188,10 +192,6 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
                   <Badge variant="secondary" className="ml-auto">
                     {upcomingRegisteredCount}
                   </Badge>
-                ) : item.badge ? (
-                  <Badge variant="secondary" className="ml-auto">
-                    {item.badge}
-                  </Badge>
                 ) : null}
               </Link>
             )
@@ -201,7 +201,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
         {/* Secondary Navigation */}
         <div className="mt-8">
           <h4 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Conta
+            Sua Jornada
           </h4>
           <nav className="space-y-2">
             {secondaryNavigation.map((item) => {
@@ -231,7 +231,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
       <div className="border-t p-4">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <div className="h-2 w-2 rounded-full bg-green-500" />
-          <span>Online</span>
+          <span>Conectado</span>
         </div>
       </div>
     </div>

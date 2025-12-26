@@ -9,8 +9,8 @@ import { CoursesClient } from '@/components/dashboard/courses/CoursesClient'
 import { prisma } from '@hekate/database'
 
 export const metadata: Metadata = {
-  title: 'Meus Cursos | Minha Escola',
-  description: 'Gerencie seus cursos e acompanhe seu progresso de aprendizado'
+  title: 'Meus Rituais | Grimório',
+  description: 'Acesse seus rituais de conhecimento e acompanhe sua ascensão.'
 }
 
 interface CourseData {
@@ -234,7 +234,7 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
     const stats: CourseStats = {
       totalCourses: coursesWithProgress.length,
       completedCourses: coursesWithProgress.filter(c => c.status === 'completed').length,
-      inProgressCourses: coursesWithProgress.filter(c => c.status === 'in_progress').length,
+      inProgressCourses: coursesWithprogress.filter(c => c.status === 'in_progress').length,
       notStartedCourses: coursesWithProgress.filter(c => c.status === 'not_started').length,
       totalStudyTime: coursesWithProgress.reduce((total, c) => total + c.totalStudyTime, 0),
       averageProgress: coursesWithProgress.length > 0
@@ -246,7 +246,7 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
 
     return { courses: coursesWithProgress, stats }
   } catch (error) {
-    console.error('Erro ao buscar cursos do usuário:', error)
+    console.error('Erro ao buscar rituais do usuário:', error)
     return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }
   }
 }
@@ -275,9 +275,9 @@ export default async function CoursesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Meus Cursos</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Meus Rituais</h1>
           <p className="text-muted-foreground">
-            Acompanhe seu progresso e continue aprendendo
+            Continue sua jornada, desvendando os mistérios que aguardam.
           </p>
         </div>
       </div>

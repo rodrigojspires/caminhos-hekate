@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -6,11 +6,8 @@ import {
   BookOpen, 
   Clock, 
   Trophy, 
-  TrendingUp,
-  Users,
-  Target,
-  Calendar,
-  Award
+  Sparkles, 
+  Flame
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
@@ -20,48 +17,24 @@ interface StatCardProps {
   value: string | number
   description: string
   icon: React.ElementType
-  trend?: {
-    value: number
-    isPositive: boolean
-  }
-  badge?: string
   index: number
 }
 
-function StatCard({ title, value, description, icon: Icon, trend, badge, index }: StatCardProps) {
+function StatCard({ title, value, description, icon: Icon, index }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
     >
-      <Card className="relative overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <div className="flex items-center gap-2">
-            {badge && (
-              <Badge variant="secondary" className="text-xs">
-                {badge}
-              </Badge>
-            )}
-            <Icon className="h-4 w-4 text-muted-foreground" />
-          </div>
+      <Card className="glass-dark border border-hekate-gold/20 h-full">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-semibold text-hekate-pearl/90">{title}</CardTitle>
+          <Icon className="h-5 w-5 text-hekate-gold" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="flex items-center justify-between mt-2">
-            <p className="text-xs text-muted-foreground">{description}</p>
-            {trend && (
-              <div className={`flex items-center text-xs ${
-                trend.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                <TrendingUp className={`h-3 w-3 mr-1 ${
-                  trend.isPositive ? '' : 'rotate-180'
-                }`} />
-                {Math.abs(trend.value)}%
-              </div>
-            )}
-          </div>
+          <div className="text-3xl font-bold font-serif gradient-text-gold">{value}</div>
+          <p className="text-xs text-hekate-pearl/60 mt-1">{description}</p>
         </CardContent>
       </Card>
     </motion.div>
@@ -72,14 +45,10 @@ export function DashboardStats() {
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState<null | {
     overview: {
-      totalCourses: number
       completedCourses: number
       inProgressCourses: number
-      totalLessonsCompleted: number
-      totalLessons: number
-      completionRate: number
     }
-    monthlyData: Array<{ month: string; lessons: number; hours: number }>
+    monthlyData: Array<{ hours: number }>
     courseProgress: Array<{ progress: number }>
   }>(null)
   const [streakDays, setStreakDays] = useState<number>(0)
@@ -105,9 +74,7 @@ export function DashboardStats() {
         const current = Array.isArray(sJson) ? Math.max(0, ...sJson.map((x: any) => Number(x.currentStreak || 0))) : 0
         setStreakDays(Number.isFinite(current) ? current : 0)
       } catch (_e) {
-        if (!cancelled) {
-          setProgress(null)
-        }
+        if (!cancelled) setProgress(null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -125,57 +92,46 @@ export function DashboardStats() {
   const monthHours = useMemo(() => {
     if (!progress?.monthlyData?.length) return 0
     const last = progress.monthlyData[progress.monthlyData.length - 1]
-    return Number(last?.hours || 0)
+    return Number(last?.hours || 0).toFixed(1)
   }, [progress])
 
   const stats = [
     {
-      title: 'Cursos Ativos',
-      value: progress?.overview?.inProgressCourses ?? 0,
-      description: 'Em andamento',
+      title: 'Rituais Ativos',
+      value: progress?.overview?.inProgressCourses ?? '-',
+      description: 'Jornadas em progresso',
       icon: BookOpen,
-      trend: progress ? { value: 0, isPositive: true } : undefined,
-      badge: undefined
     },
     {
-      title: 'Horas de Estudo',
+      title: 'Horas em Rituais',
       value: `${monthHours}h`,
-      description: 'Este mês',
+      description: 'Dedicadas este mês',
       icon: Clock,
-      trend: undefined
     },
     {
-      title: 'Cursos Concluídos',
-      value: progress?.overview?.completedCourses ?? 0,
-      description: 'Total',
+      title: 'Selos Conquistados',
+      value: progress?.overview?.completedCourses ?? '-',
+      description: 'Conquistas totais',
       icon: Trophy,
-      badge: undefined
     },
     {
       title: 'Progresso Médio',
       value: `${averageProgress}%`,
-      description: 'Todos os cursos',
-      icon: Target,
-      trend: undefined
+      description: 'Em todas as jornadas',
+      icon: Sparkles,
     },
     {
-      title: 'Sequência',
+      title: 'Chama do Conhecimento',
       value: `${streakDays} dias`,
-      description: 'Estudo contínuo',
-      icon: Calendar,
-      trend: undefined,
-      badge: 'Streak'
+      description: 'Dias de dedicação',
+      icon: Flame,
     }
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Estatísticas</h2>
-        <Badge variant="outline">Atualizado agora</Badge>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="my-8">
+      <h2 className="text-xl font-semibold font-serif text-hekate-pearl mb-4 px-2">Seu Poder</h2>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {stats.map((stat, index) => (
           <StatCard
             key={stat.title}

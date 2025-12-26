@@ -9,29 +9,29 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
-  title: 'Caminhos de Hekate - Transforme sua vida através do autoconhecimento',
-  description: 'Descubra cursos exclusivos de desenvolvimento pessoal, espiritualidade e autoconhecimento. Junte-se à nossa comunidade e transforme sua jornada.',
-  keywords: 'autoconhecimento, desenvolvimento pessoal, espiritualidade, cursos online, Hekate',
+  title: 'Caminhos de Hekate - Escola Iniciática de Magia & Ocultismo',
+  description: 'Desperte sua soberania espiritual. Explore cursos de magia, ocultismo e autoconhecimento na Escola Iniciática Caminhos de Hekate. Uma jornada para quem ouve o chamado da transformação.',
+  keywords: 'Hekate, magia, ocultismo, esoterismo, escola iniciática, cursos de magia, espiritualidade, autoconhehecimento, bruxaria, sacerdócio',
   openGraph: {
-    title: 'Caminhos de Hekate',
-    description: 'Transforme sua vida através do autoconhecimento',
+    title: 'Caminhos de Hekate - Escola Iniciática de Magia & Ocultismo',
+    description: 'Desperte sua soberania espiritual. Uma jornada para quem ouve o chamado da transformação.',
     type: 'website',
+    images: ['/og-image.jpg'],
   },
 }
 
 export default async function HomePage() {
   // Se o usuário estiver logado, redirecionar para o painel adequado
   const session = await getServerSession(authOptions)
-  const role = session?.user?.role
   if (session?.user) {
-    if (role === 'ADMIN') {
+    if (session.user.role === 'ADMIN') {
       redirect('/admin')
     }
     redirect('/dashboard')
   }
 
   return (
-    <main className="min-h-screen">
+    <main>
       <Hero />
       <Features />
       <CoursePreview />

@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, List, Loader2, MapPin, RefreshCw, Wifi } from 'lucide-react'
+import { CalendarDays, List, Loader2, MapPin, RefreshCw, Wifi, Moon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,6 +69,7 @@ export function EventsWidget() {
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true)
+      await new Promise(res => setTimeout(res, 500)) // Simulate loading
       const res = await fetch('/api/events?limit=50&status=PUBLISHED')
       if (!res.ok) throw new Error('Erro ao carregar eventos')
       const data = await res.json()
@@ -127,14 +128,14 @@ export function EventsWidget() {
   }
 
   return (
-    <Card>
+    <Card className="glass-dark border border-hekate-gold/20">
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <CardTitle className="text-lg">Eventos</CardTitle>
-          <CardDescription>Veja os próximos eventos em lista ou calendário</CardDescription>
+          <CardTitle className="text-lg font-serif text-hekate-goldLight">Próximos Alinhamentos</CardTitle>
+          <CardDescription className="text-hekate-pearl/70">Consulte os próximos rituais, encontros e alinhamentos cósmicos da nossa egrégora.</CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-muted rounded-lg p-1 flex items-center">
+          <div className="bg-black/20 rounded-lg p-1 flex items-center">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
@@ -149,7 +150,7 @@ export function EventsWidget() {
               onClick={() => setViewMode('calendar')}
               className="gap-1"
             >
-              <CalendarDays className="h-4 w-4" /> Calendário
+              <Moon className="h-4 w-4" /> Calendário Lunar
             </Button>
           </div>
           {viewMode === 'calendar' && (
@@ -157,7 +158,7 @@ export function EventsWidget() {
               <Button variant="ghost" size="icon" onClick={() => changeMonth(-1)} aria-label="Mês anterior">
                 ‹
               </Button>
-              <div className="text-sm font-medium min-w-[130px] text-center">
+              <div className="text-sm font-medium min-w-[130px] text-center text-hekate-pearl">
                 {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
               </div>
               <Button variant="ghost" size="icon" onClick={() => changeMonth(1)} aria-label="Próximo mês">
@@ -173,51 +174,41 @@ export function EventsWidget() {
 
       <CardContent>
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Carregando eventos...
+          <div className="flex items-center justify-center py-12 text-hekate-pearl/60">
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Consultando os astros...
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground">
+          <div className="text-center py-10 text-hekate-pearl/60">
             <CalendarDays className="h-10 w-10 mx-auto mb-3" />
-            Nenhum evento disponível no momento.
+            <p className="font-semibold">Nenhum alinhamento agendado.</p>
+            <p className="text-sm">O oráculo está em silêncio por agora.</p>
           </div>
         ) : viewMode === 'list' ? (
           <div className="space-y-3">
             {eventsSorted.map((event) => (
               <div
                 key={event.id}
-                className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-border bg-card px-3 py-3"
+                className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-hekate-gold/20 bg-black/20 px-4 py-3"
               >
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{event.title}</span>
-                    {event.status && (
-                      <Badge className={STATUS_COLORS[event.status] || 'bg-gray-100 text-gray-700'}>
-                        {event.status}
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-hekate-pearl">{event.title}</span>
                     {event.mode && (
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="secondary" className="gap-1 text-xs border border-hekate-purple/50 bg-hekate-purple/10 text-hekate-purple-300">
                         {event.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
                         {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
                       </Badge>
                     )}
-                    <Badge variant="outline">{getAccessLabel(event)}</Badge>
+                    <Badge variant="outline" className="text-xs border-hekate-gold/50 text-hekate-gold">{getAccessLabel(event)}</Badge>
                   </div>
                   {event.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                    <p className="text-sm text-hekate-pearl/70 mt-1 line-clamp-2">{event.description}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
+                   <div className="flex flex-wrap items-center gap-3 text-xs text-hekate-pearl/60 mt-2">
                     <span>
                       {formatDate(event.startDate)}
                       {event.endDate ? ` — ${formatDate(event.endDate)}` : ''}
                     </span>
-                    {event.category && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {event.category}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -225,39 +216,40 @@ export function EventsWidget() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-7 text-xs font-medium text-muted-foreground px-1">
+            <div className="grid grid-cols-7 text-xs font-medium text-hekate-pearl/50 px-1">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
                 <div key={d} className="text-center">
                   {d}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {daysInMonth.map((cell, idx) => {
                 const dayEvents = getEventsForDay(cell.date)
+                const isToday = cell.date && new Date().toDateString() === cell.date.toDateString()
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[80px] rounded-lg border border-border p-2 text-sm ${
-                      cell.day ? 'bg-card' : 'bg-muted'
-                    }`}
+                    className={`min-h-[100px] rounded-md border p-2 text-sm transition-colors duration-300 ${
+                      cell.day ? 'bg-black/20 border-hekate-gold/20' : 'bg-black/10 border-transparent'
+                    } ${isToday ? 'border-hekate-gold' : ''}`}
                   >
                     {cell.day && (
-                      <div className="text-right text-xs font-semibold text-muted-foreground mb-2">
+                      <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-hekate-gold' : 'text-hekate-pearl/50'}`}>
                         {cell.day}
                       </div>
                     )}
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map((event) => (
+                      {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="rounded bg-purple-100 text-purple-900 px-2 py-1 text-[11px] font-medium line-clamp-2"
+                          className="rounded bg-hekate-purple/20 text-hekate-purple-300 px-2 py-1 text-[10px] font-semibold line-clamp-1 cursor-pointer hover:bg-hekate-purple/30"
                         >
                           {event.title}
                         </div>
                       ))}
-                      {dayEvents.length > 3 && (
-                        <div className="text-[11px] text-muted-foreground">+{dayEvents.length - 3} mais</div>
+                      {dayEvents.length > 2 && (
+                        <div className="text-[10px] text-hekate-pearl/50">+{dayEvents.length - 2} mais</div>
                       )}
                     </div>
                   </div>

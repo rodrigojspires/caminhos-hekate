@@ -1,117 +1,96 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
-import { StrophalosIcon } from '@/components/icons/Esoteric'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function Hero() {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2, 
+        delayChildren: 0.3,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+    },
+  }
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Deep mystical background */}
-      <div className="absolute inset-0 bg-gradient-mystic" />
-      {/* Subtle ritual texture overlays */}
-      <div className="absolute inset-0 bg-gradient-radial from-hekate-purple-950/40 via-transparent to-transparent opacity-40" />
-      <div className="absolute inset-0 bg-gradient-conic from-hekate-gold/10 via-transparent to-transparent opacity-20" />
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-hekate-gold/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-hekate-purple-800/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28rem] h-[28rem] rounded-full bg-hekate-purple-950/30 blur-3xl animate-pulse delay-500" />
-      </div>
+    <section className="relative h-[90vh] min-h-[700px] max-h-[900px] w-full overflow-hidden flex items-center justify-center text-center">
+      {/* Background Image & Overlays */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center brightness-50 contrast-125"
+        style={{ 
+          backgroundImage: `url('https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=epic%20cinematic%20art%20of%20the%20goddess%20hekate%20at%20a%20crossroads%20holding%20two%20torches%20and%20a%20key%20dark%20mystical%20and%20powerful%20purple%20and%20gold%20lighting&image_size=landscape_16_9')`, 
+        }}
+      />
+      <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/50 to-transparent" />
+      <div className="absolute inset-0 z-10 bg-black/30" />
 
-      <div className="container relative z-10 py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Content */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center lg:text-left"
-          >
-            <Badge variant="secondary" className="mb-4 text-sm font-medium">
-              ✨ Escola Iniciática • Templo Vivo
-            </Badge>
-
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-6 leading-tight">
-              Na encruzilhada da vida,
-              <span className="text-gradient-gold block">
-                Hekate segura a tocha.
-              </span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-hekate-pearl/90 mb-10 max-w-2xl mx-auto lg:mx-0">
-              A Escola Iniciática Caminhos de Hekate é templo vivo, onde cada encontro é rito,
-              cada palavra é invocação, cada ciclo é travessia.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 mb-4 justify-center lg:justify-start">
-              <Button size="lg" className="btn-mystic-enhanced" asChild>
-                <Link href="/auth/register">
-                  Entrar na Escola
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-hekate-gold text-hekate-gold hover:bg-hekate-gold/10" asChild>
-                <Link href="#portais">
-                  Conhecer os Portais
-                </Link>
-              </Button>
-            </div>
+      {/* Content */}
+      <div className="relative z-20 container px-4 sm:px-6 lg:px-8">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-4xl mx-auto"
+        >
+          <motion.div variants={itemVariants}>
+            <Sparkles className="h-12 w-12 text-hekate-gold mx-auto mb-6 animate-glow" />
           </motion.div>
 
-          {/* Visual Element */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative"
+          <motion.h1 
+            variants={itemVariants} 
+            className="text-5xl font-bold tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-serif text-transparent bg-clip-text bg-gradient-to-br from-hekate-gold via-hekate-goldLight to-white mb-6 leading-tight [text-shadow:0_2px_20px_rgba(255,215,0,0.4)]"
           >
-            <div className="relative mx-auto max-w-md lg:max-w-lg">
-              {/* Main circle with mystical elements */}
-              <div className="relative w-80 h-80 lg:w-96 lg:h-96 mx-auto">
-                {/* Outer ring */}
-                <div className="absolute inset-0 rounded-full border-2 border-hekate-gold/20 animate-spin-slow" />
-                {/* Middle ring */}
-                <div className="absolute inset-4 rounded-full border border-hekate-gold/30 animate-spin-reverse" />
-                {/* Inner circle */}
-                <div className="absolute inset-8 rounded-full bg-gradient-to-br from-hekate-purple-900/30 to-hekate-purple-950/50 backdrop-blur-sm flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="mb-4 flex items-center justify-center">
-                      <StrophalosIcon size={92} className="text-hekate-gold animate-glow" />
-                    </div>
-                    <div className="font-serif text-lg font-semibold text-gradient-gold">
-                      Templo‑Escola
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Caminhos de Hekate
-                    </div>
-                  </div>
-                </div>
-                {/* Floating embers */}
-                <div className="absolute top-4 right-4 w-2 h-2 bg-hekate-gold rounded-full animate-pulse" />
-                <div className="absolute bottom-8 left-8 w-1.5 h-1.5 bg-hekate-gold/80 rounded-full animate-pulse delay-500" />
-                <div className="absolute top-1/3 left-4 w-2 h-2 bg-hekate-gold/70 rounded-full animate-pulse delay-1000" />
-                <div className="absolute bottom-1/3 right-8 w-1.5 h-1.5 bg-hekate-gold/60 rounded-full animate-pulse delay-700" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+            A Soberania te Chama pelo Nome.
+          </motion.h1>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <div className="flex flex-col items-center space-y-2 text-muted-foreground">
-          <span className="text-sm">Descer aos Portais</span>
-          <div className="w-6 h-10 border-2 border-hekate-gold/30 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-hekate-gold/50 rounded-full mt-2 animate-bounce" />
-          </div>
-        </div>
-      </motion.div>
+          <motion.p 
+            variants={itemVariants}
+            className="max-w-2xl mx-auto text-lg text-hekate-pearl/80 md:text-xl leading-relaxed"
+          >
+            Somos uma escola iniciática para quem sente o chamado da travessia. Aqui, o conhecimento é chave, o estudo é rito e a transformação é o caminho.
+          </motion.p>
+
+          <motion.div 
+            variants={itemVariants}
+            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Button 
+              asChild 
+              size="lg"
+              className="w-full sm:w-auto bg-hekate-gold text-hekate-black hover:bg-hekate-gold/90 shadow-lg shadow-hekate-gold/20 btn-hover"
+            >
+              <Link href="/cursos">
+                Explorar os Portais
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button 
+              asChild 
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto border-hekate-gold/50 text-hekate-pearl hover:bg-hekate-gold/10 hover:text-white"
+            >
+              <Link href="/sobre">
+                Ler o Manifesto
+              </Link>
+            </Button>
+          </motion.div>
+        </motion.div>
+      </div>
     </section>
   )
 }

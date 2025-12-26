@@ -146,10 +146,10 @@ export function CoursesClient({
       {/* Listagem única de cursos */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Meus Cursos</h2>
+          <h2 className="text-xl font-semibold">Meus Rituais</h2>
           {filteredCourses.length > 0 && (
             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              {filteredCourses.length} cursos
+              {filteredCourses.length} rituais
             </span>
           )}
         </div>

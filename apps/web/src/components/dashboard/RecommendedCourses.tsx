@@ -36,7 +36,7 @@ interface Course {
   students: number
   rating: number
   price: string
-  level: string
+  level: 'Neófito' | 'Iniciado' | 'Adepto'
   category: string
   tags: string[]
   isNew: boolean
@@ -52,11 +52,11 @@ interface RecommendedCoursesResponse {
 
 const getLevelColor = (level: string) => {
   switch (level) {
-    case 'Iniciante':
+    case 'Neófito':
       return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-    case 'Intermediário':
+    case 'Iniciado':
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-    case 'Avançado':
+    case 'Adepto':
       return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
     default:
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
@@ -85,15 +85,15 @@ export function RecommendedCourses() {
       const response = await fetch('/api/courses/recommended?limit=6')
       
       if (!response.ok) {
-        throw new Error('Erro ao carregar cursos recomendados')
+        throw new Error('Erro ao carregar rituais recomendados')
       }
       
       const data: RecommendedCoursesResponse = await response.json()
       setCourses(data.courses)
     } catch (error) {
-      console.error('Erro ao buscar cursos recomendados:', error)
-      setError('Não foi possível carregar os cursos recomendados')
-      toast.error('Erro ao carregar cursos recomendados')
+      console.error('Erro ao buscar rituais recomendados:', error)
+      setError('Não foi possível consultar o oráculo.')
+      toast.error('Erro ao carregar rituais recomendados')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -159,8 +159,8 @@ export function RecommendedCourses() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Cursos Recomendados</h2>
-            <p className="text-muted-foreground">Baseado no seu perfil e interesses</p>
+            <h2 className="text-2xl font-bold tracking-tight">Rituais Sugeridos pelo Oráculo</h2>
+            <p className="text-muted-foreground">Sugestões baseadas em sua afinidade e jornada.</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -172,7 +172,7 @@ export function RecommendedCourses() {
           <div className="text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
             <div>
-              <h3 className="text-lg font-semibold">Erro ao carregar cursos</h3>
+              <h3 className="text-lg font-semibold">Falha na Consulta ao Oráculo</h3>
               <p className="text-muted-foreground">{error}</p>
             </div>
             <Button onClick={handleRefresh}>
@@ -188,8 +188,8 @@ export function RecommendedCourses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Cursos Recomendados</h2>
-          <p className="text-muted-foreground">Baseado no seu perfil e interesses</p>
+          <h2 className="text-2xl font-bold tracking-tight">Rituais Sugeridos pelo Oráculo</h2>
+          <p className="text-muted-foreground">Sugestões baseadas em sua afinidade e jornada.</p>
         </div>
         <Button 
           variant="outline" 
@@ -198,7 +198,7 @@ export function RecommendedCourses() {
           disabled={refreshing}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Atualizando...' : 'Atualizar'}
+          {refreshing ? 'Consultando...' : 'Novo Oráculo'}
         </Button>
       </div>
 
@@ -225,13 +225,13 @@ export function RecommendedCourses() {
                 <div className="absolute top-3 left-3 flex gap-2">
                   {course.isNew && (
                     <Badge className="bg-green-500 hover:bg-green-600">
-                      Novo
+                      Recente
                     </Badge>
                   )}
                   {course.isTrending && (
                     <Badge variant="secondary" className="bg-orange-100 text-orange-800">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      Trending
+                      Em Ascensão
                     </Badge>
                   )}
                 </div>
@@ -239,7 +239,7 @@ export function RecommendedCourses() {
                 {/* Match Percentage */}
                 <div className="absolute top-3 right-3">
                   <Badge variant="secondary" className="bg-white/90 text-purple-700">
-                    {course.matchPercentage}% match
+                    {course.matchPercentage}% de Afinidade
                   </Badge>
                 </div>
 
@@ -330,7 +330,7 @@ export function RecommendedCourses() {
                 {/* Action Button */}
                 <Button className="w-full" size="sm">
                   <Award className="h-4 w-4 mr-2" />
-                  Inscrever-se
+                  Iniciar Ritual
                 </Button>
               </CardContent>
             </Card>
@@ -341,7 +341,7 @@ export function RecommendedCourses() {
           {/* See More */}
           <div className="text-center pt-4">
             <Button variant="outline" size="lg">
-              Ver Mais Recomendações
+              Ver Mais Sugestões
             </Button>
           </div>
         </>
@@ -350,11 +350,11 @@ export function RecommendedCourses() {
           <div className="text-center space-y-4 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto opacity-50" />
             <div>
-              <h3 className="text-lg font-semibold mb-2">Nenhum curso recomendado</h3>
-              <p className="text-sm">Complete seu perfil para receber recomendações personalizadas</p>
+              <h3 className="text-lg font-semibold mb-2">O Oráculo aguarda seu progresso</h3>
+              <p className="text-sm">Avance em sua jornada para receber sugestões.</p>
             </div>
             <Button variant="outline">
-              Explorar Cursos
+              Explorar Rituais
             </Button>
           </div>
         </Card>

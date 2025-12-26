@@ -1,207 +1,107 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star } from 'lucide-react'
+import { Star, Quote } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { StrophalosIcon, TorchLeft, TorchRight } from '@/components/icons/Esoteric'
+import CountUp from 'react-countup'
 
 const testimonials = [
   {
-    id: 1,
-    name: 'Ana Carolina Silva',
-    role: 'Terapeuta Holística',
-    location: 'São Paulo, SP',
-    avatar: '/avatars/ana.jpg',
-    rating: 5,
-    course: 'Despertar da Consciência',
-    testimonial: 'Os cursos da Hekate transformaram completamente minha visão sobre espiritualidade. O conteúdo é profundo, bem estruturado e os instrutores são excepcionais. Recomendo para todos que buscam crescimento genuíno.',
-    highlight: 'Transformação completa',
-    completedCourses: 8,
-    joinedDate: '2023'
+    name: 'Juliana S.',
+    role: 'Artista & Terapeuta',
+    avatar: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=portrait%20of%20a%20brazilian%20woman%20with%20curly%20hair%20in%20her%2030s%20smiling%20in%20a%20serene%20setting&image_size=square',
+    testimonial: 'A Hekate School não foi apenas um curso, foi um rito de passagem. Encontrei uma profundidade em mim mesma que não conhecia. A cada aula, uma nova porta se abria.',
   },
   {
-    id: 2,
-    name: 'Roberto Mendes',
-    role: 'Coach de Vida',
-    location: 'Rio de Janeiro, RJ',
-    avatar: '/avatars/roberto.jpg',
-    rating: 5,
-    course: 'Alquimia Interior',
-    testimonial: 'Nunca imaginei que um curso online pudesse ser tão impactante. A metodologia é única e os exercícios práticos realmente funcionam. Minha vida mudou 180 graus após iniciar esta jornada.',
-    highlight: 'Metodologia única',
-    completedCourses: 12,
-    joinedDate: '2022'
+    name: 'Marcos V.',
+    role: 'Advogado & Estudante de Ocultismo',
+    avatar: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=portrait%20of%20a%20brazilian%20man%20in%20his%2040s%20with%20a%20short%20beard%20looking%20thoughtful%20in%20a%20library&image_size=square',
+    testimonial: 'A seriedade e o respeito com que os ensinamentos são tratados é algo raro. Encontrei um porto seguro para explorar minha espiritualidade sem dogmas.',
   },
   {
-    id: 3,
-    name: 'Mariana Costa',
+    name: 'Beatriz L.',
     role: 'Psicóloga',
-    location: 'Belo Horizonte, MG',
-    avatar: '/avatars/mariana.jpg',
-    rating: 5,
-    course: 'Cura Ancestral',
-    testimonial: 'A qualidade do conteúdo é impressionante. Cada aula é uma descoberta e a comunidade é muito acolhedora. Consegui integrar os ensinamentos na minha prática profissional com resultados incríveis.',
-    highlight: 'Qualidade impressionante',
-    completedCourses: 6,
-    joinedDate: '2023'
+    avatar: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=portrait%20of%20a%20brazilian%20woman%20in%20her%2020s%20with%20glasses%20and%20a%20warm%20smile%20in%20a%20cozy%20office&image_size=square',
+    testimonial: 'Integrei as ferramentas que aprendi na minha prática clínica e os resultados são surpreendentes. É uma abordagem que une o ancestral ao contemporâneo de forma magistral.',
   },
   {
-    id: 4,
-    name: 'Carlos Eduardo',
-    role: 'Empresário',
-    location: 'Porto Alegre, RS',
-    avatar: '/avatars/carlos.jpg',
-    rating: 5,
-    course: 'Liderança Consciente',
-    testimonial: 'Como empresário, sempre busquei formas de liderar com mais consciência. Os cursos me deram ferramentas práticas que aplico diariamente no meu negócio e na vida pessoal. Resultados surpreendentes!',
-    highlight: 'Ferramentas práticas',
-    completedCourses: 10,
-    joinedDate: '2022'
+    name: 'Ricardo F.',
+    role: 'Músico',
+    avatar: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=portrait%20of%20a%20brazilian%20man%20with%20long%20hair%20and%20tattoos%20in%20his%2030s%20in%20a%20music%20studio&image_size=square',
+    testimonial: 'Minha criatividade explodiu. Os cursos abriram canais que eu nem sabia que existiam. A arte se tornou, para mim, uma forma de magia.',
   },
-  {
-    id: 5,
-    name: 'Juliana Santos',
-    role: 'Artista',
-    location: 'Salvador, BA',
-    avatar: '/avatars/juliana.jpg',
-    rating: 5,
-    course: 'Criatividade Sagrada',
-    testimonial: 'Minha criatividade floresceu de uma forma que nunca imaginei possível. Os ensinamentos sobre arte sagrada e expressão criativa mudaram completamente minha abordagem artística. Gratidão infinita!',
-    highlight: 'Criatividade floresceu',
-    completedCourses: 7,
-    joinedDate: '2023'
-  },
-  {
-    id: 6,
-    name: 'Fernando Lima',
-    role: 'Professor',
-    location: 'Recife, PE',
-    avatar: '/avatars/fernando.jpg',
-    rating: 5,
-    course: 'Sabedoria Ancestral',
-    testimonial: 'A profundidade dos ensinamentos é extraordinária. Cada curso é uma jornada de autodescoberta. A plataforma é intuitiva e o suporte é excepcional. Melhor investimento que já fiz em mim mesmo.',
-    highlight: 'Profundidade extraordinária',
-    completedCourses: 15,
-    joinedDate: '2021'
-  }
+]
+
+const stats = [
+    { value: 4.9, label: 'Avaliação Média', suffix: '/5' },
+    { value: 12000, label: 'Almas Despertas', prefix: '+' },
+    { value: 30, label: 'Portais de Sabedoria', prefix: '+' },
+    { value: 98, label: 'Índice de Soberania', suffix: '%' },
 ]
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
+    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
+  },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.6
-    }
-  }
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } 
+  },
 }
 
 export function Testimonials() {
   return (
-    <section className="py-20 relative overflow-hidden">
-      {/* Subtle purple glow background */}
-      <div className="absolute inset-0 bg-gradient-radial from-hekate-purple-950/40 via-transparent to-transparent opacity-60" />
-      <div className="absolute inset-0 bg-gradient-conic from-hekate-purple-900/15 via-transparent to-transparent" />
-      <div className="container relative z-10">
+    <section className="py-24 sm:py-32 relative">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-hekate-gold/30 to-transparent" />
+      <div className="container">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <Badge variant="secondary" className="mb-3">
-            Ecos da Travessia
-          </Badge>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-hekate-gold mb-2">
-            Vozes que atravessaram
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-b from-hekate-goldLight to-hekate-gold mb-4">
+            Vozes da Travessia
           </h2>
-          <div className="h-px w-48 mx-auto bg-gradient-to-r from-transparent via-hekate-gold to-transparent" />
-          <p className="text-lg text-hekate-pearl/80 max-w-3xl mx-auto">
-            Depoimentos de quem atravessou portais, acendeu tochas e fez do rito um caminho.
+          <p className="max-w-3xl mx-auto text-lg text-hekate-pearl/80">
+            Ecos daqueles que atravessaram. Ouça as vozes que encontraram sua soberania em nossa jornada.
           </p>
         </motion.div>
 
-        {/* Testimonials Grid */}
+        {/* Testimonials Masonry Grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16"
+          viewport={{ once: true, amount: 0.1 }}
+          className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8 mb-24"
         >
-          {testimonials.map((testimonial) => (
-            <motion.div key={testimonial.id} variants={itemVariants}>
-              <Card className="card-mystic-ultimate h-full transition-all duration-300 group hover:-translate-y-1 relative overflow-hidden">
-                <CardContent className="p-6">
-                  {/* Ritual frame */}
-                  <div className="absolute -top-3 left-4 opacity-70 text-hekate-gold"><TorchLeft size={16} /></div>
-                  <div className="absolute -top-3 right-4 opacity-70 text-hekate-gold"><TorchRight size={16} /></div>
-                  <div className="absolute -bottom-3 left-4 opacity-70 text-hekate-gold"><TorchLeft size={16} /></div>
-                  <div className="absolute -bottom-3 right-4 opacity-70 text-hekate-gold"><TorchRight size={16} /></div>
-
-                  {/* Symbol */}
-                  <div className="flex justify-between items-start mb-4">
-                    <StrophalosIcon className="h-8 w-8 text-hekate-gold/30 group-hover:text-hekate-gold/60 transition-colors" />
-                    <Badge variant="outline" className="text-xs border-hekate-gold/40 text-hekate-gold">
-                      {testimonial.highlight}
-                    </Badge>
-                  </div>
-
-                  {/* Rating */}
-                  <div className="flex items-center space-x-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-hekate-gold text-hekate-gold" />
-                    ))}
-                    <span className="text-sm text-muted-foreground ml-2">
-                      {testimonial.rating}.0
-                    </span>
-                  </div>
-
-                  {/* Testimonial Text */}
-                  <blockquote className="text-sm text-hekate-pearl/80 mb-6 leading-relaxed">
+          {testimonials.map((testimonial, i) => (
+            <motion.div key={i} variants={itemVariants} className="break-inside-avoid">
+              <Card className="h-full glass card-hover rounded-xl overflow-hidden">
+                <CardContent className="p-8">
+                  <Quote className="w-8 h-8 text-hekate-gold/30 mb-4" />
+                  <blockquote className="text-hekate-pearl/90 mb-6 italic text-base">
                     &ldquo;{testimonial.testimonial}&rdquo;
                   </blockquote>
-
-                  {/* Course Info */}
-                  <div className="mb-4">
-                    <Badge variant="secondary" className="text-xs">
-                      📚 {testimonial.course}
-                    </Badge>
-                  </div>
-
-                  {/* Author Info */}
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12 border-2 border-hekate-gold/50">
                       <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                        {testimonial.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
+                      <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="font-medium text-hekate-pearl text-sm">
-                        {testimonial.name}
-                      </div>
-                      <div className="text-xs text-hekate-pearl/70">
-                        {testimonial.role} • {testimonial.location}
-                      </div>
-                      <div className="text-xs text-hekate-pearl/60 mt-1">
-                        {testimonial.completedCourses} cursos • Desde {testimonial.joinedDate}
-                      </div>
+                    <div>
+                      <p className="font-bold text-hekate-pearl">{testimonial.name}</p>
+                      <p className="text-sm text-hekate-pearl/70">{testimonial.role}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -212,53 +112,29 @@ export function Testimonials() {
 
         {/* Stats Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          viewport={{ once: true }}
-          className="bg-gradient-to-r from-hekate-purple-900/40 to-hekate-purple-950/60 border border-hekate-gold/20 rounded-2xl p-8 md:p-12"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
         >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center text-hekate-pearl">
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
-                4.9/5
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {stats.map((stat) => (
+              <div key={stat.label}>
+                <p className="text-4xl md:text-5xl font-bold gradient-text-gold mb-2">
+                  <CountUp 
+                    start={0} 
+                    end={stat.value} 
+                    duration={3} 
+                    decimals={stat.value % 1 !== 0 ? 1 : 0}
+                    prefix={stat.prefix}
+                    suffix={stat.suffix}
+                    enableScrollSpy
+                    scrollSpyDelay={300}
+                  />
+                </p>
+                <p className="text-sm text-hekate-pearl/70 uppercase tracking-wider">{stat.label}</p>
               </div>
-              <div className="text-sm text-hekate-pearl/70">
-                Avaliação Média
-              </div>
-              <div className="flex justify-center mt-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-hekate-gold text-hekate-gold" />
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
-                10.000+
-              </div>
-              <div className="text-sm text-hekate-pearl/70">
-                Estudantes Ativos
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
-                5.000+
-              </div>
-              <div className="text-sm text-hekate-pearl/70">
-                Certificados Emitidos
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-hekate-gold mb-2">
-                98%
-              </div>
-              <div className="text-sm text-hekate-pearl/70">
-                Taxa de Satisfação
-              </div>
-            </div>
+            ))}
           </div>
         </motion.div>
       </div>

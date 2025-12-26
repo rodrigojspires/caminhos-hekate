@@ -1,25 +1,35 @@
-"use client"
+'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Play, Star } from 'lucide-react'
+import { BookOpen, Play, Star, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+
+// Placeholder for StrophalosIcon if it's not defined elsewhere
+const StrophalosIcon = (props: any) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <path d="M12 2a10 10 0 0 0-10 10h2a8 8 0 0 1 8-8V2z"></path>
+    <path d="M12 22a10 10 0 0 1-10-10h2a8 8 0 0 0 8 8v2z"></path>
+    <path d="M2 12a10 10 0 0 1 10-10v2a8 8 0 0 0-8 8H2z"></path>
+    <path d="M22 12a10 10 0 0 0-10-10v2a8 8 0 0 1 8 8h2z"></path>
+  </svg>
+);
 
 export function WelcomeCard() {
   const { data: session } = useSession()
   const [inProgress, setInProgress] = useState<number>(0)
   const [avgProgress, setAvgProgress] = useState<number>(0)
   const [streak, setStreak] = useState<number>(0)
-  const [greeting, setGreeting] = useState<string>('Olá')
+  const [greeting, setGreeting] = useState<string>('Salve')
   useEffect(() => {
     const hour = new Date().getHours()
     setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite')
   }, [])
-  const name = session?.user?.name || 'Bem-vindo(a)'
+  const name = session?.user?.name || 'Iniciado(a)'
 
   useEffect(() => {
     let cancelled = false
@@ -56,58 +66,55 @@ export function WelcomeCard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-800 text-white">
-        <CardContent className="p-6">
+      <Card className="relative overflow-hidden bg-gradient-to-r from-gray-900 via-purple-950 to-black text-white border border-hekate-gold/20 shadow-lg shadow-hekate-purple/10">
+        <CardContent className="p-8">
           <div className="flex items-center justify-between">
             <div className="space-y-4">
               <div>
-                <h1 className="text-2xl font-bold">
-                  {greeting}, {name}! 👋
+                <h1 className="text-2xl font-bold font-serif text-hekate-goldLight">
+                  {greeting}, {name}. A egrégora te saúda.
                 </h1>
-                <p className="text-purple-100 mt-1">
-                  Continue sua jornada de aprendizado
+                <p className="text-hekate-pearl/80 mt-1">
+                  Este é o seu santuário. Que a cada visita, seus passos se tornem mais firmes e sua chama interior, mais brilhante.
                 </p>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6 text-sm text-hekate-pearl/70">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  <span className="text-sm">{inProgress} cursos ativos</span>
+                  <BookOpen className="h-4 w-4 text-hekate-purple-300" />
+                  <span>{inProgress} rituais em andamento</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4" />
-                  <span className="text-sm">{avgProgress}% progresso médio</span>
+                  <Star className="h-4 w-4 text-hekate-purple-300" />
+                  <span>{avgProgress}% de ascensão percorrida</span>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <Button 
                   variant="secondary" 
                   size="sm"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/20"
+                  className="bg-hekate-gold/90 hover:bg-hekate-gold text-hekate-black border-none shadow-md"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Continuar Estudando
+                  Continuar Ritual
                 </Button>
-                <Badge variant="secondary" className="bg-white/20 text-white">
-                  Sequência de {streak} dias 🔥
-                </Badge>
+                {streak > 0 && (
+                  <Badge variant="secondary" className="bg-transparent text-hekate-gold border-hekate-gold/30 flex items-center gap-2">
+                    <Flame className="h-4 w-4 animate-pulse" />
+                    <span>Chama do Conhecimento: {streak} dias</span>
+                  </Badge>
+                )}
               </div>
             </div>
             
             {/* Decorative elements */}
-            <div className="hidden md:block relative">
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full" />
-              <div className="absolute top-8 right-8 w-16 h-16 bg-white/5 rounded-full" />
-              <div className="relative z-10">
-                <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <BookOpen className="h-10 w-10 text-white" />
-                </div>
+            <div className="hidden md:block relative z-10">
+              <div className="w-24 h-24 bg-hekate-gold/10 rounded-2xl flex items-center justify-center transform rotate-12">
+                <StrophalosIcon className="h-12 w-12 text-hekate-gold opacity-70" />
               </div>
             </div>
           </div>
-          
-          {/* Indicadores adicionais podem ser adicionados aqui com dados reais */}
         </CardContent>
       </Card>
     </motion.div>
