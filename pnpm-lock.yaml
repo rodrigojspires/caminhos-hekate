@@ -278,6 +278,9 @@ importers:
       react-chartjs-2:
         specifier: ^5.3.0
         version: 5.3.0(chart.js@4.5.0)(react@18.3.1)
+      react-countup:
+        specifier: ^6.5.3
+        version: 6.5.3(react@18.3.1)
       react-day-picker:
         specifier: ^9.9.0
         version: 9.9.0(react@18.3.1)
@@ -5773,6 +5776,10 @@ packages:
       is-what: 4.1.16
     dev: false
 
+  /countup.js@2.9.0:
+    resolution: {integrity: sha512-llqrvyXztRFPp6+i8jx25phHWcVWhrHO4Nlt0uAOSKHB8778zzQswa4MU3qKBvkXfJKftRYFJuVHez67lyKdHg==}
+    dev: false
+
   /crc-32@1.2.2:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
     engines: {node: '>=0.8'}
@@ -9904,6 +9911,15 @@ packages:
       react: 18.3.1
     dev: false
 
+  /react-countup@6.5.3(react@18.3.1):
+    resolution: {integrity: sha512-udnqVQitxC7QWADSPDOxVWULkLvKUWrDapn5i53HE4DPRVgs+Y5rr4bo25qEl8jSh+0l2cToJgGMx+clxPM3+w==}
+    peerDependencies:
+      react: '>= 16.3.0'
+    dependencies:
+      countup.js: 2.9.0
+      react: 18.3.1
+    dev: false
+
   /react-day-picker@9.9.0(react@18.3.1):
     resolution: {integrity: sha512-NtkJbuX6cl/VaGNb3sVVhmMA6LSMnL5G3xNL+61IyoZj0mUZFWTg4hmj7PHjIQ8MXN9dHWhUHFoJWG6y60DKSg==}
     engines: {node: '>=18'}
@@ -9944,7 +9960,7 @@ packages:
       react: '>=15'
     dependencies:
       react: 18.3.1
-      unlayer-types: 1.314.0
+      unlayer-types: 1.339.0
     dev: false
 
   /react-hook-form@7.62.0(react@18.3.1):
@@ -11211,8 +11227,8 @@ packages:
     engines: {node: '>= 4.0.0'}
     dev: true
 
-  /unlayer-types@1.314.0:
-    resolution: {integrity: sha512-8O218ohQUMCdGqXSfwQgU7aWJ124Ucax3M1hNOtkbRa7RZbC80KnvwivlLyGYVvukHQrw6C8FKUGHAkD4AORAw==}
+  /unlayer-types@1.339.0:
+    resolution: {integrity: sha512-zrHqtaT2y8wD5Qjn4w+sPmpaHvhdAzG0FF1NyAGlP+NS7rcr00cXEtPtwMB9r9lDsoqu2E3drT4wKd/MXyrTqQ==}
     dev: false
 
   /unrs-resolver@1.11.1:
