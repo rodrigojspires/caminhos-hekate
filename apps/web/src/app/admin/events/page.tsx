@@ -12,6 +12,9 @@ interface EventItem {
   endDate?: string
   status?: string
   attendeeCount?: number
+  _count?: {
+    registrations?: number
+  }
 }
 
 export default function AdminEventsPage() {
@@ -139,6 +142,11 @@ export default function AdminEventsPage() {
                   {typeof group.base?.attendeeCount === 'number' && (
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       Inscritos: {group.base.attendeeCount}
+                    </span>
+                  )}
+                  {typeof group.base?._count?.registrations === 'number' && typeof group.base?.attendeeCount !== 'number' && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Inscritos: {group.base._count.registrations}
                     </span>
                   )}
                   {group.base?.id && (
