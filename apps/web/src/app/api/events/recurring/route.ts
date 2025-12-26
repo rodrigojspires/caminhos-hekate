@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier } from '@prisma/client'
 
 // Schema para criar série recorrente
 const createRecurringSeriesSchema = z.object({

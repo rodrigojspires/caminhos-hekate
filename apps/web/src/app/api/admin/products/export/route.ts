@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const ExportSchema = z.object({
   format: z.enum(['csv', 'excel']).default('csv'),
   categoryId: z.string().optional(),

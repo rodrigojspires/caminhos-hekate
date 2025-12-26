@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
+export const dynamic = 'force-dynamic'
+
 function ensureAdmin(user: any) {
   return user && (user.role === 'ADMIN' || user.role === 'EDITOR')
 }
@@ -35,4 +37,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

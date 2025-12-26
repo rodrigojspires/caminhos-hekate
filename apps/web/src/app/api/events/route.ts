@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@hekate/database'
+import { prisma, EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role, EventRegistrationStatus } from '@hekate/database'
 import { z } from 'zod'
-import { EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role, EventRegistrationStatus } from '@prisma/client'
 import { randomUUID } from 'crypto'
 import { notificationService } from '@/lib/notifications/notification-service'
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter, EB_Garamond } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeProvider as CustomThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,18 +6,6 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import "./globals.css";
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: 'swap',
-});
-
-const ebGaramond = EB_Garamond({ 
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
@@ -63,7 +50,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${inter.variable} ${ebGaramond.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

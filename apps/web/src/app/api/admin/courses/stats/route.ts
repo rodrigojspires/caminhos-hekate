@@ -4,6 +4,8 @@ import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
 import { CourseStatus, CourseLevel } from '@hekate/database'
 
+export const dynamic = 'force-dynamic'
+
 
 
 // GET /api/admin/courses/stats - Estatísticas de cursos

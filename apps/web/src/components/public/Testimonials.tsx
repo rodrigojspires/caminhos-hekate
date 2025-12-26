@@ -1,10 +1,10 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Star, Quote } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { Quote } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import CountUp from 'react-countup'
 
 const testimonials = [
   {
@@ -55,6 +55,58 @@ const itemVariants = {
     y: 0, 
     transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } 
   },
+}
+
+type AnimatedStatNumberProps = {
+  value: number
+  duration?: number
+  decimals?: number
+  prefix?: string
+  suffix?: string
+}
+
+function AnimatedStatNumber({
+  value,
+  duration = 3,
+  decimals = 0,
+  prefix,
+  suffix,
+}: AnimatedStatNumberProps) {
+  const ref = useRef<HTMLSpanElement | null>(null)
+  const isInView = useInView(ref, { once: true, margin: '-20% 0px' })
+  const [displayValue, setDisplayValue] = useState(0)
+
+  useEffect(() => {
+    if (!isInView) return
+
+    let frameId = 0
+    const startTime = performance.now()
+    const startValue = 0
+    const endValue = value
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / (duration * 1000), 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      const currentValue = startValue + (endValue - startValue) * eased
+      setDisplayValue(currentValue)
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frameId)
+  }, [duration, isInView, value])
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {displayValue.toFixed(decimals)}
+      {suffix}
+    </span>
+  )
 }
 
 export function Testimonials() {
@@ -121,15 +173,12 @@ export function Testimonials() {
             {stats.map((stat) => (
               <div key={stat.label}>
                 <p className="text-4xl md:text-5xl font-bold gradient-text-gold mb-2">
-                  <CountUp 
-                    start={0} 
-                    end={stat.value} 
-                    duration={3} 
+                  <AnimatedStatNumber
+                    value={stat.value}
+                    duration={3}
                     decimals={stat.value % 1 !== 0 ? 1 : 0}
                     prefix={stat.prefix}
                     suffix={stat.suffix}
-                    enableScrollSpy
-                    scrollSpyDelay={300}
                   />
                 </p>
                 <p className="text-sm text-hekate-pearl/70 uppercase tracking-wider">{stat.label}</p>

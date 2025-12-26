@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, Prisma, CourseStatus, CourseLevel } from '@hekate/database'
 
+export const dynamic = 'force-dynamic'
+
 // Verificar se usuário é admin
 async function checkAdminPermission() {
   const session = await getServerSession(authOptions)

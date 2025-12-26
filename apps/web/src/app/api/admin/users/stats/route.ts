@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/users/stats - Estatísticas de usuários
 export async function GET(request: NextRequest) {
   try {

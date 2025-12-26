@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/invoices?status=&q=
 export async function GET(req: NextRequest) {
   try {
@@ -37,4 +39,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
-

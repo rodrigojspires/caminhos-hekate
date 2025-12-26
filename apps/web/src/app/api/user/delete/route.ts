@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import IORedis from 'ioredis'
 
-const redis = new IORedis(process.env.REDIS_URL || 'redis://redis:6379')
+const REDIS_URL = process.env.REDIS_URL
+let redis: IORedis | null = null
+
+const getRedis = () => {
+  if (!REDIS_URL) return null
+  if (!redis) {
+    redis = new IORedis(REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: null })
+  }
+  return redis
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +24,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
     const token = body?.confirmToken as string | undefined
     if (!token) return NextResponse.json({ error: 'Token de confirmação ausente' }, { status: 400 })
-    const stored = await redis.get(`delete:${userId}`)
+    const client = getRedis()
+    if (!client) return NextResponse.json({ error: 'Redis não configurado' }, { status: 503 })
+    if (client.status === 'wait' || client.status === 'end') {
+      await client.connect()
+    }
+    const stored = await client.get(`delete:${userId}`)
     if (!stored || stored !== token) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 400 })
 
     await prisma.user.update({
@@ -43,7 +57,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    await redis.del(`delete:${userId}`)
+    await client.del(`delete:${userId}`)
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('POST /api/user/delete error', e)

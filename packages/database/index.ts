@@ -17,6 +17,20 @@ export const CourseLevel = {
 } as const;
 export type CourseLevel = typeof CourseLevel[keyof typeof CourseLevel];
 
+export const EventAccessType = {
+  FREE: 'FREE',
+  PAID: 'PAID',
+  TIER: 'TIER',
+} as const;
+export type EventAccessType = typeof EventAccessType[keyof typeof EventAccessType];
+
+export const EventMode = {
+  ONLINE: 'ONLINE',
+  IN_PERSON: 'IN_PERSON',
+  HYBRID: 'HYBRID',
+} as const;
+export type EventMode = typeof EventMode[keyof typeof EventMode];
+
 // Singleton pattern para evitar múltiplas instâncias em desenvolvimento
 import { PrismaClient } from '@prisma/client';
 

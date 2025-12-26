@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import IORedis from 'ioredis'
 
-const redis = new IORedis(process.env.REDIS_URL || 'redis://redia:6379')
+const REDIS_URL = process.env.REDIS_URL
+let redis: IORedis | null = null
+
+const getRedis = () => {
+  if (!REDIS_URL) return null
+  if (!redis) {
+    redis = new IORedis(REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: null })
+  }
+  return redis
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +22,12 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id
 
     const token = Math.random().toString(36).slice(2, 8).toUpperCase()
-    await redis.setex(`delete:${userId}`, 900, token) // 15 minutos
+    const client = getRedis()
+    if (!client) return NextResponse.json({ error: 'Redis não configurado' }, { status: 503 })
+    if (client.status === 'wait' || client.status === 'end') {
+      await client.connect()
+    }
+    await client.setex(`delete:${userId}`, 900, token) // 15 minutos
 
     await prisma.auditLog.create({
       data: {
