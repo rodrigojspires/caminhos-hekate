@@ -261,6 +261,17 @@ export function EventModal({ event, open, onOpenChange, onEdit }: EventModalProp
                       month: 'long',
                       day: 'numeric'
                     })}
+                    {startDate.toDateString() !== endDate.toDateString() && (
+                      <>
+                        {' '}—{' '}
+                        {endDate.toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </>
+                    )}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {startDate.toLocaleTimeString('pt-BR', {

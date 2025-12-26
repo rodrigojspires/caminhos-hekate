@@ -76,6 +76,15 @@ export default function EditEventPage() {
   const [privateLink, setPrivateLink] = useState('')
   const [generatingLink, setGeneratingLink] = useState(false)
 
+  const toLocalDateTimeInput = (date: Date) => {
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate())
+    ].join('-') + 'T' + [pad(date.getHours()), pad(date.getMinutes())].join(':')
+  }
+
   useEffect(() => {
     if (eventId) {
       fetchEventById(eventId)
@@ -93,8 +102,8 @@ export default function EditEventPage() {
       description: selectedEvent.description || '',
       type: selectedEvent.type as EventType,
       category: (selectedEvent as any).category || '',
-      startDate: new Date(selectedEvent.startDate).toISOString().slice(0, 16),
-      endDate: new Date(selectedEvent.endDate).toISOString().slice(0, 16),
+      startDate: toLocalDateTimeInput(new Date(selectedEvent.startDate)),
+      endDate: toLocalDateTimeInput(new Date(selectedEvent.endDate)),
       maxParticipants: selectedEvent.maxAttendees ? String(selectedEvent.maxAttendees) : '',
       location: selectedEvent.location || '',
       virtualLink: selectedEvent.virtualLink || '',

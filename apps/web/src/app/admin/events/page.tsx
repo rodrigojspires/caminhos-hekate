@@ -11,6 +11,7 @@ interface EventItem {
   startDate?: string
   endDate?: string
   status?: string
+  attendeeCount?: number
 }
 
 export default function AdminEventsPage() {
@@ -135,6 +136,11 @@ export default function AdminEventsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {typeof group.base?.attendeeCount === 'number' && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Inscritos: {group.base.attendeeCount}
+                    </span>
+                  )}
                   {group.base?.id && (
                     <button
                       onClick={() => router.push(`/eventos/${group.base?.id}/edit`)}

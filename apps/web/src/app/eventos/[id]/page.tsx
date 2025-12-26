@@ -300,6 +300,17 @@ export default function EventDetailsPage() {
                       month: 'long',
                       day: 'numeric'
                     })}
+                    {displayStartDate.toDateString() !== displayEndDate.toDateString() && (
+                      <>
+                        {' '}—{' '}
+                        {displayEndDate.toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </>
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -322,14 +333,16 @@ export default function EventDetailsPage() {
                     <span>{selectedEvent.location}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  <span>
-                    {(selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length || 0}
-                    {maxAttendeesValue ? ` / ${maxAttendeesValue}` : ''}
-                    {' participantes'}
-                  </span>
-                </div>
+                {selectedEvent.isPublic && (
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    <span>
+                      {(selectedEvent as any).registrations?.filter((reg: any) => reg.status === 'CONFIRMED').length || 0}
+                      {maxAttendeesValue ? ` / ${maxAttendeesValue}` : ''}
+                      {' participantes'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
