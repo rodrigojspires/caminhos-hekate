@@ -258,6 +258,23 @@ export async function GET(request: NextRequest) {
       prisma.event.count({ where })
     ])
 
+    const registrationCounts = events.length
+      ? await prisma.eventRegistration.groupBy({
+          by: ['recurrenceInstanceId'],
+          where: {
+            eventId: { in: events.map((event) => event.id) },
+            status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] }
+          },
+          _count: { _all: true }
+        })
+      : []
+
+    const registrationCountMap = new Map<string, number>()
+    registrationCounts.forEach((entry) => {
+      if (!entry.recurrenceInstanceId) return
+      registrationCountMap.set(entry.recurrenceInstanceId, entry._count._all)
+    })
+
     // Expandir recorrência (gera instâncias futuras leves)
     const now = new Date()
     const windowStart = startDate ? new Date(startDate) : now
@@ -317,6 +334,7 @@ export async function GET(request: NextRequest) {
       if (baseStart >= windowStart && baseStart <= windowEnd) {
         occurrences.push({
           ...event,
+          registrationCount: registrationCountMap.get(event.id) ?? 0,
           registrations: filterRegistrations(event, event.id)
         })
       }
@@ -339,12 +357,14 @@ export async function GET(request: NextRequest) {
           if (until && start > until) return
           if (start > windowEnd) return
           if (start < windowStart) return
+          const occurrenceId = `${event.id}-r${index}`
           occurrences.push({
             ...event,
-            id: `${event.id}-r${index}`,
+            id: occurrenceId,
             startDate: start,
             endDate: end,
-            registrations: filterRegistrations(event, `${event.id}-r${index}`)
+            registrationCount: registrationCountMap.get(occurrenceId) ?? 0,
+            registrations: filterRegistrations(event, occurrenceId)
           })
         }
 

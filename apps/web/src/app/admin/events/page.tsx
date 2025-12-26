@@ -12,6 +12,7 @@ interface EventItem {
   endDate?: string
   status?: string
   attendeeCount?: number
+  registrationCount?: number
   _count?: {
     registrations?: number
   }
@@ -70,6 +71,26 @@ export default function AdminEventsPage() {
         return aDate - bDate
       })
   }, [events])
+
+  const getNextOccurrenceCount = (group: { base?: EventItem; occurrences: EventItem[] }) => {
+    const now = new Date()
+    const occurrences = [
+      ...(group.base ? [group.base] : []),
+      ...group.occurrences
+    ].filter((occ) => occ.startDate)
+    if (occurrences.length === 0) return 0
+    const upcoming = occurrences
+      .map((occ) => ({ occ, start: occ.startDate ? new Date(occ.startDate) : null }))
+      .filter((item) => item.start && item.start >= now)
+      .sort((a, b) => (a.start?.getTime() || 0) - (b.start?.getTime() || 0))
+    const next = upcoming[0]?.occ || occurrences[0]
+    return (
+      next?.registrationCount ??
+      next?.attendeeCount ??
+      next?._count?.registrations ??
+      0
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -139,19 +160,12 @@ export default function AdminEventsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {typeof group.base?.attendeeCount === 'number' && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Inscritos: {group.base.attendeeCount}
-                    </span>
-                  )}
-                  {typeof group.base?._count?.registrations === 'number' && typeof group.base?.attendeeCount !== 'number' && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Inscritos: {group.base._count.registrations}
-                    </span>
-                  )}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Inscritos: {getNextOccurrenceCount(group)}
+                  </span>
                   {group.base?.id && (
                     <button
-                      onClick={() => router.push(`/eventos/${group.base?.id}/edit`)}
+                      onClick={() => router.push(`/eventos/${group.id}/edit`)}
                       className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <Pencil className="w-4 h-4" />
@@ -159,7 +173,7 @@ export default function AdminEventsPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => router.push(`/admin/events/${group.base?.id}/attendees`)}
+                    onClick={() => router.push(`/admin/events/${group.id}/attendees`)}
                     className="flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     <Users className="w-4 h-4" />
