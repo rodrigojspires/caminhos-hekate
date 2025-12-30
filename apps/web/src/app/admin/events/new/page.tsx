@@ -21,6 +21,7 @@ interface EventFormState {
   maxParticipants: string
   location: string
   virtualLink: string
+  recordingLink: string
   accessType: EventAccessType
   accessPaid: boolean
   accessTier: boolean
@@ -44,6 +45,7 @@ const defaultFormState: EventFormState = {
   maxParticipants: '',
   location: '',
   virtualLink: '',
+  recordingLink: '',
   accessType: 'FREE',
   accessPaid: false,
   accessTier: false,
@@ -115,6 +117,9 @@ export default function NewAdminEventPage() {
     if (form.mode === 'HYBRID' && (!form.location.trim() || !form.virtualLink.trim())) {
       return toast.error('Eventos híbridos precisam de local e link')
     }
+    if (form.mode === 'IN_PERSON' && form.recordingLink.trim()) {
+      return toast.error('Gravação só está disponível para eventos online ou híbridos')
+    }
 
     try {
       setSaving(true)
@@ -142,6 +147,7 @@ export default function NewAdminEventPage() {
         maxAttendees: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         location: form.location.trim() || undefined,
         virtualLink: form.virtualLink.trim() || undefined,
+        recordingLink: form.recordingLink.trim() || undefined,
         accessType: resolvedAccessType,
         price: form.accessPaid && form.price ? Number(form.price) : undefined,
         freeTiers: form.accessTier ? form.freeTiers : [],
@@ -344,6 +350,18 @@ export default function NewAdminEventPage() {
                   />
                 </div>
               </div>
+              {(form.mode === 'ONLINE' || form.mode === 'HYBRID') && (
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link da gravação</label>
+                  <input
+                    type="text"
+                    value={form.recordingLink}
+                    onChange={(e) => handleChange('recordingLink', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="https://..."
+                  />
+                </div>
+              )}
             </div>
           </div>
 

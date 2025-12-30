@@ -389,6 +389,7 @@ export async function GET(request: NextRequest) {
       allDay: false,
       location: event.location,
       virtualLink: event.virtualLink,
+      recordingLink: (event as any).recordingLink,
       isPublic: event.isPublic,
       maxAttendees: event.maxAttendees,
       attendeeCount: event._count.registrations,

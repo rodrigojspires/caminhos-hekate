@@ -1810,6 +1810,7 @@ model Event {
   timezone          String              @default("America/Sao_Paulo")
   location          String?
   virtualLink       String?
+  recordingLink     String?
   maxAttendees      Int?
   isPublic          Boolean             @default(true)
   requiresApproval  Boolean             @default(false)

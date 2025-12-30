@@ -17,6 +17,7 @@ const createEventSchema = z.object({
   timezone: z.string().default('America/Sao_Paulo'),
   location: z.string().optional(),
   virtualLink: z.string().url().optional(),
+  recordingLink: z.string().url().optional(),
   maxAttendees: z.number().positive().optional(),
   isPublic: z.boolean().default(true),
   requiresApproval: z.boolean().default(false),
@@ -532,6 +533,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (validatedData.mode === EventMode.IN_PERSON && validatedData.recordingLink) {
+      return NextResponse.json(
+        { error: 'Gravação só está disponível para eventos online ou híbridos' },
+        { status: 400 }
+      )
+    }
+
     if (validatedData.recurrence?.freq === 'LUNAR' && !validatedData.recurrence.lunarPhase) {
       validatedData.recurrence.lunarPhase = 'FULL'
     }
@@ -548,6 +556,7 @@ export async function POST(request: NextRequest) {
         timezone: validatedData.timezone,
         location: validatedData.location,
         virtualLink: validatedData.virtualLink,
+        recordingLink: validatedData.recordingLink,
         maxAttendees: validatedData.maxAttendees,
         isPublic: validatedData.isPublic,
         requiresApproval: validatedData.requiresApproval,

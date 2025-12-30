@@ -64,6 +64,7 @@ export interface Event {
   timezone: string
   location?: string
   virtualLink?: string
+  recordingLink?: string
   maxAttendees?: number
   isPublic: boolean
   requiresApproval: boolean
@@ -102,6 +103,7 @@ export interface CalendarEvent {
   status: EventStatus
   location?: string
   virtualLink?: string
+  recordingLink?: string
   description?: string
   attendeeCount: number
   maxAttendees?: number
@@ -177,6 +179,7 @@ export interface CreateEventRequest {
   timezone?: string
   location?: string
   virtualLink?: string
+  recordingLink?: string
   maxAttendees?: number
   isPublic?: boolean
   requiresApproval?: boolean
@@ -192,6 +195,7 @@ export interface CreateEventRequest {
 
 export interface UpdateEventRequest extends Partial<CreateEventRequest> {
   status?: EventStatus
+  recurrenceInstanceId?: string
 }
 
 export interface EventRegistrationRequest {

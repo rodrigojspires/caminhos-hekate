@@ -149,6 +149,16 @@ export async function PUT(
       )
     }
 
+    const existingMetadata = existingSeries.parentEvent.metadata && typeof existingSeries.parentEvent.metadata === 'object'
+      ? existingSeries.parentEvent.metadata
+      : {}
+    const metadata = validatedData.metadata && typeof validatedData.metadata === 'object'
+      ? {
+          ...validatedData.metadata,
+          recordingLinks: (validatedData.metadata as any).recordingLinks ?? (existingMetadata as any).recordingLinks
+        }
+      : existingMetadata
+
     const result = await prisma.$transaction(async (tx) => {
       // Atualizar evento pai
       const updatedParentEvent = await tx.event.update({
@@ -163,7 +173,7 @@ export async function PUT(
           isPublic: validatedData.isPublic,
           requiresApproval: validatedData.requiresApproval,
           tags: validatedData.tags,
-          metadata: validatedData.metadata
+          metadata
         }
       })
 

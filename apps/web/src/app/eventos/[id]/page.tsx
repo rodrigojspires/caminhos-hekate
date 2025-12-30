@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEventsStore } from '@/stores/eventsStore';
 import { toast } from 'sonner';
@@ -42,12 +43,15 @@ export default function EventDetailsPage() {
     fetchEventById,
     registerForEvent,
     cancelRegistration,
-    deleteEvent
+    deleteEvent,
+    updateEvent
   } = useEventsStore();
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [recordingLinkInput, setRecordingLinkInput] = useState('');
+  const [recordingSaving, setRecordingSaving] = useState(false);
 
   useEffect(() => {
     if (baseEventId) {
@@ -74,6 +78,15 @@ export default function EventDetailsPage() {
     loadAttendees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseEventId]);
+
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const instanceId = searchParams?.get('occurrenceId') || selectedEvent.id;
+    const metadata = (selectedEvent as any).metadata as Record<string, any> | undefined;
+    const recordingLinks = metadata?.recordingLinks || {};
+    const resolvedRecording = recordingLinks[instanceId] || (selectedEvent as any).recordingLink || '';
+    setRecordingLinkInput(resolvedRecording);
+  }, [selectedEvent, searchParams]);
 
   const handleRegister = async () => {
     if (!selectedEvent) return;
@@ -138,6 +151,22 @@ export default function EventDetailsPage() {
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copiado para a área de transferência!');
     }
+  };
+
+  const handleSaveRecordingLink = async () => {
+    if (!selectedEvent) return;
+    const trimmed = recordingLinkInput.trim();
+    if (!trimmed) {
+      toast.error('Informe o link da gravação');
+      return;
+    }
+    const occurrenceIdParam = searchParams?.get('occurrenceId');
+    setRecordingSaving(true);
+    await updateEvent(selectedEvent.id, {
+      recordingLink: trimmed,
+      recurrenceInstanceId: occurrenceIdParam || undefined
+    });
+    setRecordingSaving(false);
   };
 
   const occurrenceStart = useMemo(() => {
@@ -209,6 +238,12 @@ export default function EventDetailsPage() {
   const isCreator = session?.user?.id && selectedEvent.createdBy === session.user.id;
   const isPaid = selectedEvent.accessType === 'PAID';
   const hasTierAccess = (selectedEvent.freeTiers?.length ?? 0) > 0 || selectedEvent.accessType === 'TIER';
+  const recordingLinks = (selectedEvent as any).metadata?.recordingLinks || {};
+  const recordingLinkForOccurrence = occurrenceId
+    ? recordingLinks[occurrenceId]
+    : (selectedEvent as any).recordingLink;
+  const canViewRecordingLink = Boolean(recordingLinkForOccurrence) && (isUserRegistered || isCreator);
+  const canManageRecording = isCreator && (selectedEvent.mode === 'ONLINE' || selectedEvent.mode === 'HYBRID');
 
   const formatPrice = (value?: number | string | null) => {
     if (value === undefined || value === null) return 'Gratuito';
@@ -438,6 +473,58 @@ export default function EventDetailsPage() {
                       Abrir
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recording Link */}
+            {canViewRecordingLink && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ExternalLink className="h-5 w-5" />
+                    Link da Gravação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-3">
+                    <code className="flex-1 p-3 bg-muted text-foreground rounded-md text-sm break-all border border-border">
+                      {recordingLinkForOccurrence}
+                    </code>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(recordingLinkForOccurrence, '_blank')}
+                    >
+                      Abrir
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {canManageRecording && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ExternalLink className="h-5 w-5" />
+                    Gerenciar Gravação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {occurrenceId ? 'Link da gravação desta ocorrência' : 'Link da gravação'}
+                    </label>
+                    <Input
+                      value={recordingLinkInput}
+                      onChange={(e) => setRecordingLinkInput(e.target.value)}
+                      placeholder="https://..."
+                      className="mt-2"
+                    />
+                  </div>
+                  <Button onClick={handleSaveRecordingLink} disabled={recordingSaving}>
+                    {recordingSaving ? 'Salvando...' : 'Salvar gravação'}
+                  </Button>
                 </CardContent>
               </Card>
             )}

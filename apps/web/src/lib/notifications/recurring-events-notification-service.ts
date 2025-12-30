@@ -33,12 +33,20 @@ class RecurringEventsNotificationService {
   async createEventReminderNotification(
     userId: string,
     event: any,
-    reminder: any,
-    timeUntilEvent: string
+    reminderOrType: any,
+    timeUntilOrTrigger: string | Date,
+    options?: {
+      message?: string
+      data?: Partial<RecurringEventNotificationData>
+    }
   ) {
-    const priority = this.getReminderPriority(reminder.type, timeUntilEvent)
-    const title = this.getReminderTitle(reminder.type, event.title)
-    const message = this.getReminderMessage(reminder.type, event, timeUntilEvent)
+    const reminderType = reminderOrType?.type ?? reminderOrType
+    const timeUntilEvent = typeof timeUntilOrTrigger === 'string'
+      ? timeUntilOrTrigger
+      : this.calculateTimeUntilEvent(event.startDate)
+    const priority = this.getReminderPriority(reminderType, timeUntilEvent)
+    const title = this.getReminderTitle(reminderType, event.title)
+    const message = options?.message || this.getReminderMessage(reminderType, event, timeUntilEvent)
 
     return notificationService.createNotification({
       userId,
@@ -51,8 +59,9 @@ class RecurringEventsNotificationService {
         eventDate: event.startDate.toISOString(),
         eventTime: event.startDate?.toISOString?.() ?? undefined,
         eventLocation: event.location,
-        reminderType: reminder.type,
-        timeUntilEvent
+        reminderType,
+        timeUntilEvent,
+        ...(options?.data || {})
       },
       priority,
       isPush: true

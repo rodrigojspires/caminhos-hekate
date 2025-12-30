@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma, EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role } from '@hekate/database'
+import { prisma, EventType, EventStatus, EventAccessType, EventMode, SubscriptionTier, Role, EventRegistrationStatus } from '@hekate/database'
 import { z } from 'zod'
 import { randomUUID } from 'crypto'
 import { notificationService } from '@/lib/notifications/notification-service'
@@ -17,6 +17,7 @@ const updateEventSchema = z.object({
   timezone: z.string().optional(),
   location: z.string().optional(),
   virtualLink: z.string().url().optional(),
+  recordingLink: z.string().url().optional(),
   maxAttendees: z.number().positive().optional(),
   isPublic: z.boolean().optional(),
   requiresApproval: z.boolean().optional(),
@@ -25,7 +26,8 @@ const updateEventSchema = z.object({
   freeTiers: z.array(z.nativeEnum(SubscriptionTier)).optional(),
   mode: z.nativeEnum(EventMode).optional(),
   tags: z.array(z.string()).optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.any()).optional(),
+  recurrenceInstanceId: z.string().optional()
 })
 
 async function notifyEventPublication(event: { id: string; title: string; slug?: string; isPublic: boolean }) {
@@ -66,6 +68,61 @@ async function notifyEventPublication(event: { id: string; title: string; slug?:
     )
   } catch (error) {
     console.error('Erro ao enviar broadcast de evento:', error)
+  }
+}
+
+async function notifyRecordingLinkAvailable(params: {
+  eventId: string
+  eventTitle: string
+  recordingLink: string
+  recurrenceInstanceId: string
+}) {
+  try {
+    const { eventId, eventTitle, recordingLink, recurrenceInstanceId } = params
+    const registrations = await prisma.eventRegistration.findMany({
+      where: {
+        eventId,
+        recurrenceInstanceId,
+        status: { in: [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.REGISTERED] },
+        userId: { not: null }
+      },
+      select: { userId: true }
+    })
+
+    const userIds = Array.from(new Set(registrations.map((reg) => reg.userId).filter(Boolean))) as string[]
+    if (!userIds.length) return
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || ''
+    const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : ''
+    const eventUrl = normalizedBase
+      ? `${normalizedBase}/eventos/${eventId}?occurrenceId=${encodeURIComponent(recurrenceInstanceId)}`
+      : `/eventos/${eventId}?occurrenceId=${encodeURIComponent(recurrenceInstanceId)}`
+
+    const title = `Gravação disponível: ${eventTitle}`
+    const message = `A gravação do evento "${eventTitle}" já está disponível.`
+
+    await Promise.all(
+      userIds.map((userId) =>
+        notificationService.createNotification({
+          userId,
+          type: 'EVENT_UPDATED' as any,
+          title,
+          message,
+          data: {
+            eventId,
+            eventTitle,
+            recordingLink,
+            occurrenceId: recurrenceInstanceId,
+            actionUrl: eventUrl,
+            actionLabel: 'Ver gravação'
+          },
+          priority: 'MEDIUM',
+          isPush: false
+        })
+      )
+    )
+  } catch (error) {
+    console.error('Erro ao notificar gravação disponível:', error)
   }
 }
 
@@ -224,6 +281,7 @@ export async function PUT(
         endDate: true,
         location: true,
         virtualLink: true,
+        recordingLink: true,
         accessType: true,
         freeTiers: true,
         mode: true,
@@ -298,25 +356,62 @@ export async function PUT(
       )
     }
 
+    if (modeToUse === EventMode.IN_PERSON && validatedData.recordingLink) {
+      return NextResponse.json(
+        { error: 'Gravação só está disponível para eventos online ou híbridos' },
+        { status: 400 }
+      )
+    }
+
     // Atualizar evento
-    const baseMetadata = validatedData.metadata && typeof validatedData.metadata === 'object'
-      ? validatedData.metadata
+    const { recordingLink, recurrenceInstanceId, ...eventData } = validatedData
+    const baseMetadata = eventData.metadata && typeof eventData.metadata === 'object'
+      ? eventData.metadata
       : existingEvent.metadata || {}
-    const metadata = (validatedData.isPublic ?? existingEvent.isPublic)
-      ? baseMetadata
+    const existingMetadata = existingEvent.metadata && typeof existingEvent.metadata === 'object'
+      ? existingEvent.metadata
+      : {}
+
+    let metadata = baseMetadata
+    let shouldNotifyRecording = false
+    const notifyOccurrenceId = recurrenceInstanceId || id
+    const recordingLinkForEvent = (!recurrenceInstanceId || recurrenceInstanceId === id) ? recordingLink : undefined
+
+    if (recordingLink && recurrenceInstanceId && recurrenceInstanceId !== id) {
+      const existingRecordingLinks = (existingMetadata as any).recordingLinks
+      const baseRecordingLinks = (baseMetadata as any).recordingLinks
+      const mergedRecordingLinks = {
+        ...(existingRecordingLinks && typeof existingRecordingLinks === 'object' ? existingRecordingLinks : {}),
+        ...(baseRecordingLinks && typeof baseRecordingLinks === 'object' ? baseRecordingLinks : {})
+      }
+      const previousLink = mergedRecordingLinks[recurrenceInstanceId]
+      if (previousLink !== recordingLink) {
+        mergedRecordingLinks[recurrenceInstanceId] = recordingLink
+        metadata = { ...(baseMetadata as any), recordingLinks: mergedRecordingLinks }
+        shouldNotifyRecording = !previousLink
+      }
+    }
+
+    if (recordingLinkForEvent && existingEvent.recordingLink !== recordingLinkForEvent) {
+      shouldNotifyRecording = shouldNotifyRecording || !existingEvent.recordingLink
+    }
+
+    metadata = (eventData.isPublic ?? existingEvent.isPublic)
+      ? metadata
       : {
-          ...baseMetadata,
-          accessToken: (baseMetadata as any).accessToken || randomUUID()
+          ...metadata,
+          accessToken: (metadata as any).accessToken || randomUUID()
         }
 
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
-        ...validatedData,
-        startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
-        endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
-        price: validatedData.price,
-        freeTiers: validatedData.freeTiers,
+        ...eventData,
+        recordingLink: recordingLinkForEvent,
+        startDate: eventData.startDate ? new Date(eventData.startDate) : undefined,
+        endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+        price: eventData.price,
+        freeTiers: eventData.freeTiers,
         metadata,
         updatedAt: new Date()
       },
@@ -343,6 +438,15 @@ export async function PUT(
         title: updatedEvent.title,
         slug: (updatedEvent as any).slug,
         isPublic: updatedEvent.isPublic
+      })
+    }
+
+    if (recordingLink && shouldNotifyRecording) {
+      await notifyRecordingLinkAvailable({
+        eventId: updatedEvent.id,
+        eventTitle: updatedEvent.title,
+        recordingLink,
+        recurrenceInstanceId: notifyOccurrenceId
       })
     }
 

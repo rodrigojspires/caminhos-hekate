@@ -436,7 +436,11 @@ class NotificationService extends EventEmitter {
     userId: string,
     eventData: any,
     reminderType: string,
-    triggerTime: Date
+    triggerTime: Date,
+    options?: {
+      message?: string
+      data?: RecurringEventNotificationData & Record<string, any>
+    }
   ) {
     const timeUntilEvent = this.getTimeUntilEvent(eventData.startDate)
     
@@ -444,14 +448,15 @@ class NotificationService extends EventEmitter {
       userId,
       type: 'EVENT_REMINDER',
       title: `Lembrete: ${eventData.title}`,
-      message: `Seu evento "${eventData.title}" ${timeUntilEvent}`,
+      message: options?.message || `Seu evento "${eventData.title}" ${timeUntilEvent}`,
       priority: this.getEventReminderPriority(reminderType, eventData.startDate),
       data: {
         eventId: eventData.id,
         eventTitle: eventData.title,
         eventStartDate: eventData.startDate,
         reminderType,
-        triggerTime
+        triggerTime,
+        ...(options?.data || {})
       } as RecurringEventNotificationData
     })
   }

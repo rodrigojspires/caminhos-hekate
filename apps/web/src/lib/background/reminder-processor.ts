@@ -263,6 +263,18 @@ export class ReminderProcessor {
     }
 
     try {
+      const metadata = (reminder.metadata as any) || {}
+      const reminderMessage = typeof metadata.message === 'string' ? metadata.message : undefined
+      const occurrenceStart = metadata.eventStartDate ? new Date(metadata.eventStartDate) : reminder.event.startDate
+      const reminderData = {
+        eventStartDate: occurrenceStart,
+        eventDate: occurrenceStart.toISOString(),
+        eventTime: occurrenceStart.toISOString(),
+        eventLocation: metadata.eventLocation,
+        eventVirtualLink: metadata.eventVirtualLink,
+        occurrenceId: metadata.recurrenceInstanceId
+      }
+
       // Criar notificação
       await notificationService.createEventReminderNotification(
         reminder.userId,
@@ -270,19 +282,26 @@ export class ReminderProcessor {
         // keep type
         reminder.type,
         // use triggerTime instead of reminderDate
-        reminder.triggerTime
+        reminder.triggerTime,
+        {
+          message: reminderMessage,
+          data: reminderData
+        }
       )
 
       // Enviar notificação em tempo real para o usuário específico
       sendNotificationToUser(reminder.userId, {
         type: 'event_reminder',
         title: `Lembrete: ${reminder.event.title}`,
-        message: `Seu evento "${reminder.event.title}" ${this.getTimeMessage(reminder.event.startDate)}`,
+        message: reminderMessage || `Seu evento "${reminder.event.title}" ${this.getTimeMessage(reminder.event.startDate)}`,
         priority: 'high',
         data: {
           eventId: reminder.eventId,
           reminderId: reminder.id,
-          eventStartDate: reminder.event.startDate
+          eventStartDate: reminderData.eventStartDate || reminder.event.startDate,
+          eventLocation: reminderData.eventLocation,
+          eventVirtualLink: reminderData.eventVirtualLink,
+          occurrenceId: reminderData.occurrenceId
         }
       })
 

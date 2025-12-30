@@ -40,6 +40,7 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      AUTO_START_REMINDER_PROCESSOR: "true"
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
       NEXTAUTH_URL: ${NEXTAUTH_URL}

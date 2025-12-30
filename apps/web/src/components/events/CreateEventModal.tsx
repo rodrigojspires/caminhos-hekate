@@ -63,6 +63,7 @@ interface CreateEventFormData {
   endDate: string
   location?: string
   virtualLink?: string
+  recordingLink?: string
   maxAttendees?: number
   isPublic: boolean
   requiresApproval: boolean
@@ -99,6 +100,7 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
       endDate: endDate.toISOString().slice(0, 16),
       location: '',
       virtualLink: '',
+      recordingLink: '',
       maxAttendees: undefined,
       isPublic: true,
       requiresApproval: false,
@@ -218,6 +220,10 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
     if (formData.mode === EventMode.HYBRID && (!formData.location?.trim() || !formData.virtualLink?.trim())) {
       return 'Eventos híbridos precisam de local e link'
     }
+
+    if (formData.mode === EventMode.IN_PERSON && formData.recordingLink?.trim()) {
+      return 'Gravação só está disponível para eventos online ou híbridos'
+    }
     
     return null
   }
@@ -267,6 +273,7 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
         endDate: formData.endDate!,
         location: formData.location || undefined,
         virtualLink: formData.virtualLink || undefined,
+        recordingLink: formData.recordingLink?.trim() || undefined,
         maxAttendees: formData.maxAttendees || undefined,
         isPublic: formData.isPublic!,
         requiresApproval: formData.requiresApproval!,
@@ -301,6 +308,7 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
           endDate: endDate.toISOString().slice(0, 16),
           location: '',
           virtualLink: '',
+          recordingLink: '',
           maxAttendees: undefined,
           isPublic: true,
           requiresApproval: false,
@@ -475,6 +483,19 @@ export function CreateEventModal({ open, onOpenChange, defaultDate, onEventCreat
                     />
                   </div>
                 </div>
+
+                {(formData.mode === EventMode.ONLINE || formData.mode === EventMode.HYBRID) && (
+                  <div>
+                    <Label htmlFor="recordingLink">Link da gravação</Label>
+                    <Input
+                      id="recordingLink"
+                      value={formData.recordingLink || ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('recordingLink', e.target.value)}
+                      placeholder="https://..."
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

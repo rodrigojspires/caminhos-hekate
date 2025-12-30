@@ -155,6 +155,18 @@ export class ReminderService {
     }
 
     try {
+      const metadata = (reminder.metadata as any) || {}
+      const reminderMessage = typeof metadata.message === 'string' ? metadata.message : undefined
+      const occurrenceStart = metadata.eventStartDate ? new Date(metadata.eventStartDate) : reminder.event.startDate
+      const reminderData = {
+        eventStartDate: occurrenceStart,
+        eventDate: occurrenceStart.toISOString(),
+        eventTime: occurrenceStart.toISOString(),
+        eventLocation: metadata.eventLocation,
+        eventVirtualLink: metadata.eventVirtualLink,
+        occurrenceId: metadata.recurrenceInstanceId
+      }
+
       // Envia notificação usando o serviço central de notificações
       await notificationService.createEventReminderNotification(
         reminder.userId,
@@ -164,7 +176,11 @@ export class ReminderService {
           startDate: reminder.event.startDate
         },
         reminder.type,
-        reminder.triggerTime
+        reminder.triggerTime,
+        {
+          message: reminderMessage,
+          data: reminderData
+        }
       )
 
       // Marca como enviado

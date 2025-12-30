@@ -1,7 +1,7 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 import { Role } from "@hekate/database"
-// import { initializeReminderProcessor } from "@/middleware/reminder-processor-middleware"
+import { initializeReminderProcessor } from "@/middleware/reminder-processor-middleware"
 
 // Configurar runtime para Node.js
 export const runtime = 'nodejs'
@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 export default withAuth(
   async function middleware(req) {
     // Inicializar processador de lembretes na primeira requisição
-    // initializeReminderProcessor()
+    initializeReminderProcessor()
     
     const token = req.nextauth.token
     const isAdminRoute = req.nextUrl.pathname.startsWith("/admin")

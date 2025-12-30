@@ -312,10 +312,31 @@ export async function POST(
       console.error('Gamificação ao inscrever em evento falhou:', e)
     }
 
-    // Criar lembrete automático (24h antes do evento)
-    const reminderTime = new Date(occurrenceStartDate.getTime() - 24 * 60 * 60 * 1000)
-    
-    if (reminderTime > new Date()) {
+    // Criar lembretes automáticos baseados no modo do evento
+    const reminderConfigs = []
+
+    if (event.mode === 'ONLINE' || event.mode === 'HYBRID') {
+      reminderConfigs.push({
+        minutesBefore: 60,
+        message: `Lembrete: O evento "${event.title}" começa em 1 hora. Link: ${event.virtualLink}.`,
+        includeLink: true
+      })
+    }
+
+    if (event.mode === 'IN_PERSON' || event.mode === 'HYBRID') {
+      reminderConfigs.push({
+        minutesBefore: 24 * 60,
+        message: `Lembrete: O evento "${event.title}" acontece em 24 horas. Endereço: ${event.location}.`,
+        includeLocation: true
+      })
+    }
+
+    for (const config of reminderConfigs) {
+      const reminderTime = new Date(occurrenceStartDate.getTime() - config.minutesBefore * 60 * 1000)
+      if (reminderTime <= new Date()) {
+        continue
+      }
+
       await prisma.eventReminder.create({
         data: {
           eventId,
@@ -324,7 +345,11 @@ export async function POST(
           triggerTime: reminderTime,
           status: ReminderStatus.PENDING,
           metadata: {
-            message: `Lembrete: O evento "${event.title}" começará em 24 horas.`
+            message: config.message,
+            eventVirtualLink: config.includeLink ? event.virtualLink : undefined,
+            eventLocation: config.includeLocation ? event.location : undefined,
+            recurrenceInstanceId: validatedData.recurrenceInstanceId || eventId,
+            eventStartDate: occurrenceStartDate.toISOString()
           }
         }
       })

@@ -111,10 +111,11 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: hekate-web
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
+      AUTO_START_REMINDER_PROCESSOR: "true"
       DATABASE_URL: postgresql://hekate:hekate123@postgres:5432/hekate_db?schema=public
       REDIS_URL: redis://redis:6379
       NEXTAUTH_URL: http://localhost:3000
@@ -128,11 +129,6 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
       - private_uploads_dev:/app/uploads
     depends_on:
       postgres:
