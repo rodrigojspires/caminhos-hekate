@@ -93,7 +93,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-reminder-processor.ts"]
+    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/src/lib/background/reminder-processor.ts"]
     restart: unless-stopped
 
   worker-subscriptions:
