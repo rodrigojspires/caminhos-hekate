@@ -77,6 +77,15 @@ export default function EditEventPage() {
   const [recurrenceLunarPhase, setRecurrenceLunarPhase] = useState<'FULL' | 'NEW' | ''>('')
   const [privateLink, setPrivateLink] = useState('')
   const [generatingLink, setGeneratingLink] = useState(false)
+  const [recordingsModalOpen, setRecordingsModalOpen] = useState(false)
+  const [occurrenceList, setOccurrenceList] = useState<Array<{
+    id: string
+    start: Date
+    end: Date
+    recordingLink: string
+  }>>([])
+  const [occurrenceLoading, setOccurrenceLoading] = useState(false)
+  const [occurrenceSavingId, setOccurrenceSavingId] = useState<string | null>(null)
 
   const toLocalDateTimeInput = (date: Date) => {
     const pad = (value: number) => String(value).padStart(2, '0')
@@ -141,6 +150,60 @@ export default function EditEventPage() {
     }
   }, [selectedEvent])
 
+  useEffect(() => {
+    const loadOccurrences = async () => {
+      if (!recordingsModalOpen || !selectedEvent) return
+      const hasRecurring = Array.isArray((selectedEvent as any).recurringEvents) && (selectedEvent as any).recurringEvents.length > 0
+      if (!hasRecurring) return
+
+      setOccurrenceLoading(true)
+      try {
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - 90)
+        const endDate = new Date(startDate.getTime() + 270 * 24 * 60 * 60 * 1000)
+        const params = new URLSearchParams({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        })
+        const res = await fetch(`/api/calendar?${params.toString()}`)
+        if (!res.ok) {
+          throw new Error('Falha ao carregar ocorrências')
+        }
+        const payload = await res.json()
+        const events = Array.isArray(payload) ? payload : payload?.events || []
+        const baseId = selectedEvent.id
+        const metadata = (selectedEvent as any).metadata as Record<string, any> | undefined
+        const recordingLinks = metadata?.recordingLinks || {}
+
+        const occurrences = events
+          .filter((event: any) => {
+            const eventBaseId = String(event.id).replace(/-r\d+$/, '')
+            return eventBaseId === baseId
+          })
+          .map((event: any) => {
+            const occurrenceId = event.id
+            const fallbackLink = occurrenceId === baseId ? (selectedEvent as any).recordingLink || '' : ''
+            return {
+              id: occurrenceId,
+              start: new Date(event.start),
+              end: new Date(event.end),
+              recordingLink: recordingLinks[occurrenceId] || fallbackLink
+            }
+          })
+          .sort((a: any, b: any) => a.start.getTime() - b.start.getTime())
+
+        setOccurrenceList(occurrences)
+      } catch (error) {
+        console.error('Erro ao carregar ocorrências', error)
+        toast.error('Erro ao carregar ocorrências')
+      } finally {
+        setOccurrenceLoading(false)
+      }
+    }
+
+    loadOccurrences()
+  }, [recordingsModalOpen, selectedEvent])
+
   const handleGeneratePrivateLink = async () => {
     if (!selectedEvent || form.isPublic) return
     const token = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
@@ -154,6 +217,24 @@ export default function EditEventPage() {
       }
     })
     setGeneratingLink(false)
+  }
+
+  const handleSaveOccurrenceRecording = async (occurrenceId: string, value: string) => {
+    if (!selectedEvent) return
+    const trimmed = value.trim()
+    if (!trimmed) {
+      toast.error('Informe o link da gravação')
+      return
+    }
+    setOccurrenceSavingId(occurrenceId)
+    await updateEvent(selectedEvent.id, {
+      recordingLink: trimmed,
+      recurrenceInstanceId: occurrenceId === selectedEvent.id ? undefined : occurrenceId
+    })
+    setOccurrenceList((prev) =>
+      prev.map((occ) => (occ.id === occurrenceId ? { ...occ, recordingLink: trimmed } : occ))
+    )
+    setOccurrenceSavingId(null)
   }
 
   const handleChange = (field: keyof EventFormState, value: string) => {
@@ -304,6 +385,8 @@ export default function EditEventPage() {
       </div>
     )
   }
+
+  const hasRecurringSeries = Array.isArray((selectedEvent as any).recurringEvents) && (selectedEvent as any).recurringEvents.length > 0
 
   return (
     <div className="space-y-6">
@@ -484,6 +567,15 @@ export default function EditEventPage() {
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="https://..."
                   />
+                  {hasRecurringSeries && (
+                    <button
+                      type="button"
+                      onClick={() => setRecordingsModalOpen(true)}
+                      className="mt-2 text-sm text-purple-600 hover:text-purple-700"
+                    >
+                      Gerenciar gravações por ocorrência
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -745,6 +837,63 @@ export default function EditEventPage() {
           </div>
         </div>
       </div>
+
+      {recordingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Gravações por ocorrência</h3>
+              <button
+                type="button"
+                onClick={() => setRecordingsModalOpen(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-4">
+              {occurrenceLoading ? (
+                <div className="py-10 text-center text-sm text-gray-500">Carregando ocorrências...</div>
+              ) : (
+                <>
+                  {occurrenceList.map((occurrence) => (
+                    <div key={occurrence.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                      <div className="text-xs text-gray-500">
+                        {occurrence.start.toLocaleDateString('pt-BR')} • {occurrence.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <input
+                        type="text"
+                        value={occurrence.recordingLink}
+                        onChange={(e) => {
+                          const nextValue = e.target.value
+                          setOccurrenceList((prev) =>
+                            prev.map((item) => item.id === occurrence.id ? { ...item, recordingLink: nextValue } : item)
+                          )
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="https://..."
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveOccurrenceRecording(occurrence.id, occurrence.recordingLink)}
+                          disabled={occurrenceSavingId === occurrence.id}
+                          className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                          {occurrenceSavingId === occurrence.id ? 'Salvando...' : 'Salvar gravação'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!occurrenceList.length && (
+                    <div className="py-10 text-center text-sm text-gray-500">Nenhuma ocorrência encontrada.</div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

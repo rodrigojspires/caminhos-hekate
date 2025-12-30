@@ -108,7 +108,8 @@ export default function EventDetailsPage() {
       setOccurrenceLoading(true);
       try {
         const startDate = new Date();
-        const endDate = new Date(startDate.getTime() + 180 * 24 * 60 * 60 * 1000);
+        startDate.setDate(startDate.getDate() - 90);
+        const endDate = new Date(startDate.getTime() + 270 * 24 * 60 * 60 * 1000);
         const params = new URLSearchParams({
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
