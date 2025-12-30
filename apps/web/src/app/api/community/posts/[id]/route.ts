@@ -22,7 +22,28 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     })
     if (!post || post.status !== 'PUBLISHED') return NextResponse.json({ error: 'Post não encontrado' }, { status: 404 })
 
-    const locked = order[userTier] < order[post.tier as keyof typeof order]
+    const [community, membership] = await Promise.all([
+      post.communityId
+        ? prisma.community.findUnique({
+            where: { id: post.communityId },
+            select: { accessModels: true, tier: true }
+          })
+        : null,
+      userId && post.communityId
+        ? prisma.communityMembership.findUnique({
+            where: { communityId_userId: { communityId: post.communityId, userId } },
+            select: { status: true }
+          })
+        : null
+    ])
+
+    const accessModels = (community?.accessModels || []) as string[]
+    const isFreeCommunity = accessModels.includes('FREE')
+    const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
+    const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community?.tier || 'FREE']
+    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || membership?.status === 'active'
+    const lockedByTier = order[userTier] < order[post.tier as keyof typeof order]
+    const locked = lockedByTier || !hasCommunityAccess
     return NextResponse.json({
       id: post.id,
       slug: post.slug,
@@ -44,4 +65,3 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
-

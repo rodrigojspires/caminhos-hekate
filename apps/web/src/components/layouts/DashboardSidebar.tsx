@@ -21,7 +21,8 @@ import {
   Moon,
   Orbit,
   PencilRuler,
-  CookingPot
+  CookingPot,
+  MessageSquare
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -57,6 +58,11 @@ const navigation = [
     name: 'Ritos Sazonais',
     href: '/dashboard/eventos',
     icon: Moon,
+  },
+  {
+    name: 'Comunidades',
+    href: '/dashboard/comunidades',
+    icon: MessageSquare,
   },
   {
     name: 'Oráculo Planetário',

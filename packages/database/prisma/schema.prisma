@@ -35,6 +35,7 @@ model User {
   certificateTemplatesCreated   CertificateTemplate[] @relation("CertificateTemplateCreator")
   certificateTemplatesUpdated   CertificateTemplate[] @relation("CertificateTemplateUpdater")
   comments                      Comment[]
+  communityMemberships          CommunityMembership[]
   downloads                     Download[]
   enrollments                   Enrollment[]
   loginHistory                  LoginHistory[]
@@ -434,6 +435,47 @@ model Download {
   user          User           @relation(fields: [userId], references: [id])
 }
 
+model Community {
+  id           String                 @id @default(cuid())
+  name         String
+  slug         String                 @unique
+  description  String?
+  accessModels CommunityAccessModel[] @default([])
+  tier         SubscriptionTier       @default(FREE)
+  price        Decimal?               @db.Decimal(10, 2)
+  isActive     Boolean                @default(true)
+  metadata     Json?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  topics       Topic[]
+  posts        Post[]
+  groups       Group[]
+  memberships  CommunityMembership[]
+
+  @@index([isActive])
+  @@index([tier])
+  @@map("communities")
+}
+
+model CommunityMembership {
+  id          String              @id @default(cuid())
+  communityId String
+  userId      String
+  status      String              @default("active")
+  role        CommunityMemberRole @default(MEMBER)
+  joinedAt    DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id])
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+  @@index([status])
+  @@map("community_memberships")
+}
+
 model Topic {
   id          String   @id @default(cuid())
   name        String
@@ -442,9 +484,13 @@ model Topic {
   icon        String?
   color       String?
   order       Int      @default(0)
+  communityId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   posts       Post[]
+  community   Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
 }
 
 model Post {
@@ -456,6 +502,7 @@ model Post {
   featuredImage String?
   authorId      String
   topicId       String?
+  communityId   String?
   status        PostStatus       @default(DRAFT)
   tier          SubscriptionTier @default(FREE)
   isPinned      Boolean          @default(false)
@@ -468,8 +515,11 @@ model Post {
   comments      Comment[]
   author        User             @relation(fields: [authorId], references: [id])
   topic         Topic?           @relation(fields: [topicId], references: [id])
+  community     Community?       @relation(fields: [communityId], references: [id], onDelete: SetNull)
   reactions     Reaction[]
   reports       Report[]
+
+  @@index([communityId])
 }
 
 model Comment {
@@ -937,6 +987,18 @@ enum CourseAccessModel {
   FREE
   ONE_TIME
   SUBSCRIPTION
+}
+
+enum CommunityAccessModel {
+  FREE
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+enum CommunityMemberRole {
+  MEMBER
+  MODERATOR
+  OWNER
 }
 
 enum NotificationChannel {
@@ -2059,11 +2121,13 @@ model Group {
   banner           String?
   rules            String?           @db.Text
   metadata         Json?
+  communityId      String?
   createdBy        String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   archivedAt       DateTime?
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
+  community        Community?        @relation(fields: [communityId], references: [id], onDelete: SetNull)
   members          GroupMember[]
   messages         GroupMessage[]
   events           GroupEvent[]
@@ -2075,6 +2139,7 @@ model Group {
   @@index([createdBy])
   @@index([createdAt])
   @@index([tags])
+  @@index([communityId])
   @@map("groups")
 }
 

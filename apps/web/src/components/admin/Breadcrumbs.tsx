@@ -96,6 +96,7 @@ export function useBreadcrumbs(pathname: string) {
     'courses': 'Cursos',
     'posts': 'Posts',
     'community': 'Comunidade',
+    'communities': 'Comunidades',
     'events': 'Eventos',
     'notifications': 'Notificações',
     'reports': 'Relatórios',

@@ -7,6 +7,7 @@ import {
   UpdateTopicSchema, 
   CommunityFiltersSchema 
 } from '@/lib/validations/community'
+import { resolveCommunityId } from '@/lib/community'
 import { z } from 'zod'
 
 // GET /api/admin/community/topics - Listar tópicos
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const filters = CommunityFiltersSchema.parse({
       search: searchParams.get('search') || undefined,
+      communityId: searchParams.get('communityId') || undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10,
       sortBy: searchParams.get('sortBy') || 'createdAt',
@@ -38,7 +40,8 @@ export async function GET(request: NextRequest) {
           { name: { contains: filters.search, mode: 'insensitive' as const } },
           { description: { contains: filters.search, mode: 'insensitive' as const } }
         ]
-      })
+      }),
+      ...(filters.communityId && { communityId: filters.communityId })
     }
 
     const [topics, total] = await Promise.all([
@@ -112,7 +115,10 @@ export async function POST(request: NextRequest) {
     }
 
     const topic = await prisma.topic.create({
-      data,
+      data: {
+        ...data,
+        communityId: await resolveCommunityId(data.communityId)
+      },
       include: {
         _count: {
           select: {

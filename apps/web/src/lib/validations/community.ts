@@ -8,6 +8,70 @@ export const PostStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'MODER
 export const ReportStatusSchema = z.enum(['PENDING', 'REVIEWED', 'RESOLVED', 'DISMISSED'])
 export const ReportTypeSchema = z.enum(['SPAM', 'INAPPROPRIATE', 'HARASSMENT', 'COPYRIGHT', 'OTHER'])
 export const SubscriptionTierSchema = z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO'])
+export const CommunityAccessModelSchema = z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION'])
+
+// ==========================================
+// COMMUNITY SCHEMAS
+// ==========================================
+
+export const CommunitySchema = z.object({
+  id: z.string().cuid().optional(),
+  name: z.string().min(1, 'Nome é obrigatório').max(120, 'Nome deve ter no máximo 120 caracteres'),
+  slug: z.string().min(1, 'Slug é obrigatório').regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
+  description: z.string().max(1000, 'Descrição deve ter no máximo 1000 caracteres').optional(),
+  accessModels: z.array(CommunityAccessModelSchema).min(1, 'Selecione pelo menos um modelo de acesso').default(['FREE']),
+  tier: SubscriptionTierSchema.default('FREE'),
+  price: z.number().min(0, 'Preço deve ser maior ou igual a 0').optional().nullable(),
+  isActive: z.boolean().default(true),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional()
+})
+
+const validateCommunityAccess = (data: z.infer<typeof CommunitySchema>, ctx: z.RefinementCtx) => {
+  const hasSubscription = data.accessModels.includes('SUBSCRIPTION')
+  const hasOneTime = data.accessModels.includes('ONE_TIME')
+
+  if (hasSubscription && data.tier === 'FREE') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tier'],
+      message: 'Selecione qual plano de assinatura inclui esta comunidade'
+    })
+  }
+
+  if (!hasSubscription && data.tier !== 'FREE') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['tier'],
+      message: 'Comunidades fora da assinatura devem permanecer no plano FREE'
+    })
+  }
+
+  if (hasOneTime && (!data.price || data.price <= 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['price'],
+      message: 'Informe um preço válido para comunidades pagas'
+    })
+  }
+}
+
+export const CreateCommunitySchema = CommunitySchema.omit({ id: true, createdAt: true, updatedAt: true })
+  .superRefine(validateCommunityAccess)
+export const UpdateCommunitySchema = CommunitySchema.partial()
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .superRefine((data, ctx) => {
+    if (!data.accessModels && data.tier === undefined && data.price === undefined) return
+    validateCommunityAccess({
+      name: data.name || '',
+      slug: data.slug || 'placeholder',
+      description: data.description,
+      accessModels: data.accessModels || ['FREE'],
+      tier: data.tier || 'FREE',
+      price: data.price,
+      isActive: data.isActive ?? true
+    }, ctx)
+  })
 
 // ==========================================
 // TOPIC SCHEMAS
@@ -15,6 +79,7 @@ export const SubscriptionTierSchema = z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SAC
 
 export const TopicSchema = z.object({
   id: z.string().cuid().optional(),
+  communityId: z.string().cuid('ID da comunidade deve ser válido').optional(),
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
   slug: z.string().min(1, 'Slug é obrigatório').regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
   description: z.string().max(500, 'Descrição deve ter no máximo 500 caracteres').optional(),
@@ -34,6 +99,7 @@ export const UpdateTopicSchema = TopicSchema.partial().omit({ id: true, createdA
 
 export const PostSchema = z.object({
   id: z.string().cuid().optional(),
+  communityId: z.string().cuid('ID da comunidade deve ser válido').optional(),
   title: z.string().min(1, 'Título é obrigatório').max(200, 'Título deve ter no máximo 200 caracteres'),
   slug: z.string().min(1, 'Slug é obrigatório').regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
   content: z.string().min(1, 'Conteúdo é obrigatório'),
@@ -192,6 +258,7 @@ export const CreateAttachmentSchema = AttachmentSchema.omit({
 export const CommunityFiltersSchema = z.object({
   search: z.string().optional(),
   topicId: z.string().cuid().optional(),
+  communityId: z.string().cuid().optional(),
   status: PostStatusSchema.optional(),
   tier: SubscriptionTierSchema.optional(),
   authorId: z.string().cuid().optional(),
@@ -221,6 +288,10 @@ export const ReportFiltersSchema = z.object({
 export type Topic = z.infer<typeof TopicSchema>
 export type CreateTopic = z.infer<typeof CreateTopicSchema>
 export type UpdateTopic = z.infer<typeof UpdateTopicSchema>
+
+export type Community = z.infer<typeof CommunitySchema>
+export type CreateCommunity = z.infer<typeof CreateCommunitySchema>
+export type UpdateCommunity = z.infer<typeof UpdateCommunitySchema>
 
 export type Post = z.infer<typeof PostSchema>
 export type CreatePost = z.infer<typeof CreatePostSchema>

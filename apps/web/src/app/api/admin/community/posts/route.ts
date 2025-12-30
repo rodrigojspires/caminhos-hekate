@@ -8,6 +8,7 @@ import {
   UpdatePostSchema, 
   CommunityFiltersSchema 
 } from '@/lib/validations/community'
+import { resolveCommunityId } from '@/lib/community'
 import { z } from 'zod'
 
 // GET /api/admin/community/posts - Listar posts
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
     const filters = CommunityFiltersSchema.parse({
       search: searchParams.get('search') || undefined,
       topicId: searchParams.get('topicId') || undefined,
+      communityId: searchParams.get('communityId') || undefined,
       status: searchParams.get('status') || undefined,
       tier: searchParams.get('tier') || undefined,
       authorId: searchParams.get('authorId') || undefined,
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
         ]
       }),
       ...(filters.topicId && { topicId: filters.topicId }),
+      ...(filters.communityId && { communityId: filters.communityId }),
       ...(filters.status && { status: filters.status }),
       ...(filters.tier && { tier: filters.tier }),
       ...(filters.authorId && { authorId: filters.authorId }),
@@ -155,8 +158,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const resolvedCommunityId = await resolveCommunityId(data.communityId)
     const postData = {
       ...data,
+      communityId: resolvedCommunityId,
       authorId: session.user.id,
       publishedAt: data.status === 'PUBLISHED' ? new Date() : null
     }

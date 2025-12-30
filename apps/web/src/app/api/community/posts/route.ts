@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { searchService } from '@/lib/search'
+import { resolveCommunityId } from '@/lib/community'
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,6 +16,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const topicId = searchParams.get('topicId') || undefined
     const authorId = searchParams.get('authorId') || undefined
+    const communityId = searchParams.get('communityId')
+    const resolvedCommunityId = await resolveCommunityId(communityId)
+    const communityFilter = communityId
+      ? { communityId: resolvedCommunityId }
+      : { OR: [{ communityId: resolvedCommunityId }, { communityId: null }] }
     const sort = searchParams.get('sort') || 'recent' // 'recent' | 'popular'
     const page = Number(searchParams.get('page') || '1')
     const limit = Math.min(50, Number(searchParams.get('limit') || '10'))
@@ -22,9 +28,29 @@ export async function GET(req: NextRequest) {
 
     const where: any = {
       status: 'PUBLISHED',
+      ...communityFilter,
       ...(topicId && { topicId }),
       ...(authorId && { authorId })
     }
+
+    const [community, membership] = await Promise.all([
+      prisma.community.findUnique({
+        where: { id: resolvedCommunityId },
+        select: { accessModels: true, tier: true }
+      }),
+      userId
+        ? prisma.communityMembership.findUnique({
+            where: { communityId_userId: { communityId: resolvedCommunityId, userId } },
+            select: { status: true }
+          })
+        : null
+    ])
+
+    const accessModels = (community?.accessModels || []) as string[]
+    const isFreeCommunity = accessModels.includes('FREE')
+    const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
+    const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community?.tier || 'FREE']
+    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || membership?.status === 'active'
 
     const orderBy = sort === 'popular'
       ? [{ viewCount: 'desc' as const }, { createdAt: 'desc' as const }]
@@ -46,7 +72,9 @@ export async function GET(req: NextRequest) {
     ])
 
     const data = posts.map(p => {
-      const locked = order[userTier] < order[p.tier as keyof typeof order]
+      const lockedByTier = order[userTier] < order[p.tier as keyof typeof order]
+      const communityAccessForPost = p.communityId ? hasCommunityAccess : true
+      const locked = lockedByTier || !communityAccessForPost
       return {
         id: p.id,
         slug: p.slug,
@@ -82,12 +110,17 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id
 
     const body = await req.json()
-    const { title, content, excerpt, topicId, tier } = body as { title: string; content: string; excerpt?: string; topicId?: string; tier?: string }
+    const { title, content, excerpt, topicId, tier, communityId } = body as { title: string; content: string; excerpt?: string; topicId?: string; tier?: string; communityId?: string }
     if (!title || !content) return NextResponse.json({ error: 'Título e conteúdo são obrigatórios' }, { status: 400 })
 
+    let resolvedCommunityId = await resolveCommunityId(communityId || null)
+
     if (topicId) {
-      const topic = await prisma.topic.findUnique({ where: { id: topicId }, select: { id: true } })
+      const topic = await prisma.topic.findUnique({ where: { id: topicId }, select: { id: true, communityId: true } })
       if (!topic) return NextResponse.json({ error: 'Tópico inválido' }, { status: 400 })
+      if (topic.communityId) {
+        resolvedCommunityId = topic.communityId
+      }
     }
 
     const slugBase = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -105,6 +138,7 @@ export async function POST(req: NextRequest) {
         excerpt: excerpt || content.substring(0, 180),
         authorId: userId,
         topicId: topicId || null,
+        communityId: resolvedCommunityId,
         status: 'PUBLISHED',
         tier: (tier as any) || 'FREE',
         publishedAt: new Date()

@@ -160,9 +160,9 @@ export default function CommunityPage() {
     badge?: string
   }[] = [
     {
-      title: 'Gerenciar Grupos',
-      description: 'Criar, moderar e gerenciar grupos de usuários',
-      href: '/dashboard/grupos',
+      title: 'Gerenciar Comunidades',
+      description: 'Criar e configurar comunidades da plataforma',
+      href: '/admin/community/communities',
       icon: Users,
       color: 'bg-indigo-500'
     },
@@ -378,6 +378,42 @@ export default function CommunityPage() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Nenhum post popular encontrado
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tópicos Mais Ativos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Hash className="h-5 w-5" />
+            Tópicos Mais Ativos
+          </CardTitle>
+          <CardDescription>
+            Tópicos com maior volume de posts e participação
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {(stats.mostActiveTopics?.length || 0) > 0 ? (
+              (stats.mostActiveTopics || []).slice(0, 5).map((topic, index) => (
+                <div key={topic.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full text-sm font-medium">
+                    #{index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{topic.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {topic.postsCount} posts • {topic.membersCount} membros
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum tópico ativo encontrado
               </p>
             )}
           </div>
