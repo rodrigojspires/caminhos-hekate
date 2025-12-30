@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEventsStore } from '@/stores/eventsStore';
 import { toast } from 'sonner';
@@ -52,6 +54,15 @@ export default function EventDetailsPage() {
   const [attendeesLoading, setAttendeesLoading] = useState(false);
   const [recordingLinkInput, setRecordingLinkInput] = useState('');
   const [recordingSaving, setRecordingSaving] = useState(false);
+  const [recordingsModalOpen, setRecordingsModalOpen] = useState(false);
+  const [occurrenceList, setOccurrenceList] = useState<Array<{
+    id: string;
+    start: Date;
+    end: Date;
+    recordingLink: string;
+  }>>([]);
+  const [occurrenceLoading, setOccurrenceLoading] = useState(false);
+  const [occurrenceSavingId, setOccurrenceSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (baseEventId) {
@@ -87,6 +98,59 @@ export default function EventDetailsPage() {
     const resolvedRecording = recordingLinks[instanceId] || (selectedEvent as any).recordingLink || '';
     setRecordingLinkInput(resolvedRecording);
   }, [selectedEvent, searchParams]);
+
+  useEffect(() => {
+    const loadOccurrences = async () => {
+      if (!recordingsModalOpen || !selectedEvent) return;
+      const hasRecurring = Array.isArray((selectedEvent as any).recurringEvents) && (selectedEvent as any).recurringEvents.length > 0;
+      if (!hasRecurring) return;
+
+      setOccurrenceLoading(true);
+      try {
+        const startDate = new Date();
+        const endDate = new Date(startDate.getTime() + 180 * 24 * 60 * 60 * 1000);
+        const params = new URLSearchParams({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+        const res = await fetch(`/api/calendar?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error('Falha ao carregar ocorrências');
+        }
+        const payload = await res.json();
+        const events = Array.isArray(payload) ? payload : payload?.events || [];
+        const baseId = selectedEvent.id;
+        const metadata = (selectedEvent as any).metadata as Record<string, any> | undefined;
+        const recordingLinks = metadata?.recordingLinks || {};
+
+        const occurrences = events
+          .filter((event: any) => {
+            const eventBaseId = String(event.id).replace(/-r\d+$/, '');
+            return eventBaseId === baseId;
+          })
+          .map((event: any) => {
+            const occurrenceId = event.id;
+            const fallbackLink = occurrenceId === baseId ? (selectedEvent as any).recordingLink || '' : '';
+            return {
+              id: occurrenceId,
+              start: new Date(event.start),
+              end: new Date(event.end),
+              recordingLink: recordingLinks[occurrenceId] || fallbackLink
+            };
+          })
+          .sort((a: any, b: any) => a.start.getTime() - b.start.getTime());
+
+        setOccurrenceList(occurrences);
+      } catch (e) {
+        console.error('Erro ao carregar ocorrências', e);
+        toast.error('Erro ao carregar ocorrências');
+      } finally {
+        setOccurrenceLoading(false);
+      }
+    };
+
+    loadOccurrences();
+  }, [recordingsModalOpen, selectedEvent]);
 
   const handleRegister = async () => {
     if (!selectedEvent) return;
@@ -169,6 +233,24 @@ export default function EventDetailsPage() {
     setRecordingSaving(false);
   };
 
+  const handleSaveOccurrenceRecording = async (occurrenceId: string, value: string) => {
+    if (!selectedEvent) return;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error('Informe o link da gravação');
+      return;
+    }
+    setOccurrenceSavingId(occurrenceId);
+    await updateEvent(selectedEvent.id, {
+      recordingLink: trimmed,
+      recurrenceInstanceId: occurrenceId === selectedEvent.id ? undefined : occurrenceId
+    });
+    setOccurrenceList((prev) =>
+      prev.map((occ) => (occ.id === occurrenceId ? { ...occ, recordingLink: trimmed } : occ))
+    );
+    setOccurrenceSavingId(null);
+  };
+
   const occurrenceStart = useMemo(() => {
     const value = searchParams?.get('occurrenceStart');
     return value ? new Date(value) : null;
@@ -244,6 +326,7 @@ export default function EventDetailsPage() {
     : (selectedEvent as any).recordingLink;
   const canViewRecordingLink = Boolean(recordingLinkForOccurrence) && (isUserRegistered || isCreator);
   const canManageRecording = isCreator && (selectedEvent.mode === 'ONLINE' || selectedEvent.mode === 'HYBRID');
+  const hasRecurringSeries = Array.isArray((selectedEvent as any).recurringEvents) && (selectedEvent as any).recurringEvents.length > 0;
 
   const formatPrice = (value?: number | string | null) => {
     if (value === undefined || value === null) return 'Gratuito';
@@ -421,6 +504,16 @@ export default function EventDetailsPage() {
                     <Edit className="h-4 w-4" />
                     Editar
                   </Button>
+                  {hasRecurringSeries && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setRecordingsModalOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Gravações por ocorrência
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     onClick={handleDeleteEvent}
@@ -527,6 +620,54 @@ export default function EventDetailsPage() {
                   </Button>
                 </CardContent>
               </Card>
+            )}
+
+            {hasRecurringSeries && canManageRecording && (
+              <Dialog open={recordingsModalOpen} onOpenChange={setRecordingsModalOpen}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Gravações por ocorrência</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[60vh] pr-4">
+                    {occurrenceLoading ? (
+                      <div className="py-8 text-center text-muted-foreground">Carregando ocorrências...</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {occurrenceList.map((occurrence) => (
+                          <div key={occurrence.id} className="rounded-lg border border-border p-4 space-y-3">
+                            <div className="text-sm text-muted-foreground">
+                              {occurrence.start.toLocaleDateString('pt-BR')} • {occurrence.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <Input
+                              value={occurrence.recordingLink}
+                              onChange={(e) => {
+                                const nextValue = e.target.value;
+                                setOccurrenceList((prev) =>
+                                  prev.map((item) =>
+                                    item.id === occurrence.id ? { ...item, recordingLink: nextValue } : item
+                                  )
+                                );
+                              }}
+                              placeholder="https://..."
+                            />
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() => handleSaveOccurrenceRecording(occurrence.id, occurrence.recordingLink)}
+                                disabled={occurrenceSavingId === occurrence.id}
+                              >
+                                {occurrenceSavingId === occurrence.id ? 'Salvando...' : 'Salvar gravação'}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        {!occurrenceList.length && (
+                          <div className="py-8 text-center text-muted-foreground">Nenhuma ocorrência encontrada.</div>
+                        )}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             )}
 
             {/* Tags */}
