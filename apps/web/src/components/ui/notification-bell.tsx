@@ -276,7 +276,7 @@ export function NotificationBell({ className, onNotificationClick }: Notificatio
                           </Badge>
                         </div>
                         {notification.content && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
                             {notification.content}
                           </p>
                         )}
