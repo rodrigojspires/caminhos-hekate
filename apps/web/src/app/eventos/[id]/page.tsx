@@ -229,7 +229,9 @@ export default function EventDetailsPage() {
     setRecordingSaving(true);
     await updateEvent(selectedEvent.id, {
       recordingLink: trimmed,
-      recurrenceInstanceId: occurrenceIdParam || undefined
+      recurrenceInstanceId: occurrenceIdParam || undefined,
+      recurrenceInstanceStart: occurrenceStart ? occurrenceStart.toISOString() : undefined,
+      recurrenceInstanceEnd: occurrenceEnd ? occurrenceEnd.toISOString() : undefined
     });
     setRecordingSaving(false);
   };

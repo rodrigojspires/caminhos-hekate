@@ -227,9 +227,12 @@ export default function EditEventPage() {
       return
     }
     setOccurrenceSavingId(occurrenceId)
+    const occurrence = occurrenceList.find((item) => item.id === occurrenceId)
     await updateEvent(selectedEvent.id, {
       recordingLink: trimmed,
-      recurrenceInstanceId: occurrenceId === selectedEvent.id ? undefined : occurrenceId
+      recurrenceInstanceId: occurrenceId === selectedEvent.id ? undefined : occurrenceId,
+      recurrenceInstanceStart: occurrence?.start.toISOString(),
+      recurrenceInstanceEnd: occurrence?.end.toISOString()
     })
     setOccurrenceList((prev) =>
       prev.map((occ) => (occ.id === occurrenceId ? { ...occ, recordingLink: trimmed } : occ))

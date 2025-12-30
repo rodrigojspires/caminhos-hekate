@@ -331,18 +331,20 @@ export async function POST(
       })
     }
 
+    const now = new Date()
     for (const config of reminderConfigs) {
       const reminderTime = new Date(occurrenceStartDate.getTime() - config.minutesBefore * 60 * 1000)
-      if (reminderTime <= new Date()) {
+      if (occurrenceStartDate <= now) {
         continue
       }
+      const triggerTime = reminderTime <= now ? now : reminderTime
 
       await prisma.eventReminder.create({
         data: {
           eventId,
           userId: session.user.id,
           type: ReminderType.EMAIL,
-          triggerTime: reminderTime,
+          triggerTime,
           status: ReminderStatus.PENDING,
           metadata: {
             message: config.message,

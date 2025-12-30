@@ -27,7 +27,9 @@ const updateEventSchema = z.object({
   mode: z.nativeEnum(EventMode).optional(),
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.any()).optional(),
-  recurrenceInstanceId: z.string().optional()
+  recurrenceInstanceId: z.string().optional(),
+  recurrenceInstanceStart: z.string().datetime().optional(),
+  recurrenceInstanceEnd: z.string().datetime().optional()
 })
 
 async function notifyEventPublication(event: { id: string; title: string; slug?: string; isPublic: boolean }) {
@@ -76,9 +78,18 @@ async function notifyRecordingLinkAvailable(params: {
   eventTitle: string
   recordingLink: string
   recurrenceInstanceId: string
+  recurrenceInstanceStart?: string
+  recurrenceInstanceEnd?: string
 }) {
   try {
-    const { eventId, eventTitle, recordingLink, recurrenceInstanceId } = params
+    const {
+      eventId,
+      eventTitle,
+      recordingLink,
+      recurrenceInstanceId,
+      recurrenceInstanceStart,
+      recurrenceInstanceEnd
+    } = params
     const registrations = await prisma.eventRegistration.findMany({
       where: {
         eventId,
@@ -94,9 +105,16 @@ async function notifyRecordingLinkAvailable(params: {
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || ''
     const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : ''
+    const paramsUrl = new URLSearchParams({ occurrenceId: recurrenceInstanceId })
+    if (recurrenceInstanceStart) {
+      paramsUrl.set('occurrenceStart', recurrenceInstanceStart)
+    }
+    if (recurrenceInstanceEnd) {
+      paramsUrl.set('occurrenceEnd', recurrenceInstanceEnd)
+    }
     const eventUrl = normalizedBase
-      ? `${normalizedBase}/eventos/${eventId}?occurrenceId=${encodeURIComponent(recurrenceInstanceId)}`
-      : `/eventos/${eventId}?occurrenceId=${encodeURIComponent(recurrenceInstanceId)}`
+      ? `${normalizedBase}/eventos/${eventId}?${paramsUrl.toString()}`
+      : `/eventos/${eventId}?${paramsUrl.toString()}`
 
     const title = `Gravação disponível: ${eventTitle}`
     const message = `A gravação do evento "${eventTitle}" já está disponível.`
@@ -364,7 +382,13 @@ export async function PUT(
     }
 
     // Atualizar evento
-    const { recordingLink, recurrenceInstanceId, ...eventData } = validatedData
+    const {
+      recordingLink,
+      recurrenceInstanceId,
+      recurrenceInstanceStart,
+      recurrenceInstanceEnd,
+      ...eventData
+    } = validatedData
     const baseMetadata = eventData.metadata && typeof eventData.metadata === 'object'
       ? eventData.metadata
       : existingEvent.metadata || {}
@@ -446,7 +470,9 @@ export async function PUT(
         eventId: updatedEvent.id,
         eventTitle: updatedEvent.title,
         recordingLink,
-        recurrenceInstanceId: notifyOccurrenceId
+        recurrenceInstanceId: notifyOccurrenceId,
+        recurrenceInstanceStart,
+        recurrenceInstanceEnd
       })
     }
 

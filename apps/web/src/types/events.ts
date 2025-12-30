@@ -196,6 +196,8 @@ export interface CreateEventRequest {
 export interface UpdateEventRequest extends Partial<CreateEventRequest> {
   status?: EventStatus
   recurrenceInstanceId?: string
+  recurrenceInstanceStart?: string
+  recurrenceInstanceEnd?: string
 }
 
 export interface EventRegistrationRequest {
