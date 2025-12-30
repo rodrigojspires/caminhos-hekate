@@ -5,7 +5,7 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME=/root/.pnpm-store \
     NODE_ENV=production
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl tzdata
 SHELL ["/bin/sh","-lc"]
 
 # --- Prune layer (Turbo) ---
