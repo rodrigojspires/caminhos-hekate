@@ -85,6 +85,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
 # Copia repo completo para workers (precisam de scripts e deps fora do escopo do web)
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY tsconfig.json ./tsconfig.json
 COPY apps ./apps
 COPY packages ./packages
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
