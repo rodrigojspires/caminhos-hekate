@@ -9,6 +9,8 @@ import {
 } from '@/lib/validations/community'
 import { resolveCommunityId } from '@/lib/community'
 import { z } from 'zod'
+import { notificationService } from '@/lib/notifications/notification-service'
+import { NotificationPriority } from '@prisma/client'
 
 // GET /api/admin/community/topics - Listar tópicos
 export async function GET(request: NextRequest) {
@@ -102,33 +104,78 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = CreateTopicSchema.parse(body)
 
-    // Verificar se já existe um tópico com o mesmo slug
-    const existingTopic = await prisma.topic.findUnique({
-      where: { slug: data.slug }
+    const communityIds = Array.isArray(data.communityIds) && data.communityIds.length > 0
+      ? data.communityIds
+      : [await resolveCommunityId(data.communityId)]
+
+    const communities = await prisma.community.findMany({
+      where: { id: { in: communityIds } },
+      select: { id: true, slug: true }
     })
+    const communitySlugMap = new Map(communities.map((c) => [c.id, c.slug]))
 
-    if (existingTopic) {
-      return NextResponse.json(
-        { error: 'Já existe um tópico com este slug' },
-        { status: 409 }
-      )
-    }
+    const createdTopics = []
+    for (const communityId of communityIds) {
+      const communitySlug = communitySlugMap.get(communityId)
+      const baseSlug = data.slug
+      let slug = baseSlug
 
-    const topic = await prisma.topic.create({
-      data: {
-        ...data,
-        communityId: await resolveCommunityId(data.communityId)
-      },
-      include: {
-        _count: {
-          select: {
-            posts: true
+      if (communityIds.length > 1 && communitySlug) {
+        slug = `${baseSlug}-${communitySlug}`
+      }
+
+      let counter = 1
+      while (await prisma.topic.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${communitySlug || 'comunidade'}-${counter}`
+        counter += 1
+      }
+
+      const topic = await prisma.topic.create({
+        data: {
+          ...data,
+          slug,
+          communityId
+        },
+        include: {
+          _count: {
+            select: { posts: true }
           }
         }
-      }
+      })
+      createdTopics.push(topic)
+    }
+
+    const users = await prisma.user.findMany({
+      where: { NOT: { email: { startsWith: 'deleted_' } } },
+      select: { id: true }
     })
 
-    return NextResponse.json(topic, { status: 201 })
+    for (const topic of createdTopics) {
+      for (const user of users) {
+        try {
+          await notificationService.createNotification({
+            userId: user.id,
+            type: 'SYSTEM_ANNOUNCEMENT',
+            title: 'Novo tópico disponível',
+            message: `O tópico "${topic.name}" foi criado na comunidade.`,
+            data: {
+              topicId: topic.id,
+              actionUrl: '/comunidade',
+              actionLabel: 'Ver comunidade'
+            },
+            priority: NotificationPriority.LOW,
+            isPush: false
+          })
+        } catch (notificationError) {
+          console.error('Erro ao notificar usuário sobre novo tópico:', notificationError)
+        }
+      }
+    }
+
+    return NextResponse.json(
+      communityIds.length > 1 ? { topics: createdTopics } : createdTopics[0],
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Erro ao criar tópico:', error)
     

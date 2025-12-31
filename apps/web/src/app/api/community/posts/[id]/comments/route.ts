@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { GamificationEngine } from '@/lib/gamification-engine'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -39,6 +40,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     const comment = await prisma.comment.create({ data: { content, postId: params.id, authorId: userId, parentId: parentId || null } })
+
+    try {
+      await GamificationEngine.awardPoints(userId, 10, 'COMMUNITY_COMMENT', {
+        postId: params.id,
+        commentId: comment.id,
+        reasonLabel: 'Resposta em post da comunidade'
+      })
+    } catch (pointsError) {
+      console.error('Erro ao conceder pontos por comentário:', pointsError)
+    }
 
     // Indexar comentário (opcional)
     try {

@@ -2,10 +2,56 @@
 
 import { prisma } from '@hekate/database'
 
+const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
+
 function daysDiff(a: Date, b: Date) {
   const A = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime()
   const B = new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime()
   return Math.floor((A - B) / (24 * 60 * 60 * 1000))
+}
+
+type InvoiceLineItem = {
+  type: 'subscription' | 'community'
+  id?: string
+  label: string
+  amount: number
+}
+
+async function buildCommunityLineItems(userId: string, userTier: string): Promise<InvoiceLineItem[]> {
+  const memberships = await prisma.communityMembership.findMany({
+    where: { userId, status: { in: ['active', 'pending'] } },
+    include: {
+      community: {
+        select: { id: true, name: true, price: true, tier: true, accessModels: true }
+      }
+    }
+  })
+
+  const items: InvoiceLineItem[] = []
+
+  for (const membership of memberships) {
+    const community = membership.community
+    if (!community) continue
+
+    const accessModels = (community.accessModels as string[]) || []
+    const isPaidCommunity = accessModels.includes('ONE_TIME')
+    const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
+    const allowedByTier = isSubscriptionCommunity && (tierOrder[userTier] >= tierOrder[community.tier || 'FREE'])
+
+    if (!isPaidCommunity || allowedByTier) continue
+
+    const amount = community.price != null ? Number(community.price) : 0
+    if (amount <= 0) continue
+
+    items.push({
+      type: 'community',
+      id: community.id,
+      label: community.name,
+      amount
+    })
+  }
+
+  return items
 }
 
 async function processSubscriptions() {
@@ -155,16 +201,37 @@ async function processSubscriptions() {
     renewed++
 
     // Create internal invoice (pending payment transaction) for next cycle
-    const amount = billingInterval === 'YEARLY'
+    const subscriptionAmount = billingInterval === 'YEARLY'
       ? Number(sub.plan?.yearlyPrice ?? sub.plan?.monthlyPrice ?? 0)
       : Number(sub.plan?.monthlyPrice ?? 0)
 
-    if (amount > 0) {
+    const user = await prisma.user.findUnique({
+      where: { id: sub.userId },
+      select: { subscriptionTier: true }
+    })
+    const userTier = user?.subscriptionTier || 'FREE'
+
+    const lineItems: InvoiceLineItem[] = []
+    if (subscriptionAmount > 0) {
+      lineItems.push({
+        type: 'subscription',
+        id: sub.id,
+        label: `Assinatura ${(sub.plan as any)?.name || ''}`.trim(),
+        amount: subscriptionAmount
+      })
+    }
+
+    const communityItems = await buildCommunityLineItems(sub.userId, userTier)
+    lineItems.push(...communityItems)
+
+    const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0)
+
+    if (totalAmount > 0) {
       await prisma.paymentTransaction.create({
         data: {
           userId: sub.userId,
           subscriptionId: sub.id,
-          amount,
+          amount: totalAmount,
           currency: 'BRL',
           status: 'PENDING',
           provider: 'MERCADOPAGO', // default provider; payment link is generated on demand
@@ -173,6 +240,8 @@ async function processSubscriptions() {
             invoice_period_end: newEnd.toISOString(),
             billing_interval: billingInterval,
             created_by: 'subscription-billing-worker',
+            description: 'Fatura mensal',
+            lineItems,
           },
         },
       })
@@ -181,6 +250,82 @@ async function processSubscriptions() {
   }
 
   console.log(`[billing] Done. renewed=${renewed} canceled=${canceled} invoices=${invoicesCreated}`)
+}
+
+async function processCommunityOnlyBilling() {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+  const membershipRows = await prisma.communityMembership.findMany({
+    where: {
+      status: { in: ['active', 'pending'] },
+      community: {
+        isActive: true,
+        accessModels: { has: 'ONE_TIME' }
+      }
+    },
+    select: { userId: true }
+  })
+
+  const userIds = Array.from(new Set(membershipRows.map((row) => row.userId)))
+
+  for (const userId of userIds) {
+    const activeSub = await prisma.userSubscription.findFirst({
+      where: { userId, status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] } },
+      select: { id: true }
+    })
+    if (activeSub) continue
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionTier: true }
+    })
+    const userTier = user?.subscriptionTier || 'FREE'
+
+    const lineItems = await buildCommunityLineItems(userId, userTier)
+    if (lineItems.length === 0) continue
+
+    const existing = await prisma.paymentTransaction.findFirst({
+      where: {
+        userId,
+        subscriptionId: null,
+        status: { in: ['PENDING', 'COMPLETED'] },
+        metadata: {
+          path: ['created_by'],
+          equals: 'community-billing-worker'
+        },
+        AND: {
+          metadata: {
+            path: ['invoice_period_start'],
+            equals: periodStart.toISOString()
+          }
+        }
+      }
+    })
+
+    if (existing) continue
+
+    const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0)
+    if (totalAmount <= 0) continue
+
+    await prisma.paymentTransaction.create({
+      data: {
+        userId,
+        amount: totalAmount,
+        currency: 'BRL',
+        status: 'PENDING',
+        provider: 'MERCADOPAGO',
+        metadata: {
+          invoice_period_start: periodStart.toISOString(),
+          invoice_period_end: periodEnd.toISOString(),
+          created_by: 'community-billing-worker',
+          description: 'Fatura mensal - Comunidades',
+          lineItems,
+        },
+      },
+    })
+  }
 }
 
 async function main() {
@@ -201,9 +346,11 @@ async function main() {
   await waitForDb().catch(() => {})
   // Run immediately on start, then every 24h
   await processSubscriptions().catch(e => console.error('[billing] error:', e))
+  await processCommunityOnlyBilling().catch(e => console.error('[billing] community billing error:', e))
   const DAY = 24 * 60 * 60 * 1000
   setInterval(() => {
     processSubscriptions().catch(e => console.error('[billing] error:', e))
+    processCommunityOnlyBilling().catch(e => console.error('[billing] community billing error:', e))
   }, DAY)
 }
 

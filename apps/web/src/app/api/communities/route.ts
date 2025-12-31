@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { ensureDefaultCommunity } from '@/lib/community'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
@@ -9,6 +10,8 @@ export async function GET(_req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id || null
+
+    await ensureDefaultCommunity()
 
     const [communities, user] = await Promise.all([
       prisma.community.findMany({

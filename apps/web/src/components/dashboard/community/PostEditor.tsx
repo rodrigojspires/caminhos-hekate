@@ -23,6 +23,11 @@ interface Category {
   color: string
 }
 
+interface CommunityOption {
+  id: string
+  name: string
+}
+
 interface Course {
   id: string
   name: string
@@ -46,6 +51,7 @@ interface PostData {
   title: string
   content: string
   category: string
+  communityIds: string[]
   tags: string[]
   courseId?: string
   lessonId?: string
@@ -59,6 +65,7 @@ interface PostData {
 interface PostEditorProps {
   initialData?: Partial<PostData>
   categories: Category[]
+  communities?: CommunityOption[]
   courses?: Course[]
   isEditing?: boolean
   isLoading?: boolean
@@ -74,6 +81,7 @@ interface PostEditorProps {
 export function PostEditor({
   initialData,
   categories,
+  communities = [],
   courses = [],
   isEditing = false,
   isLoading = false,
@@ -89,6 +97,7 @@ export function PostEditor({
     title: '',
     content: '',
     category: '',
+    communityIds: [],
     tags: [],
     attachments: [],
     isDraft: false,
@@ -133,6 +142,10 @@ export function PostEditor({
     
     if (!postData.category) {
       newErrors.category = 'Categoria é obrigatória'
+    }
+
+    if (communities.length > 0 && postData.communityIds.length === 0) {
+      newErrors.communityIds = 'Selecione ao menos uma comunidade'
     }
     
     setErrors(newErrors)
@@ -385,6 +398,38 @@ export function PostEditor({
                 </div>
               )}
             </div>
+
+            {communities.length > 0 && (
+              <div className="space-y-2">
+                <Label>Comunidades *</Label>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {communities.map((community) => (
+                    <label key={community.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={postData.communityIds.includes(community.id)}
+                        onChange={(event) => {
+                          const checked = event.target.checked
+                          setPostData((prev) => ({
+                            ...prev,
+                            communityIds: checked
+                              ? [...prev.communityIds, community.id]
+                              : prev.communityIds.filter((id) => id !== community.id)
+                          }))
+                          if (errors.communityIds) {
+                            setErrors((prev) => ({ ...prev, communityIds: '' }))
+                          }
+                        }}
+                      />
+                      <span>{community.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors.communityIds && (
+                  <p className="text-sm text-destructive">{errors.communityIds}</p>
+                )}
+              </div>
+            )}
 
             {/* Lesson Selection */}
             {selectedCourse && selectedCourse.lessons.length > 0 && (

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { CreateCommunitySchema } from '@/lib/validations/community'
+import { notificationService } from '@/lib/notifications/notification-service'
+import { NotificationPriority } from '@prisma/client'
 import { z } from 'zod'
 
 const querySchema = z.object({
@@ -100,6 +102,31 @@ export async function POST(request: NextRequest) {
       },
       include: { _count: { select: { memberships: true } } }
     })
+
+    const users = await prisma.user.findMany({
+      where: { NOT: { email: { startsWith: 'deleted_' } } },
+      select: { id: true }
+    })
+
+    for (const user of users) {
+      try {
+        await notificationService.createNotification({
+          userId: user.id,
+          type: 'SYSTEM_ANNOUNCEMENT',
+          title: 'Nova comunidade disponível',
+          message: `A comunidade "${community.name}" foi criada e já está disponível.`,
+          data: {
+            communityId: community.id,
+            actionUrl: '/dashboard/comunidades',
+            actionLabel: 'Ver comunidades'
+          },
+          priority: NotificationPriority.LOW,
+          isPush: false
+        })
+      } catch (notificationError) {
+        console.error('Erro ao notificar usuário sobre nova comunidade:', notificationError)
+      }
+    }
 
     return NextResponse.json(serializeCommunity(community), { status: 201 })
   } catch (error) {

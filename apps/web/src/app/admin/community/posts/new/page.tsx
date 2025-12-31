@@ -8,22 +8,34 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 type Category = { id: string; name: string; description: string; color: string }
+type Community = { id: string; name: string }
 
 export default function NewCommunityPostPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
+  const [communities, setCommunities] = useState<Community[]>([])
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('/api/admin/community/topics?limit=100', { cache: 'no-store' })
-        if (res.ok) {
-          const data = await res.json()
+        const [topicsRes, communitiesRes] = await Promise.all([
+          fetch('/api/admin/community/topics?limit=100', { cache: 'no-store' }),
+          fetch('/api/admin/communities?limit=100', { cache: 'no-store' })
+        ])
+        if (topicsRes.ok) {
+          const data = await topicsRes.json()
           const cats = Array.isArray(data?.topics)
             ? data.topics.map((t: any) => ({ id: t.id, name: t.name, description: t.description || '', color: t.color || '#6B7280' }))
             : []
           setCategories(cats)
+        }
+        if (communitiesRes.ok) {
+          const data = await communitiesRes.json()
+          const list = Array.isArray(data?.communities)
+            ? data.communities.map((c: any) => ({ id: c.id, name: c.name }))
+            : []
+          setCommunities(list)
         }
       } catch (e) {
         // ignore
@@ -45,6 +57,7 @@ export default function NewCommunityPostPage() {
         excerpt: data.content?.slice(0, 180) || undefined,
         tier: 'FREE',
         isPinned: data.isPinned || false,
+        communityIds: data.communityIds || []
       }
       const res = await fetch('/api/admin/community/posts', {
         method: 'POST',
@@ -84,6 +97,7 @@ export default function NewCommunityPostPage() {
       </div>
       <PostEditor
         categories={categories}
+        communities={communities}
         onSave={handleSave}
         onCancel={() => router.back()}
       />

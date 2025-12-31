@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 type Community = {
   id: string
@@ -305,6 +306,7 @@ export default function AdminCommunitiesPage() {
                   <TableHead>Preço</TableHead>
                   <TableHead>Membros</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -332,6 +334,13 @@ export default function AdminCommunitiesPage() {
                       <Badge variant={community.isActive ? 'default' : 'secondary'}>
                         {community.isActive ? 'Ativa' : 'Inativa'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/admin/community/communities/${community.id}`}>
+                          Gerenciar
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

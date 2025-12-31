@@ -61,6 +61,10 @@ interface Payment {
   receiptUrl?: string
   createdAt: string
   paidAt?: string
+  lineItems?: Array<{
+    label: string
+    amount: number
+  }>
   subscription?: {
     id: string
     plan: {
@@ -496,6 +500,20 @@ export function PaymentHistory({ userId, className = '' }: PaymentHistoryProps) 
                 <label className="text-sm font-medium text-gray-500">Descrição</label>
                 <p className="text-sm mt-1">{selectedPayment.description}</p>
               </div>
+
+              {selectedPayment.lineItems && selectedPayment.lineItems.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Itens da fatura</label>
+                  <div className="mt-2 space-y-2">
+                    {selectedPayment.lineItems.map((item, index) => (
+                      <div key={`${item.label}-${index}`} className="flex items-center justify-between text-sm">
+                        <span>{item.label}</span>
+                        <span className="font-medium">{formatCurrency(item.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {selectedPayment.subscription && (
                 <div>

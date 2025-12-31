@@ -80,6 +80,7 @@ export const UpdateCommunitySchema = CommunitySchema.partial()
 export const TopicSchema = z.object({
   id: z.string().cuid().optional(),
   communityId: z.string().cuid('ID da comunidade deve ser válido').optional(),
+  communityIds: z.array(z.string().cuid('ID da comunidade deve ser válido')).optional(),
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
   slug: z.string().min(1, 'Slug é obrigatório').regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
   description: z.string().max(500, 'Descrição deve ter no máximo 500 caracteres').optional(),
@@ -100,6 +101,7 @@ export const UpdateTopicSchema = TopicSchema.partial().omit({ id: true, createdA
 export const PostSchema = z.object({
   id: z.string().cuid().optional(),
   communityId: z.string().cuid('ID da comunidade deve ser válido').optional(),
+  communityIds: z.array(z.string().cuid('ID da comunidade deve ser válido')).optional(),
   title: z.string().min(1, 'Título é obrigatório').max(200, 'Título deve ter no máximo 200 caracteres'),
   slug: z.string().min(1, 'Slug é obrigatório').regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
   content: z.string().min(1, 'Conteúdo é obrigatório'),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { GamificationEngine } from '@/lib/gamification-engine'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
@@ -48,6 +49,7 @@ export async function POST(_req: NextRequest, { params }: { params: { communityI
     const isFree = accessModels.includes('FREE')
     const hasSubscription = accessModels.includes('SUBSCRIPTION')
     const allowedBySubscription = hasSubscription && tierOrder[user?.subscriptionTier || 'FREE'] >= tierOrder[community.tier]
+    const isPaidCommunity = accessModels.includes('ONE_TIME')
 
     const targetStatus = (isFree || allowedBySubscription) ? 'active' : 'pending'
 
@@ -63,9 +65,20 @@ export async function POST(_req: NextRequest, { params }: { params: { communityI
       return NextResponse.json({ enrolled: true, status: targetStatus })
     }
 
-    await prisma.communityMembership.create({
+    const createdMembership = await prisma.communityMembership.create({
       data: { communityId: community.id, userId: session.user.id, status: targetStatus }
     })
+
+    if (isPaidCommunity && !allowedBySubscription) {
+      try {
+        await GamificationEngine.awardPoints(session.user.id, 40, 'COMMUNITY_ENROLLED_PAID', {
+          communityId: community.id,
+          reasonLabel: `Inscrição em comunidade paga (${community.id})`
+        })
+      } catch (pointsError) {
+        console.error('Erro ao conceder pontos por comunidade paga:', pointsError)
+      }
+    }
 
     return NextResponse.json({ enrolled: true, status: targetStatus })
   } catch (error) {

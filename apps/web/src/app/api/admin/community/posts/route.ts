@@ -10,6 +10,8 @@ import {
 } from '@/lib/validations/community'
 import { resolveCommunityId } from '@/lib/community'
 import { z } from 'zod'
+import { notificationService } from '@/lib/notifications/notification-service'
+import { NotificationPriority } from '@prisma/client'
 
 // GET /api/admin/community/posts - Listar posts
 export async function GET(request: NextRequest) {
@@ -158,59 +160,121 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const resolvedCommunityId = await resolveCommunityId(data.communityId)
-    const postData = {
-      ...data,
-      communityId: resolvedCommunityId,
-      authorId: session.user.id,
-      publishedAt: data.status === 'PUBLISHED' ? new Date() : null
-    }
+    const communityIds = Array.isArray(data.communityIds) && data.communityIds.length > 0
+      ? data.communityIds
+      : [await resolveCommunityId(data.communityId)]
 
-    const post = await prisma.post.create({
-      data: postData,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
+    const communities = await prisma.community.findMany({
+      where: { id: { in: communityIds } },
+      select: { id: true, slug: true }
+    })
+    const communitySlugMap = new Map(communities.map((c) => [c.id, c.slug]))
+
+    const topic = data.topicId
+      ? await prisma.topic.findUnique({ where: { id: data.topicId }, select: { id: true, communityId: true } })
+      : null
+
+    const createdPosts = []
+    for (const communityId of communityIds) {
+      const communitySlug = communitySlugMap.get(communityId)
+      const baseSlug = data.slug
+      let slug = baseSlug
+
+      if (communityIds.length > 1 && communitySlug) {
+        slug = `${baseSlug}-${communitySlug}`
+      }
+
+      let counter = 1
+      while (await prisma.post.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${communitySlug || 'comunidade'}-${counter}`
+        counter += 1
+      }
+
+      const post = await prisma.post.create({
+        data: {
+          ...data,
+          slug,
+          communityId,
+          topicId: topic && topic.communityId === communityId ? topic.id : null,
+          authorId: session.user.id,
+          publishedAt: data.status === 'PUBLISHED' ? new Date() : null
         },
-        topic: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            color: true
-          }
-        },
-        _count: {
-          select: {
-            comments: true,
-            reactions: true,
-            reports: true
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          },
+          topic: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              color: true
+            }
+          },
+          _count: {
+            select: {
+              comments: true,
+              reactions: true,
+              reports: true
+            }
           }
         }
-      }
-    })
-
-    // Indexar no SearchIndex
-    try {
-      await searchService.indexContent('post', post.id, {
-        title: post.title,
-        content: post.content,
-        summary: post.excerpt || undefined,
-        tags: [],
-        categories: post.topic ? [post.topic.id] : [],
-        metadata: { slug: post.slug, tier: post.tier },
-        popularity: 0
       })
-    } catch (e) {
-      console.error('Falha ao indexar post (admin create):', e)
+
+      createdPosts.push(post)
+
+      // Indexar no SearchIndex
+      try {
+        await searchService.indexContent('post', post.id, {
+          title: post.title,
+          content: post.content,
+          summary: post.excerpt || undefined,
+          tags: [],
+          categories: post.topic ? [post.topic.id] : [],
+          metadata: { slug: post.slug, tier: post.tier },
+          popularity: 0
+        })
+      } catch (e) {
+        console.error('Falha ao indexar post (admin create):', e)
+      }
     }
 
-    return NextResponse.json(post, { status: 201 })
+    const users = await prisma.user.findMany({
+      where: { NOT: { email: { startsWith: 'deleted_' } } },
+      select: { id: true }
+    })
+
+    for (const post of createdPosts) {
+      for (const user of users) {
+        try {
+          await notificationService.createNotification({
+            userId: user.id,
+            type: 'NEW_POST',
+            title: 'Novo post na comunidade',
+            message: `Um novo post foi publicado: "${post.title}".`,
+            data: {
+              postId: post.id,
+              actionUrl: `/comunidade/post/${post.slug}`,
+              actionLabel: 'Abrir post'
+            },
+            priority: NotificationPriority.LOW,
+            isPush: false
+          })
+        } catch (notificationError) {
+          console.error('Erro ao notificar usuário sobre novo post:', notificationError)
+        }
+      }
+    }
+
+    return NextResponse.json(
+      communityIds.length > 1 ? { posts: createdPosts } : createdPosts[0],
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Erro ao criar post:', error)
     

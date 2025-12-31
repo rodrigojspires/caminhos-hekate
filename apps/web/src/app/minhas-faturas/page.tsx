@@ -13,6 +13,7 @@ type Payment = {
   paymentMethod?: string
   provider?: string
   description?: string
+  lineItems?: Array<{ label: string; amount: number }>
   invoiceUrl?: string
   receiptUrl?: string
   createdAt: string
@@ -48,13 +49,14 @@ export default function MinhasFaturasPage() {
 
   useEffect(() => { load(1) }, [load])
 
-  const canPay = (p: Payment) => p.status === 'PENDING' && !!p.subscription?.id
+  const canPay = (p: Payment) => p.status === 'PENDING' && (!!p.subscription?.id || !!p.lineItems?.length)
 
   const handlePay = useCallback(async (p: Payment) => {
-    if (!p.subscription?.id) return
     setPayingId(p.id)
     try {
-      const res = await fetch(`/api/payments/subscriptions/${p.subscription.id}/invoice`, { method: 'POST' })
+      const res = p.subscription?.id
+        ? await fetch(`/api/payments/subscriptions/${p.subscription.id}/invoice`, { method: 'POST' })
+        : await fetch(`/api/payments/invoice/${p.id}`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Falha ao gerar cobrança')
       const url = data.paymentUrl as string | undefined
@@ -77,6 +79,16 @@ export default function MinhasFaturasPage() {
       <div className="text-sm">
         <div className="font-medium">{p.subscription?.plan?.name || p.description || 'Assinatura'}</div>
         <div className="text-muted-foreground">#{p.id.slice(0,8)} • {new Date(p.createdAt).toLocaleDateString('pt-BR')}</div>
+        {p.lineItems && p.lineItems.length > 0 && (
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {p.lineItems.map((item, index) => (
+              <div key={`${p.id}-item-${index}`} className="flex items-center justify-between">
+                <span>{item.label}</span>
+                <span>R$ {item.amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="md:text-center">R$ {p.amount.toFixed(2)}</div>
       <div className="md:text-center">{p.status}</div>

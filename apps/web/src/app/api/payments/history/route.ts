@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
       description?: string;
       invoiceUrl?: string;
       receiptUrl?: string;
+      lineItems?: Array<{ type?: string; label: string; amount: number }>;
       [key: string]: unknown;
     }
 
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
           receiptUrl: metadata?.receiptUrl || undefined,
           createdAt: p.createdAt.toISOString(),
           paidAt: p.paidAt?.toISOString(),
+          lineItems: Array.isArray(metadata?.lineItems) ? metadata?.lineItems : undefined,
           subscription: p.subscription
             ? { id: p.subscription.id, plan: { name: p.subscription.plan?.name || '' } }
             : undefined,
