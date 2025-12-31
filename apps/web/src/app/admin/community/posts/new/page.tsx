@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PostEditor } from '@/components/dashboard/community/PostEditor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +12,8 @@ type Community = { id: string; name: string }
 
 export default function NewCommunityPostPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const communityIdParam = searchParams.get('communityId')
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [communities, setCommunities] = useState<Community[]>([])
@@ -19,8 +21,11 @@ export default function NewCommunityPostPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        const topicsUrl = communityIdParam
+          ? `/api/admin/community/topics?limit=100&communityId=${communityIdParam}`
+          : '/api/admin/community/topics?limit=100'
         const [topicsRes, communitiesRes] = await Promise.all([
-          fetch('/api/admin/community/topics?limit=100', { cache: 'no-store' }),
+          fetch(topicsUrl, { cache: 'no-store' }),
           fetch('/api/admin/communities?limit=100', { cache: 'no-store' })
         ])
         if (topicsRes.ok) {
@@ -44,7 +49,7 @@ export default function NewCommunityPostPage() {
       }
     }
     load()
-  }, [])
+  }, [communityIdParam])
 
   const handleSave = async (data: any) => {
     try {
@@ -98,6 +103,9 @@ export default function NewCommunityPostPage() {
       <PostEditor
         categories={categories}
         communities={communities}
+        initialData={{
+          communityIds: communityIdParam ? [communityIdParam] : []
+        }}
         onSave={handleSave}
         onCancel={() => router.back()}
       />

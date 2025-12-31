@@ -260,9 +260,16 @@ export default function CommunityManagerPage() {
 
         <TabsContent value="topics" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Tópicos desta comunidade</CardTitle>
-              <CardDescription>Itens cadastrados no catálogo da comunidade.</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>Tópicos desta comunidade</CardTitle>
+                <CardDescription>Itens cadastrados no catálogo da comunidade.</CardDescription>
+              </div>
+              <Button asChild size="sm">
+                <Link href={`/admin/community/topics/new?communityId=${communityId}`}>
+                  Novo tópico
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent>
               {topics.length === 0 ? (
@@ -294,9 +301,16 @@ export default function CommunityManagerPage() {
 
         <TabsContent value="posts" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Posts desta comunidade</CardTitle>
-              <CardDescription>Conteúdos publicados pelos usuários.</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>Posts desta comunidade</CardTitle>
+                <CardDescription>Conteúdos publicados pelos usuários.</CardDescription>
+              </div>
+              <Button asChild size="sm">
+                <Link href={`/admin/community/posts/new?communityId=${communityId}`}>
+                  Novo post
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent>
               {posts.length === 0 ? (

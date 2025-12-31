@@ -104,8 +104,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = CreateTopicSchema.parse(body)
 
-    const communityIds = Array.isArray(data.communityIds) && data.communityIds.length > 0
-      ? data.communityIds
+    const { communityIds: rawCommunityIds, ...topicData } = data
+    const communityIds = Array.isArray(rawCommunityIds) && rawCommunityIds.length > 0
+      ? rawCommunityIds
       : [await resolveCommunityId(data.communityId)]
 
     const communities = await prisma.community.findMany({
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
 
       const topic = await prisma.topic.create({
         data: {
-          ...data,
+          ...topicData,
           slug,
           communityId
         },

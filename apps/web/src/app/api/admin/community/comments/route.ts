@@ -34,15 +34,16 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const getParam = (key: string) => searchParams.get(key) ?? undefined
     const filters = CommentsFiltersSchema.parse({
-      page: searchParams.get('page'),
-      limit: searchParams.get('limit'),
-      search: searchParams.get('search'),
-      status: searchParams.get('status'),
-      postId: searchParams.get('postId'),
-      authorId: searchParams.get('authorId'),
-      sortBy: searchParams.get('sortBy'),
-      sortOrder: searchParams.get('sortOrder')
+      page: getParam('page'),
+      limit: getParam('limit'),
+      search: getParam('search'),
+      status: getParam('status'),
+      postId: getParam('postId'),
+      authorId: getParam('authorId'),
+      sortBy: getParam('sortBy'),
+      sortOrder: getParam('sortOrder')
     })
 
     const skip = (filters.page - 1) * filters.limit

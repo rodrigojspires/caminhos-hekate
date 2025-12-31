@@ -160,8 +160,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const communityIds = Array.isArray(data.communityIds) && data.communityIds.length > 0
-      ? data.communityIds
+    const { communityIds: rawCommunityIds, ...postData } = data
+    if ('communityIds' in postData) {
+      delete (postData as any).communityIds
+    }
+    const communityIds = Array.isArray(rawCommunityIds) && rawCommunityIds.length > 0
+      ? rawCommunityIds
       : [await resolveCommunityId(data.communityId)]
 
     const communities = await prisma.community.findMany({
@@ -192,7 +196,7 @@ export async function POST(request: NextRequest) {
 
       const post = await prisma.post.create({
         data: {
-          ...data,
+          ...postData,
           slug,
           communityId,
           topicId: topic && topic.communityId === communityId ? topic.id : null,

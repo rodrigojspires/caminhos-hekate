@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -27,8 +27,11 @@ const slugify = (value: string) => {
 
 export default function NewTopicPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedCommunityId = searchParams.get('communityId')
   const [communities, setCommunities] = useState<Community[]>([])
   const [saving, setSaving] = useState(false)
+  const [slugTouched, setSlugTouched] = useState(false)
   const [form, setForm] = useState({
     name: '',
     slug: '',
@@ -55,6 +58,15 @@ export default function NewTopicPage() {
     }
     load()
   }, [])
+
+  useEffect(() => {
+    if (preselectedCommunityId) {
+      setForm((prev) => {
+        if (prev.communityIds.includes(preselectedCommunityId)) return prev
+        return { ...prev, communityIds: [preselectedCommunityId] }
+      })
+    }
+  }, [preselectedCommunityId])
 
   const previewName = form.name || 'Nome do Tópico'
   const previewDescription = form.description || 'A descrição do tópico aparecerá aqui...'
@@ -131,7 +143,7 @@ export default function NewTopicPage() {
                   onChange={(event) => setForm((prev) => ({
                     ...prev,
                     name: event.target.value,
-                    slug: prev.slug ? prev.slug : slugify(event.target.value)
+                    slug: slugTouched ? prev.slug : slugify(event.target.value)
                   }))}
                   placeholder="Ex: Tarot, Astrologia, Cristais..."
                   required
@@ -143,7 +155,10 @@ export default function NewTopicPage() {
                 <Input
                   id="slug"
                   value={form.slug}
-                  onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
+                  onChange={(event) => {
+                    setSlugTouched(true)
+                    setForm((prev) => ({ ...prev, slug: event.target.value }))
+                  }}
                   placeholder="tarot"
                 />
               </div>
