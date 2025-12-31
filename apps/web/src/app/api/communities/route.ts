@@ -6,16 +6,19 @@ import { ensureDefaultCommunity } from '@/lib/community'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     const userId = session?.user?.id || null
 
     await ensureDefaultCommunity()
 
+    const { searchParams } = new URL(req.url)
+    const includeInactive = searchParams.get('includeInactive') === '1'
+
     const [communities, user] = await Promise.all([
       prisma.community.findMany({
-        where: { isActive: true },
+        where: includeInactive ? {} : { isActive: true },
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { memberships: true } } }
       }),
@@ -68,6 +71,6 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ communities: data })
   } catch (error) {
     console.error('Erro ao listar comunidades:', error)
-    return NextResponse.json({ communities: [] }, { status: 200 })
+    return NextResponse.json({ error: 'Erro ao listar comunidades' }, { status: 500 })
   }
 }

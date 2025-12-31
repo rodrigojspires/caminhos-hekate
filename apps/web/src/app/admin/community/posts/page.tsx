@@ -88,7 +88,8 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       params.set('limit', limit)
     }
 
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/admin/community/posts?${params.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const response = await fetch(`${baseUrl}/api/admin/community/posts?${params.toString()}`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json'

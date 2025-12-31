@@ -27,13 +27,28 @@ export default function DashboardCommunitiesPage() {
   const [communities, setCommunities] = useState<Community[]>([])
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
+  const [showInactiveNotice, setShowInactiveNotice] = useState(false)
 
   const fetchCommunities = async () => {
     try {
       setLoading(true)
+      setShowInactiveNotice(false)
       const res = await fetch('/api/communities', { cache: 'no-store' })
-      const data = await res.json()
-      setCommunities(Array.isArray(data.communities) ? data.communities : [])
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao carregar comunidades')
+      }
+      const list = Array.isArray(data.communities) ? data.communities : []
+      if (list.length === 0) {
+        const fallbackRes = await fetch('/api/communities?includeInactive=1', { cache: 'no-store' })
+        const fallbackData = await fallbackRes.json().catch(() => ({}))
+        if (fallbackRes.ok && Array.isArray(fallbackData.communities)) {
+          setCommunities(fallbackData.communities)
+          setShowInactiveNotice(true)
+          return
+        }
+      }
+      setCommunities(list)
     } catch (error) {
       toast.error('Erro ao carregar comunidades')
     } finally {
@@ -72,6 +87,7 @@ export default function DashboardCommunitiesPage() {
   const renderCommunityCard = (community: Community) => {
     const isPending = community.membershipStatus === 'pending'
     const priceLabel = community.price != null ? `R$ ${community.price.toFixed(2)}` : null
+    const isInactive = !community.isActive
 
     return (
       <Card key={community.id} className="flex flex-col">
@@ -81,11 +97,14 @@ export default function DashboardCommunitiesPage() {
               <CardTitle className="text-lg">{community.name}</CardTitle>
               <CardDescription>{community.description || 'Sem descrição cadastrada.'}</CardDescription>
             </div>
-            {community.isMember ? (
-              <Badge variant={isPending ? 'secondary' : 'default'}>
-                {isPending ? 'Pendente' : 'Inscrito'}
-              </Badge>
-            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {isInactive ? <Badge variant="secondary">Inativa</Badge> : null}
+              {community.isMember ? (
+                <Badge variant={isPending ? 'secondary' : 'default'}>
+                  {isPending ? 'Pendente' : 'Inscrito'}
+                </Badge>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col justify-between gap-4">
@@ -97,9 +116,9 @@ export default function DashboardCommunitiesPage() {
           {!community.isMember ? (
             <Button
               onClick={() => handleEnroll(community.id)}
-              disabled={actionId === community.id}
+              disabled={actionId === community.id || isInactive}
             >
-              {actionId === community.id ? 'Processando...' : 'Participar'}
+              {isInactive ? 'Indisponível' : actionId === community.id ? 'Processando...' : 'Participar'}
             </Button>
           ) : null}
         </CardContent>
@@ -144,6 +163,13 @@ export default function DashboardCommunitiesPage() {
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Minhas Comunidades</h2>
+        {showInactiveNotice ? (
+          <Card>
+            <CardContent className="py-4 text-sm text-muted-foreground">
+              Nenhuma comunidade ativa encontrada. Exibindo comunidades inativas.
+            </CardContent>
+          </Card>
+        ) : null}
         {myCommunities.length === 0 ? (
           <Card>
             <CardContent className="py-6 text-sm text-muted-foreground">

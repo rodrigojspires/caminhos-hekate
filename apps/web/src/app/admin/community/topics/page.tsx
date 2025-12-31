@@ -52,7 +52,8 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
     if (searchParams.sortBy) urlSearchParams.set('sortBy', searchParams.sortBy as string)
     if (searchParams.sortOrder) urlSearchParams.set('sortOrder', searchParams.sortOrder as string)
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/topics?${urlSearchParams.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const response = await fetch(`${baseUrl}/api/admin/community/topics?${urlSearchParams.toString()}`, {
       cache: 'no-store'
     })
 

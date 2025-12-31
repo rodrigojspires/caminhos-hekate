@@ -248,16 +248,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const users = await prisma.user.findMany({
-      where: { NOT: { email: { startsWith: 'deleted_' } } },
-      select: { id: true }
+    const memberships = await prisma.communityMembership.findMany({
+      where: {
+        communityId: { in: communityIds },
+        status: 'active'
+      },
+      select: { communityId: true, userId: true }
     })
+    const membersByCommunity = new Map<string, string[]>()
+    for (const membership of memberships) {
+      const list = membersByCommunity.get(membership.communityId) || []
+      list.push(membership.userId)
+      membersByCommunity.set(membership.communityId, list)
+    }
 
     for (const post of createdPosts) {
-      for (const user of users) {
+      const memberIds = membersByCommunity.get(post.communityId) || []
+      for (const userId of memberIds) {
         try {
           await notificationService.createNotification({
-            userId: user.id,
+            userId,
             type: 'NEW_POST',
             title: 'Novo post na comunidade',
             message: `Um novo post foi publicado: "${post.title}".`,

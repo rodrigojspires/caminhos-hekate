@@ -146,16 +146,26 @@ export async function POST(request: NextRequest) {
       createdTopics.push(topic)
     }
 
-    const users = await prisma.user.findMany({
-      where: { NOT: { email: { startsWith: 'deleted_' } } },
-      select: { id: true }
+    const memberships = await prisma.communityMembership.findMany({
+      where: {
+        communityId: { in: communityIds },
+        status: 'active'
+      },
+      select: { communityId: true, userId: true }
     })
+    const membersByCommunity = new Map<string, string[]>()
+    for (const membership of memberships) {
+      const list = membersByCommunity.get(membership.communityId) || []
+      list.push(membership.userId)
+      membersByCommunity.set(membership.communityId, list)
+    }
 
     for (const topic of createdTopics) {
-      for (const user of users) {
+      const memberIds = membersByCommunity.get(topic.communityId) || []
+      for (const userId of memberIds) {
         try {
           await notificationService.createNotification({
-            userId: user.id,
+            userId,
             type: 'SYSTEM_ANNOUNCEMENT',
             title: 'Novo tópico disponível',
             message: `O tópico "${topic.name}" foi criado na comunidade.`,

@@ -73,9 +73,9 @@ export default function NewCommunityPostPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Falha ao criar post')
       }
-      const created = await res.json()
+      await res.json().catch(() => ({}))
       toast.success('Post criado com sucesso')
-      router.push(`/admin/community/posts/${created.id}`)
+      router.push('/admin/community/posts')
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao criar post')
     }
