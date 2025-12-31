@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR')) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR')) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -111,9 +111,10 @@ export async function POST(request: NextRequest) {
 
     const communities = await prisma.community.findMany({
       where: { id: { in: communityIds } },
-      select: { id: true, slug: true }
+      select: { id: true, slug: true, name: true }
     })
     const communitySlugMap = new Map(communities.map((c) => [c.id, c.slug]))
+    const communityNameMap = new Map(communities.map((c) => [c.id, c.name]))
 
     const createdTopics = []
     for (const communityId of communityIds) {
@@ -162,17 +163,18 @@ export async function POST(request: NextRequest) {
 
     for (const topic of createdTopics) {
       const memberIds = membersByCommunity.get(topic.communityId) || []
+      const communityName = communityNameMap.get(topic.communityId) || 'comunidade'
       for (const userId of memberIds) {
         try {
           await notificationService.createNotification({
             userId,
             type: 'SYSTEM_ANNOUNCEMENT',
             title: 'Novo tópico disponível',
-            message: `O tópico "${topic.name}" foi criado na comunidade.`,
+            message: `O tópico "${topic.name}" foi criado na comunidade "${communityName}".`,
             data: {
               topicId: topic.id,
-              actionUrl: '/comunidade',
-              actionLabel: 'Ver comunidade'
+              actionUrl: `/dashboard/comunidades/${topic.communityId}`,
+              actionLabel: 'Abrir comunidade'
             },
             priority: NotificationPriority.LOW,
             isPush: false

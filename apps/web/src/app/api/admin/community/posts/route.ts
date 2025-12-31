@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR')) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR')) {
       return NextResponse.json(
         { error: 'Acesso negado' },
         { status: 403 }
@@ -170,9 +170,10 @@ export async function POST(request: NextRequest) {
 
     const communities = await prisma.community.findMany({
       where: { id: { in: communityIds } },
-      select: { id: true, slug: true }
+      select: { id: true, slug: true, name: true }
     })
     const communitySlugMap = new Map(communities.map((c) => [c.id, c.slug]))
+    const communityNameMap = new Map(communities.map((c) => [c.id, c.name]))
 
     const topic = data.topicId
       ? await prisma.topic.findUnique({ where: { id: data.topicId }, select: { id: true, communityId: true } })
@@ -264,17 +265,18 @@ export async function POST(request: NextRequest) {
 
     for (const post of createdPosts) {
       const memberIds = membersByCommunity.get(post.communityId) || []
+      const communityName = communityNameMap.get(post.communityId) || 'comunidade'
       for (const userId of memberIds) {
         try {
           await notificationService.createNotification({
             userId,
             type: 'NEW_POST',
             title: 'Novo post na comunidade',
-            message: `Um novo post foi publicado: "${post.title}".`,
+            message: `Um novo post foi publicado na comunidade "${communityName}": "${post.title}".`,
             data: {
               postId: post.id,
-              actionUrl: `/comunidade/post/${post.slug}`,
-              actionLabel: 'Abrir post'
+              actionUrl: `/dashboard/comunidades/${post.communityId}`,
+              actionLabel: 'Abrir comunidade'
             },
             priority: NotificationPriority.LOW,
             isPush: false

@@ -98,6 +98,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
   const [courseCount, setCourseCount] = useState<number | null>(null)
   const [upcomingRegisteredCount, setUpcomingRegisteredCount] = useState<number | null>(null)
+  const [communityCount, setCommunityCount] = useState<number | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -134,6 +135,22 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
         if (!isMounted || !Array.isArray(events)) return
         const count = events.filter((event) => event.userRegistration && new Date(event.end) > new Date()).length
         setUpcomingRegisteredCount(count)
+      })
+      .catch(() => {})
+    return () => { isMounted = false }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    fetch('/api/communities', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null
+        const data = await res.json()
+        const list = Array.isArray(data?.communities) ? data.communities : []
+        return list.filter((community) => community.isMember).length
+      })
+      .then((count) => {
+        if (isMounted && typeof count === 'number') setCommunityCount(count)
       })
       .catch(() => {})
     return () => { isMounted = false }
@@ -176,6 +193,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
             const isActive = pathname === item.href
             const isCourses = item.href === '/dashboard/courses'
             const isEvents = item.href === '/dashboard/eventos'
+            const isCommunities = item.href === '/dashboard/comunidades'
             return (
               <Link
                 key={item.name}
@@ -197,6 +215,10 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
                 ) : (isEvents && !!upcomingRegisteredCount) ? (
                   <Badge variant="secondary" className="ml-auto">
                     {upcomingRegisteredCount}
+                  </Badge>
+                ) : (isCommunities && !!communityCount) ? (
+                  <Badge variant="secondary" className="ml-auto">
+                    {communityCount}
                   </Badge>
                 ) : null}
               </Link>

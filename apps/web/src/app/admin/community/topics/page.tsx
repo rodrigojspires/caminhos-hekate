@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -52,9 +52,16 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
     if (searchParams.sortBy) urlSearchParams.set('sortBy', searchParams.sortBy as string)
     if (searchParams.sortOrder) urlSearchParams.set('sortOrder', searchParams.sortOrder as string)
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+    const headersList = headers()
+    const host = headersList.get('x-forwarded-host') || headersList.get('host')
+    const proto = headersList.get('x-forwarded-proto') || 'http'
+    const baseUrl = envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
     const response = await fetch(`${baseUrl}/api/admin/community/topics?${urlSearchParams.toString()}`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: {
+        cookie: headersList.get('cookie') ?? ''
+      }
     })
 
     if (!response.ok) {
@@ -77,7 +84,10 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
 
     return {
       topics,
-      pagination: data.pagination
+      pagination: {
+        ...data.pagination,
+        totalPages: data.pagination?.pages ?? data.pagination?.totalPages ?? 0
+      }
     }
   } catch (error) {
     console.error('Erro ao buscar tópicos:', error)
@@ -87,7 +97,7 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
         page: 1,
         limit: 10,
         total: 0,
-        pages: 0
+        totalPages: 0
       }
     }
   }

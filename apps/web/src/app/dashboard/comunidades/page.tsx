@@ -88,6 +88,7 @@ export default function DashboardCommunitiesPage() {
     const isPending = community.membershipStatus === 'pending'
     const priceLabel = community.price != null ? `R$ ${community.price.toFixed(2)}` : null
     const isInactive = !community.isActive
+    const detailUrl = `/dashboard/comunidades/${community.id}`
 
     return (
       <Card key={community.id} className="flex flex-col">
@@ -113,14 +114,23 @@ export default function DashboardCommunitiesPage() {
             {priceLabel && <div>Preço: {priceLabel}</div>}
             <div>{community.membersCount} membros</div>
           </div>
-          {!community.isMember ? (
-            <Button
-              onClick={() => handleEnroll(community.id)}
-              disabled={actionId === community.id || isInactive}
-            >
-              {isInactive ? 'Indisponível' : actionId === community.id ? 'Processando...' : 'Participar'}
+          {community.isMember ? (
+            <Button asChild variant="outline">
+              <Link href={detailUrl}>Acessar</Link>
             </Button>
-          ) : null}
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button asChild variant="outline">
+                <Link href={detailUrl}>Ver detalhes</Link>
+              </Button>
+              <Button
+                onClick={() => handleEnroll(community.id)}
+                disabled={actionId === community.id || isInactive}
+              >
+                {isInactive ? 'Indisponível' : actionId === community.id ? 'Processando...' : 'Participar'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     )

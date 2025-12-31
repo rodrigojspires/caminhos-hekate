@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Eye, MessageCircle, MoreHorizontal, Plus, Search, ThumbsUp, AlertTriangle, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag, Pin, EyeOff } from 'lucide-react'
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Posts - Comunidade',
@@ -88,11 +89,16 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       params.set('limit', limit)
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+    const headersList = headers()
+    const host = headersList.get('x-forwarded-host') || headersList.get('host')
+    const proto = headersList.get('x-forwarded-proto') || 'http'
+    const baseUrl = envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
     const response = await fetch(`${baseUrl}/api/admin/community/posts?${params.toString()}`, {
       cache: 'no-store',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        cookie: headersList.get('cookie') ?? ''
       }
     })
 
