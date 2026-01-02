@@ -28,12 +28,26 @@ interface PlanSelectorProps {
   selectedPlanId?: string;
   loading?: boolean;
   billing?: 'MONTHLY' | 'YEARLY';
+  columns?: 2 | 3 | 4;
+  className?: string;
 }
 
-export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, billing = 'MONTHLY' }: PlanSelectorProps) {
+export function PlanSelector({
+  onPlanSelect,
+  selectedPlanId,
+  loading = false,
+  billing = 'MONTHLY',
+  columns = 3,
+  className = ''
+}: PlanSelectorProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const gridClass = columns === 4
+    ? 'grid gap-6 sm:grid-cols-2 xl:grid-cols-4'
+    : columns === 2
+    ? 'grid gap-6 md:grid-cols-2'
+    : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3'
 
   useEffect(() => {
     fetchPlans();
@@ -85,23 +99,23 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, bi
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className={`${gridClass} ${className}`.trim()}>
         {[1, 2, 3].map((i) => (
           <Card key={i} className="relative">
             <CardHeader>
-              <div className="h-6 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-6 bg-muted rounded animate-pulse" />
+              <div className="h-4 bg-muted rounded animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="h-8 bg-muted rounded animate-pulse mb-4" />
               <div className="space-y-2">
                 {[1, 2, 3].map((j) => (
-                  <div key={j} className="h-4 bg-gray-200 rounded animate-pulse" />
+                  <div key={j} className="h-4 bg-muted rounded animate-pulse" />
                 ))}
               </div>
             </CardContent>
             <CardFooter>
-              <div className="h-10 bg-gray-200 rounded animate-pulse w-full" />
+              <div className="h-10 bg-muted rounded animate-pulse w-full" />
             </CardFooter>
           </Card>
         ))}
@@ -112,7 +126,7 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, bi
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={fetchPlans} variant="outline">
           Tentar novamente
         </Button>
@@ -123,13 +137,13 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, bi
   if (plans.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-600">Nenhum plano de assinatura disponível no momento.</p>
+        <p className="text-muted-foreground">Nenhum plano de assinatura disponível no momento.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className={`${gridClass} ${className}`.trim()}>
       {plans.map((plan) => {
         const isSelected = selectedPlanId === plan.id;
         const displayPrice = getDisplayPrice(plan)
@@ -154,21 +168,21 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, bi
             
             <CardHeader className="text-center">
               <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
-              <CardDescription className="text-sm text-gray-600">
+              <CardDescription className="text-sm text-muted-foreground">
                 {plan.description}
               </CardDescription>
             </CardHeader>
             
             <CardContent className="text-center">
               <div className="mb-6">
-                <div className="text-3xl font-bold text-gray-900">
+                <div className="text-3xl font-bold text-foreground">
                   {formatCurrency(displayPrice)}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   por {billing === 'YEARLY' ? 'ano' : getIntervalText('MONTHLY', 1)}
                 </div>
                 {billing === 'YEARLY' && (
-                  <div className="text-xs text-green-600 mt-1">{formatCurrency(monthlyEq)}/mês</div>
+                  <div className="text-xs text-emerald-600 mt-1">{formatCurrency(monthlyEq)}/mês</div>
                 )}
               </div>
               
@@ -184,7 +198,7 @@ export function PlanSelector({ onPlanSelect, selectedPlanId, loading = false, bi
                 {plan.features?.map((feature, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">{feature}</span>
+                    <span className="text-sm text-foreground/80">{feature}</span>
                   </div>
                 ))}
               </div>

@@ -316,6 +316,11 @@ export default function DashboardCommunitiesPage() {
             {community.name}
           </Link>
           <p className="text-xs text-muted-foreground truncate">{community.accessLabel}</p>
+          {!community.isMember && community.price != null ? (
+            <p className="text-xs text-muted-foreground">
+              R$ {community.price.toFixed(2)} / mês
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{community.membersCount} membros</p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -628,6 +633,7 @@ export default function DashboardCommunitiesPage() {
             billing={upgradeBilling}
             onPlanSelect={(plan) => setUpgradePlan(plan)}
             selectedPlanId={upgradePlan?.id}
+            columns={4}
           />
           {upgradePlan ? (
             <Card>

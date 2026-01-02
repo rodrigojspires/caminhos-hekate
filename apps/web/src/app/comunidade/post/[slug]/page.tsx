@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import NestedComments from '@/components/public/community/NestedComments'
 import FollowToggle from '@/components/public/community/FollowToggle'
+import PostViewTracker from '@/components/public/community/PostViewTracker'
 
 export default async function CommunityPostPage({ params }: { params: { slug: string } }) {
   const session = await getServerSession(authOptions)
@@ -23,6 +24,7 @@ export default async function CommunityPostPage({ params }: { params: { slug: st
 
   return (
     <main className="container mx-auto py-8 max-w-3xl">
+      <PostViewTracker postId={post.id} />
       <div className="text-sm text-muted-foreground mb-2">
         <Link href="/comunidade/feed" className="hover:underline">← Voltar ao feed</Link>
       </div>

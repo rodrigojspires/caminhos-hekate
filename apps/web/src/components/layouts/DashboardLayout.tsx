@@ -6,6 +6,7 @@ import { DashboardSidebar } from './DashboardSidebar'
 import { DashboardHeader } from './DashboardHeader'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
+import CookieConsentBanner from '@/components/privacy/CookieConsentBanner'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -47,6 +48,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </main>
       </div>
+      <CookieConsentBanner />
     </div>
   )
 }

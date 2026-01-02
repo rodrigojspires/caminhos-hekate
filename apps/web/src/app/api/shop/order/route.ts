@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       })
     )
 
-    if (itemDetails.length === 0 && validEvents.length === 0) {
+    if (itemDetails.length === 0 && validEvents.length === 0 && validCommunities.length === 0) {
       return NextResponse.json({ error: 'Carrinho inválido' }, { status: 400 })
     }
 

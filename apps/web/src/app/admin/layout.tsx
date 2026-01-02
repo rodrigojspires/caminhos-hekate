@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/admin/Sidebar"
 import { Header } from "@/components/admin/Header"
 import { useAdminSession } from "@/hooks/use-admin-session"
 import { Toaster } from "sonner"
+import CookieConsentBanner from "@/components/privacy/CookieConsentBanner"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -72,6 +73,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         closeButton
         theme="dark"
       />
+      <CookieConsentBanner />
     </div>
   )
 }

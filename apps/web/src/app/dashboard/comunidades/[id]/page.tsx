@@ -635,6 +635,15 @@ export default function CommunityDetailPage() {
               <Button variant="outline" onClick={cancelMembership} disabled={actionLoading}>
                 Cancelar inscrição
               </Button>
+              {community.accessModels.includes('ONE_TIME') ? (
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/checkout?communityId=${community.id}`)}
+                  disabled={actionLoading}
+                >
+                  Ir para o checkout
+                </Button>
+              ) : null}
             </>
           ) : membershipStatus === 'cancelled' ? (
             <Badge variant="secondary">Cancelamento agendado</Badge>
@@ -648,6 +657,16 @@ export default function CommunityDetailPage() {
               ) : null}
             </>
           )}
+          {!canAccess && community.accessModels.includes('SUBSCRIPTION') ? (
+            <Button variant="outline" onClick={() => setUpgradeOpen(true)} disabled={actionLoading}>
+              Ver planos
+            </Button>
+          ) : null}
+          {!canAccess && community.accessModels.includes('ONE_TIME') ? (
+            <Button variant="outline" onClick={() => router.push(`/checkout?communityId=${community.id}`)} disabled={actionLoading}>
+              Ir para o checkout
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -937,6 +956,7 @@ export default function CommunityDetailPage() {
             billing={upgradeBilling}
             onPlanSelect={(plan) => setUpgradePlan(plan)}
             selectedPlanId={upgradePlan?.id}
+            columns={4}
           />
           {upgradePlan ? (
             <Card>
