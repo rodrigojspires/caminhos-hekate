@@ -455,31 +455,28 @@ export default function CommunityDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => toggleComments(post.id)}
+            >
               <MessageCircle className="h-4 w-4" />
               {post.commentsCount} comentários
-            </span>
+            </button>
             <span className="flex items-center gap-1">
               <TrendingUp className="h-4 w-4" />
               {post.viewCount} visualizações
             </span>
-            <span className="flex items-center gap-1">
-              <Flame className="h-4 w-4" />
-              {post.reactionsCount} reações
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => toggleComments(post.id)}>
-              {isOpen ? 'Ocultar comentários' : 'Comentar'}
-            </Button>
-            <Button
-              variant={reactionState[post.id] ? 'default' : 'outline'}
-              size="sm"
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${
+                reactionState[post.id] ? 'text-foreground' : ''
+              }`}
               onClick={() => togglePostReaction(post.id)}
             >
-              <ThumbsUp className="h-4 w-4 mr-2" />
-              {reactionState[post.id] ? 'Reagido' : 'Reagir'}
-            </Button>
+              <Flame className={`h-4 w-4 ${reactionState[post.id] ? 'text-amber-600' : ''}`} />
+              {post.reactionsCount} reações
+            </button>
           </div>
           {isOpen ? <NestedComments postId={post.id} locked={!!post.locked} /> : null}
         </CardContent>
