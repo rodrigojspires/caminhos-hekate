@@ -25,8 +25,8 @@ import {
 import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Power, PowerOff, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Gerenciar Tópicos - Comunidade',
-  description: 'Gerencie os tópicos da comunidade'
+  title: 'Gerenciar Categorias - Comunidade',
+  description: 'Gerencie as categorias da comunidade'
 }
 
 interface Topic {
@@ -40,7 +40,7 @@ interface Topic {
   updatedAt: string
 }
 
-// Função para buscar tópicos
+// Função para buscar categorias
 async function getTopics(searchParams: { [key: string]: string | string[] | undefined }) {
   try {
     const urlSearchParams = new URLSearchParams()
@@ -65,7 +65,7 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
     })
 
     if (!response.ok) {
-      throw new Error('Erro ao buscar tópicos')
+      throw new Error('Erro ao buscar categorias')
     }
 
     const data = await response.json()
@@ -90,7 +90,7 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
       }
     }
   } catch (error) {
-    console.error('Erro ao buscar tópicos:', error)
+    console.error('Erro ao buscar categorias:', error)
     return {
       topics: [],
       pagination: {
@@ -125,15 +125,15 @@ export default async function TopicsPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tópicos</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Categorias</h1>
           <p className="text-muted-foreground">
-            Gerencie os tópicos da comunidade
+            Gerencie as categorias da comunidade
           </p>
         </div>
         <Button asChild>
           <Link href="/admin/community/topics/new">
             <Plus className="mr-2 h-4 w-4" />
-            Novo Tópico
+            Nova Categoria
           </Link>
         </Button>
       </div>
@@ -141,12 +141,12 @@ export default async function TopicsPage({
       {/* Filtros */}
       <TopicsFilters searchParams={searchParams} total={pagination.total} />
 
-      {/* Tabela de Tópicos */}
+      {/* Tabela de Categorias */}
       <Card>
         <CardHeader>
-          <CardTitle>Tópicos ({topics.length})</CardTitle>
+          <CardTitle>Categorias ({topics.length})</CardTitle>
           <CardDescription>
-            Lista de todos os tópicos da comunidade
+            Lista de todas as categorias da comunidade
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -280,7 +280,7 @@ function TopicsFilters({
       <CardHeader>
         <CardTitle>Filtros</CardTitle>
         <CardDescription>
-          {total} tópico{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+          {total} categoria{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}
         </CardDescription>
       </CardHeader>
       <CardContent>

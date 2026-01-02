@@ -227,10 +227,10 @@ function PostsFilters({ searchParams, totalPosts }: {
           </Select>
           <Select name="topicId" defaultValue={searchParams.topicId || 'all'}>
             <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Tópico" />
+              <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os tópicos</SelectItem>
+              <SelectItem value="all">Todas as categorias</SelectItem>
               <SelectItem value="1">Tarot</SelectItem>
               <SelectItem value="2">Astrologia</SelectItem>
               <SelectItem value="3">Cristais</SelectItem>
@@ -415,7 +415,7 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
               <TableRow>
                 <TableHead>Post</TableHead>
                 <TableHead>Autor</TableHead>
-                <TableHead>Tópico</TableHead>
+                <TableHead>Categoria</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Engajamento</TableHead>
                 <TableHead>Criado em</TableHead>

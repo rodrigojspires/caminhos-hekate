@@ -89,7 +89,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
     try {
       await onSubmit(formData)
     } catch (error) {
-      console.error('Erro ao salvar tópico:', error)
+      console.error('Erro ao salvar categoria:', error)
     }
   }
 
@@ -113,9 +113,9 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Informações do Tópico</CardTitle>
+                <CardTitle>Informações da Categoria</CardTitle>
                 <CardDescription>
-                  Preencha as informações básicas do tópico
+                  Preencha as informações básicas da categoria
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -139,7 +139,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                     id="description"
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
-                    placeholder="Descreva sobre o que é este tópico e que tipo de conteúdo será compartilhado..."
+                    placeholder="Descreva sobre o que é esta categoria e que tipo de conteúdo será compartilhado..."
                     rows={4}
                     className={errors.description ? 'border-red-500' : ''}
                   />
@@ -152,7 +152,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Cor do Tópico *</Label>
+                  <Label>Cor da Categoria *</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Input
@@ -199,9 +199,9 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="isActive">Status do Tópico</Label>
+                    <Label htmlFor="isActive">Status da Categoria</Label>
                     <p className="text-sm text-muted-foreground">
-                      Tópicos ativos podem receber novos posts
+                      Categorias ativas podem receber novos posts
                     </p>
                   </div>
                   <Switch
@@ -223,7 +223,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                   Preview
                 </CardTitle>
                 <CardDescription>
-                  Veja como o tópico aparecerá para os usuários
+                  Veja como a categoria aparecerá para os usuários
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -234,7 +234,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                       style={{ backgroundColor: formData.color }}
                     />
                     <h3 className="font-semibold">
-                      {formData.name || 'Nome do Tópico'}
+                      {formData.name || 'Nome da Categoria'}
                     </h3>
                     <Badge 
                       variant="outline" 
@@ -244,7 +244,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {formData.description || 'Descrição do tópico aparecerá aqui...'}
+                    {formData.description || 'Descrição da categoria aparecerá aqui...'}
                   </p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>0 posts</span>
@@ -261,7 +261,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
                       style={{ backgroundColor: formData.color }}
                     />
                     <span className="text-sm">
-                      {formData.name || 'Nome do Tópico'}
+                      {formData.name || 'Nome da Categoria'}
                     </span>
                   </div>
                 </div>
@@ -274,9 +274,9 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>• Escolha um nome claro e descritivo</p>
-                <p>• A descrição ajuda os usuários a entender o propósito do tópico</p>
+                <p>• A descrição ajuda os usuários a entender o propósito da categoria</p>
                 <p>• Use cores que façam sentido com o tema (ex: verde para natureza)</p>
-                <p>• Tópicos inativos não aparecem para novos posts</p>
+                <p>• Categorias inativas não aparecem para novos posts</p>
               </CardContent>
             </Card>
           </div>
@@ -295,7 +295,7 @@ export function TopicForm({ topic, onSubmit, onCancel, isLoading = false }: Topi
           </Button>
           <Button type="submit" disabled={isLoading}>
             <Save className="mr-2 h-4 w-4" />
-            {isLoading ? 'Salvando...' : topic ? 'Atualizar Tópico' : 'Criar Tópico'}
+            {isLoading ? 'Salvando...' : topic ? 'Atualizar Categoria' : 'Criar Categoria'}
           </Button>
         </div>
       </form>

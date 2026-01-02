@@ -13,7 +13,15 @@ export async function GET(req: NextRequest) {
     const topics = await prisma.topic.findMany({
       where: communityFilter,
       orderBy: { order: 'asc' },
-      select: { id: true, name: true, slug: true, color: true }
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        color: true,
+        createdAt: true,
+        communityId: true,
+        community: { select: { id: true, name: true } }
+      }
     })
     return NextResponse.json({ topics })
   } catch (error) {

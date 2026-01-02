@@ -229,7 +229,7 @@ export default function CommentsPage() {
             </div>
             <Select value={filters.topic} onValueChange={(value) => setFilters(prev => ({ ...prev, topic: value }))}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tópico" />
+                <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>

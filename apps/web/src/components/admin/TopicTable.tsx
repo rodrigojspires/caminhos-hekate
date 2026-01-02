@@ -111,7 +111,7 @@ export function TopicTable({ topics, onDelete, onToggleStatus }: TopicTableProps
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Tópico</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Cor</TableHead>
               <TableHead>Status</TableHead>
@@ -126,7 +126,7 @@ export function TopicTable({ topics, onDelete, onToggleStatus }: TopicTableProps
             {topics.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                  Nenhum tópico encontrado
+                  Nenhuma categoria encontrada
                 </TableCell>
               </TableRow>
             ) : (
@@ -225,7 +225,7 @@ export function TopicTable({ topics, onDelete, onToggleStatus }: TopicTableProps
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o tópico &ldquo;{topicToDelete?.name}&rdquo;?
+              Tem certeza que deseja excluir a categoria &ldquo;{topicToDelete?.name}&rdquo;?
               Esta ação não pode ser desfeita e todos os posts relacionados também serão excluídos.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -224,7 +224,7 @@ export default function CommunityManagerPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Tópicos</CardDescription>
+            <CardDescription>Categorias</CardDescription>
             <CardTitle>{community._count?.topics ?? 0}</CardTitle>
           </CardHeader>
         </Card>
@@ -246,7 +246,7 @@ export default function CommunityManagerPage() {
         <TabsList>
           <TabsTrigger value="topics">
             <Tag className="h-4 w-4 mr-2" />
-            Tópicos
+            Categorias
           </TabsTrigger>
           <TabsTrigger value="posts">
             <MessageSquare className="h-4 w-4 mr-2" />
@@ -262,18 +262,18 @@ export default function CommunityManagerPage() {
           <Card>
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle>Tópicos desta comunidade</CardTitle>
+                <CardTitle>Categorias desta comunidade</CardTitle>
                 <CardDescription>Itens cadastrados no catálogo da comunidade.</CardDescription>
               </div>
               <Button asChild size="sm">
                 <Link href={`/admin/community/topics/new?communityId=${communityId}`}>
-                  Novo tópico
+                  Nova categoria
                 </Link>
               </Button>
             </CardHeader>
             <CardContent>
               {topics.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Nenhum tópico encontrado.</div>
+                <div className="text-sm text-muted-foreground">Nenhuma categoria encontrada.</div>
               ) : (
                 <Table>
                   <TableHeader>

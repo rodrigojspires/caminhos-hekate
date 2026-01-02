@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
         include: {
           author: { select: { id: true, name: true, image: true } },
           topic: { select: { id: true, name: true, slug: true, color: true } },
+          community: { select: { id: true, name: true } },
           _count: { select: { comments: true, reactions: true } }
         }
       }),
@@ -83,11 +84,13 @@ export async function GET(req: NextRequest) {
         excerpt: p.excerpt,
         author: { id: p.author.id, name: p.author.name, image: p.author.image || null },
         topic: p.topic ? { id: p.topic.id, name: p.topic.name, slug: p.topic.slug, color: p.topic.color } : null,
+        community: p.community ? { id: p.community.id, name: p.community.name } : null,
         createdAt: p.createdAt,
         commentsCount: p._count.comments,
         reactionsCount: p._count.reactions,
         viewCount: p.viewCount,
         isPinned: p.isPinned,
+        type: p.type,
         tier: p.tier,
         locked
       }
@@ -108,10 +111,26 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     const userId = session.user.id
+    const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionTier: true } })
+    const userTier = dbUser?.subscriptionTier || 'FREE'
+    const order: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
     const body = await req.json()
-    const { title, content, excerpt, topicId, tier, communityId } = body as { title: string; content: string; excerpt?: string; topicId?: string; tier?: string; communityId?: string }
+    const { title, content, excerpt, topicId, tier, communityId, type } = body as {
+      title: string
+      content: string
+      excerpt?: string
+      topicId?: string
+      tier?: string
+      communityId?: string
+      type?: 'CONTENT' | 'THREAD'
+    }
     if (!title || !content) return NextResponse.json({ error: 'Título e conteúdo são obrigatórios' }, { status: 400 })
+    const postType = type === 'THREAD' ? 'THREAD' : 'CONTENT'
+    const role = session.user.role as string | undefined
+    if (postType === 'CONTENT' && role !== 'ADMIN' && role !== 'EDITOR') {
+      return NextResponse.json({ error: 'Sem permissão para criar conteúdos' }, { status: 403 })
+    }
 
     let resolvedCommunityId = await resolveCommunityId(communityId || null)
 
@@ -120,6 +139,29 @@ export async function POST(req: NextRequest) {
       if (!topic) return NextResponse.json({ error: 'Tópico inválido' }, { status: 400 })
       if (topic.communityId) {
         resolvedCommunityId = topic.communityId
+      }
+    }
+
+    if (resolvedCommunityId) {
+      const [community, membership] = await Promise.all([
+        prisma.community.findUnique({
+          where: { id: resolvedCommunityId },
+          select: { accessModels: true, tier: true }
+        }),
+        prisma.communityMembership.findUnique({
+          where: { communityId_userId: { communityId: resolvedCommunityId, userId } },
+          select: { status: true }
+        })
+      ])
+      if (community) {
+        const accessModels = (community.accessModels || []) as string[]
+        const isFreeCommunity = accessModels.includes('FREE')
+        const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
+        const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community.tier || 'FREE']
+        const hasCommunityAccess = isFreeCommunity || allowedByTier || membership?.status === 'active'
+        if (!hasCommunityAccess) {
+          return NextResponse.json({ error: 'Acesso negado à comunidade' }, { status: 403 })
+        }
       }
     }
 
@@ -140,6 +182,7 @@ export async function POST(req: NextRequest) {
         topicId: topicId || null,
         communityId: resolvedCommunityId,
         status: 'PUBLISHED',
+        type: postType as any,
         tier: (tier as any) || 'FREE',
         publishedAt: new Date()
       },

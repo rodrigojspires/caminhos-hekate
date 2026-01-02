@@ -9,8 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Flame, Hash, MessageCircle, TrendingUp, Users } from 'lucide-react'
+import { Flame, MessageCircle, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
 
 type Community = {
@@ -27,6 +29,7 @@ type Community = {
   membershipStatus: string | null
   allowedByTier: boolean
   accessLabel: string
+  unreadChatCount?: number
 }
 
 type Topic = {
@@ -34,6 +37,9 @@ type Topic = {
   name: string
   slug: string
   color?: string | null
+  createdAt: string
+  communityId?: string | null
+  community?: { id: string; name: string } | null
 }
 
 type Post = {
@@ -49,8 +55,10 @@ type Post = {
   isPinned: boolean
   locked: boolean
   tier: string
+  type: 'CONTENT' | 'THREAD'
   author: { id: string; name: string; image?: string | null }
   topic?: { id: string; name: string; slug: string; color?: string | null } | null
+  community?: { id: string; name: string } | null
 }
 
 type LeaderboardEntry = {
@@ -69,10 +77,15 @@ export default function DashboardCommunitiesPage() {
   const [feedLoading, setFeedLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
   const [showInactiveNotice, setShowInactiveNotice] = useState(false)
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
-  const [postSort, setPostSort] = useState<'recent' | 'popular'>('recent')
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [leaderboardCommunityId, setLeaderboardCommunityId] = useState<string>('all')
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('all')
+  const [threadTitle, setThreadTitle] = useState('')
+  const [threadContent, setThreadContent] = useState('')
+  const [threadTopicId, setThreadTopicId] = useState<string>('none')
+  const [threadCommunityId, setThreadCommunityId] = useState<string>('none')
+  const [threadSubmitting, setThreadSubmitting] = useState(false)
+  const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
 
   const fetchCommunities = async () => {
     try {
@@ -106,19 +119,21 @@ export default function DashboardCommunitiesPage() {
       const res = await fetch('/api/community/topics', { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data?.error || 'Erro ao carregar tópicos')
+        throw new Error(data?.error || 'Erro ao carregar categorias')
       }
       setTopics(Array.isArray(data.topics) ? data.topics : [])
     } catch (error) {
-      toast.error('Erro ao carregar tópicos')
+      toast.error('Erro ao carregar categorias')
     }
   }
 
   const fetchPosts = async () => {
     try {
       setFeedLoading(true)
-      const params = new URLSearchParams({ sort: postSort, limit: '12' })
-      if (selectedTopicId) params.set('topicId', selectedTopicId)
+      const params = new URLSearchParams({ sort: 'recent', limit: '12' })
+      if (selectedTopicId !== 'all') {
+        params.set('topicId', selectedTopicId)
+      }
       const res = await fetch(`/api/community/posts?${params.toString()}`, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -156,7 +171,7 @@ export default function DashboardCommunitiesPage() {
 
   useEffect(() => {
     fetchPosts()
-  }, [selectedTopicId, postSort])
+  }, [selectedTopicId])
 
   useEffect(() => {
     fetchLeaderboard()
@@ -198,6 +213,54 @@ export default function DashboardCommunitiesPage() {
     })
   }
 
+  const togglePostReaction = async (postId: string) => {
+    try {
+      const res = await fetch(`/api/community/posts/${postId}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'LIKE' })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao reagir')
+      }
+      setReactionState((prev) => ({ ...prev, [postId]: !!data.liked }))
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId) return post
+          const delta = data.liked ? 1 : -1
+          const nextCount = Math.max(0, post.reactionsCount + delta)
+          return { ...post, reactionsCount: nextCount }
+        })
+      )
+    } catch (error) {
+      toast.error('Erro ao reagir ao post')
+    }
+  }
+
+  const memberCommunityIds = useMemo(() => {
+    return new Set(communities.filter((community) => community.isMember).map((community) => community.id))
+  }, [communities])
+
+  const visiblePosts = useMemo(() => {
+    return posts.filter((post) => post.community?.id && memberCommunityIds.has(post.community.id))
+  }, [posts, memberCommunityIds])
+
+  const visibleTopics = useMemo(() => {
+    return topics.filter((topic) => topic.community?.id && memberCommunityIds.has(topic.community.id))
+  }, [topics, memberCommunityIds])
+
+  const threadTopicOptions = useMemo(() => {
+    if (threadCommunityId !== 'none') {
+      return visibleTopics.filter((topic) => topic.community?.id === threadCommunityId)
+    }
+    return visibleTopics
+  }, [visibleTopics, threadCommunityId])
+
+  const timelineItems = useMemo(() => {
+    return [...visiblePosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [visiblePosts])
+
   const renderCommunityRow = (community: Community) => {
     const isPending = community.membershipStatus === 'pending'
     const isInactive = !community.isActive
@@ -213,6 +276,11 @@ export default function DashboardCommunitiesPage() {
           <p className="text-xs text-muted-foreground">{community.membersCount} membros</p>
         </div>
         <div className="flex flex-col items-end gap-2">
+          {community.unreadChatCount && community.unreadChatCount > 0 ? (
+            <Badge variant="secondary" className="text-xs">
+              {community.unreadChatCount} novas
+            </Badge>
+          ) : null}
           {community.isMember ? (
             <Badge variant={isPending ? 'secondary' : 'default'} className="text-xs">
               {isPending ? 'Pendente' : 'Inscrito'}
@@ -245,9 +313,13 @@ export default function DashboardCommunitiesPage() {
       minute: '2-digit'
     })
     const contentPreview = post.content || post.excerpt || ''
+    const isThread = post.type === 'THREAD'
 
     return (
-      <Card key={post.id} className="overflow-hidden">
+      <Card
+        key={post.id}
+        className={`overflow-hidden border-l-4 ${isThread ? 'border-l-blue-500' : 'border-l-amber-500'}`}
+      >
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -262,10 +334,12 @@ export default function DashboardCommunitiesPage() {
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
                   {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
+                  <Badge variant="outline">{post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {dateLabel}
                   {post.topic?.name ? ` • ${post.topic.name}` : null}
+                  {post.community?.name ? ` • ${post.community.name}` : null}
                 </div>
               </div>
             </div>
@@ -295,9 +369,19 @@ export default function DashboardCommunitiesPage() {
               {post.reactionsCount} reações
             </span>
           </div>
-          <Button variant="outline" size="sm" onClick={() => toggleComments(post.id)}>
-            {isOpen ? 'Ocultar comentários' : 'Comentar'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => toggleComments(post.id)}>
+              {isOpen ? 'Ocultar comentários' : 'Comentar'}
+            </Button>
+            <Button
+              variant={reactionState[post.id] ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => togglePostReaction(post.id)}
+            >
+              <ThumbsUp className="h-4 w-4 mr-2" />
+              {reactionState[post.id] ? 'Reagido' : 'Reagir'}
+            </Button>
+          </div>
           {isOpen ? <NestedComments postId={post.id} locked={post.locked} /> : null}
         </CardContent>
       </Card>
@@ -334,61 +418,114 @@ export default function DashboardCommunitiesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Comunidades</h1>
-        <p className="text-muted-foreground">
-          Um feed no estilo redes sociais para acompanhar posts, tópicos e contribuições recentes.
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5" />
-                Tópicos em destaque
-              </CardTitle>
-              <CardDescription>Selecione um tópico para filtrar os posts.</CardDescription>
+              <CardTitle>Iniciar discussão</CardTitle>
+              <CardDescription>Crie uma nova thread para conversar com a comunidade.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+            <CardContent className="space-y-3">
+              <Input
+                placeholder="Título da discussão"
+                value={threadTitle}
+                onChange={(event) => setThreadTitle(event.target.value)}
+              />
+              <Textarea
+                placeholder="Compartilhe sua dúvida ou reflexão..."
+                value={threadContent}
+                onChange={(event) => setThreadContent(event.target.value)}
+                rows={4}
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Select value={threadCommunityId} onValueChange={setThreadCommunityId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Comunidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Selecione a comunidade</SelectItem>
+                    {myCommunities.map((community) => (
+                      <SelectItem key={community.id} value={community.id}>
+                        {community.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={threadTopicId} onValueChange={setThreadTopicId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Categoria (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem categoria</SelectItem>
+                    {threadTopicOptions.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
-                variant={!selectedTopicId ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedTopicId(null)}
+                disabled={
+                  threadSubmitting ||
+                  !threadTitle.trim() ||
+                  !threadContent.trim() ||
+                  threadCommunityId === 'none'
+                }
+                onClick={async () => {
+                  try {
+                    setThreadSubmitting(true)
+                    const res = await fetch('/api/community/posts', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        title: threadTitle.trim(),
+                        content: threadContent.trim(),
+                        communityId: threadCommunityId,
+                        topicId: threadTopicId !== 'none' ? threadTopicId : undefined,
+                        type: 'THREAD'
+                      })
+                    })
+                    const data = await res.json().catch(() => ({}))
+                    if (!res.ok) {
+                      throw new Error(data?.error || 'Erro ao criar discussão')
+                    }
+                    setThreadTitle('')
+                    setThreadContent('')
+                    setThreadTopicId('none')
+                    setThreadCommunityId('none')
+                    await fetchPosts()
+                    toast.success('Discussão criada')
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Erro ao criar discussão'
+                    toast.error(message)
+                  } finally {
+                    setThreadSubmitting(false)
+                  }
+                }}
               >
-                Todos
+                {threadSubmitting ? 'Publicando...' : 'Publicar discussão'}
               </Button>
-              {topics.map((topic) => (
-                <Button
-                  key={topic.id}
-                  variant={selectedTopicId === topic.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTopicId(topic.id)}
-                  style={topic.color ? { borderColor: topic.color, color: topic.color } : undefined}
-                >
-                  {topic.name}
-                </Button>
-              ))}
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Atividade recente</h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={postSort === 'recent' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPostSort('recent')}
-              >
-                Recentes
-              </Button>
-              <Button
-                variant={postSort === 'popular' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPostSort('popular')}
-              >
-                Populares
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Linha do tempo</h2>
+            <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {visibleTopics.map((topic) => (
+                  <SelectItem key={topic.id} value={topic.id}>
+                    {topic.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {feedLoading ? (
@@ -407,15 +544,15 @@ export default function DashboardCommunitiesPage() {
                 </Card>
               ))}
             </div>
-          ) : posts.length === 0 ? (
+          ) : timelineItems.length === 0 ? (
             <Card>
               <CardContent className="py-6 text-sm text-muted-foreground">
-                Nenhum post encontrado para este filtro.
+                Nenhum conteúdo das suas comunidades.
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {posts.map(renderPostCard)}
+              {timelineItems.map(renderPostCard)}
             </div>
           )}
         </section>
@@ -475,7 +612,7 @@ export default function DashboardCommunitiesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Geral</SelectItem>
-                  {communities.map((community) => (
+                  {myCommunities.map((community) => (
                     <SelectItem key={community.id} value={community.id}>
                       {community.name}
                     </SelectItem>

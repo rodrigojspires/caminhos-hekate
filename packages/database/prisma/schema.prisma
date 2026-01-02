@@ -36,6 +36,7 @@ model User {
   certificateTemplatesUpdated   CertificateTemplate[] @relation("CertificateTemplateUpdater")
   comments                      Comment[]
   topicComments                 TopicComment[]
+  communityMessages             CommunityMessage[]
   communityMemberships          CommunityMembership[]
   downloads                     Download[]
   enrollments                   Enrollment[]
@@ -453,6 +454,7 @@ model Community {
   groups       Group[]
   memberships  CommunityMembership[]
   files        CommunityFile[]
+  communityMessages CommunityMessage[]
 
   @@index([isActive])
   @@index([tier])
@@ -466,6 +468,7 @@ model CommunityMembership {
   status      String              @default("active")
   role        CommunityMemberRole @default(MEMBER)
   joinedAt    DateTime            @default(now())
+  lastChatReadAt DateTime?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
@@ -492,6 +495,22 @@ model CommunityFile {
 
   @@index([communityId])
   @@map("community_files")
+}
+
+model CommunityMessage {
+  id          String   @id @default(cuid())
+  communityId String
+  authorId    String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("community_messages")
 }
 
 model Topic {
@@ -523,6 +542,7 @@ model Post {
   topicId       String?
   communityId   String?
   status        PostStatus       @default(DRAFT)
+  type          PostType         @default(CONTENT)
   tier          SubscriptionTier @default(FREE)
   isPinned      Boolean          @default(false)
   viewCount     Int              @default(0)
@@ -989,6 +1009,11 @@ enum PostStatus {
   PUBLISHED
   ARCHIVED
   MODERATED
+}
+
+enum PostType {
+  CONTENT
+  THREAD
 }
 
 enum ReportStatus {

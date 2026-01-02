@@ -160,7 +160,7 @@ export function PostTable({ posts, onDelete, onToggleStatus, onTogglePin }: Post
             <TableRow>
               <TableHead>Post</TableHead>
               <TableHead>Autor</TableHead>
-              <TableHead>Tópico</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Engajamento</TableHead>
               <TableHead>Relatórios</TableHead>

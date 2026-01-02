@@ -68,8 +68,8 @@ export default function NewTopicPage() {
     }
   }, [preselectedCommunityId])
 
-  const previewName = form.name || 'Nome do Tópico'
-  const previewDescription = form.description || 'A descrição do tópico aparecerá aqui...'
+  const previewName = form.name || 'Nome da Categoria'
+  const previewDescription = form.description || 'A descrição da categoria aparecerá aqui...'
 
   const accessLabel = useMemo(() => {
     if (form.communityIds.length === 0) return 'Selecione ao menos uma comunidade'
@@ -101,12 +101,12 @@ export default function NewTopicPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data?.error || 'Falha ao criar tópico')
+        throw new Error(data?.error || 'Falha ao criar categoria')
       }
-      toast.success('Tópico criado com sucesso')
+      toast.success('Categoria criada com sucesso')
       router.push('/admin/community/topics')
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao criar tópico'
+      const message = error instanceof Error ? error.message : 'Erro ao criar categoria'
       toast.error(message)
     } finally {
       setSaving(false)
@@ -122,8 +122,8 @@ export default function NewTopicPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Novo Tópico</h1>
-          <p className="text-muted-foreground">Criar um novo tópico para a comunidade</p>
+          <h1 className="text-3xl font-bold tracking-tight">Nova Categoria</h1>
+          <p className="text-muted-foreground">Criar uma nova categoria para a comunidade</p>
         </div>
       </div>
 
@@ -131,12 +131,12 @@ export default function NewTopicPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Informações do Tópico</CardTitle>
-              <CardDescription>Preencha as informações básicas do tópico</CardDescription>
+              <CardTitle>Informações da Categoria</CardTitle>
+              <CardDescription>Preencha as informações básicas da categoria</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome do Tópico *</Label>
+                <Label htmlFor="name">Nome da Categoria *</Label>
                 <Input
                   id="name"
                   value={form.name}
@@ -169,14 +169,14 @@ export default function NewTopicPage() {
                   id="description"
                   value={form.description}
                   onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder="Descreva sobre o que é este tópico..."
+                  placeholder="Descreva sobre o que é esta categoria..."
                   rows={4}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="color">Cor do Tópico *</Label>
+                <Label htmlFor="color">Cor da Categoria *</Label>
                 <div className="flex items-center gap-4">
                   <Input
                     id="color"
@@ -226,7 +226,7 @@ export default function NewTopicPage() {
                   checked={form.isActive}
                   onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isActive: checked }))}
                 />
-                <Label htmlFor="isActive">Tópico ativo</Label>
+                <Label htmlFor="isActive">Categoria ativa</Label>
               </div>
             </CardContent>
           </Card>
@@ -236,7 +236,7 @@ export default function NewTopicPage() {
           <Card>
             <CardHeader>
               <CardTitle>Preview</CardTitle>
-              <CardDescription>Como o tópico aparecerá para os usuários</CardDescription>
+              <CardDescription>Como a categoria aparecerá para os usuários</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -256,7 +256,7 @@ export default function NewTopicPage() {
             <CardContent className="space-y-3">
               <Button className="w-full" onClick={handleSubmit} disabled={saving}>
                 <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Salvando...' : 'Criar Tópico'}
+                {saving ? 'Salvando...' : 'Criar Categoria'}
               </Button>
               <Button variant="outline" className="w-full" asChild>
                 <Link href="/admin/community/topics">Cancelar</Link>

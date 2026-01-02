@@ -126,7 +126,7 @@ export default function CommunityPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Comunidade</h1>
             <p className="text-muted-foreground">
-              Gerencie tópicos, posts, comentários e relatórios da comunidade
+              Gerencie categorias, posts, comentários e relatórios da comunidade
             </p>
           </div>
           <Button onClick={fetchStats} variant="outline" size="sm">
@@ -167,8 +167,8 @@ export default function CommunityPage() {
       color: 'bg-indigo-500'
     },
     {
-      title: 'Gerenciar Tópicos',
-      description: 'Criar, editar e organizar tópicos da comunidade',
+      title: 'Gerenciar Categorias',
+      description: 'Criar, editar e organizar categorias da comunidade',
       href: '/admin/community/topics',
       icon: Hash,
       color: 'bg-blue-500'
@@ -219,7 +219,7 @@ export default function CommunityPage() {
       bgColor: 'bg-purple-50'
     },
     {
-      title: 'Total de Tópicos',
+      title: 'Total de Categorias',
       value: stats.totalTopics,
       icon: Hash,
       color: 'text-orange-600',
@@ -248,7 +248,7 @@ export default function CommunityPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Comunidade</h1>
           <p className="text-muted-foreground">
-            Gerencie tópicos, posts, comentários e relatórios da comunidade
+            Gerencie categorias, posts, comentários e relatórios da comunidade
           </p>
         </div>
       </div>
@@ -384,15 +384,15 @@ export default function CommunityPage() {
         </CardContent>
       </Card>
 
-      {/* Tópicos Mais Ativos */}
+      {/* Categorias Mais Ativas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Hash className="h-5 w-5" />
-            Tópicos Mais Ativos
+            Categorias Mais Ativas
           </CardTitle>
           <CardDescription>
-            Tópicos com maior volume de posts e participação
+            Categorias com maior volume de posts e participação
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -413,7 +413,7 @@ export default function CommunityPage() {
               ))
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum tópico ativo encontrado
+                Nenhuma categoria ativa encontrada
               </p>
             )}
           </div>

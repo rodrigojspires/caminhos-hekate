@@ -57,6 +57,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       reactionsCount: post._count.reactions,
       viewCount: post.viewCount,
       isPinned: post.isPinned,
+      type: post.type,
       tier: post.tier,
       locked
     })

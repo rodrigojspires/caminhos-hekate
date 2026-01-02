@@ -30,12 +30,31 @@ export async function GET(req: NextRequest) {
     const memberships = userId
       ? await prisma.communityMembership.findMany({
           where: { userId, communityId: { in: communities.map((c) => c.id) } },
-          select: { communityId: true, status: true }
+          select: { communityId: true, status: true, lastChatReadAt: true }
         })
       : []
 
     const membershipMap = new Map(memberships.map((membership) => [membership.communityId, membership]))
     const userTier = user?.subscriptionTier || 'FREE'
+
+    const unreadCounts = userId
+      ? await Promise.all(
+          communities.map(async (community) => {
+            const membership = membershipMap.get(community.id)
+            if (!membership || membership.status !== 'active') {
+              return [community.id, 0] as const
+            }
+            const count = await prisma.communityMessage.count({
+              where: {
+                communityId: community.id,
+                createdAt: membership.lastChatReadAt ? { gt: membership.lastChatReadAt } : undefined
+              }
+            })
+            return [community.id, count] as const
+          })
+        )
+      : []
+    const unreadMap = new Map(unreadCounts)
 
     const data = communities.map((community) => {
       const membership = membershipMap.get(community.id)
@@ -63,6 +82,7 @@ export async function GET(req: NextRequest) {
         membersCount: community._count.memberships,
         isMember: !!membership,
         membershipStatus: membership?.status || null,
+        unreadChatCount: unreadMap.get(community.id) || 0,
         allowedByTier,
         accessLabel: accessLabels.join(' • ')
       }

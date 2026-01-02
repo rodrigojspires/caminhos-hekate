@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { ArrowLeft, FileText, MessageSquare, Tag, Users } from 'lucide-react'
-import TopicComments from '@/components/public/community/TopicComments'
+import { Textarea } from '@/components/ui/textarea'
 
 type Community = {
   id: string
@@ -57,6 +57,13 @@ type Member = {
   image?: string | null
 }
 
+type ChatMessage = {
+  id: string
+  content: string
+  createdAt: string
+  author: { id: string; name?: string | null; image?: string | null }
+}
+
 export default function CommunityDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -73,7 +80,11 @@ export default function CommunityDetailPage() {
   const [isMember, setIsMember] = useState(false)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const [openTopicComments, setOpenTopicComments] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState('topics')
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatText, setChatText] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
 
   const accessLabel = useMemo(() => {
     if (!community) return ''
@@ -113,6 +124,82 @@ export default function CommunityDetailPage() {
     if (communityId) loadData()
   }, [communityId])
 
+  useEffect(() => {
+    if (activeTab === 'chat' && canAccess) {
+      loadChat()
+    }
+  }, [activeTab, canAccess])
+
+  useEffect(() => {
+    if (activeTab !== 'chat' || !canAccess || !communityId) {
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+      return
+    }
+
+    let canceled = false
+
+    const connect = async () => {
+      try {
+        const res = await fetch('/api/communities/ws/token', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Erro ao autenticar chat')
+        }
+
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+        const host = window.location.host
+        const socket = new WebSocket(`${protocol}://${host}/communities-ws`)
+        wsRef.current = socket
+
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ type: 'authenticate', token: data.token }))
+        }
+
+        socket.onmessage = async (event) => {
+          if (canceled) return
+          const payload = JSON.parse(event.data)
+          if (payload.type === 'authenticated') {
+            socket.send(JSON.stringify({ type: 'join_community', communityId }))
+          }
+          if (payload.type === 'joined_community') {
+            await fetch(`/api/communities/${communityId}/chat/read`, { method: 'POST' })
+          }
+          if (payload.type === 'new_message' && payload.message) {
+            setChatMessages((prev) => {
+              if (prev.some((msg) => msg.id === payload.message.id)) {
+                return prev
+              }
+              return [...prev, payload.message]
+            })
+            await fetch(`/api/communities/${communityId}/chat/read`, { method: 'POST' })
+          }
+        }
+
+        socket.onclose = () => {
+          if (wsRef.current === socket) {
+            wsRef.current = null
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro ao conectar chat'
+        toast.error(message)
+      }
+    }
+
+    connect()
+
+    return () => {
+      canceled = true
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+    }
+  }, [activeTab, canAccess, communityId])
+
   const handleEnroll = async () => {
     if (!communityId) return
     try {
@@ -132,16 +219,55 @@ export default function CommunityDetailPage() {
     }
   }
 
-  const toggleTopicComments = (topicId: string) => {
-    setOpenTopicComments((prev) => {
-      const next = new Set(prev)
-      if (next.has(topicId)) {
-        next.delete(topicId)
-      } else {
-        next.add(topicId)
+  const loadChat = async () => {
+    if (!communityId) return
+    try {
+      setChatLoading(true)
+      const res = await fetch(`/api/communities/${communityId}/chat/messages?limit=50`, {
+        cache: 'no-store'
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao carregar chat')
       }
-      return next
-    })
+      const list = Array.isArray(data.messages) ? data.messages : []
+      setChatMessages(list.reverse())
+      await fetch(`/api/communities/${communityId}/chat/read`, { method: 'POST' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao carregar chat'
+      toast.error(message)
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  const sendChat = async () => {
+    if (!communityId || !chatText.trim()) return
+    try {
+      setChatLoading(true)
+      const socket = wsRef.current
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'send_message', content: chatText.trim() }))
+        setChatText('')
+      } else {
+        const res = await fetch(`/api/communities/${communityId}/chat/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: chatText.trim() })
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.error || 'Erro ao enviar mensagem')
+        }
+        setChatText('')
+        await loadChat()
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao enviar mensagem'
+      toast.error(message)
+    } finally {
+      setChatLoading(false)
+    }
   }
 
   if (loading) {
@@ -217,15 +343,19 @@ export default function CommunityDetailPage() {
         </Card>
       ) : null}
 
-      <Tabs defaultValue="topics">
+      <Tabs defaultValue="topics" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="topics">
             <Tag className="h-4 w-4 mr-2" />
-            Tópicos
+            Categorias
           </TabsTrigger>
           <TabsTrigger value="posts">
             <MessageSquare className="h-4 w-4 mr-2" />
             Posts
+          </TabsTrigger>
+          <TabsTrigger value="chat">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Chat
           </TabsTrigger>
           <TabsTrigger value="files">
             <FileText className="h-4 w-4 mr-2" />
@@ -240,14 +370,14 @@ export default function CommunityDetailPage() {
         <TabsContent value="topics" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tópicos da comunidade</CardTitle>
+              <CardTitle>Categorias da comunidade</CardTitle>
               <CardDescription>Explore os temas principais.</CardDescription>
             </CardHeader>
             <CardContent>
               {!canAccess ? (
                 <div className="text-sm text-muted-foreground">Conteúdo disponível após inscrição.</div>
               ) : topics.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Nenhum tópico encontrado.</div>
+                <div className="text-sm text-muted-foreground">Nenhuma categoria encontrada.</div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {topics.map((topic) => (
@@ -256,18 +386,6 @@ export default function CommunityDetailPage() {
                         <CardTitle className="text-base">{topic.name}</CardTitle>
                         <CardDescription>{topic.slug}</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleTopicComments(topic.id)}
-                        >
-                          {openTopicComments.has(topic.id) ? 'Ocultar comentários' : 'Comentar no tópico'}
-                        </Button>
-                        {openTopicComments.has(topic.id) ? (
-                          <TopicComments topicId={topic.id} locked={!canAccess} />
-                        ) : null}
-                      </CardContent>
                     </Card>
                   ))}
                 </div>
@@ -298,6 +416,59 @@ export default function CommunityDetailPage() {
                     </CardHeader>
                   </Card>
                 ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="chat" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Chat da comunidade</CardTitle>
+              <CardDescription>Converse em tempo real com outros membros.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!canAccess ? (
+                <div className="text-sm text-muted-foreground">Conteúdo disponível após inscrição.</div>
+              ) : (
+                <>
+                  <div className="max-h-[320px] overflow-y-auto space-y-3 rounded-md border p-3">
+                    {chatLoading && chatMessages.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Carregando mensagens...</div>
+                    ) : chatMessages.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</div>
+                    ) : (
+                      chatMessages.map((message) => (
+                        <div key={message.id} className="flex items-start gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={message.author.image || ''} />
+                            <AvatarFallback>
+                              {(message.author.name || 'U').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="text-xs text-muted-foreground">
+                              {message.author.name || 'Usuário'} •{' '}
+                              {new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Textarea
+                      value={chatText}
+                      onChange={(event) => setChatText(event.target.value)}
+                      placeholder="Escreva sua mensagem..."
+                      rows={3}
+                    />
+                    <Button onClick={sendChat} disabled={chatLoading || !chatText.trim()}>
+                      Enviar mensagem
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
