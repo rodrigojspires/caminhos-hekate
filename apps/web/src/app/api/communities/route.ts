@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { ensureDefaultCommunity } from '@/lib/community'
+import { isMembershipActive } from '@/lib/community-membership'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     const memberships = userId
       ? await prisma.communityMembership.findMany({
           where: { userId, communityId: { in: communities.map((c) => c.id) } },
-          select: { communityId: true, status: true, lastChatReadAt: true }
+          select: { communityId: true, status: true, lastChatReadAt: true, paidUntil: true }
         })
       : []
 
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
       ? await Promise.all(
           communities.map(async (community) => {
             const membership = membershipMap.get(community.id)
-            if (!membership || membership.status !== 'active') {
+            if (!isMembershipActive(membership)) {
               return [community.id, 0] as const
             }
             const count = await prisma.communityMessage.count({
@@ -80,8 +81,9 @@ export async function GET(req: NextRequest) {
         price: community.price != null ? Number(community.price) : null,
         isActive: community.isActive,
         membersCount: community._count.memberships,
-        isMember: !!membership,
+        isMember: isMembershipActive(membership) || membership?.status === 'pending',
         membershipStatus: membership?.status || null,
+        membershipPaidUntil: membership?.paidUntil || null,
         unreadChatCount: unreadMap.get(community.id) || 0,
         allowedByTier,
         accessLabel: accessLabels.join(' • ')

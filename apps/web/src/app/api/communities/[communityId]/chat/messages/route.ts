@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { isMembershipActive } from '@/lib/community-membership'
 
 export async function GET(req: NextRequest, { params }: { params: { communityId: string } }) {
   try {
@@ -11,9 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { communityId:
 
     const membership = await prisma.communityMembership.findUnique({
       where: { communityId_userId: { communityId: params.communityId, userId } },
-      select: { status: true, lastChatReadAt: true }
+      select: { status: true, lastChatReadAt: true, paidUntil: true }
     })
-    if (!membership || membership.status !== 'active') {
+    if (!isMembershipActive(membership)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { communityId
       where: { communityId_userId: { communityId: params.communityId, userId } },
       select: { status: true }
     })
-    if (!membership || membership.status !== 'active') {
+    if (!isMembershipActive(membership)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 

@@ -13,6 +13,17 @@ import { toast } from 'sonner'
 import { ArrowLeft, FileText, Flame, MessageCircle, MessageSquare, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import NestedComments from '@/components/public/community/NestedComments'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { PlanSelector } from '@/components/payments/PlanSelector'
+import { PaymentForm } from '@/components/payments/PaymentForm'
 
 type Community = {
   id: string
@@ -23,6 +34,7 @@ type Community = {
   tier: string
   price: number | null
   isActive: boolean
+  allowedByTier?: boolean
 }
 
 type Post = {
@@ -82,10 +94,18 @@ export default function CommunityDetailPage() {
   const [canAccess, setCanAccess] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
+  const [membershipPaidUntil, setMembershipPaidUntil] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [sidebarSection, setSidebarSection] = useState<'chat' | 'files' | 'members'>('chat')
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
+  const [discussionOpen, setDiscussionOpen] = useState(false)
+  const [discussionTitle, setDiscussionTitle] = useState('')
+  const [discussionContent, setDiscussionContent] = useState('')
+  const [discussionSubmitting, setDiscussionSubmitting] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradePlan, setUpgradePlan] = useState<any | null>(null)
+  const [upgradeBilling, setUpgradeBilling] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatText, setChatText] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -118,6 +138,7 @@ export default function CommunityDetailPage() {
       setCanAccess(!!data.canAccess)
       setIsMember(!!data.isMember)
       setMembershipStatus(data.membershipStatus || null)
+      setMembershipPaidUntil(data.membershipPaidUntil || null)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao carregar comunidade'
       toast.error(message)
@@ -284,9 +305,43 @@ export default function CommunityDetailPage() {
         throw new Error(data?.error || 'Erro ao se inscrever')
       }
       toast.success(data.status === 'active' ? 'Inscrição confirmada' : 'Inscrição pendente')
+      if (data.status === 'pending' && community) {
+        const accessModels = community.accessModels || []
+        if (accessModels.includes('ONE_TIME')) {
+          router.push(`/checkout?communityId=${community.id}`)
+          return
+        }
+        if (accessModels.includes('SUBSCRIPTION') && community.allowedByTier === false) {
+          setUpgradeOpen(true)
+        }
+      }
       await loadData()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao se inscrever'
+      toast.error(message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const cancelMembership = async () => {
+    if (!communityId) return
+    try {
+      setActionLoading(true)
+      const res = await fetch(`/api/communities/${communityId}/membership`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao cancelar inscrição')
+      }
+      if (data?.paidUntil) {
+        const until = new Date(data.paidUntil).toLocaleDateString('pt-BR')
+        toast.success(`Cancelamento agendado. Acesso até ${until}.`)
+      } else {
+        toast.success('Inscrição cancelada')
+      }
+      await loadData()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao cancelar inscrição'
       toast.error(message)
     } finally {
       setActionLoading(false)
@@ -393,6 +448,37 @@ export default function CommunityDetailPage() {
       toast.error(message)
     } finally {
       setChatLoading(false)
+    }
+  }
+
+  const submitDiscussion = async () => {
+    if (!communityId || !discussionTitle.trim() || !discussionContent.trim()) return
+    try {
+      setDiscussionSubmitting(true)
+      const res = await fetch('/api/community/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: discussionTitle.trim(),
+          content: discussionContent.trim(),
+          communityId,
+          type: 'THREAD'
+        })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao criar discussão')
+      }
+      setDiscussionTitle('')
+      setDiscussionContent('')
+      setDiscussionOpen(false)
+      await fetchPosts()
+      toast.success('Discussão criada')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao criar discussão'
+      toast.error(message)
+    } finally {
+      setDiscussionSubmitting(false)
     }
   }
 
@@ -538,16 +624,38 @@ export default function CommunityDetailPage() {
             {!community.isActive ? <Badge variant="secondary">Inativa</Badge> : null}
           </div>
         </div>
-        {!isMember ? (
-          <Button onClick={handleEnroll} disabled={actionLoading || !community.isActive}>
-            {actionLoading ? 'Processando...' : community.isActive ? 'Participar' : 'Indisponível'}
-          </Button>
-        ) : membershipStatus === 'pending' ? (
-          <Badge variant="secondary">Pendente</Badge>
-        ) : (
-          <Badge>Inscrito</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {!isMember ? (
+            <Button onClick={handleEnroll} disabled={actionLoading || !community.isActive}>
+              {actionLoading ? 'Processando...' : community.isActive ? 'Participar' : 'Indisponível'}
+            </Button>
+          ) : membershipStatus === 'pending' ? (
+            <>
+              <Badge variant="secondary">Pendente</Badge>
+              <Button variant="outline" onClick={cancelMembership} disabled={actionLoading}>
+                Cancelar inscrição
+              </Button>
+            </>
+          ) : membershipStatus === 'cancelled' ? (
+            <Badge variant="secondary">Cancelamento agendado</Badge>
+          ) : (
+            <>
+              <Badge>Inscrito</Badge>
+              {community.accessModels.includes('ONE_TIME') ? (
+                <Button variant="outline" onClick={cancelMembership} disabled={actionLoading}>
+                  Cancelar renovação
+                </Button>
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
+
+      {membershipPaidUntil ? (
+        <div className="text-xs text-muted-foreground">
+          Acesso válido até {new Date(membershipPaidUntil).toLocaleDateString('pt-BR')}
+        </div>
+      ) : null}
 
       {!canAccess ? (
         <Card>
@@ -561,6 +669,12 @@ export default function CommunityDetailPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Posts da comunidade</h2>
+            <Button
+              onClick={() => setDiscussionOpen(true)}
+              disabled={!canAccess}
+            >
+              Nova discussão
+            </Button>
           </div>
 
           {!canAccess ? (
@@ -763,6 +877,87 @@ export default function CommunityDetailPage() {
           </Card>
         </aside>
       </div>
+
+      <Dialog open={discussionOpen} onOpenChange={setDiscussionOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova discussão</DialogTitle>
+            <DialogDescription>Inicie um tópico para conversar com a comunidade.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Título da discussão"
+              value={discussionTitle}
+              onChange={(event) => setDiscussionTitle(event.target.value)}
+            />
+            <Textarea
+              placeholder="Compartilhe sua dúvida ou reflexão..."
+              value={discussionContent}
+              onChange={(event) => setDiscussionContent(event.target.value)}
+              rows={5}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={submitDiscussion}
+              disabled={
+                discussionSubmitting ||
+                !discussionTitle.trim() ||
+                !discussionContent.trim() ||
+                !canAccess
+              }
+            >
+              {discussionSubmitting ? 'Publicando...' : 'Publicar discussão'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Upgrade de plano</DialogTitle>
+            <DialogDescription>Escolha um plano para acessar esta comunidade.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant={upgradeBilling === 'MONTHLY' ? 'default' : 'outline'}
+              onClick={() => setUpgradeBilling('MONTHLY')}
+            >
+              Mensal
+            </Button>
+            <Button
+              variant={upgradeBilling === 'YEARLY' ? 'default' : 'outline'}
+              onClick={() => setUpgradeBilling('YEARLY')}
+            >
+              Anual
+            </Button>
+          </div>
+          <PlanSelector
+            billing={upgradeBilling}
+            onPlanSelect={(plan) => setUpgradePlan(plan)}
+            selectedPlanId={upgradePlan?.id}
+          />
+          {upgradePlan ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Assinar {upgradePlan.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PaymentForm
+                  plan={upgradePlan}
+                  onPaymentSuccess={() => {
+                    setUpgradeOpen(false)
+                    setUpgradePlan(null)
+                    loadData()
+                  }}
+                  onCancel={() => setUpgradePlan(null)}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

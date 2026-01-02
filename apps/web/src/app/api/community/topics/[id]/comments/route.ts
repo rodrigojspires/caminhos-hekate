@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { isMembershipActive } from '@/lib/community-membership'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
@@ -24,13 +25,13 @@ async function canAccessTopic(topicId: string, userId: string | null) {
   })
   const membership = await prisma.communityMembership.findUnique({
     where: { communityId_userId: { communityId: topic.communityId, userId } },
-    select: { status: true }
+    select: { status: true, paidUntil: true }
   })
   const accessModels = (topic.community.accessModels || []) as string[]
   const isFree = accessModels.includes('FREE')
   const isSubscription = accessModels.includes('SUBSCRIPTION')
   const allowedByTier = isSubscription && tierOrder[user?.subscriptionTier || 'FREE'] >= tierOrder[topic.community.tier]
-  const ok = isFree || allowedByTier || membership?.status === 'active'
+  const ok = isFree || allowedByTier || isMembershipActive(membership)
   return { ok, topic }
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { isMembershipActive } from '@/lib/community-membership'
 
 export async function POST(_req: NextRequest, { params }: { params: { communityId: string } }) {
   try {
@@ -11,9 +12,9 @@ export async function POST(_req: NextRequest, { params }: { params: { communityI
 
     const membership = await prisma.communityMembership.findUnique({
       where: { communityId_userId: { communityId: params.communityId, userId } },
-      select: { status: true }
+      select: { status: true, paidUntil: true }
     })
-    if (!membership || membership.status !== 'active') {
+    if (!isMembershipActive(membership)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 

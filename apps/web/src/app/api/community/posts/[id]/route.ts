@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { isMembershipActive } from '@/lib/community-membership'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       userId && post.communityId
         ? prisma.communityMembership.findUnique({
             where: { communityId_userId: { communityId: post.communityId, userId } },
-            select: { status: true }
+            select: { status: true, paidUntil: true }
           })
         : null
     ])
@@ -41,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     const isFreeCommunity = accessModels.includes('FREE')
     const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
     const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community?.tier || 'FREE']
-    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || membership?.status === 'active'
+    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || isMembershipActive(membership)
     const lockedByTier = order[userTier] < order[post.tier as keyof typeof order]
     const locked = lockedByTier || !hasCommunityAccess
     return NextResponse.json({

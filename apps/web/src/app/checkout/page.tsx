@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const [enrollCourseIds, setEnrollCourseIds] = useState<string[]>([])
   const hasProcessedEnroll = useRef(false)
   const [eventItem, setEventItem] = useState<{ id: string; title: string; price: number } | null>(null)
+  const [communityItem, setCommunityItem] = useState<{ id: string; title: string; price: number } | null>(null)
   const hasProcessedEvent = useRef(false)
 
   useEffect(() => {
@@ -90,6 +91,26 @@ export default function CheckoutPage() {
             id: data.id,
             title: data.title,
             price: Number(data.price)
+          })
+        }
+      } catch {}
+    })()
+  }, [searchParams])
+
+  useEffect(() => {
+    const communityId = searchParams?.get('communityId')
+    if (!communityId) return
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/communities/${communityId}/overview`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const community = data?.community
+        if (community?.id && community?.price != null) {
+          setCommunityItem({
+            id: community.id,
+            title: community.name,
+            price: Number(community.price)
           })
         }
       } catch {}
@@ -456,6 +477,9 @@ export default function CheckoutPage() {
     if (eventItem) {
       orderPayload.eventIds = [eventItem.id]
     }
+    if (communityItem) {
+      orderPayload.communityIds = [communityItem.id]
+    }
 
     const res = await fetch('/api/shop/order', {
       method: 'POST',
@@ -476,11 +500,12 @@ export default function CheckoutPage() {
   if (!cart || !totals) return <div className="container mx-auto py-8">Carregando...</div>
 
   const eventTotal = eventItem ? Number(eventItem.price) : 0
+  const communityTotal = communityItem ? Number(communityItem.price) : 0
   const cartSubtotal = totals?.subtotal ?? 0
   const cartDiscount = totals?.discount ?? 0
   const cartShipping = totals?.shipping ?? 0
-  const effectiveSubtotal = cartSubtotal + eventTotal
-  const grandTotal = cartSubtotal - cartDiscount + cartShipping + eventTotal
+  const effectiveSubtotal = cartSubtotal + eventTotal + communityTotal
+  const grandTotal = cartSubtotal - cartDiscount + cartShipping + eventTotal + communityTotal
   const formatCurrency = (v: number) => Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   return (
@@ -595,6 +620,12 @@ export default function CheckoutPage() {
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Evento: {eventItem.title}</span>
               <span>{formatCurrency(eventTotal)}</span>
+            </div>
+          )}
+          {communityItem && (
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Comunidade: {communityItem.title}</span>
+              <span>{formatCurrency(communityTotal)}</span>
             </div>
           )}
           <div className="flex justify-between"><span className="text-red-400 font-medium">Desconto</span><span className="text-red-400 font-medium">- {formatCurrency(cartDiscount)}</span></div>

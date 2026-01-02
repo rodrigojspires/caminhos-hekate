@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { isMembershipActive, membershipAccessWhere } from '@/lib/community-membership'
 
 const tierOrder: Record<string, number> = { FREE: 0, INICIADO: 1, ADEPTO: 2, SACERDOCIO: 3 }
 
@@ -33,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: { communityId
       }),
       prisma.communityMembership.findUnique({
         where: { communityId_userId: { communityId: params.communityId, userId } },
-        select: { status: true }
+        select: { status: true, paidUntil: true }
       })
     ])
 
@@ -45,8 +46,8 @@ export async function GET(_req: NextRequest, { params }: { params: { communityId
     const isFree = accessModels.includes('FREE')
     const isSubscription = accessModels.includes('SUBSCRIPTION')
     const allowedByTier = isSubscription && tierOrder[user?.subscriptionTier || 'FREE'] >= tierOrder[community.tier]
-    const isMember = !!membership
-    const canAccess = isFree || allowedByTier || membership?.status === 'active'
+    const isMember = isMembershipActive(membership) || membership?.status === 'pending'
+    const canAccess = isFree || allowedByTier || isMembershipActive(membership)
 
     const [topics, posts, files, members, membersCount] = canAccess
       ? await Promise.all([
@@ -80,7 +81,7 @@ export async function GET(_req: NextRequest, { params }: { params: { communityId
             }
           }),
           prisma.communityMembership.findMany({
-            where: { communityId: community.id, status: 'active' },
+            where: { communityId: community.id, ...membershipAccessWhere() },
             orderBy: { joinedAt: 'desc' },
             take: 12,
             select: {
@@ -90,7 +91,7 @@ export async function GET(_req: NextRequest, { params }: { params: { communityId
             }
           }),
           prisma.communityMembership.count({
-            where: { communityId: community.id, status: 'active' }
+            where: { communityId: community.id, ...membershipAccessWhere() }
           })
         ])
       : [[], [], [], [], 0]
@@ -98,9 +99,11 @@ export async function GET(_req: NextRequest, { params }: { params: { communityId
     return NextResponse.json({
       community: {
         ...community,
-        price: community.price != null ? Number(community.price) : null
+        price: community.price != null ? Number(community.price) : null,
+        allowedByTier
       },
       membershipStatus: membership?.status || null,
+      membershipPaidUntil: membership?.paidUntil || null,
       isMember,
       canAccess,
       topics,

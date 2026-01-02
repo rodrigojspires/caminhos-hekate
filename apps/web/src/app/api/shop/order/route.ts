@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       notes,
       enrollCourseIds,
       eventIds,
+      communityIds,
     } = body as {
       customer: { name: string; email: string; phone?: string; document?: string; userId?: string | null }
       billingAddress?: { street: string; number: string; complement?: string | null; neighborhood: string; city: string; state: string; zipCode: string }
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
       notes?: string
       enrollCourseIds?: string[]
       eventIds?: string[]
+      communityIds?: string[]
     }
 
     if (!customer?.name || !customer?.email) {
@@ -45,7 +47,8 @@ export async function POST(request: NextRequest) {
     const cart = getCartFromCookie()
     const hasCartItems = cart.items.length > 0
     const uniqueEventIds = Array.isArray(eventIds) ? Array.from(new Set(eventIds)) : []
-    if (!hasCartItems && uniqueEventIds.length === 0) {
+    const uniqueCommunityIds = Array.isArray(communityIds) ? Array.from(new Set(communityIds)) : []
+    if (!hasCartItems && uniqueEventIds.length === 0 && uniqueCommunityIds.length === 0) {
       return NextResponse.json({ error: 'Nenhum item no checkout' }, { status: 400 })
     }
 
@@ -80,15 +83,38 @@ export async function POST(request: NextRequest) {
 
     const validEvents = events.filter((ev) => ev.price != null && Number(ev.price) > 0)
 
+    const communities = uniqueCommunityIds.length
+      ? await prisma.community.findMany({
+          where: {
+            id: { in: uniqueCommunityIds },
+            isActive: true,
+            accessModels: { has: 'ONE_TIME' }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            slug: true
+          }
+        })
+      : []
+
+    const validCommunities = communities.filter((community) => community.price != null && Number(community.price) > 0)
+
     if (uniqueEventIds.length && validEvents.length === 0) {
       return NextResponse.json({ error: 'Eventos inválidos ou sem preço' }, { status: 400 })
     }
+    if (uniqueCommunityIds.length && validCommunities.length === 0) {
+      return NextResponse.json({ error: 'Comunidades inválidas ou sem preço' }, { status: 400 })
+    }
 
     const eventSubtotal = validEvents.reduce((sum, ev) => sum + Number(ev.price), 0)
+    const communitySubtotal = validCommunities.reduce((sum, community) => sum + Number(community.price), 0)
 
     const totals = await computeTotals(cart)
-    totals.subtotal += eventSubtotal
-    totals.total += eventSubtotal
+    totals.subtotal += eventSubtotal + communitySubtotal
+    totals.total += eventSubtotal + communitySubtotal
 
     if (totals.total <= 0) {
       return NextResponse.json({ error: 'Total do pedido inválido.' }, { status: 400 })
@@ -153,6 +179,9 @@ export async function POST(request: NextRequest) {
     }
     if (uniqueEventIds.length > 0) {
       metadata.eventIds = uniqueEventIds
+    }
+    if (uniqueCommunityIds.length > 0) {
+      metadata.communityIds = uniqueCommunityIds
     }
     if (cart.shipping?.serviceId) {
       metadata.shippingOption = {
@@ -225,6 +254,45 @@ export async function POST(request: NextRequest) {
       return { product, variant }
     }
 
+    const ensureCommunityProductAndVariant = async (
+      tx: Prisma.TransactionClient,
+      community: { id: string; name: string; description: string | null; price: any; slug: string }
+    ) => {
+      const slug = `comunidade-${community.slug}`
+      const sku = `COMMUNITY-${community.id}`
+
+      let product = await tx.product.findUnique({ where: { slug } })
+      if (!product) {
+        product = await tx.product.create({
+          data: {
+            name: `Comunidade: ${community.name}`,
+            slug,
+            description: community.description || `Comunidade ${community.name}`,
+            shortDescription: community.description?.slice(0, 180) ?? null,
+            type: ProductType.DIGITAL,
+            images: [],
+            active: true
+          }
+        })
+      }
+
+      let variant = await tx.productVariant.findUnique({ where: { sku } })
+      if (!variant) {
+        variant = await tx.productVariant.create({
+          data: {
+            productId: product.id,
+            sku,
+            name: 'Acesso avulso',
+            price: new Prisma.Decimal(community.price),
+            stock: 0,
+            active: true
+          }
+        })
+      }
+
+      return { product, variant }
+    }
+
     const { order } = await prisma.$transaction(async (tx) => {
       const ensureAddress = async (
         providedId: string | null | undefined,
@@ -269,6 +337,9 @@ export async function POST(request: NextRequest) {
       const eventVariants = await Promise.all(
         validEvents.map((ev) => ensureEventProductAndVariant(tx, ev))
       )
+      const communityVariants = await Promise.all(
+        validCommunities.map((community) => ensureCommunityProductAndVariant(tx, community))
+      )
 
       const itemsToCreate = [
         ...itemDetails.map(({ item, variant }) => {
@@ -295,6 +366,22 @@ export async function POST(request: NextRequest) {
             metadata: {
               eventId: ev.id,
               eventTitle: ev.title
+            }
+          }
+        }),
+        ...validCommunities.map((community, idx) => {
+          const variant = communityVariants[idx].variant
+          const price = new Prisma.Decimal(community.price)
+          return {
+            productId: variant.productId,
+            variantId: variant.id,
+            name: `Comunidade: ${community.name}`,
+            price,
+            quantity: 1,
+            total: price,
+            metadata: {
+              communityId: community.id,
+              communityName: community.name
             }
           }
         })

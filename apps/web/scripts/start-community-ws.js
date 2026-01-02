@@ -65,9 +65,13 @@ function removeClient(userId) {
 async function joinCommunity(userId, communityId) {
   const membership = await prisma.communityMembership.findUnique({
     where: { communityId_userId: { communityId, userId } },
-    select: { status: true }
+    select: { status: true, paidUntil: true }
   })
-  if (!membership || membership.status !== 'active') {
+  const paidUntil = membership?.paidUntil ? new Date(membership.paidUntil) : null
+  const isActive = membership?.status === 'active'
+    ? (!paidUntil || paidUntil > new Date())
+    : (membership?.status === 'cancelled' && paidUntil && paidUntil > new Date())
+  if (!isActive) {
     throw new Error('Acesso negado')
   }
 
@@ -101,9 +105,13 @@ function leaveCommunity(userId, communityId) {
 async function sendMessage({ userId, communityId, content }) {
   const membership = await prisma.communityMembership.findUnique({
     where: { communityId_userId: { communityId, userId } },
-    select: { status: true }
+    select: { status: true, paidUntil: true }
   })
-  if (!membership || membership.status !== 'active') {
+  const paidUntil = membership?.paidUntil ? new Date(membership.paidUntil) : null
+  const isActive = membership?.status === 'active'
+    ? (!paidUntil || paidUntil > new Date())
+    : (membership?.status === 'cancelled' && paidUntil && paidUntil > new Date())
+  if (!isActive) {
     throw new Error('Acesso negado')
   }
 

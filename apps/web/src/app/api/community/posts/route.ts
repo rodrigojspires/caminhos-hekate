@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { searchService } from '@/lib/search'
 import { resolveCommunityId } from '@/lib/community'
+import { isMembershipActive } from '@/lib/community-membership'
 
 export async function GET(req: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
       userId
         ? prisma.communityMembership.findUnique({
             where: { communityId_userId: { communityId: resolvedCommunityId, userId } },
-            select: { status: true }
+            select: { status: true, paidUntil: true }
           })
         : null
     ])
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     const isFreeCommunity = accessModels.includes('FREE')
     const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
     const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community?.tier || 'FREE']
-    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || membership?.status === 'active'
+    const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || isMembershipActive(membership)
 
     const orderBy = sort === 'popular'
       ? [{ viewCount: 'desc' as const }, { createdAt: 'desc' as const }]
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
         }),
         prisma.communityMembership.findUnique({
           where: { communityId_userId: { communityId: resolvedCommunityId, userId } },
-          select: { status: true }
+          select: { status: true, paidUntil: true }
         })
       ])
       if (community) {
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
         const isFreeCommunity = accessModels.includes('FREE')
         const isSubscriptionCommunity = accessModels.includes('SUBSCRIPTION')
         const allowedByTier = isSubscriptionCommunity && order[userTier] >= order[community.tier || 'FREE']
-        const hasCommunityAccess = isFreeCommunity || allowedByTier || membership?.status === 'active'
+        const hasCommunityAccess = isFreeCommunity || allowedByTier || isMembershipActive(membership)
         if (!hasCommunityAccess) {
           return NextResponse.json({ error: 'Acesso negado à comunidade' }, { status: 403 })
         }

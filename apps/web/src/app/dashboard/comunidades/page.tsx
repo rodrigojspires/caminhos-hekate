@@ -9,8 +9,17 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { PlanSelector } from '@/components/payments/PlanSelector'
+import { PaymentForm } from '@/components/payments/PaymentForm'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Flame, MessageCircle, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
@@ -27,6 +36,7 @@ type Community = {
   membersCount: number
   isMember: boolean
   membershipStatus: string | null
+  membershipPaidUntil?: string | null
   allowedByTier: boolean
   accessLabel: string
   unreadChatCount?: number
@@ -80,12 +90,14 @@ export default function DashboardCommunitiesPage() {
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [leaderboardCommunityId, setLeaderboardCommunityId] = useState<string>('all')
   const [selectedTopicId, setSelectedTopicId] = useState<string>('all')
-  const [threadTitle, setThreadTitle] = useState('')
-  const [threadContent, setThreadContent] = useState('')
-  const [threadTopicId, setThreadTopicId] = useState<string>('none')
-  const [threadCommunityId, setThreadCommunityId] = useState<string>('none')
-  const [threadSubmitting, setThreadSubmitting] = useState(false)
   const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradePlan, setUpgradePlan] = useState<any | null>(null)
+  const [upgradeBilling, setUpgradeBilling] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY')
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [suggestTitle, setSuggestTitle] = useState('')
+  const [suggestDescription, setSuggestDescription] = useState('')
+  const [suggestSubmitting, setSuggestSubmitting] = useState(false)
 
   const fetchCommunities = async () => {
     try {
@@ -183,21 +195,59 @@ export default function DashboardCommunitiesPage() {
     return { myCommunities: mine, availableCommunities: available }
   }, [communities])
 
-  const handleEnroll = async (communityId: string) => {
+  const handleEnroll = async (community: Community) => {
     try {
-      setActionId(communityId)
-      const res = await fetch(`/api/communities/${communityId}/membership`, { method: 'POST' })
+      setActionId(community.id)
+      const res = await fetch(`/api/communities/${community.id}/membership`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         throw new Error(data?.error || 'Erro ao se inscrever')
       }
       await fetchCommunities()
       toast.success(data.status === 'active' ? 'Inscrição confirmada' : 'Inscrição pendente')
+      if (data.status === 'pending') {
+        const accessModels = community.accessModels || []
+        if (accessModels.includes('ONE_TIME')) {
+          window.location.href = `/checkout?communityId=${community.id}`
+          return
+        }
+        if (accessModels.includes('SUBSCRIPTION') && community.allowedByTier === false) {
+          setUpgradeOpen(true)
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao se inscrever'
       toast.error(message)
     } finally {
       setActionId(null)
+    }
+  }
+
+  const submitSuggestion = async () => {
+    if (!suggestTitle.trim() || !suggestDescription.trim()) return
+    try {
+      setSuggestSubmitting(true)
+      const res = await fetch('/api/communities/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: suggestTitle.trim(),
+          description: suggestDescription.trim()
+        })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao enviar sugestão')
+      }
+      toast.success('Sugestão enviada para o administrador')
+      setSuggestTitle('')
+      setSuggestDescription('')
+      setSuggestOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao enviar sugestão'
+      toast.error(message)
+    } finally {
+      setSuggestSubmitting(false)
     }
   }
 
@@ -250,13 +300,6 @@ export default function DashboardCommunitiesPage() {
     return topics.filter((topic) => topic.community?.id && memberCommunityIds.has(topic.community.id))
   }, [topics, memberCommunityIds])
 
-  const threadTopicOptions = useMemo(() => {
-    if (threadCommunityId !== 'none') {
-      return visibleTopics.filter((topic) => topic.community?.id === threadCommunityId)
-    }
-    return visibleTopics
-  }, [visibleTopics, threadCommunityId])
-
   const timelineItems = useMemo(() => {
     return [...visiblePosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [visiblePosts])
@@ -292,7 +335,7 @@ export default function DashboardCommunitiesPage() {
             </Button>
           ) : (
             <Button
-              onClick={() => handleEnroll(community.id)}
+              onClick={() => handleEnroll(community)}
               disabled={actionId === community.id || isInactive}
               size="sm"
             >
@@ -413,101 +456,15 @@ export default function DashboardCommunitiesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">Comunidades</h1>
+        <Button variant="outline" onClick={() => setSuggestOpen(true)}>
+          Sugerir comunidade
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Iniciar discussão</CardTitle>
-              <CardDescription>Crie uma nova thread para conversar com a comunidade.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="Título da discussão"
-                value={threadTitle}
-                onChange={(event) => setThreadTitle(event.target.value)}
-              />
-              <Textarea
-                placeholder="Compartilhe sua dúvida ou reflexão..."
-                value={threadContent}
-                onChange={(event) => setThreadContent(event.target.value)}
-                rows={4}
-              />
-              <div className="grid gap-3 md:grid-cols-2">
-                <Select value={threadCommunityId} onValueChange={setThreadCommunityId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Comunidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Selecione a comunidade</SelectItem>
-                    {myCommunities.map((community) => (
-                      <SelectItem key={community.id} value={community.id}>
-                        {community.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={threadTopicId} onValueChange={setThreadTopicId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Categoria (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem categoria</SelectItem>
-                    {threadTopicOptions.map((topic) => (
-                      <SelectItem key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                disabled={
-                  threadSubmitting ||
-                  !threadTitle.trim() ||
-                  !threadContent.trim() ||
-                  threadCommunityId === 'none'
-                }
-                onClick={async () => {
-                  try {
-                    setThreadSubmitting(true)
-                    const res = await fetch('/api/community/posts', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        title: threadTitle.trim(),
-                        content: threadContent.trim(),
-                        communityId: threadCommunityId,
-                        topicId: threadTopicId !== 'none' ? threadTopicId : undefined,
-                        type: 'THREAD'
-                      })
-                    })
-                    const data = await res.json().catch(() => ({}))
-                    if (!res.ok) {
-                      throw new Error(data?.error || 'Erro ao criar discussão')
-                    }
-                    setThreadTitle('')
-                    setThreadContent('')
-                    setThreadTopicId('none')
-                    setThreadCommunityId('none')
-                    await fetchPosts()
-                    toast.success('Discussão criada')
-                  } catch (error) {
-                    const message = error instanceof Error ? error.message : 'Erro ao criar discussão'
-                    toast.error(message)
-                  } finally {
-                    setThreadSubmitting(false)
-                  }
-                }}
-              >
-                {threadSubmitting ? 'Publicando...' : 'Publicar discussão'}
-              </Button>
-            </CardContent>
-          </Card>
-
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Linha do tempo</h2>
             <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
@@ -646,6 +603,82 @@ export default function DashboardCommunitiesPage() {
           </Card>
         </aside>
       </div>
+
+      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Upgrade de plano</DialogTitle>
+            <DialogDescription>Escolha um plano para acessar esta comunidade.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant={upgradeBilling === 'MONTHLY' ? 'default' : 'outline'}
+              onClick={() => setUpgradeBilling('MONTHLY')}
+            >
+              Mensal
+            </Button>
+            <Button
+              variant={upgradeBilling === 'YEARLY' ? 'default' : 'outline'}
+              onClick={() => setUpgradeBilling('YEARLY')}
+            >
+              Anual
+            </Button>
+          </div>
+          <PlanSelector
+            billing={upgradeBilling}
+            onPlanSelect={(plan) => setUpgradePlan(plan)}
+            selectedPlanId={upgradePlan?.id}
+          />
+          {upgradePlan ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Assinar {upgradePlan.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PaymentForm
+                  plan={upgradePlan}
+                  onPaymentSuccess={async () => {
+                    setUpgradeOpen(false)
+                    setUpgradePlan(null)
+                    await fetchCommunities()
+                  }}
+                  onCancel={() => setUpgradePlan(null)}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suggestOpen} onOpenChange={setSuggestOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sugerir comunidade</DialogTitle>
+            <DialogDescription>Envie sua ideia para o time avaliar.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Nome da comunidade"
+              value={suggestTitle}
+              onChange={(event) => setSuggestTitle(event.target.value)}
+            />
+            <Textarea
+              placeholder="Conteúdo, público e objetivos da comunidade..."
+              value={suggestDescription}
+              onChange={(event) => setSuggestDescription(event.target.value)}
+              rows={5}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={submitSuggestion}
+              disabled={suggestSubmitting || !suggestTitle.trim() || !suggestDescription.trim()}
+            >
+              {suggestSubmitting ? 'Enviando...' : 'Enviar sugestão'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

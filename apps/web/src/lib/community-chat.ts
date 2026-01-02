@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws'
 import { prisma } from '@hekate/database'
+import { isMembershipActive } from '@/lib/community-membership'
 import { z } from 'zod'
 
 interface CommunityClient {
@@ -42,9 +43,9 @@ class CommunityChatService {
   async joinCommunity(userId: string, communityId: string) {
     const membership = await prisma.communityMembership.findUnique({
       where: { communityId_userId: { communityId, userId } },
-      select: { status: true }
+      select: { status: true, paidUntil: true }
     })
-    if (!membership || membership.status !== 'active') {
+    if (!isMembershipActive(membership)) {
       throw new Error('Usuário não é membro ativo da comunidade')
     }
 
@@ -91,9 +92,9 @@ class CommunityChatService {
     const validated = messageSchema.parse({ content: data.content })
     const membership = await prisma.communityMembership.findUnique({
       where: { communityId_userId: { communityId: data.communityId, userId: data.userId } },
-      select: { status: true }
+      select: { status: true, paidUntil: true }
     })
-    if (!membership || membership.status !== 'active') {
+    if (!isMembershipActive(membership)) {
       throw new Error('Usuário não é membro ativo da comunidade')
     }
 

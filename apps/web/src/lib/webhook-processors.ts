@@ -23,6 +23,7 @@ export interface MercadoPagoWebhookEvent {
 const COURSE_PURCHASE_POINTS = 120;
 const PAID_EVENT_ENROLL_POINTS = 40;
 const FREE_EVENT_ENROLL_POINTS = 10;
+const COMMUNITY_PURCHASE_POINTS = 40;
 
 export interface AsaasWebhookEvent {
   event: string;
@@ -312,6 +313,74 @@ export class MercadoPagoWebhookProcessor {
                   },
                   priority: isPaidEvent ? 'MEDIUM' : 'LOW'
                 })
+              }
+            }
+
+            const metaCommunityIds: any[] = []
+            if (Array.isArray(fromOrderMeta.communityIds)) metaCommunityIds.push(...fromOrderMeta.communityIds)
+            if (Array.isArray(fromTxMeta.communityIds)) metaCommunityIds.push(...fromTxMeta.communityIds)
+            order.items.forEach((item) => {
+              const communityId = (item.metadata as any)?.communityId
+              if (communityId) metaCommunityIds.push(communityId)
+            })
+
+            const communityIds = Array.from(
+              new Set(
+                metaCommunityIds
+                  .map((id) => (id != null ? String(id) : null))
+                  .filter((id): id is string => !!id && id.trim().length > 0)
+              )
+            )
+
+            for (const communityId of communityIds) {
+              const community = await prisma.community.findUnique({
+                where: { id: communityId },
+                select: { accessModels: true }
+              })
+              const accessModels = (community?.accessModels || []) as string[]
+              const isPaidCommunity = accessModels.includes('ONE_TIME')
+              const now = new Date()
+
+              const existing = await prisma.communityMembership.findUnique({
+                where: { communityId_userId: { communityId, userId: order.userId } },
+                select: { paidUntil: true }
+              })
+
+              let paidUntil = existing?.paidUntil || null
+              if (isPaidCommunity) {
+                const baseDate = paidUntil && paidUntil > now ? paidUntil : now
+                const next = new Date(baseDate)
+                next.setMonth(next.getMonth() + 1)
+                paidUntil = next
+              }
+
+              await prisma.communityMembership.upsert({
+                where: { communityId_userId: { communityId, userId: order.userId } },
+                create: { communityId, userId: order.userId, status: 'active', paidUntil },
+                update: { status: 'active', paidUntil, cancelledAt: null }
+              })
+
+              if (isPaidCommunity) {
+                const uniqueKey = `community_purchase_${order.id}_${communityId}`
+                const alreadyAwarded = await prisma.pointTransaction.findFirst({
+                  where: {
+                    userId: order.userId,
+                    metadata: {
+                      path: ['uniqueKey'],
+                      equals: uniqueKey
+                    }
+                  }
+                })
+
+                if (!alreadyAwarded) {
+                  await GamificationEngine.awardPoints(order.userId, COMMUNITY_PURCHASE_POINTS, 'COMMUNITY_ENROLLED_PAID', {
+                    communityId,
+                    reasonLabel: 'Inscrição em comunidade paga',
+                    orderId: order.id,
+                    orderNumber: order.orderNumber,
+                    uniqueKey
+                  })
+                }
               }
             }
           }
