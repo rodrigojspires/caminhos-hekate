@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { ArrowLeft, FileText, MessageSquare, Tag, Users } from 'lucide-react'
+import TopicComments from '@/components/public/community/TopicComments'
 
 type Community = {
   id: string
@@ -72,6 +73,7 @@ export default function CommunityDetailPage() {
   const [isMember, setIsMember] = useState(false)
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [openTopicComments, setOpenTopicComments] = useState<Set<string>>(new Set())
 
   const accessLabel = useMemo(() => {
     if (!community) return ''
@@ -128,6 +130,18 @@ export default function CommunityDetailPage() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  const toggleTopicComments = (topicId: string) => {
+    setOpenTopicComments((prev) => {
+      const next = new Set(prev)
+      if (next.has(topicId)) {
+        next.delete(topicId)
+      } else {
+        next.add(topicId)
+      }
+      return next
+    })
   }
 
   if (loading) {
@@ -242,6 +256,18 @@ export default function CommunityDetailPage() {
                         <CardTitle className="text-base">{topic.name}</CardTitle>
                         <CardDescription>{topic.slug}</CardDescription>
                       </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleTopicComments(topic.id)}
+                        >
+                          {openTopicComments.has(topic.id) ? 'Ocultar comentários' : 'Comentar no tópico'}
+                        </Button>
+                        {openTopicComments.has(topic.id) ? (
+                          <TopicComments topicId={topic.id} locked={!canAccess} />
+                        ) : null}
+                      </CardContent>
                     </Card>
                   ))}
                 </div>

@@ -35,6 +35,7 @@ model User {
   certificateTemplatesCreated   CertificateTemplate[] @relation("CertificateTemplateCreator")
   certificateTemplatesUpdated   CertificateTemplate[] @relation("CertificateTemplateUpdater")
   comments                      Comment[]
+  topicComments                 TopicComment[]
   communityMemberships          CommunityMembership[]
   downloads                     Download[]
   enrollments                   Enrollment[]
@@ -505,6 +506,7 @@ model Topic {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   posts       Post[]
+  topicComments TopicComment[]
   community   Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
 
   @@index([communityId])
@@ -553,6 +555,23 @@ model Comment {
   post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
   reactions Reaction[]
   reports   Report[]
+}
+
+model TopicComment {
+  id        String        @id @default(cuid())
+  content   String
+  topicId   String
+  authorId  String
+  parentId  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    TopicComment? @relation("TopicCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   TopicComment[] @relation("TopicCommentReplies")
+  topic     Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([authorId])
 }
 
 model Reaction {
