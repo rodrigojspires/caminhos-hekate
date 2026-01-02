@@ -3,6 +3,7 @@ import { PaymentTransactionStatus, SubscriptionStatus, WebhookLogStatus } from '
 import { logWebhook, updateWebhookStatus } from './webhook-utils';
 import { GamificationEngine } from '@/lib/gamification-engine';
 import notificationService from '@/lib/notifications/notification-service';
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server';
 
 // Interfaces para os eventos dos webhooks
 export interface MercadoPagoWebhookEvent {
@@ -19,11 +20,6 @@ export interface MercadoPagoWebhookEvent {
     id: string;
   };
 }
-
-const COURSE_PURCHASE_POINTS = 120;
-const PAID_EVENT_ENROLL_POINTS = 40;
-const FREE_EVENT_ENROLL_POINTS = 10;
-const COMMUNITY_PURCHASE_POINTS = 40;
 
 export interface AsaasWebhookEvent {
   event: string;
@@ -80,6 +76,8 @@ export class MercadoPagoWebhookProcessor {
     if (!paymentDetails) {
       throw new Error(`Payment not found: ${paymentId}`);
     }
+
+    const pointSettings = await getGamificationPointSettings()
 
     const txMetadata: any = paymentDetails.metadata || {}
     const externalReference = paymentDetails.external_reference || null
@@ -210,7 +208,7 @@ export class MercadoPagoWebhookProcessor {
                 await GamificationEngine.processEvent({
                   userId: order.userId,
                   type: 'COURSE_PURCHASED',
-                  points: COURSE_PURCHASE_POINTS,
+                  points: pointSettings.coursePurchasePoints,
                   metadata: {
                     eventType: 'COURSE_PURCHASED',
                     reasonLabel: 'Compra de curso',
@@ -283,7 +281,7 @@ export class MercadoPagoWebhookProcessor {
               })
 
               const isPaidEvent = event.accessType === 'PAID'
-              const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : FREE_EVENT_ENROLL_POINTS
+              const pointsToAward = isPaidEvent ? pointSettings.paidEventEnrollPoints : pointSettings.freeEventEnrollPoints
 
               if (!existingTx && pointsToAward > 0) {
                 await GamificationEngine.awardPoints(order.userId, pointsToAward, 'EVENT_ENROLLED', {
@@ -373,7 +371,7 @@ export class MercadoPagoWebhookProcessor {
                 })
 
                 if (!alreadyAwarded) {
-                  await GamificationEngine.awardPoints(order.userId, COMMUNITY_PURCHASE_POINTS, 'COMMUNITY_ENROLLED_PAID', {
+                  await GamificationEngine.awardPoints(order.userId, pointSettings.communityPurchasePoints, 'COMMUNITY_ENROLLED_PAID', {
                     communityId,
                     reasonLabel: 'Inscrição em comunidade paga',
                     orderId: order.id,

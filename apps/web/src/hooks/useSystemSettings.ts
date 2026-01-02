@@ -8,7 +8,7 @@ interface SystemSetting {
   key: string
   value: string
   type: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON'
-  category: 'GENERAL' | 'SECURITY' | 'EMAIL' | 'PAYMENT' | 'NOTIFICATION'
+  category: 'GENERAL' | 'SECURITY' | 'EMAIL' | 'PAYMENT' | 'NOTIFICATION' | 'GAMIFICATION'
   description: string
   isRequired: boolean
   isPublic: boolean

@@ -6,9 +6,7 @@ import bcrypt from 'bcryptjs'
 import { resendEmailService } from '@/lib/resend-email'
 import { GamificationEngine } from '@/lib/gamification-engine'
 import notificationService from '@/lib/notifications/notification-service'
-
-const PAID_COURSE_ENROLL_POINTS = 80
-const FREE_COURSE_ENROLL_POINTS = 10
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 interface RouteParams {
   params: {
@@ -188,7 +186,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Gamification: conceder pontos e criar notificação
     try {
       const isPaidCourse = course.price != null && Number(course.price) > 0
-      const pointsToAward = isPaidCourse ? PAID_COURSE_ENROLL_POINTS : FREE_COURSE_ENROLL_POINTS
+      const pointSettings = await getGamificationPointSettings()
+      const pointsToAward = isPaidCourse ? pointSettings.paidCourseEnrollPoints : pointSettings.freeCourseEnrollPoints
 
       // Evitar duplicidade: checar transação com courseId
       const existingTx = await prisma.pointTransaction.findFirst({

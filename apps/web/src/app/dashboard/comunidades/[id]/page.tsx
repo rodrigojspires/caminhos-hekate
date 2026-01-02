@@ -657,12 +657,12 @@ export default function CommunityDetailPage() {
               ) : null}
             </>
           )}
-          {!canAccess && community.accessModels.includes('SUBSCRIPTION') ? (
+          {!canAccess && membershipStatus !== 'pending' && community.accessModels.includes('SUBSCRIPTION') ? (
             <Button variant="outline" onClick={() => setUpgradeOpen(true)} disabled={actionLoading}>
               Ver planos
             </Button>
           ) : null}
-          {!canAccess && community.accessModels.includes('ONE_TIME') ? (
+          {!canAccess && membershipStatus !== 'pending' && community.accessModels.includes('ONE_TIME') ? (
             <Button variant="outline" onClick={() => router.push(`/checkout?communityId=${community.id}`)} disabled={actionLoading}>
               Ir para o checkout
             </Button>

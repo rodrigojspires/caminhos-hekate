@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 // GET /api/gamification/streaks - Get user streaks
 export async function GET(request: NextRequest) {
@@ -152,11 +153,19 @@ export async function POST(request: NextRequest) {
 
 // Helper function to check streak achievements
 async function checkStreakAchievements(userId: string, streak: any) {
-  const streakMilestones = [3, 7, 14, 30, 60, 100]
+  const pointSettings = await getGamificationPointSettings()
+  const streakMilestones = [
+    { days: 3, points: pointSettings.streak3Points },
+    { days: 7, points: pointSettings.streak7Points },
+    { days: 14, points: pointSettings.streak14Points },
+    { days: 30, points: pointSettings.streak30Points },
+    { days: 60, points: pointSettings.streak60Points },
+    { days: 100, points: pointSettings.streak100Points }
+  ]
   
   for (const milestone of streakMilestones) {
-    if (streak.currentStreak === milestone) {
-      const achievementId = `streak_${streak.streakType}_${milestone}`
+    if (streak.currentStreak === milestone.days) {
+      const achievementId = `streak_${streak.streakType}_${milestone.days}`
       
       // Check if achievement already exists
       const existingAchievement = await prisma.userAchievement.findFirst({
@@ -175,7 +184,7 @@ async function checkStreakAchievements(userId: string, streak: any) {
             unlockedAt: new Date(),
             metadata: {
               source: 'STREAK_ACHIEVEMENT',
-              milestone,
+              milestone: milestone.days,
               streakType: streak.streakType
             }
           }
@@ -186,12 +195,12 @@ async function checkStreakAchievements(userId: string, streak: any) {
           where: { userId: userId },
           update: {
             totalPoints: {
-              increment: milestone * 10
+              increment: milestone.points
             }
           },
           create: {
             userId: userId,
-            totalPoints: milestone * 10,
+            totalPoints: milestone.points,
             currentLevel: 1,
             pointsToNext: 100
           }
@@ -202,13 +211,13 @@ async function checkStreakAchievements(userId: string, streak: any) {
           data: {
             userId: userId,
             type: 'EARNED',
-            points: milestone * 10,
+            points: milestone.points,
             reason: 'STREAK_ACHIEVEMENT',
-            description: `Conquista: Sequência de ${milestone} dias`,
+            description: `Conquista: Sequência de ${milestone.days} dias`,
             metadata: {
               achievementId: achievementId,
               streakType: streak.streakType,
-              streakLength: milestone
+              streakLength: milestone.days
             }
           }
         })

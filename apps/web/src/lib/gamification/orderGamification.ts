@@ -2,42 +2,45 @@
 
 import { prisma } from '@hekate/database'
 import { GamificationEngine } from '@/lib/gamification-engine'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 const ORDER_GAMIFICATION_CATEGORY_ID = 'orders_category'
 
-const ORDER_ACHIEVEMENTS = [
-  {
-    id: 'orders_1',
-    name: 'Primeira Compra',
-    description: 'Concluiu o primeiro pedido com sucesso.',
-    threshold: 1,
-    rarity: 'COMMON' as const,
-    points: 100,
-    icon: '🛒',
-  },
-  {
-    id: 'orders_5',
-    name: 'Cliente Fiel',
-    description: 'Concluiu cinco pedidos.',
-    threshold: 5,
-    rarity: 'RARE' as const,
-    points: 250,
-    icon: '💎',
-  },
-  {
-    id: 'orders_10',
-    name: 'Membro Ouro',
-    description: 'Concluiu dez pedidos.',
-    threshold: 10,
-    rarity: 'EPIC' as const,
-    points: 500,
-    icon: '🏆',
-  },
-]
-
-const ORDER_CREATED_POINTS = 20
-const ORDER_PAID_POINTS = 30
-const ORDER_COMPLETED_POINTS = 80
+function buildOrderAchievements(settings: {
+  orderAchievement1Points: number
+  orderAchievement5Points: number
+  orderAchievement10Points: number
+}) {
+  return [
+    {
+      id: 'orders_1',
+      name: 'Primeira Compra',
+      description: 'Concluiu o primeiro pedido com sucesso.',
+      threshold: 1,
+      rarity: 'COMMON' as const,
+      points: settings.orderAchievement1Points,
+      icon: '🛒',
+    },
+    {
+      id: 'orders_5',
+      name: 'Cliente Fiel',
+      description: 'Concluiu cinco pedidos.',
+      threshold: 5,
+      rarity: 'RARE' as const,
+      points: settings.orderAchievement5Points,
+      icon: '💎',
+    },
+    {
+      id: 'orders_10',
+      name: 'Membro Ouro',
+      description: 'Concluiu dez pedidos.',
+      threshold: 10,
+      rarity: 'EPIC' as const,
+      points: settings.orderAchievement10Points,
+      icon: '🏆',
+    },
+  ]
+}
 
 const EVENT_REASON_LABELS: Record<string, string> = {
   ORDER_CREATED: 'Pedido criado',
@@ -57,6 +60,7 @@ export async function handleOrderCreated(params: {
   totalAmount: number
 }) {
   if (!params.userId) return null
+  const pointSettings = await getGamificationPointSettings()
 
   const metadata = {
     orderId: params.orderId,
@@ -66,15 +70,17 @@ export async function handleOrderCreated(params: {
     reasonLabel: EVENT_REASON_LABELS.ORDER_CREATED,
   }
 
-  await GamificationEngine.processEvent({
-    userId: params.userId,
-    type: 'ORDER_CREATED',
-    points: ORDER_CREATED_POINTS,
-    metadata,
-  })
+  if (pointSettings.orderCreatedPoints > 0) {
+    await GamificationEngine.processEvent({
+      userId: params.userId,
+      type: 'ORDER_CREATED',
+      points: pointSettings.orderCreatedPoints,
+      metadata,
+    })
+  }
 
   return {
-    pointsAwarded: ORDER_CREATED_POINTS,
+    pointsAwarded: pointSettings.orderCreatedPoints,
     achievementsUnlocked: [] as string[],
   }
 }
@@ -93,6 +99,7 @@ export async function handleOrderStatusChange(options: {
   }
 
   if (!options.userId) return result
+  const pointSettings = await getGamificationPointSettings()
 
   const metadata = {
     orderId: options.orderId,
@@ -104,11 +111,11 @@ export async function handleOrderStatusChange(options: {
   const events: Array<{ type: string; points: number }> = []
 
   if (options.newStatus === 'PAID' && options.previousStatus !== 'PAID') {
-    events.push({ type: 'ORDER_PAID', points: ORDER_PAID_POINTS })
+    events.push({ type: 'ORDER_PAID', points: pointSettings.orderPaidPoints })
   }
 
   if (options.newStatus === 'DELIVERED' && options.previousStatus !== 'DELIVERED') {
-    events.push({ type: 'ORDER_COMPLETED', points: ORDER_COMPLETED_POINTS })
+    events.push({ type: 'ORDER_COMPLETED', points: pointSettings.orderCompletedPoints })
   }
 
   for (const event of events) {
@@ -126,7 +133,7 @@ export async function handleOrderStatusChange(options: {
   }
 
   if (options.newStatus === 'DELIVERED' && options.previousStatus !== 'DELIVERED') {
-    await ensureOrderAchievements()
+    await ensureOrderAchievements(pointSettings)
     const deliveredCount = await prisma.order.count({
       where: {
         userId: options.userId,
@@ -134,7 +141,7 @@ export async function handleOrderStatusChange(options: {
       },
     })
 
-    for (const achievement of ORDER_ACHIEVEMENTS) {
+    for (const achievement of buildOrderAchievements(pointSettings)) {
       if (deliveredCount >= achievement.threshold) {
         const alreadyUnlocked = await prisma.userAchievement.findUnique({
           where: {
@@ -172,7 +179,11 @@ export async function handleOrderStatusChange(options: {
   return result
 }
 
-async function ensureOrderAchievements() {
+async function ensureOrderAchievements(settings: {
+  orderAchievement1Points: number
+  orderAchievement5Points: number
+  orderAchievement10Points: number
+}) {
   await prisma.achievementCategory.upsert({
     where: { id: ORDER_GAMIFICATION_CATEGORY_ID },
     update: {
@@ -190,7 +201,7 @@ async function ensureOrderAchievements() {
     },
   })
 
-  for (const achievement of ORDER_ACHIEVEMENTS) {
+  for (const achievement of buildOrderAchievements(settings)) {
     await prisma.achievement.upsert({
       where: { id: achievement.id },
       update: {

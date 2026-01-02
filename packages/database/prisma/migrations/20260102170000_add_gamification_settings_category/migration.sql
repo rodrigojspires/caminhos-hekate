@@ -1,0 +1,2 @@
+-- Add GAMIFICATION to SettingCategory enum
+ALTER TYPE "SettingCategory" ADD VALUE IF NOT EXISTS 'GAMIFICATION';

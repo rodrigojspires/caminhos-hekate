@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 // POST /api/gamification/points/award - Award points to user
 export async function POST(request: NextRequest) {
@@ -122,14 +123,15 @@ async function checkPointsAchievements(
   const newAchievements = []
 
   try {
+    const pointSettings = await getGamificationPointSettings()
     // Points milestones
     const pointsMilestones = [
-      { points: 100, name: 'Primeiro Centenário', description: 'Alcançou 100 pontos totais' },
-      { points: 500, name: 'Meio Milhar', description: 'Alcançou 500 pontos totais' },
-      { points: 1000, name: 'Primeiro Milhar', description: 'Alcançou 1000 pontos totais' },
-      { points: 2500, name: 'Acumulador', description: 'Alcançou 2500 pontos totais' },
-      { points: 5000, name: 'Colecionador', description: 'Alcançou 5000 pontos totais' },
-      { points: 10000, name: 'Mestre dos Pontos', description: 'Alcançou 10000 pontos totais' }
+      { points: 100, name: 'Primeiro Centenário', description: 'Alcançou 100 pontos totais', rewardPoints: pointSettings.pointsMilestone100Bonus },
+      { points: 500, name: 'Meio Milhar', description: 'Alcançou 500 pontos totais', rewardPoints: pointSettings.pointsMilestone500Bonus },
+      { points: 1000, name: 'Primeiro Milhar', description: 'Alcançou 1000 pontos totais', rewardPoints: pointSettings.pointsMilestone1000Bonus },
+      { points: 2500, name: 'Acumulador', description: 'Alcançou 2500 pontos totais', rewardPoints: pointSettings.pointsMilestone2500Bonus },
+      { points: 5000, name: 'Colecionador', description: 'Alcançou 5000 pontos totais', rewardPoints: pointSettings.pointsMilestone5000Bonus },
+      { points: 10000, name: 'Mestre dos Pontos', description: 'Alcançou 10000 pontos totais', rewardPoints: pointSettings.pointsMilestone10000Bonus }
     ]
 
     for (const milestone of pointsMilestones) {
@@ -170,7 +172,7 @@ async function checkPointsAchievements(
                         milestone.points >= 2500 ? 'EPIC' : 
                         milestone.points >= 1000 ? 'RARE' : 'COMMON',
                 // Usar o campo points do Achievement como recompensa
-                points: Math.floor(milestone.points * 0.05),
+                points: milestone.rewardPoints,
                 // Campo obrigatório no schema
                 criteria: {}
               }
@@ -222,12 +224,12 @@ async function checkPointsAchievements(
     // Level-based achievements
     if (levelUp) {
       const levelMilestones = [
-        { level: 5, name: 'Iniciante Dedicado', description: 'Alcançou o nível 5' },
-        { level: 10, name: 'Estudante Aplicado', description: 'Alcançou o nível 10' },
-        { level: 20, name: 'Conhecedor', description: 'Alcançou o nível 20' },
-        { level: 30, name: 'Especialista', description: 'Alcançou o nível 30' },
-        { level: 50, name: 'Mestre', description: 'Alcançou o nível 50' },
-        { level: 100, name: 'Lenda', description: 'Alcançou o nível 100' }
+        { level: 5, name: 'Iniciante Dedicado', description: 'Alcançou o nível 5', rewardPoints: pointSettings.levelMilestone5Bonus },
+        { level: 10, name: 'Estudante Aplicado', description: 'Alcançou o nível 10', rewardPoints: pointSettings.levelMilestone10Bonus },
+        { level: 20, name: 'Conhecedor', description: 'Alcançou o nível 20', rewardPoints: pointSettings.levelMilestone20Bonus },
+        { level: 30, name: 'Especialista', description: 'Alcançou o nível 30', rewardPoints: pointSettings.levelMilestone30Bonus },
+        { level: 50, name: 'Mestre', description: 'Alcançou o nível 50', rewardPoints: pointSettings.levelMilestone50Bonus },
+        { level: 100, name: 'Lenda', description: 'Alcançou o nível 100', rewardPoints: pointSettings.levelMilestone100Bonus }
       ]
 
       for (const milestone of levelMilestones) {
@@ -266,7 +268,7 @@ async function checkPointsAchievements(
                   rarity: milestone.level >= 50 ? 'LEGENDARY' : 
                           milestone.level >= 30 ? 'EPIC' : 
                           milestone.level >= 20 ? 'RARE' : 'COMMON',
-                  points: milestone.level * 10,
+                  points: milestone.rewardPoints,
                   criteria: {}
                 }
               })

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { getActivityLeaderboard } from '@/lib/community-leaderboard'
 import { GamificationEngine } from '@/lib/gamification-engine'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 const TOP_LIMIT = 3
-const POINTS_BY_RANK = [300, 200, 100]
 const BADGE_COLOR = '#F59E0B'
 const BADGE_ICON = 'trophy'
 const BADGE_CATEGORY = 'community'
@@ -56,6 +56,12 @@ async function awardTopEntries({
 }) {
   if (leaderboard.length === 0) return []
 
+  const pointSettings = await getGamificationPointSettings()
+  const pointsByRank = [
+    pointSettings.communityLeaderboardTop1Points,
+    pointSettings.communityLeaderboardTop2Points,
+    pointSettings.communityLeaderboardTop3Points
+  ]
   const badge = await ensureBadge(badgeName, badgeDescription, metadata)
 
   const awarded: { userId: string; rank: number }[] = []
@@ -80,7 +86,7 @@ async function awardTopEntries({
       }
     })
 
-    const points = POINTS_BY_RANK[index] || 0
+    const points = pointsByRank[index] || 0
     if (points > 0) {
       await GamificationEngine.awardPoints(entry.userId, points, 'COMMUNITY_LEADERBOARD_MONTHLY', {
         ...metadata,

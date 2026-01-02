@@ -7,6 +7,10 @@ import {
   BarChart3, PieChart, Activity, Award
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  GAMIFICATION_POINT_SECTIONS,
+  GAMIFICATION_POINT_SETTINGS
+} from '@/lib/gamification/point-settings'
 
 interface DashboardStats {
   totalUsers: number
@@ -57,6 +61,10 @@ export default function GamificationAdminDashboard() {
   const [events, setEvents] = useState<Event[]>([])
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [rewards, setRewards] = useState<Reward[]>([])
+  const [pointSettings, setPointSettings] = useState<Record<string, number>>({})
+  const [pointSettingsLoading, setPointSettingsLoading] = useState(true)
+  const [pointSettingsSaving, setPointSettingsSaving] = useState(false)
+  const [pointSettingsDirty, setPointSettingsDirty] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // Fetch dashboard data
@@ -99,8 +107,68 @@ export default function GamificationAdminDashboard() {
     }
   }
 
+  const fetchPointSettings = async () => {
+    try {
+      setPointSettingsLoading(true)
+      const response = await fetch('/api/admin/gamification/settings')
+      if (!response.ok) {
+        throw new Error('Falha ao carregar configuracoes de pontos')
+      }
+      const data = await response.json()
+      const values = (data.settings || []).reduce((acc: Record<string, number>, item: any) => {
+        const value = typeof item.value === 'number' ? item.value : Number(item.value)
+        acc[item.field] = Number.isFinite(value) ? value : item.defaultValue
+        return acc
+      }, {})
+      setPointSettings(values)
+      setPointSettingsDirty(false)
+    } catch (error) {
+      console.error('Erro ao carregar configuracoes de pontos:', error)
+      toast.error('Erro ao carregar configuracoes de pontos')
+    } finally {
+      setPointSettingsLoading(false)
+    }
+  }
+
+  const handleSavePointSettings = async () => {
+    try {
+      setPointSettingsSaving(true)
+      const payload = {
+        settings: GAMIFICATION_POINT_SETTINGS.map((item) => ({
+          key: item.key,
+          value: pointSettings[item.field] ?? item.defaultValue
+        }))
+      }
+      const response = await fetch('/api/admin/gamification/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (!response.ok) {
+        throw new Error('Falha ao salvar configuracoes de pontos')
+      }
+      toast.success('Configuracoes de pontos atualizadas')
+      setPointSettingsDirty(false)
+    } catch (error) {
+      console.error('Erro ao salvar configuracoes de pontos:', error)
+      toast.error('Erro ao salvar configuracoes de pontos')
+    } finally {
+      setPointSettingsSaving(false)
+    }
+  }
+
+  const handleResetPointSettings = () => {
+    const defaults = GAMIFICATION_POINT_SETTINGS.reduce((acc: Record<string, number>, item) => {
+      acc[item.field] = item.defaultValue
+      return acc
+    }, {})
+    setPointSettings(defaults)
+    setPointSettingsDirty(true)
+  }
+
   useEffect(() => {
     fetchDashboardData()
+    fetchPointSettings()
   }, [])
 
   // Stats cards
@@ -464,6 +532,88 @@ export default function GamificationAdminDashboard() {
     </div>
   )
 
+  const SettingsTab = () => {
+    if (pointSettingsLoading) {
+      return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-600 dark:text-gray-300">Carregando configuracoes de pontos...</p>
+        </div>
+      )
+    }
+
+    const settingsBySection = GAMIFICATION_POINT_SETTINGS.reduce((acc: Record<string, typeof GAMIFICATION_POINT_SETTINGS>, item) => {
+      if (!acc[item.section]) acc[item.section] = []
+      acc[item.section].push(item)
+      return acc
+    }, {})
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configuracoes de Pontos</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Ajuste as pontuacoes fixas usadas na gamificacao.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetPointSettings}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Restaurar padrao
+            </button>
+            <button
+              type="button"
+              onClick={handleSavePointSettings}
+              disabled={!pointSettingsDirty || pointSettingsSaving}
+              className={`px-4 py-2 rounded-lg text-white ${pointSettingsDirty ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'} disabled:cursor-not-allowed`}
+            >
+              {pointSettingsSaving ? 'Salvando...' : 'Salvar alteracoes'}
+            </button>
+          </div>
+        </div>
+
+        {Object.entries(settingsBySection).map(([section, items]) => (
+          <div key={section} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {GAMIFICATION_POINT_SECTIONS[section as keyof typeof GAMIFICATION_POINT_SECTIONS]}
+              </h3>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {items.map((item) => (
+                <div key={item.key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {item.label}
+                    </label>
+                    <span className="text-xs text-gray-500">{item.key}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{item.description}</p>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                    value={pointSettings[item.field] ?? item.defaultValue}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value)
+                      setPointSettings((prev) => ({
+                        ...prev,
+                        [item.field]: Number.isFinite(nextValue) ? nextValue : item.defaultValue
+                      }))
+                      setPointSettingsDirty(true)
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -505,6 +655,7 @@ export default function GamificationAdminDashboard() {
               { id: 'events', label: 'Eventos', icon: Calendar },
               { id: 'achievements', label: 'Conquistas', icon: Trophy },
               { id: 'rewards', label: 'Recompensas', icon: Gift },
+              { id: 'settings', label: 'Configuracoes', icon: Settings },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -529,6 +680,7 @@ export default function GamificationAdminDashboard() {
         {activeTab === 'events' && <EventsTab />}
         {activeTab === 'achievements' && <AchievementsTab />}
         {activeTab === 'rewards' && <RewardsTab />}
+        {activeTab === 'settings' && <SettingsTab />}
       </div>
     </div>
   )

@@ -1095,6 +1095,7 @@ enum SettingCategory {
   INTEGRATIONS
   APPEARANCE
   NOTIFICATIONS
+  GAMIFICATION
 }
 
 enum SettingType {

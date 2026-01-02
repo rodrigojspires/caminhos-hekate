@@ -35,7 +35,8 @@ import {
   Shield, 
   CreditCard, 
   Globe, 
-  Bell, 
+  Bell,
+  Award,
   Database,
   Search, 
   MoreHorizontal, 
@@ -54,7 +55,7 @@ interface SystemSetting {
   key: string
   value: string
   type: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON'
-  category: 'GENERAL' | 'SECURITY' | 'EMAIL' | 'PAYMENT' | 'NOTIFICATION'
+  category: 'GENERAL' | 'SECURITY' | 'EMAIL' | 'PAYMENT' | 'NOTIFICATION' | 'GAMIFICATION'
   description: string
   isRequired: boolean
   updatedAt: string
@@ -105,6 +106,8 @@ function getCategoryIcon(category: string) {
       return <CreditCard className="h-4 w-4" />
     case 'NOTIFICATION':
       return <Bell className="h-4 w-4" />
+    case 'GAMIFICATION':
+      return <Award className="h-4 w-4" />
     default:
       return <Settings className="h-4 w-4" />
   }
@@ -116,7 +119,8 @@ function getCategoryLabel(category: string) {
     SECURITY: 'Segurança',
     EMAIL: 'E-mail',
     PAYMENT: 'Pagamento',
-    NOTIFICATION: 'Notificação'
+    NOTIFICATION: 'Notificação',
+    GAMIFICATION: 'Gamificação'
   }
   return categories[category as keyof typeof categories] || category
 }
@@ -256,6 +260,7 @@ export default async function SettingsPage() {
                 <SelectItem value="email">E-mail</SelectItem>
                 <SelectItem value="payment">Pagamento</SelectItem>
                 <SelectItem value="notification">Notificação</SelectItem>
+                <SelectItem value="gamification">Gamificação</SelectItem>
               </SelectContent>
             </Select>
             <Select>

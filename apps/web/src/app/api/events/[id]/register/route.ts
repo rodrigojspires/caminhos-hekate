@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { EventRegistrationStatus, ReminderType, ReminderStatus } from '@prisma/client'
 import { GamificationEngine } from '@/lib/gamification-engine'
 import notificationService from '@/lib/notifications/notification-service'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 // Schema de validação para registro
 const registerSchema = z.object({
@@ -13,9 +14,6 @@ const registerSchema = z.object({
   recurrenceInstanceStart: z.string().datetime().optional(),
   recurrenceInstanceId: z.string().optional()
 })
-
-const PAID_EVENT_ENROLL_POINTS = 40
-const FREE_EVENT_ENROLL_POINTS = 10
 
 // POST /api/events/[id]/register - Registrar-se em um evento
 export async function POST(
@@ -267,7 +265,8 @@ export async function POST(
     // Pontuação por inscrição
     try {
       const isPaidEvent = event.accessType === 'PAID'
-      const pointsToAward = isPaidEvent ? PAID_EVENT_ENROLL_POINTS : 0
+      const pointSettings = await getGamificationPointSettings()
+      const pointsToAward = isPaidEvent ? pointSettings.paidEventEnrollPoints : 0
 
       const existingTx = await prisma.pointTransaction.findFirst({
         where: {

@@ -11,7 +11,8 @@ export const SettingCategorySchema = z.enum([
   'SECURITY',
   'INTEGRATIONS',
   'APPEARANCE',
-  'NOTIFICATIONS'
+  'NOTIFICATIONS',
+  'GAMIFICATION'
 ])
 
 export const SettingTypeSchema = z.enum([

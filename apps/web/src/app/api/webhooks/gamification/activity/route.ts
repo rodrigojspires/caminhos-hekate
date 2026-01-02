@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@hekate/database'
 import { achievementEngine } from '@/lib/gamification/achievement-engine'
 import type { ActivityType } from '@/lib/gamification/achievement-engine'
+import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
 
 const schema = z.object({
   userId: z.string().uuid(),
@@ -55,20 +56,24 @@ export async function POST(request: NextRequest) {
     })
 
     // Simple points mapping (mirror of /api/gamification/activity)
+    const pointSettings = await getGamificationPointSettings()
     const pointsMap: Record<string, number> = {
-      LOGIN: 5,
-      PROFILE_COMPLETE: 50,
-      FIRST_PURCHASE: 100,
-      COURSE_COMPLETE: 200,
-      LESSON_COMPLETE: 25,
-      QUIZ_COMPLETE: 30,
-      COMMENT_POST: 10,
-      SHARE_CONTENT: 15,
-      INVITE_FRIEND: 75,
-      STREAK_MILESTONE: 50,
-      GROUP_JOIN: 25,
-      GROUP_POST: 20,
-      REVIEW_SUBMIT: 40,
+      LOGIN: pointSettings.activityLoginPoints,
+      PROFILE_UPDATE: pointSettings.activityProfileUpdatePoints,
+      AVATAR_UPDATE: pointSettings.activityAvatarUpdatePoints,
+      PROFILE_COMPLETE: pointSettings.activityProfileCompletePoints,
+      FIRST_PURCHASE: pointSettings.activityFirstPurchasePoints,
+      COURSE_COMPLETE: pointSettings.activityCourseCompletePoints,
+      LESSON_COMPLETE: pointSettings.activityLessonCompletePoints,
+      QUIZ_COMPLETE: pointSettings.activityQuizCompletePoints,
+      PURCHASE_COMPLETE: pointSettings.activityPurchaseCompletePoints,
+      COMMENT_POST: pointSettings.activityCommentPostPoints,
+      SHARE_CONTENT: pointSettings.activityShareContentPoints,
+      INVITE_FRIEND: pointSettings.activityInviteFriendPoints,
+      STREAK_MILESTONE: pointSettings.activityStreakMilestonePoints,
+      GROUP_JOIN: pointSettings.activityGroupJoinPoints,
+      GROUP_POST: pointSettings.activityGroupPostPoints,
+      REVIEW_SUBMIT: pointSettings.activityReviewSubmitPoints,
     }
 
     let points = 0
