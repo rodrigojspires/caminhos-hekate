@@ -1,6 +1,8 @@
 const { WebSocketServer } = require('ws')
 const jwt = require('jsonwebtoken')
-const { prisma } = require('@hekate/database')
+const { PrismaClient } = require('@prisma/client')
+
+const prisma = new PrismaClient()
 
 const PORT = Number(process.env.COMMUNITY_WS_PORT || 8082)
 const SECRET = process.env.NEXTAUTH_SECRET
