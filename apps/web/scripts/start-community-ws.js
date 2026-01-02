@@ -54,10 +54,12 @@ function addClient(ws, userId) {
 
 function removeClient(userId) {
   const client = clients.get(userId)
+  const previousCommunityId = client?.communityId || null
   if (client && client.communityId) {
     leaveCommunity(userId, client.communityId)
   }
   clients.delete(userId)
+  return previousCommunityId
 }
 
 async function joinCommunity(userId, communityId) {
@@ -132,13 +134,27 @@ function broadcastToCommunity(communityId, payload, excludeUserId) {
   return sent
 }
 
+function broadcastPresence(communityId) {
+  const members = communityMembers.get(communityId)
+  const userIds = members ? Array.from(members) : []
+  broadcastToCommunity(communityId, {
+    type: 'presence',
+    communityId,
+    userIds,
+    timestamp: new Date().toISOString()
+  })
+}
+
 function cleanupInactiveConnections() {
   const now = new Date()
   const timeout = 30 * 60 * 1000
   for (const [userId, client] of clients.entries()) {
     const inactiveTime = now.getTime() - client.lastActivity.getTime()
     if (inactiveTime > timeout || client.ws.readyState !== client.ws.OPEN) {
-      removeClient(userId)
+      const previousCommunityId = removeClient(userId)
+      if (previousCommunityId) {
+        broadcastPresence(previousCommunityId)
+      }
     }
   }
 }
@@ -190,12 +206,15 @@ wss.on('connection', (ws) => {
           }
           await joinCommunity(userId, communityId)
           ws.send(JSON.stringify({ type: 'joined_community', communityId }))
+          broadcastPresence(communityId)
           break
         }
         case 'leave_community': {
           if (userId && communityId) {
             leaveCommunity(userId, communityId)
+            const previousCommunityId = communityId
             communityId = null
+            broadcastPresence(previousCommunityId)
           }
           break
         }
@@ -229,9 +248,9 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (userId) {
-      removeClient(userId)
-      if (communityId) {
-        leaveCommunity(userId, communityId)
+      const previousCommunityId = removeClient(userId)
+      if (previousCommunityId) {
+        broadcastPresence(previousCommunityId)
       }
     }
   })
