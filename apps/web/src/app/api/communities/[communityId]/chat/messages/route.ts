@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { communityId:
 
     const membership = await prisma.communityMembership.findUnique({
       where: { communityId_userId: { communityId: params.communityId, userId } },
-      select: { status: true }
+      select: { status: true, lastChatReadAt: true }
     })
     if (!membership || membership.status !== 'active') {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: { communityId:
       }
     })
 
-    return NextResponse.json({ messages })
+    return NextResponse.json({ messages, lastReadAt: membership.lastChatReadAt })
   } catch (error) {
     console.error('Erro ao listar mensagens da comunidade:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

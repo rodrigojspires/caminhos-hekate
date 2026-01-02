@@ -89,6 +89,7 @@ export default function CommunityDetailPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatText, setChatText] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+  const [chatLastReadAt, setChatLastReadAt] = useState<string | null>(null)
   const [onlineMemberIds, setOnlineMemberIds] = useState<string[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
@@ -221,9 +222,6 @@ export default function CommunityDetailPage() {
           if (payload.type === 'authenticated') {
             socket.send(JSON.stringify({ type: 'join_community', communityId }))
           }
-          if (payload.type === 'joined_community') {
-            await fetch(`/api/communities/${communityId}/chat/read`, { method: 'POST' })
-          }
           if (payload.type === 'presence' && payload.communityId === communityId) {
             setOnlineMemberIds(Array.isArray(payload.userIds) ? payload.userIds : [])
           }
@@ -308,6 +306,7 @@ export default function CommunityDetailPage() {
       }
       const list = Array.isArray(data.messages) ? data.messages : []
       setChatMessages(list.reverse())
+      setChatLastReadAt(data.lastReadAt || null)
       await fetch(`/api/communities/${communityId}/chat/read`, { method: 'POST' })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao carregar chat'
@@ -355,6 +354,13 @@ export default function CommunityDetailPage() {
   }
 
   const onlineSet = useMemo(() => new Set(onlineMemberIds), [onlineMemberIds])
+
+  const firstUnreadMessageId = useMemo(() => {
+    if (!chatLastReadAt) return null
+    const lastReadTime = new Date(chatLastReadAt).getTime()
+    const found = chatMessages.find((message) => new Date(message.createdAt).getTime() > lastReadTime)
+    return found?.id || null
+  }, [chatMessages, chatLastReadAt])
 
   useEffect(() => {
     if (sidebarSection !== 'chat') return
@@ -646,19 +652,28 @@ export default function CommunityDetailPage() {
                           <div className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</div>
                         ) : (
                           chatMessages.map((message) => (
-                            <div key={message.id} className="flex items-start gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={message.author.image || ''} />
-                                <AvatarFallback>
-                                  {(message.author.name || 'U').slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="text-xs text-muted-foreground">
-                                  {message.author.name || 'Usuário'} •{' '}
-                                  {new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            <div key={message.id}>
+                              {firstUnreadMessageId === message.id ? (
+                                <div className="flex items-center gap-2 text-xs text-amber-700">
+                                  <span className="h-px flex-1 bg-amber-200" />
+                                  Novas mensagens
+                                  <span className="h-px flex-1 bg-amber-200" />
                                 </div>
-                                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                              ) : null}
+                              <div className="flex items-start gap-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={message.author.image || ''} />
+                                  <AvatarFallback>
+                                    {(message.author.name || 'U').slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {message.author.name || 'Usuário'} •{' '}
+                                    {new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                  <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                                </div>
                               </div>
                             </div>
                           ))
