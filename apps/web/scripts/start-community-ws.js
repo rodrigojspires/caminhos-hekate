@@ -112,6 +112,14 @@ function cleanupInactiveConnections() {
 
 const wss = new WebSocketServer({ port: PORT })
 
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error)
+})
+
 wss.on('connection', (ws) => {
   let userId = null
   let communityId = null
@@ -177,6 +185,11 @@ wss.on('connection', (ws) => {
         }
       }
     } catch (error) {
+      console.error('WS error:', {
+        userId,
+        communityId,
+        error: error instanceof Error ? error.message : error
+      })
       ws.send(JSON.stringify({ type: 'error', message: 'Erro interno do servidor' }))
     }
   })
