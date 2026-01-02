@@ -2,15 +2,40 @@ const { WebSocketServer } = require('ws')
 const jwt = require('jsonwebtoken')
 const path = require('path')
 
+const prismaCandidates = [
+  path.join(__dirname, '../../../packages/database/node_modules/.prisma/client'),
+  path.join(__dirname, '../../../packages/database/node_modules/@prisma/client'),
+  path.join(__dirname, '../../../node_modules/.prisma/client'),
+  path.join(__dirname, '../../../node_modules/@prisma/client'),
+  '@prisma/client'
+]
+
 let PrismaClient
-try {
-  // Prefer the generated client inside the database package to avoid schema mismatch.
-  ;({ PrismaClient } = require(path.join(__dirname, '../../../packages/database/node_modules/@prisma/client')))
-} catch (error) {
-  ;({ PrismaClient } = require('@prisma/client'))
+let prismaSource = null
+for (const candidate of prismaCandidates) {
+  try {
+    ;({ PrismaClient } = require(candidate))
+    prismaSource = candidate
+    break
+  } catch (error) {
+    // Try next candidate.
+  }
+}
+
+if (!PrismaClient) {
+  console.error('Prisma Client nao encontrado. Rode prisma generate e tente novamente.')
+  process.exit(1)
 }
 
 const prisma = new PrismaClient()
+console.log(`Prisma Client carregado de: ${prismaSource}`)
+
+if (!prisma.communityMembership) {
+  console.error('Prisma Client nao possui o model CommunityMembership. Rode prisma generate no packages/database.')
+  const models = Object.keys(prisma).filter((key) => prisma[key]?.findMany)
+  console.error('Models encontrados:', models)
+  process.exit(1)
+}
 
 const PORT = Number(process.env.COMMUNITY_WS_PORT || 8082)
 const SECRET = process.env.NEXTAUTH_SECRET
