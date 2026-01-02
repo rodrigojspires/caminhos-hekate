@@ -60,7 +60,7 @@ interface UseGroupChatReturn {
 }
 
 export function useGroupChat(options: UseGroupChatOptions = {}): UseGroupChatReturn {
-  const { groupId, autoConnect = true } = options
+  const { groupId, autoConnect = false } = options
   const { data: session } = useSession() as { data: ExtendedSession | null }
   
   // Estado da conexão
@@ -468,7 +468,7 @@ export function useGroupChat(options: UseGroupChatOptions = {}): UseGroupChatRet
   
   // Efeito para conectar automaticamente
   useEffect(() => {
-    if (autoConnect && session?.user?.id && !isConnected && !isConnecting) {
+    if (autoConnect && groupId && session?.user?.id && !isConnected && !isConnecting) {
       connect()
     }
     

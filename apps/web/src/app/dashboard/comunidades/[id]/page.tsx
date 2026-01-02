@@ -140,9 +140,26 @@ export default function CommunityDetailPage() {
     }
 
     let canceled = false
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let pingTimer: ReturnType<typeof setInterval> | null = null
+    let reconnectAttempts = 0
+
+    const scheduleReconnect = () => {
+      if (canceled) return
+      const delay = Math.min(10000, 1000 * 2 ** reconnectAttempts)
+      reconnectAttempts += 1
+      reconnectTimer = window.setTimeout(() => {
+        connect()
+      }, delay)
+    }
 
     const connect = async () => {
       try {
+        if (wsRef.current) {
+          wsRef.current.close()
+          wsRef.current = null
+        }
+
         const res = await fetch('/api/communities/ws/token', { cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
@@ -155,7 +172,16 @@ export default function CommunityDetailPage() {
         wsRef.current = socket
 
         socket.onopen = () => {
+          reconnectAttempts = 0
           socket.send(JSON.stringify({ type: 'authenticate', token: data.token }))
+          if (pingTimer) {
+            window.clearInterval(pingTimer)
+          }
+          pingTimer = window.setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'ping' }))
+            }
+          }, 25000)
         }
 
         socket.onmessage = async (event) => {
@@ -179,13 +205,23 @@ export default function CommunityDetailPage() {
         }
 
         socket.onclose = () => {
+          if (pingTimer) {
+            window.clearInterval(pingTimer)
+            pingTimer = null
+          }
           if (wsRef.current === socket) {
             wsRef.current = null
           }
+          scheduleReconnect()
+        }
+
+        socket.onerror = () => {
+          socket.close()
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro ao conectar chat'
         toast.error(message)
+        scheduleReconnect()
       }
     }
 
@@ -193,6 +229,12 @@ export default function CommunityDetailPage() {
 
     return () => {
       canceled = true
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer)
+      }
+      if (pingTimer) {
+        window.clearInterval(pingTimer)
+      }
       if (wsRef.current) {
         wsRef.current.close()
         wsRef.current = null
