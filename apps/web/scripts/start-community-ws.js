@@ -19,7 +19,7 @@ function addClient(ws, userId) {
 
 function removeClient(userId) {
   const client = clients.get(userId)
-  if (client?.communityId) {
+  if (client && client.communityId) {
     leaveCommunity(userId, client.communityId)
   }
   clients.delete(userId)
