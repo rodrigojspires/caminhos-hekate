@@ -1,6 +1,14 @@
 const { WebSocketServer } = require('ws')
 const jwt = require('jsonwebtoken')
-const { PrismaClient } = require('@prisma/client')
+const path = require('path')
+
+let PrismaClient
+try {
+  // Prefer the generated client inside the database package to avoid schema mismatch.
+  ;({ PrismaClient } = require(path.join(__dirname, '../../../packages/database/node_modules/@prisma/client')))
+} catch (error) {
+  ;({ PrismaClient } = require('@prisma/client'))
+}
 
 const prisma = new PrismaClient()
 
