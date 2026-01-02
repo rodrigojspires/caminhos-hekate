@@ -123,6 +123,27 @@ services:
     command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-subscription-billing.ts"]
     restart: unless-stopped
 
+  community-ws:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      DATABASE_URL: ${DATABASE_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    working_dir: /app
+    command: ["sh","-lc","exec node /app/apps/web/scripts/start-community-ws.js"]
+    ports:
+      - "127.0.0.1:8082:8082"
+    restart: unless-stopped
+
   # One-off utility container for DB tasks (migrations/seed)
   dbtools:
     build:
