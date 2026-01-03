@@ -94,7 +94,7 @@ export default function EditCommunityPostPage({ params }: { params: { id: string
         excerpt: data.content?.slice(0, 180) || undefined,
         tier: 'FREE',
         isPinned: data.isPinned || false,
-        communityIds: data.communityIds || [],
+        communityId: data.communityIds?.[0],
         allowComments: data.allowComments !== false,
         metadata: {
           featured: !!data.isFeatured

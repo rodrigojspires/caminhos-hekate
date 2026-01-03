@@ -25,11 +25,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const rawLimit = searchParams.get('limit')
+    const parsedLimit = rawLimit ? parseInt(rawLimit) : undefined
+    const clampedLimit = parsedLimit && parsedLimit > 100 ? 100 : parsedLimit
     const filters = CommunityFiltersSchema.parse({
       search: searchParams.get('search') || undefined,
       communityId: searchParams.get('communityId') || undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10,
+      limit: clampedLimit ?? 10,
       sortBy: searchParams.get('sortBy') || 'createdAt',
       sortOrder: searchParams.get('sortOrder') || 'desc'
     })
