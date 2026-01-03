@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 type FollowToggleProps = {
-  type: 'topic' | 'author'
+  type: 'topic' | 'author' | 'post'
   id: string
 }
 
@@ -43,4 +43,3 @@ export default function FollowToggle({ type, id }: FollowToggleProps) {
     </Button>
   )
 }
-

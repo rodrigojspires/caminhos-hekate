@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { GamificationEngine } from '@/lib/gamification-engine'
 import { getGamificationPointSettings } from '@/lib/gamification/point-settings.server'
+import notificationService from '@/lib/notifications/notification-service'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -51,6 +52,51 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       })
     } catch (pointsError) {
       console.error('Erro ao conceder pontos por comentário:', pointsError)
+    }
+
+    try {
+      const followers = await prisma.userPreferences.findMany({
+        where: {
+          layout: {
+            path: ['community', 'followedPosts'],
+            array_contains: [params.id]
+          }
+        },
+        select: { userId: true }
+      })
+
+      const followerIds = followers
+        .map((f) => f.userId)
+        .filter((id) => id && id !== userId)
+
+      if (followerIds.length > 0) {
+        const postInfo = await prisma.post.findUnique({
+          where: { id: params.id },
+          select: { id: true, title: true, slug: true }
+        })
+
+        const postTitle = postInfo?.title || 'um post'
+        const postUrl = postInfo?.slug ? `/comunidade/post/${postInfo.slug}` : `/comunidade/post/${params.id}`
+
+        await Promise.all(
+          followerIds.map((followerId) =>
+            notificationService.createNotification({
+              userId: followerId,
+              type: 'COMMENT_REPLY',
+              title: 'Novo comentario em post seguido',
+              message: `Novo comentario em ${postTitle}.`,
+              data: {
+                postId: params.id,
+                commentId: comment.id,
+                url: postUrl
+              },
+              priority: 'LOW'
+            })
+          )
+        )
+      }
+    } catch (notifyError) {
+      console.error('Erro ao notificar seguidores do post:', notifyError)
     }
 
     // Indexar comentário (opcional)

@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Flame, MessageCircle, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
+import PostViewTracker from '@/components/public/community/PostViewTracker'
+import FollowToggle from '@/components/public/community/FollowToggle'
 
 type Community = {
   id: string
@@ -88,6 +90,7 @@ export default function DashboardCommunitiesPage() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [showInactiveNotice, setShowInactiveNotice] = useState(false)
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
   const [leaderboardCommunityId, setLeaderboardCommunityId] = useState<string>('all')
   const [selectedTopicId, setSelectedTopicId] = useState<string>('all')
   const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
@@ -354,6 +357,7 @@ export default function DashboardCommunitiesPage() {
 
   const renderPostCard = (post: Post) => {
     const isOpen = openComments.has(post.id)
+    const isExpanded = expandedPosts.has(post.id)
     const dateLabel = new Date(post.createdAt).toLocaleString('pt-BR', {
       day: '2-digit',
       month: 'short',
@@ -362,12 +366,19 @@ export default function DashboardCommunitiesPage() {
     })
     const contentPreview = post.content || post.excerpt || ''
     const isThread = post.type === 'THREAD'
+    const shouldTruncate = !post.locked && contentPreview.length > 280
 
     return (
       <Card
         key={post.id}
-        className={`overflow-hidden border-l-4 ${isThread ? 'border-l-blue-500' : 'border-l-amber-500'}`}
+        className={`relative overflow-hidden border-l-4 ${isThread ? 'border-l-blue-500' : 'border-l-amber-500'}`}
       >
+        <PostViewTracker
+          postId={post.id}
+          className="absolute inset-0 pointer-events-none"
+          threshold={0.35}
+          delayMs={2000}
+        />
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -391,15 +402,33 @@ export default function DashboardCommunitiesPage() {
                 </div>
               </div>
             </div>
-            <Button asChild size="sm" variant="ghost">
-              <Link href={`/comunidade/post/${post.slug}`}>Ver post</Link>
-            </Button>
+            <FollowToggle type="post" id={post.id} />
           </div>
           <div>
             <CardTitle className="text-lg">{post.title}</CardTitle>
-            <CardDescription className="mt-2 line-clamp-3">
+            <CardDescription className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''}`}>
               {post.locked ? 'Conteúdo disponível após inscrição.' : contentPreview}
             </CardDescription>
+            {!post.locked && shouldTruncate ? (
+              <Button
+                type="button"
+                variant="link"
+                className="px-0 text-xs"
+                onClick={() => {
+                  setExpandedPosts((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(post.id)) {
+                      next.delete(post.id)
+                    } else {
+                      next.add(post.id)
+                    }
+                    return next
+                  })
+                }}
+              >
+                {isExpanded ? 'Ver menos' : 'Ver mais'}
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

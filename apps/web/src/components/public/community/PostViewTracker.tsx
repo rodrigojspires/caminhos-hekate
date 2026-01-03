@@ -4,9 +4,17 @@ import { useEffect, useRef } from 'react'
 
 type PostViewTrackerProps = {
   postId: string
+  className?: string
+  threshold?: number
+  delayMs?: number
 }
 
-export default function PostViewTracker({ postId }: PostViewTrackerProps) {
+export default function PostViewTracker({
+  postId,
+  className,
+  threshold = 0.6,
+  delayMs = 3000
+}: PostViewTrackerProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sentRef = useRef(false)
@@ -26,14 +34,14 @@ export default function PostViewTracker({ postId }: PostViewTrackerProps) {
                 await fetch(`/api/community/posts/${postId}/view`, { method: 'POST' })
                 sentRef.current = true
               } catch {}
-            }, 3000)
+            }, delayMs)
           }
         } else if (!entry.isIntersecting && timerRef.current) {
           clearTimeout(timerRef.current)
           timerRef.current = null
         }
       },
-      { threshold: 0.6 }
+      { threshold }
     )
 
     observer.observe(target)
@@ -46,5 +54,11 @@ export default function PostViewTracker({ postId }: PostViewTrackerProps) {
     }
   }, [postId])
 
-  return <div ref={ref} className="h-px w-full" aria-hidden="true" />
+  return (
+    <div
+      ref={ref}
+      className={className || 'h-px w-full'}
+      aria-hidden="true"
+    />
+  )
 }
