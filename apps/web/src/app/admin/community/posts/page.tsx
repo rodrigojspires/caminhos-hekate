@@ -28,9 +28,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Eye, MessageCircle, MoreHorizontal, Plus, Search, ThumbsUp, AlertTriangle, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag, Pin, EyeOff } from 'lucide-react'
-import { Suspense } from 'react'
-import { headers } from 'next/headers'
+import { Eye, MoreHorizontal, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag, Pin, EyeOff, ArrowLeft } from 'lucide-react'
+import { headers, cookies } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Posts - Comunidade',
@@ -65,6 +65,24 @@ interface Post {
   updatedAt: string
 }
 
+interface CommunityOption {
+  id: string
+  name: string
+}
+
+interface TopicOption {
+  id: string
+  name: string
+}
+
+function resolveBaseUrl() {
+  const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+  const headersList = headers()
+  const host = headersList.get('x-forwarded-host') || headersList.get('host')
+  const proto = headersList.get('x-forwarded-proto') || 'http'
+  return envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
+}
+
 // Função para buscar posts da API
 async function getPosts(searchParams?: URLSearchParams): Promise<{
   posts: Post[]
@@ -83,21 +101,20 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       const search = searchParams.get('search')
       const status = searchParams.get('status')
       const topicId = searchParams.get('topicId')
+      const communityId = searchParams.get('communityId')
       const page = searchParams.get('page') || '1'
       const limit = searchParams.get('limit') || '10'
       
       if (search) params.set('search', search)
       if (status && status !== 'all') params.set('status', status.toUpperCase())
       if (topicId && topicId !== 'all') params.set('topicId', topicId)
+      if (communityId) params.set('communityId', communityId)
       params.set('page', page)
       params.set('limit', limit)
     }
 
-    const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+    const baseUrl = resolveBaseUrl()
     const headersList = headers()
-    const host = headersList.get('x-forwarded-host') || headersList.get('host')
-    const proto = headersList.get('x-forwarded-proto') || 'http'
-    const baseUrl = envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
     const response = await fetch(`${baseUrl}/api/admin/community/posts?${params.toString()}`, {
       cache: 'no-store',
       headers: {
@@ -164,6 +181,56 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
   }
 }
 
+async function getCommunities(): Promise<CommunityOption[]> {
+  try {
+    const baseUrl = resolveBaseUrl()
+    const headersList = headers()
+    const response = await fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: headersList.get('cookie') ?? ''
+      }
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    if (!Array.isArray(data?.communities)) return []
+    return data.communities.map((community: any) => ({
+      id: community.id,
+      name: community.name
+    }))
+  } catch (error) {
+    console.error('Erro ao buscar comunidades:', error)
+    return []
+  }
+}
+
+async function getTopics(communityId?: string): Promise<TopicOption[]> {
+  try {
+    const baseUrl = resolveBaseUrl()
+    const headersList = headers()
+    const params = new URLSearchParams({ limit: '200' })
+    if (communityId) params.set('communityId', communityId)
+    const response = await fetch(`${baseUrl}/api/admin/community/topics?${params.toString()}`, {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: headersList.get('cookie') ?? ''
+      }
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    if (!Array.isArray(data?.topics)) return []
+    return data.topics.map((topic: any) => ({
+      id: topic.id,
+      name: topic.name
+    }))
+  } catch (error) {
+    console.error('Erro ao buscar categorias:', error)
+    return []
+  }
+}
+
 function getStatusBadge(status: Post['status']) {
   switch (status) {
     case 'PUBLISHED':
@@ -197,9 +264,11 @@ function getInitials(name: string): string {
 }
 
 // Componente de Filtros
-function PostsFilters({ searchParams, totalPosts }: {
+function PostsFilters({ searchParams, totalPosts, communities, topics }: {
   searchParams: CommunityPostsPageProps['searchParams']
   totalPosts: number
+  communities: CommunityOption[]
+  topics: TopicOption[]
 }) {
   return (
     <Card>
@@ -222,6 +291,19 @@ function PostsFilters({ searchParams, totalPosts }: {
               />
             </div>
           </div>
+          <Select name="communityId" defaultValue={searchParams.communityId || 'all'}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Comunidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as comunidades</SelectItem>
+              {communities.map((community) => (
+                <SelectItem key={community.id} value={community.id}>
+                  {community.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select name="status" defaultValue={searchParams.status || 'all'}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Status" />
@@ -239,9 +321,11 @@ function PostsFilters({ searchParams, totalPosts }: {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as categorias</SelectItem>
-              <SelectItem value="1">Tarot</SelectItem>
-              <SelectItem value="2">Astrologia</SelectItem>
-              <SelectItem value="3">Cristais</SelectItem>
+              {topics.map((topic) => (
+                <SelectItem key={topic.id} value={topic.id}>
+                  {topic.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button type="submit" variant="outline">
@@ -268,6 +352,9 @@ function PostsPagination({ pagination, searchParams }: {
     if (searchParams.search) params.set('search', searchParams.search)
     if (searchParams.status) params.set('status', searchParams.status)
     if (searchParams.topicId) params.set('topicId', searchParams.topicId)
+    if (searchParams.communityId && searchParams.communityId !== 'all') {
+      params.set('communityId', searchParams.communityId)
+    }
     params.set('page', page.toString())
     return `?${params.toString()}`
   }
@@ -349,6 +436,7 @@ interface CommunityPostsPageProps {
     search?: string
     status?: string
     topicId?: string
+    communityId?: string
     page?: string
     limit?: string
   }
@@ -361,38 +449,78 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
   if (searchParams.search) urlSearchParams.set('search', searchParams.search)
   if (searchParams.status) urlSearchParams.set('status', searchParams.status)
   if (searchParams.topicId) urlSearchParams.set('topicId', searchParams.topicId)
+  if (searchParams.communityId && searchParams.communityId !== 'all') {
+    urlSearchParams.set('communityId', searchParams.communityId)
+  }
   if (searchParams.page) urlSearchParams.set('page', searchParams.page)
   if (searchParams.limit) urlSearchParams.set('limit', searchParams.limit)
   
-  const { posts, pagination } = await getPosts(urlSearchParams)
+  const [postsData, communities, topics] = await Promise.all([
+    getPosts(urlSearchParams),
+    getCommunities(),
+    getTopics(searchParams.communityId && searchParams.communityId !== 'all' ? searchParams.communityId : undefined)
+  ])
+  const { posts, pagination } = postsData
+  const backHref = searchParams.communityId && searchParams.communityId !== 'all'
+    ? `/admin/community/communities/${searchParams.communityId}`
+    : '/admin/community'
 
-  async function togglePin(postId: string, pin: boolean) {
+  async function togglePin(formData: FormData) {
     'use server'
-    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/posts/${postId}`, {
+    const postId = String(formData.get('postId') || '')
+    const pin = formData.get('pin') === 'true'
+    const baseUrl = resolveBaseUrl()
+    const cookieHeader = cookies().toString()
+    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
       body: JSON.stringify({ isPinned: pin })
     })
+    revalidatePath('/admin/community/posts')
   }
 
-  async function setStatus(postId: string, status: 'PUBLISHED' | 'HIDDEN' | 'DRAFT') {
+  async function setStatus(formData: FormData) {
     'use server'
-    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/posts/${postId}`, {
+    const postId = String(formData.get('postId') || '')
+    const status = String(formData.get('status') || '')
+    const baseUrl = resolveBaseUrl()
+    const cookieHeader = cookies().toString()
+    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
       body: JSON.stringify({ status })
     })
+    revalidatePath('/admin/community/posts')
+  }
+
+  async function deletePost(formData: FormData) {
+    'use server'
+    const postId = String(formData.get('postId') || '')
+    const baseUrl = resolveBaseUrl()
+    const cookieHeader = cookies().toString()
+    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', cookie: cookieHeader }
+    })
+    revalidatePath('/admin/community/posts')
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Posts</h1>
-          <p className="text-muted-foreground">
-            Gerencie os posts da comunidade ({pagination.total} posts)
-          </p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={backHref}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Posts</h1>
+            <p className="text-muted-foreground">
+              Gerencie os posts da comunidade ({pagination.total} posts)
+            </p>
+          </div>
         </div>
         <div>
           <Button asChild>
@@ -407,6 +535,8 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
       <PostsFilters 
         searchParams={searchParams}
         totalPosts={pagination.total}
+        communities={communities}
+        topics={topics}
       />
 
       {/* Tabela de Posts */}
@@ -511,24 +641,38 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={async () => { 'use server'; await togglePin(post.id, !post.isPinned) }}
+                          asChild
                         >
-                          <Pin className="mr-2 h-4 w-4" />
-                          {post.isPinned ? 'Desafixar' : 'Fixar'}
+                          <form action={togglePin}>
+                            <input type="hidden" name="postId" value={post.id} />
+                            <input type="hidden" name="pin" value={String(!post.isPinned)} />
+                            <button type="submit" className="flex w-full items-center">
+                              <Pin className="mr-2 h-4 w-4" />
+                              {post.isPinned ? 'Desafixar' : 'Fixar'}
+                            </button>
+                          </form>
                         </DropdownMenuItem>
                         {post.status !== 'HIDDEN' ? (
-                          <DropdownMenuItem
-                            onClick={async () => { 'use server'; await setStatus(post.id, 'HIDDEN') }}
-                          >
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            Ocultar
+                          <DropdownMenuItem asChild>
+                            <form action={setStatus}>
+                              <input type="hidden" name="postId" value={post.id} />
+                              <input type="hidden" name="status" value="HIDDEN" />
+                              <button type="submit" className="flex w-full items-center">
+                                <EyeOff className="mr-2 h-4 w-4" />
+                                Ocultar
+                              </button>
+                            </form>
                           </DropdownMenuItem>
                         ) : (
-                          <DropdownMenuItem
-                            onClick={async () => { 'use server'; await setStatus(post.id, 'PUBLISHED') }}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Publicar
+                          <DropdownMenuItem asChild>
+                            <form action={setStatus}>
+                              <input type="hidden" name="postId" value={post.id} />
+                              <input type="hidden" name="status" value="PUBLISHED" />
+                              <button type="submit" className="flex w-full items-center">
+                                <Eye className="mr-2 h-4 w-4" />
+                                Publicar
+                              </button>
+                            </form>
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem asChild>
@@ -538,9 +682,14 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
+                        <DropdownMenuItem asChild>
+                          <form action={deletePost}>
+                            <input type="hidden" name="postId" value={post.id} />
+                            <button type="submit" className="text-red-600 flex w-full items-center">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </button>
+                          </form>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -53,6 +53,12 @@ export async function GET(request: NextRequest) {
         take: filters.limit,
         orderBy: { [filters.sortBy]: filters.sortOrder },
         include: {
+          community: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
           _count: {
             select: {
               posts: true

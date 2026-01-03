@@ -29,6 +29,12 @@ export async function GET(
     const topic = await prisma.topic.findUnique({
       where: { id: params.id },
       include: {
+        community: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         _count: {
           select: {
             posts: true

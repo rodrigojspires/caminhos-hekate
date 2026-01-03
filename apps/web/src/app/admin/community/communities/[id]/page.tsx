@@ -15,6 +15,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { ArrowLeft, FileText, MessageSquare, Tag } from 'lucide-react'
 
+const accessOptions = [
+  { id: 'FREE', label: 'Gratuita' },
+  { id: 'SUBSCRIPTION', label: 'Assinatura' },
+  { id: 'ONE_TIME', label: 'Compra avulsa' }
+]
+
+const tierOptions = ['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']
+
 type Community = {
   id: string
   name: string
@@ -67,6 +75,17 @@ export default function CommunityManagerPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [files, setFiles] = useState<CommunityFile[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [slugTouched, setSlugTouched] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    accessModels: ['FREE'],
+    tier: 'FREE',
+    price: '',
+    isActive: true
+  })
   const [fileForm, setFileForm] = useState({
     title: '',
     description: '',
@@ -103,6 +122,16 @@ export default function CommunityManagerPage() {
       const filesData = await filesRes.json().catch(() => ({ files: [] }))
 
       setCommunity(communityData)
+      setFormData({
+        name: communityData.name || '',
+        slug: communityData.slug || '',
+        description: communityData.description || '',
+        accessModels: Array.isArray(communityData.accessModels) ? communityData.accessModels : ['FREE'],
+        tier: communityData.tier || 'FREE',
+        price: communityData.price != null ? String(communityData.price) : '',
+        isActive: !!communityData.isActive
+      })
+      setSlugTouched(false)
       setTopics(Array.isArray(topicsData.topics) ? topicsData.topics : [])
       setPosts(Array.isArray(postsData.posts) ? postsData.posts : [])
       setFiles(Array.isArray(filesData.files) ? filesData.files : [])
@@ -162,6 +191,63 @@ export default function CommunityManagerPage() {
     }
   }
 
+  const handleAccessToggle = (model: string, checked: boolean) => {
+    setFormData((prev) => {
+      const next = new Set(prev.accessModels)
+      if (checked) next.add(model)
+      else next.delete(model)
+      return { ...prev, accessModels: Array.from(next) }
+    })
+  }
+
+  const handleNameChange = (value: string) => {
+    const slug = value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+    setFormData((prev) => ({
+      ...prev,
+      name: value,
+      slug: slugTouched ? prev.slug : slug
+    }))
+  }
+
+  const handleUpdate = async (event: React.FormEvent) => {
+    event.preventDefault()
+    try {
+      setSaving(true)
+      const payload = {
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description || undefined,
+        accessModels: formData.accessModels,
+        tier: formData.tier,
+        price: formData.price ? Number(formData.price) : null,
+        isActive: formData.isActive
+      }
+      const res = await fetch(`/api/admin/communities/${communityId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao atualizar comunidade')
+      }
+      toast.success('Comunidade atualizada')
+      await loadData()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar comunidade'
+      toast.error(message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -202,11 +288,16 @@ export default function CommunityManagerPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/admin/community/communities">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/admin/community/communities">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/community">Voltar ao painel</Link>
+          </Button>
+        </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{community.name}</h1>
           <p className="text-muted-foreground">
@@ -214,6 +305,104 @@ export default function CommunityManagerPage() {
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Editar Comunidade</CardTitle>
+          <CardDescription>Atualize nome, planos e preço da comunidade.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleUpdate} className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="community-name">Nome</Label>
+                <Input
+                  id="community-name"
+                  value={formData.name}
+                  onChange={(event) => handleNameChange(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="community-slug">Slug</Label>
+                <Input
+                  id="community-slug"
+                  value={formData.slug}
+                  onChange={(event) => {
+                    setSlugTouched(true)
+                    setFormData((prev) => ({ ...prev, slug: event.target.value }))
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="community-description">Descrição</Label>
+              <Textarea
+                id="community-description"
+                value={formData.description}
+                onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Modelo de acesso</Label>
+                <div className="flex flex-col gap-2">
+                  {accessOptions.map((option) => (
+                    <label key={option.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={formData.accessModels.includes(option.id)}
+                        onChange={(event) => handleAccessToggle(option.id, event.target.checked)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Tier de assinatura</Label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={formData.tier}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, tier: event.target.value }))}
+                >
+                  {tierOptions.map((tier) => (
+                    <option key={tier} value={tier}>
+                      {tier}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Preço mensal (quando pago)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.isActive}
+                onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))}
+              />
+              <Label>Comunidade ativa</Label>
+            </div>
+
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -265,11 +454,18 @@ export default function CommunityManagerPage() {
                 <CardTitle>Categorias desta comunidade</CardTitle>
                 <CardDescription>Itens cadastrados no catálogo da comunidade.</CardDescription>
               </div>
-              <Button asChild size="sm">
-                <Link href={`/admin/community/topics/new?communityId=${communityId}`}>
-                  Nova categoria
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/community/topics?communityId=${communityId}`}>
+                    Ver todas
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href={`/admin/community/topics/new?communityId=${communityId}`}>
+                    Nova categoria
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {topics.length === 0 ? (
@@ -306,11 +502,18 @@ export default function CommunityManagerPage() {
                 <CardTitle>Posts desta comunidade</CardTitle>
                 <CardDescription>Conteúdos publicados pelos usuários.</CardDescription>
               </div>
-              <Button asChild size="sm">
-                <Link href={`/admin/community/posts/new?communityId=${communityId}`}>
-                  Novo post
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/community/posts?communityId=${communityId}`}>
+                    Ver todos
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href={`/admin/community/posts/new?communityId=${communityId}`}>
+                    Novo post
+                  </Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {posts.length === 0 ? (

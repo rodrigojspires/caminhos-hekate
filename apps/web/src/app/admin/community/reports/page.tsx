@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { revalidatePath } from 'next/cache'
+import { headers, cookies } from 'next/headers'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,7 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Search, MoreHorizontal, Eye, CheckCircle, XCircle, AlertTriangle, MessageSquare, FileText, Shield, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, MoreHorizontal, Eye, CheckCircle, XCircle, AlertTriangle, MessageSquare, FileText, ChevronLeft, ChevronRight, Users, Heart } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Relatórios - Comunidade',
@@ -79,6 +80,14 @@ interface ReportsResponse {
   }
 }
 
+function resolveBaseUrl() {
+  const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+  const headersList = headers()
+  const host = headersList.get('x-forwarded-host') || headersList.get('host')
+  const proto = headersList.get('x-forwarded-proto') || 'http'
+  return envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
+}
+
 // Função para buscar relatórios da API
 async function getReports(searchParams?: {
   search?: string
@@ -96,8 +105,13 @@ async function getReports(searchParams?: {
     if (searchParams?.page) params.set('page', searchParams.page)
     if (searchParams?.limit) params.set('limit', searchParams.limit)
     
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/reports?${params}`, {
-      cache: 'no-store'
+    const baseUrl = resolveBaseUrl()
+    const headersList = headers()
+    const response = await fetch(`${baseUrl}/api/admin/community/reports?${params}`, {
+      cache: 'no-store',
+      headers: {
+        cookie: headersList.get('cookie') ?? ''
+      }
     })
     
     if (!response.ok) {
@@ -164,6 +178,78 @@ async function getReports(searchParams?: {
   }
 }
 
+async function getInsights() {
+  const baseUrl = resolveBaseUrl()
+  const headersList = headers()
+  const authHeaders = { cookie: headersList.get('cookie') ?? '' }
+
+  const [communitiesRes, postsRes, topicsRes, commentsRes] = await Promise.all([
+    fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, { cache: 'no-store', headers: authHeaders }),
+    fetch(`${baseUrl}/api/admin/community/posts?limit=200&status=PUBLISHED`, { cache: 'no-store', headers: authHeaders }),
+    fetch(`${baseUrl}/api/admin/community/topics?limit=200`, { cache: 'no-store', headers: authHeaders }),
+    fetch(`${baseUrl}/api/admin/community/comments?limit=200`, { cache: 'no-store', headers: authHeaders })
+  ])
+
+  const communitiesData = communitiesRes.ok ? await communitiesRes.json() : { communities: [] }
+  const postsData = postsRes.ok ? await postsRes.json() : { posts: [], pagination: { total: 0 } }
+  const topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [], pagination: { total: 0 } }
+  const commentsData = commentsRes.ok ? await commentsRes.json() : { comments: [], pagination: { total: 0 } }
+
+  const communities = Array.isArray(communitiesData?.communities) ? communitiesData.communities : []
+  const posts = Array.isArray(postsData?.posts) ? postsData.posts : []
+  const topics = Array.isArray(topicsData?.topics) ? topicsData.topics : []
+  const comments = Array.isArray(commentsData?.comments) ? commentsData.comments : []
+
+  const totalMembers = communities.reduce((sum: number, community: any) => sum + (community.membersCount || 0), 0)
+
+  const authorActivity = new Map<string, { name: string; count: number }>()
+  for (const post of posts) {
+    const authorId = post.author?.id
+    if (!authorId) continue
+    const entry = authorActivity.get(authorId) || { name: post.author?.name || 'Usuário', count: 0 }
+    entry.count += 1
+    authorActivity.set(authorId, entry)
+  }
+  for (const comment of comments) {
+    const authorId = comment.author?.id
+    if (!authorId) continue
+    const entry = authorActivity.get(authorId) || { name: comment.author?.name || 'Usuário', count: 0 }
+    entry.count += 1
+    authorActivity.set(authorId, entry)
+  }
+  const topMembers = Array.from(authorActivity.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+
+  const topPosts = posts
+    .map((post: any) => ({
+      id: post.id,
+      title: post.title || 'Sem título',
+      engagement: (post._count?.comments || 0) + (post._count?.reactions || 0)
+    }))
+    .sort((a: any, b: any) => b.engagement - a.engagement)
+    .slice(0, 3)
+
+  const topTopics = topics
+    .map((topic: any) => ({
+      id: topic.id,
+      name: topic.name || 'Categoria',
+      posts: topic._count?.posts || 0
+    }))
+    .sort((a: any, b: any) => b.posts - a.posts)
+    .slice(0, 3)
+
+  return {
+    communitiesCount: communities.length,
+    totalMembers,
+    totalPosts: postsData?.pagination?.total ?? posts.length,
+    totalTopics: topicsData?.pagination?.total ?? topics.length,
+    topMembers,
+    topPosts,
+    topTopics
+  }
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -225,10 +311,13 @@ function getStatusBadge(status: string) {
 async function handleResolveReport(reportId: string) {
   'use server'
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/reports/${reportId}`, {
+    const baseUrl = resolveBaseUrl()
+    const cookieHeader = cookies().toString()
+    const response = await fetch(`${baseUrl}/api/admin/community/reports/${reportId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        cookie: cookieHeader
       },
       body: JSON.stringify({
         status: 'RESOLVED',
@@ -250,10 +339,13 @@ async function handleResolveReport(reportId: string) {
 async function handleDismissReport(reportId: string) {
   'use server'
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/reports/${reportId}`, {
+    const baseUrl = resolveBaseUrl()
+    const cookieHeader = cookies().toString()
+    const response = await fetch(`${baseUrl}/api/admin/community/reports/${reportId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        cookie: cookieHeader
       },
       body: JSON.stringify({
         status: 'DISMISSED',
@@ -283,7 +375,11 @@ export default async function ReportsPage({
     limit?: string
   }
 }) {
-  const { reports, pagination } = await getReports(searchParams)
+  const [reportsData, insights] = await Promise.all([
+    getReports(searchParams),
+    getInsights()
+  ])
+  const { reports, pagination } = reportsData
   const pendingReports = reports.filter(r => r.status === 'PENDING').length
 
   return (
@@ -303,38 +399,115 @@ export default async function ReportsPage({
         )}
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Visão geral da comunidade */}
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Relatórios</CardTitle>
+            <CardTitle className="text-sm font-medium">Comunidades</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.communitiesCount}</div>
+            <p className="text-xs text-muted-foreground">Total cadastradas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Membros</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.totalMembers}</div>
+            <p className="text-xs text-muted-foreground">Participantes ativos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Posts publicados</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{insights.totalPosts}</div>
+            <p className="text-xs text-muted-foreground">Últimos posts ativos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Categorias ativas</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{reports.length}</div>
+          <CardContent className="space-y-1">
+            {insights.topTopics.length ? (
+              insights.topTopics.map((topic: any) => (
+                <p key={topic.id} className="text-xs text-muted-foreground">
+                  {topic.name} • {topic.posts}
+                </p>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">Sem dados recentes</p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-sm font-medium">Membros mais ativos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{pendingReports}</div>
+          <CardContent className="space-y-1">
+            {insights.topMembers.length ? (
+              insights.topMembers.map((member: any) => (
+                <p key={member.name} className="text-xs text-muted-foreground">
+                  {member.name} • {member.count}
+                </p>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">Sem dados recentes</p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolvidos</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Posts populares</CardTitle>
+            <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {reports.filter(r => r.status === 'RESOLVED').length}
-            </div>
+          <CardContent className="space-y-1">
+            {insights.topPosts.length ? (
+              insights.topPosts.map((post: any) => (
+                <p key={post.id} className="text-xs text-muted-foreground">
+                  {post.title} • {post.engagement}
+                </p>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">Sem dados recentes</p>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Ações rápidas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ações rápidas</CardTitle>
+          <CardDescription>Atalhos para tarefas frequentes</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Button asChild variant="outline">
+            <Link href="/admin/community/communities">Gerenciar comunidades</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/community/posts/new">Criar novo post</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/community/topics/new">Nova categoria</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/community/posts">Ver posts</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/community/comments">Moderar comentários</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <ReportsFilters searchParams={searchParams} total={pagination.total} />
 
@@ -469,19 +642,21 @@ export default async function ReportsPage({
                         {report.status === 'PENDING' && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-green-600"
-                              onClick={() => handleResolveReport(report.id)}
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Resolver relatório
+                            <DropdownMenuItem asChild>
+                              <form action={handleResolveReport.bind(null, report.id)}>
+                                <button type="submit" className="text-green-600 flex w-full items-center">
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Resolver relatório
+                                </button>
+                              </form>
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDismissReport(report.id)}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Rejeitar relatório
+                            <DropdownMenuItem asChild>
+                              <form action={handleDismissReport.bind(null, report.id)}>
+                                <button type="submit" className="text-red-600 flex w-full items-center">
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Rejeitar relatório
+                                </button>
+                              </form>
                             </DropdownMenuItem>
                           </>
                         )}

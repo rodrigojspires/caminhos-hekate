@@ -46,11 +46,11 @@ interface Comment {
   post: {
     id: string
     title: string
-    topic: {
+    topic?: {
       id: string
       name: string
       color: string
-    }
+    } | null
   }
   parentComment?: {
     id: string
@@ -339,10 +339,10 @@ export default function CommentsPage() {
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: comment.post.topic.color }}
+                          style={{ backgroundColor: comment.post.topic?.color || '#6B7280' }}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {comment.post.topic.name}
+                          {comment.post.topic?.name || 'Sem categoria'}
                         </span>
                       </div>
                       <p className="text-sm font-medium line-clamp-1" title={comment.post.title}>

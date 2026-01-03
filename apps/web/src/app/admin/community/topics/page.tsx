@@ -1,11 +1,19 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -22,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Power, PowerOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Categorias - Comunidade',
@@ -36,8 +44,22 @@ interface Topic {
   color: string
   isActive: boolean
   postsCount: number
+  community?: { id: string; name: string } | null
   createdAt: string
   updatedAt: string
+}
+
+interface CommunityOption {
+  id: string
+  name: string
+}
+
+function resolveBaseUrl() {
+  const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+  const headersList = headers()
+  const host = headersList.get('x-forwarded-host') || headersList.get('host')
+  const proto = headersList.get('x-forwarded-proto') || 'http'
+  return envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
 }
 
 // Função para buscar categorias
@@ -47,16 +69,16 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
     
     // Construir parâmetros de busca
     if (searchParams.search) urlSearchParams.set('search', searchParams.search as string)
+    if (searchParams.communityId && searchParams.communityId !== 'all') {
+      urlSearchParams.set('communityId', searchParams.communityId as string)
+    }
     if (searchParams.page) urlSearchParams.set('page', searchParams.page as string)
     if (searchParams.limit) urlSearchParams.set('limit', searchParams.limit as string)
     if (searchParams.sortBy) urlSearchParams.set('sortBy', searchParams.sortBy as string)
     if (searchParams.sortOrder) urlSearchParams.set('sortOrder', searchParams.sortOrder as string)
 
-    const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL
+    const baseUrl = resolveBaseUrl()
     const headersList = headers()
-    const host = headersList.get('x-forwarded-host') || headersList.get('host')
-    const proto = headersList.get('x-forwarded-proto') || 'http'
-    const baseUrl = envBaseUrl || (host ? `${proto}://${host}` : 'http://localhost:3000')
     const response = await fetch(`${baseUrl}/api/admin/community/topics?${urlSearchParams.toString()}`, {
       cache: 'no-store',
       headers: {
@@ -76,8 +98,9 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
       name: topic.name,
       description: topic.description || '',
       color: topic.color || '#8B5CF6',
-      isActive: topic.isActive,
+      isActive: typeof topic.isActive === 'boolean' ? topic.isActive : true,
       postsCount: topic._count?.posts || 0,
+      community: topic.community ? { id: topic.community.id, name: topic.community.name } : null,
       createdAt: topic.createdAt,
       updatedAt: topic.updatedAt
     }))
@@ -103,6 +126,29 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
   }
 }
 
+async function getCommunities(): Promise<CommunityOption[]> {
+  try {
+    const baseUrl = resolveBaseUrl()
+    const headersList = headers()
+    const response = await fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, {
+      cache: 'no-store',
+      headers: {
+        cookie: headersList.get('cookie') ?? ''
+      }
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    if (!Array.isArray(data?.communities)) return []
+    return data.communities.map((community: any) => ({
+      id: community.id,
+      name: community.name
+    }))
+  } catch (error) {
+    console.error('Erro ao buscar comunidades:', error)
+    return []
+  }
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -118,17 +164,45 @@ export default async function TopicsPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
-  const { topics, pagination } = await getTopics(searchParams)
+  const [topicsData, communities] = await Promise.all([
+    getTopics(searchParams),
+    getCommunities()
+  ])
+  const { topics, pagination } = topicsData
+  const communityId = typeof searchParams.communityId === 'string' ? searchParams.communityId : null
+  const backHref = communityId && communityId !== 'all'
+    ? `/admin/community/communities/${communityId}`
+    : '/admin/community'
+
+  async function deleteTopic(topicId: string) {
+    'use server'
+    const cookieStore = cookies()
+    const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join('; ')
+    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/topics/${topicId}`, {
+      method: 'DELETE',
+      headers: {
+        cookie: cookieHeader
+      }
+    })
+    revalidatePath('/admin/community/topics')
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={backHref}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
           <h1 className="text-3xl font-bold tracking-tight">Categorias</h1>
           <p className="text-muted-foreground">
             Gerencie as categorias da comunidade
           </p>
+          </div>
         </div>
         <Button asChild>
           <Link href="/admin/community/topics/new">
@@ -139,7 +213,7 @@ export default async function TopicsPage({
       </div>
 
       {/* Filtros */}
-      <TopicsFilters searchParams={searchParams} total={pagination.total} />
+      <TopicsFilters searchParams={searchParams} total={pagination.total} communities={communities} />
 
       {/* Tabela de Categorias */}
       <Card>
@@ -155,6 +229,7 @@ export default async function TopicsPage({
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Comunidade</TableHead>
                 <TableHead>Cor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Posts</TableHead>
@@ -179,6 +254,9 @@ export default async function TopicsPage({
                     <p className="truncate" title={topic.description}>
                       {topic.description}
                     </p>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{topic.community?.name || '—'}</span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -231,23 +309,13 @@ export default async function TopicsPage({
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          {topic.isActive ? (
-                            <>
-                              <PowerOff className="mr-2 h-4 w-4" />
-                              Desativar
-                            </>
-                          ) : (
-                            <>
-                              <Power className="mr-2 h-4 w-4" />
-                              Ativar
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
+                        <DropdownMenuItem asChild>
+                          <form action={deleteTopic.bind(null, topic.id)}>
+                            <button type="submit" className="text-red-600 flex w-full items-center">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </button>
+                          </form>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -269,9 +337,11 @@ export default async function TopicsPage({
 function TopicsFilters({
   searchParams,
   total,
+  communities
 }: {
   searchParams: { [key: string]: string | string[] | undefined }
   total: number
+  communities: CommunityOption[]
 }) {
   const search = typeof searchParams.search === 'string' ? searchParams.search : ''
 
@@ -296,6 +366,22 @@ function TopicsFilters({
               />
             </div>
           </div>
+          <Select
+            name="communityId"
+            defaultValue={typeof searchParams.communityId === 'string' ? searchParams.communityId : 'all'}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Comunidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as comunidades</SelectItem>
+              {communities.map((community) => (
+                <SelectItem key={community.id} value={community.id}>
+                  {community.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button type="submit" variant="outline">
             Filtrar
           </Button>

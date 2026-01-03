@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
 
@@ -37,7 +36,6 @@ export default function NewTopicPage() {
     slug: '',
     description: '',
     color: '#8B5CF6',
-    isActive: true,
     communityIds: [] as string[]
   })
 
@@ -220,14 +218,6 @@ export default function NewTopicPage() {
                 <p className="text-xs text-muted-foreground">{accessLabel}</p>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isActive"
-                  checked={form.isActive}
-                  onCheckedChange={(checked) => setForm((prev) => ({ ...prev, isActive: checked }))}
-                />
-                <Label htmlFor="isActive">Categoria ativa</Label>
-              </div>
             </CardContent>
           </Card>
         </div>

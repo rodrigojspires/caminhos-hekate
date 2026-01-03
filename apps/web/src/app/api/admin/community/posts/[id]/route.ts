@@ -46,6 +46,12 @@ export async function GET(
             color: true
           }
         },
+        community: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         comments: {
           take: 10,
           orderBy: { createdAt: 'desc' },

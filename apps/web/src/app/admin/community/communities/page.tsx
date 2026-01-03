@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 type Community = {
@@ -163,11 +164,18 @@ export default function AdminCommunitiesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Comunidades</h1>
-        <p className="text-muted-foreground">
-          Crie comunidades e defina modelos de acesso por assinatura ou compra avulsa.
-        </p>
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/admin/community">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Comunidades</h1>
+          <p className="text-muted-foreground">
+            Crie comunidades e defina modelos de acesso por assinatura ou compra avulsa.
+          </p>
+        </div>
       </div>
 
       <Card>
