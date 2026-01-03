@@ -2,7 +2,6 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { headers, cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -22,15 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
+import { TopicActionsMenu } from '@/components/admin/TopicActionsMenu'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Categorias - Comunidade',
@@ -130,7 +122,7 @@ async function getCommunities(): Promise<CommunityOption[]> {
   try {
     const baseUrl = resolveBaseUrl()
     const cookieHeader = cookies().toString()
-    const response = await fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, {
+    const response = await fetch(`${baseUrl}/api/admin/communities?limit=100&status=all`, {
       cache: 'no-store',
       headers: {
         cookie: cookieHeader
@@ -173,19 +165,6 @@ export default async function TopicsPage({
   const backHref = communityId && communityId !== 'all'
     ? `/admin/community/communities/${communityId}`
     : '/admin/community'
-
-  async function deleteTopic(topicId: string) {
-    'use server'
-    const cookieStore = cookies()
-    const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join('; ')
-    await fetch(`${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/admin/community/topics/${topicId}`, {
-      method: 'DELETE',
-      headers: {
-        cookie: cookieHeader
-      }
-    })
-    revalidatePath('/admin/community/topics')
-  }
 
   return (
     <div className="space-y-6">
@@ -286,39 +265,7 @@ export default async function TopicsPage({
                     {formatDate(topic.updatedAt)}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/community/topics/${topic.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/community/topics/${topic.id}/edit`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <form action={deleteTopic.bind(null, topic.id)}>
-                            <button type="submit" className="text-red-600 flex w-full items-center">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </button>
-                          </form>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <TopicActionsMenu topicId={topic.id} />
                   </TableCell>
                 </TableRow>
               ))}

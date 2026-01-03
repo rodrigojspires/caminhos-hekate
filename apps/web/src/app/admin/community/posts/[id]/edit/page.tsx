@@ -27,13 +27,19 @@ export default function EditCommunityPostPage({ params }: { params: { id: string
 
         const post = await postRes.json()
         const topicsUrl = post.communityId
-          ? `/api/admin/community/topics?limit=200&communityId=${post.communityId}`
-          : '/api/admin/community/topics?limit=200'
+          ? `/api/admin/community/topics?limit=100&communityId=${post.communityId}`
+          : '/api/admin/community/topics?limit=100'
         const [topicsRes, communitiesRes] = await Promise.all([
           fetch(topicsUrl, { cache: 'no-store' }),
-          fetch('/api/admin/communities?limit=200', { cache: 'no-store' })
+          fetch('/api/admin/communities?limit=100', { cache: 'no-store' })
         ])
-        const topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [] }
+        let topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [] }
+        if (!Array.isArray(topicsData?.topics) || topicsData.topics.length === 0) {
+          const fallbackRes = await fetch('/api/admin/community/topics?limit=100', { cache: 'no-store' })
+          if (fallbackRes.ok) {
+            topicsData = await fallbackRes.json()
+          }
+        }
         const communitiesData = communitiesRes.ok ? await communitiesRes.json() : { communities: [] }
 
         const cats = Array.isArray(topicsData?.topics)

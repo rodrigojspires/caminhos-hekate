@@ -20,17 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Eye, MoreHorizontal, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Pin, EyeOff, ArrowLeft } from 'lucide-react'
-import { headers, cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { Plus, Search, ChevronLeft, ChevronRight, MessageSquare, Heart, ArrowLeft } from 'lucide-react'
+import { headers } from 'next/headers'
+import { PostActionsMenu } from '@/components/admin/PostActionsMenu'
 
 export const metadata: Metadata = {
   title: 'Gerenciar Posts - Comunidade',
@@ -183,7 +175,7 @@ async function getCommunities(): Promise<CommunityOption[]> {
   try {
     const baseUrl = resolveBaseUrl()
     const headersList = headers()
-    const response = await fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, {
+    const response = await fetch(`${baseUrl}/api/admin/communities?limit=100&status=all`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
@@ -463,45 +455,6 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
     ? `/admin/community/communities/${searchParams.communityId}`
     : '/admin/community'
 
-  async function togglePin(formData: FormData) {
-    'use server'
-    const postId = String(formData.get('postId') || '')
-    const pin = formData.get('pin') === 'true'
-    const baseUrl = resolveBaseUrl()
-    const cookieHeader = cookies().toString()
-    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
-      body: JSON.stringify({ isPinned: pin })
-    })
-    revalidatePath('/admin/community/posts')
-  }
-
-  async function setStatus(formData: FormData) {
-    'use server'
-    const postId = String(formData.get('postId') || '')
-    const status = String(formData.get('status') || '')
-    const baseUrl = resolveBaseUrl()
-    const cookieHeader = cookies().toString()
-    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
-      body: JSON.stringify({ status })
-    })
-    revalidatePath('/admin/community/posts')
-  }
-
-  async function deletePost(formData: FormData) {
-    'use server'
-    const postId = String(formData.get('postId') || '')
-    const baseUrl = resolveBaseUrl()
-    const cookieHeader = cookies().toString()
-    await fetch(`${baseUrl}/api/admin/community/posts/${postId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', cookie: cookieHeader }
-    })
-    revalidatePath('/admin/community/posts')
-  }
 
   return (
     <div className="space-y-6">
@@ -617,74 +570,11 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                     {formatDate(post.createdAt)}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/community/posts/${post.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Visualizar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          asChild
-                        >
-                          <form action={togglePin}>
-                            <input type="hidden" name="postId" value={post.id} />
-                            <input type="hidden" name="pin" value={String(!post.isPinned)} />
-                            <button type="submit" className="flex w-full items-center">
-                              <Pin className="mr-2 h-4 w-4" />
-                              {post.isPinned ? 'Desafixar' : 'Fixar'}
-                            </button>
-                          </form>
-                        </DropdownMenuItem>
-                        {post.status !== 'HIDDEN' ? (
-                          <DropdownMenuItem asChild>
-                            <form action={setStatus}>
-                              <input type="hidden" name="postId" value={post.id} />
-                              <input type="hidden" name="status" value="HIDDEN" />
-                              <button type="submit" className="flex w-full items-center">
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                Ocultar
-                              </button>
-                            </form>
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem asChild>
-                            <form action={setStatus}>
-                              <input type="hidden" name="postId" value={post.id} />
-                              <input type="hidden" name="status" value="PUBLISHED" />
-                              <button type="submit" className="flex w-full items-center">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Publicar
-                              </button>
-                            </form>
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem asChild>
-                          <Link href={`/admin/community/posts/${post.id}/edit`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <form action={deletePost}>
-                            <input type="hidden" name="postId" value={post.id} />
-                            <button type="submit" className="text-red-600 flex w-full items-center">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </button>
-                          </form>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <PostActionsMenu
+                      postId={post.id}
+                      status={post.status}
+                      isPinned={post.isPinned}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
