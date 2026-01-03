@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       ? { communityId: resolvedCommunityId }
       : { OR: [{ communityId: resolvedCommunityId }, { communityId: null }] }
     const sort = searchParams.get('sort') || 'recent' // 'recent' | 'popular'
+    const featuredOnly = searchParams.get('featured') === 'true'
     const page = Number(searchParams.get('page') || '1')
     const limit = Math.min(50, Number(searchParams.get('limit') || '10'))
     const skip = (page - 1) * limit
@@ -31,7 +32,13 @@ export async function GET(req: NextRequest) {
       status: 'PUBLISHED',
       ...communityFilter,
       ...(topicId && { topicId }),
-      ...(authorId && { authorId })
+      ...(authorId && { authorId }),
+      ...(featuredOnly && {
+        metadata: {
+          path: ['featured'],
+          equals: true
+        }
+      })
     }
 
     const [community, membership] = await Promise.all([
@@ -54,8 +61,8 @@ export async function GET(req: NextRequest) {
     const hasCommunityAccess = !community || isFreeCommunity || allowedByTier || isMembershipActive(membership)
 
     const orderBy = sort === 'popular'
-      ? [{ viewCount: 'desc' as const }, { createdAt: 'desc' as const }]
-      : [{ createdAt: 'desc' as const }]
+      ? [{ isPinned: 'desc' as const }, { viewCount: 'desc' as const }, { createdAt: 'desc' as const }]
+      : [{ isPinned: 'desc' as const }, { createdAt: 'desc' as const }]
 
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
@@ -91,6 +98,7 @@ export async function GET(req: NextRequest) {
         reactionsCount: p._count.reactions,
         viewCount: p.viewCount,
         isPinned: p.isPinned,
+        isFeatured: (p.metadata as any)?.featured === true,
         type: p.type,
         tier: p.tier,
         locked

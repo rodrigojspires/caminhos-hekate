@@ -65,6 +65,7 @@ type Post = {
   reactionsCount: number
   viewCount: number
   isPinned: boolean
+  isFeatured?: boolean
   locked: boolean
   tier: string
   type: 'CONTENT' | 'THREAD'
@@ -93,6 +94,7 @@ export default function DashboardCommunitiesPage() {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
   const [leaderboardCommunityId, setLeaderboardCommunityId] = useState<string>('all')
   const [selectedTopicId, setSelectedTopicId] = useState<string>('all')
+  const [feedFilter, setFeedFilter] = useState<'all' | 'featured'>('all')
   const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [upgradePlan, setUpgradePlan] = useState<any | null>(null)
@@ -149,6 +151,9 @@ export default function DashboardCommunitiesPage() {
       if (selectedTopicId !== 'all') {
         params.set('topicId', selectedTopicId)
       }
+      if (feedFilter === 'featured') {
+        params.set('featured', 'true')
+      }
       const res = await fetch(`/api/community/posts?${params.toString()}`, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -186,7 +191,7 @@ export default function DashboardCommunitiesPage() {
 
   useEffect(() => {
     fetchPosts()
-  }, [selectedTopicId])
+  }, [selectedTopicId, feedFilter])
 
   useEffect(() => {
     fetchLeaderboard()
@@ -304,7 +309,11 @@ export default function DashboardCommunitiesPage() {
   }, [topics, memberCommunityIds])
 
   const timelineItems = useMemo(() => {
-    return [...visiblePosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return [...visiblePosts].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1
+      if (!a.isPinned && b.isPinned) return 1
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
   }, [visiblePosts])
 
   const renderCommunityRow = (community: Community) => {
@@ -371,7 +380,9 @@ export default function DashboardCommunitiesPage() {
     return (
       <Card
         key={post.id}
-        className={`relative overflow-hidden border-l-4 ${isThread ? 'border-l-blue-500' : 'border-l-amber-500'}`}
+        className={`relative overflow-hidden border-l-4 ${
+          isThread ? 'border-l-blue-500' : 'border-l-amber-500'
+        } ${post.isFeatured ? 'bg-amber-50/50' : ''}`}
       >
         <PostViewTracker
           postId={post.id}
@@ -392,6 +403,7 @@ export default function DashboardCommunitiesPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
+                  {post.isFeatured ? <Badge variant="outline">Destaque</Badge> : null}
                   {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
                   <Badge variant="outline">{post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}</Badge>
                 </div>
@@ -501,19 +513,30 @@ export default function DashboardCommunitiesPage() {
         <section className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Linha do tempo</h2>
-            <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as categorias</SelectItem>
-                {visibleTopics.map((topic) => (
-                  <SelectItem key={topic.id} value={topic.id}>
-                    {topic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={feedFilter} onValueChange={(value) => setFeedFilter(value as 'all' | 'featured')}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder="Filtro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="featured">Destaques</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as categorias</SelectItem>
+                  {visibleTopics.map((topic) => (
+                    <SelectItem key={topic.id} value={topic.id}>
+                      {topic.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {feedLoading ? (

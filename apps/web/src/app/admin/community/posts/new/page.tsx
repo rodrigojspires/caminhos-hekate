@@ -62,7 +62,10 @@ export default function NewCommunityPostPage() {
         excerpt: data.content?.slice(0, 180) || undefined,
         tier: 'FREE',
         isPinned: data.isPinned || false,
-        communityIds: data.communityIds || []
+        communityIds: data.communityIds || [],
+        metadata: {
+          featured: !!data.isFeatured
+        }
       }
       const res = await fetch('/api/admin/community/posts', {
         method: 'POST',

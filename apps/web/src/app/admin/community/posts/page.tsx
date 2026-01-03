@@ -43,6 +43,10 @@ interface Post {
   content: string
   status: 'PUBLISHED' | 'DRAFT' | 'HIDDEN'
   isPinned?: boolean
+  community?: {
+    id: string
+    name: string
+  } | null
   author: {
     id: string
     name: string
@@ -114,6 +118,10 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       title: post.title,
       content: post.content || post.excerpt || '',
       status: post.status,
+      community: post.community ? {
+        id: post.community.id,
+        name: post.community.name
+      } : null,
       author: {
         id: post.author.id,
         name: post.author.name || 'Usuário',
@@ -414,6 +422,7 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
             <TableHeader>
               <TableRow>
                 <TableHead>Post</TableHead>
+                <TableHead>Comunidade</TableHead>
                 <TableHead>Autor</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Status</TableHead>
@@ -432,6 +441,9 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                         {post.content}
                       </p>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{post.community?.name || '—'}</span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

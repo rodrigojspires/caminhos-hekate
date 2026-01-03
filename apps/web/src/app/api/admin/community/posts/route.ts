@@ -55,7 +55,12 @@ export async function GET(request: NextRequest) {
       ...(filters.status && { status: filters.status }),
       ...(filters.tier && { tier: filters.tier }),
       ...(filters.authorId && { authorId: filters.authorId }),
-      ...(filters.featured !== undefined && { isPinned: filters.featured })
+      ...(filters.featured !== undefined && {
+        metadata: {
+          path: ['featured'],
+          equals: filters.featured
+        }
+      })
     }
 
     const [posts, total] = await Promise.all([
@@ -79,6 +84,12 @@ export async function GET(request: NextRequest) {
               name: true,
               slug: true,
               color: true
+            }
+          },
+          community: {
+            select: {
+              id: true,
+              name: true
             }
           },
           _count: {

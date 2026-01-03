@@ -70,13 +70,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         .filter((id) => id && id !== userId)
 
       if (followerIds.length > 0) {
-        const postInfo = await prisma.post.findUnique({
-          where: { id: params.id },
-          select: { id: true, title: true, slug: true }
-        })
+        const [postInfo, authorInfo] = await Promise.all([
+          prisma.post.findUnique({
+            where: { id: params.id },
+            select: { id: true, title: true, slug: true }
+          }),
+          prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+          })
+        ])
 
         const postTitle = postInfo?.title || 'um post'
         const postUrl = postInfo?.slug ? `/comunidade/post/${postInfo.slug}` : `/comunidade/post/${params.id}`
+        const authorName = authorInfo?.name || 'Alguém'
+        const excerpt = content.length > 140 ? `${content.slice(0, 140)}...` : content
 
         await Promise.all(
           followerIds.map((followerId) =>
@@ -84,11 +92,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
               userId: followerId,
               type: 'COMMENT_REPLY',
               title: 'Novo comentario em post seguido',
-              message: `Novo comentario em ${postTitle}.`,
+              message: `${authorName}: ${excerpt}`,
               data: {
                 postId: params.id,
                 commentId: comment.id,
-                url: postUrl
+                url: postUrl,
+                authorName,
+                excerpt
               },
               priority: 'LOW'
             })

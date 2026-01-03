@@ -24,6 +24,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { PlanSelector } from '@/components/payments/PlanSelector'
 import { PaymentForm } from '@/components/payments/PaymentForm'
 
@@ -52,6 +59,7 @@ type Post = {
   commentsCount: number
   reactionsCount: number
   isPinned?: boolean | null
+  isFeatured?: boolean
   locked?: boolean | null
   tier?: string | null
   type?: 'THREAD' | 'CONTENT' | null
@@ -101,6 +109,7 @@ export default function CommunityDetailPage() {
   const [sidebarSection, setSidebarSection] = useState<'chat' | 'files' | 'members'>('chat')
   const [openComments, setOpenComments] = useState<Set<string>>(new Set())
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
+  const [postFilter, setPostFilter] = useState<'all' | 'featured'>('all')
   const [reactionState, setReactionState] = useState<Record<string, boolean>>({})
   const [discussionOpen, setDiscussionOpen] = useState(false)
   const [discussionTitle, setDiscussionTitle] = useState('')
@@ -158,7 +167,11 @@ export default function CommunityDetailPage() {
     if (!communityId) return
     try {
       setPostsLoading(true)
-      const res = await fetch(`/api/community/posts?communityId=${communityId}&limit=20`, {
+      const params = new URLSearchParams({ communityId, limit: '20' })
+      if (postFilter === 'featured') {
+        params.set('featured', 'true')
+      }
+      const res = await fetch(`/api/community/posts?${params.toString()}`, {
         cache: 'no-store'
       })
       const data = await res.json().catch(() => ({}))
@@ -178,7 +191,7 @@ export default function CommunityDetailPage() {
     if (communityId) {
       fetchPosts()
     }
-  }, [communityId])
+  }, [communityId, postFilter])
 
   useEffect(() => {
     if (sidebarSection === 'chat' && canAccess) {
@@ -508,7 +521,9 @@ export default function CommunityDetailPage() {
     return (
       <Card
         key={post.id}
-        className={`relative overflow-hidden border-l-4 ${isThread ? 'border-l-blue-500' : 'border-l-amber-500'}`}
+        className={`relative overflow-hidden border-l-4 ${
+          isThread ? 'border-l-blue-500' : 'border-l-amber-500'
+        } ${post.isFeatured ? 'bg-amber-50/50' : ''}`}
       >
         <PostViewTracker
           postId={post.id}
@@ -529,6 +544,7 @@ export default function CommunityDetailPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
+                  {post.isFeatured ? <Badge variant="outline">Destaque</Badge> : null}
                   {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
                   <Badge variant="outline">{post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}</Badge>
                 </div>
@@ -717,12 +733,23 @@ export default function CommunityDetailPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Posts da comunidade</h2>
-            <Button
-              onClick={() => setDiscussionOpen(true)}
-              disabled={!canAccess}
-            >
-              Nova discussão
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={postFilter} onValueChange={(value) => setPostFilter(value as 'all' | 'featured')}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder="Filtro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="featured">Destaques</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => setDiscussionOpen(true)}
+                disabled={!canAccess}
+              >
+                Nova discussão
+              </Button>
+            </div>
           </div>
 
           {!canAccess ? (
