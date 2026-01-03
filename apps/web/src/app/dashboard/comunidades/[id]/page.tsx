@@ -570,8 +570,10 @@ export default function CommunityDetailPage() {
             <FollowToggle type="post" id={post.id} />
           </div>
           <div>
-            <CardTitle className="text-lg">{post.title}</CardTitle>
-            <CardDescription className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''}`}>
+            <CardTitle className={`text-lg ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
+            <CardDescription
+              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : ''}`}
+            >
               {post.locked ? 'Conteúdo disponível após inscrição.' : contentPreview}
             </CardDescription>
             {!post.locked && shouldTruncate ? (
