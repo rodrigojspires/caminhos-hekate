@@ -382,7 +382,7 @@ export default function DashboardCommunitiesPage() {
         key={post.id}
         className={`relative overflow-hidden border-l-4 ${
           isThread ? 'border-l-blue-500' : 'border-l-amber-500'
-        } ${post.isFeatured ? 'bg-amber-50/50' : ''}`}
+        } ${post.isFeatured ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-200/60 shadow-sm' : ''}`}
       >
         <PostViewTracker
           postId={post.id}
@@ -403,9 +403,21 @@ export default function DashboardCommunitiesPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
-                  {post.isFeatured ? <Badge variant="outline">Destaque</Badge> : null}
+                  {post.isFeatured ? <Badge className="bg-amber-200 text-amber-950">Destaque</Badge> : null}
                   {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
                   <Badge variant="outline">{post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}</Badge>
+                  {post.topic?.name ? (
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      style={{
+                        backgroundColor: post.topic.color || '#94a3b8',
+                        color: '#ffffff',
+                        textShadow: '0 1px 1px rgba(0,0,0,0.25)'
+                      }}
+                    >
+                      {post.topic.name}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {dateLabel}
