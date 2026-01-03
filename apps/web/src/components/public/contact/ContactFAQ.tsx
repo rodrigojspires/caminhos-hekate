@@ -196,12 +196,6 @@ const faqData = {
       tags: ['eventos', 'lives']
     },
     {
-      question: 'Como reportar comportamento inadequado?',
-      answer: 'Use o botão "Reportar" em qualquer post ou mensagem inadequada. Nossa equipe de moderação analisa todos os reports em até 24 horas e toma as medidas necessárias.',
-      helpful: 123,
-      tags: ['moderação', 'report']
-    },
-    {
       question: 'Posso criar grupos privados na comunidade?',
       answer: 'Membros do Caminho Sagrado podem criar grupos privados para estudos específicos ou práticas em grupo. Esta funcionalidade permite maior intimidade e foco.',
       helpful: 87,

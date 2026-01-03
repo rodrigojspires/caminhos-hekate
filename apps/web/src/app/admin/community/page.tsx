@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import { 
   MessageSquare, 
   Users, 
-  Flag, 
   Hash,
   TrendingUp,
   AlertTriangle,
@@ -102,7 +101,7 @@ export default function CommunityPage() {
             <Skeleton className="h-4 w-96" />
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -186,13 +185,6 @@ export default function CommunityPage() {
       href: '/admin/community/comments',
       icon: Users,
       color: 'bg-purple-500'
-    },
-    {
-      title: 'Relatórios',
-      description: 'Revisar relatórios de conteúdo inadequado',
-      href: '/admin/community/reports',
-      icon: Flag,
-      color: 'bg-red-500'
     }
   ]
 
@@ -253,8 +245,8 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Estatísticas + destaques */}
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {statsCards.map((stat) => {
           const Icon = stat.icon
           return (
@@ -273,12 +265,69 @@ export default function CommunityPage() {
             </Card>
           )
         })}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              Membros mais ativos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs text-muted-foreground">
+            {(stats.mostActiveMembers?.length || 0) > 0 ? (
+              (stats.mostActiveMembers || []).slice(0, 3).map((member) => (
+                <p key={member.id}>
+                  {member.name} • {member.postsCount + member.commentsCount}
+                </p>
+              ))
+            ) : (
+              <p>Sem dados recentes</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              Posts mais populares
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs text-muted-foreground">
+            {(stats.mostPopularPosts?.length || 0) > 0 ? (
+              (stats.mostPopularPosts || []).slice(0, 3).map((post) => (
+                <p key={post.id}>
+                  {post.title} • {post.likesCount + post.commentsCount}
+                </p>
+              ))
+            ) : (
+              <p>Sem dados recentes</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Hash className="h-4 w-4 text-muted-foreground" />
+              Categorias mais ativas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs text-muted-foreground">
+            {(stats.mostActiveTopics?.length || 0) > 0 ? (
+              (stats.mostActiveTopics || []).slice(0, 3).map((topic) => (
+                <p key={topic.id}>
+                  {topic.name} • {topic.postsCount}
+                </p>
+              ))
+            ) : (
+              <p>Sem dados recentes</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ações Rápidas */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {quickActions.map((action) => {
             const Icon = action.icon
             return (
@@ -312,113 +361,6 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* Membros Mais Ativos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Membros Mais Ativos
-          </CardTitle>
-          <CardDescription>
-            Usuários com maior participação na comunidade
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {(stats.mostActiveMembers?.length || 0) > 0 ? (
-              (stats.mostActiveMembers || []).slice(0, 5).map((member, index) => (
-                <div key={member.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full text-sm font-medium">
-                    #{index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {member.postsCount} posts • {member.commentsCount} comentários
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum membro ativo encontrado
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Posts Mais Populares */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Posts Mais Populares
-          </CardTitle>
-          <CardDescription>
-            Posts com maior engajamento
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {(stats.mostPopularPosts?.length || 0) > 0 ? (
-              (stats.mostPopularPosts || []).slice(0, 5).map((post) => (
-                <div key={post.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="p-2 bg-green-100 rounded-full">
-                    <MessageSquare className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{post.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      por {post.author} • {post.likesCount} likes • {post.commentsCount} comentários
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum post popular encontrado
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Categorias Mais Ativas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Hash className="h-5 w-5" />
-            Categorias Mais Ativas
-          </CardTitle>
-          <CardDescription>
-            Categorias com maior volume de posts e participação
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {(stats.mostActiveTopics?.length || 0) > 0 ? (
-              (stats.mostActiveTopics || []).slice(0, 5).map((topic, index) => (
-                <div key={topic.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full text-sm font-medium">
-                    #{index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{topic.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {topic.postsCount} posts • {topic.membersCount} membros
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhuma categoria ativa encontrada
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

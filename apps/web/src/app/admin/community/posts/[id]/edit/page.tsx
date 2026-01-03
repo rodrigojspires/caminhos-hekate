@@ -20,17 +20,19 @@ export default function EditCommunityPostPage({ params }: { params: { id: string
   useEffect(() => {
     const load = async () => {
       try {
-        const [postRes, topicsRes, communitiesRes] = await Promise.all([
-          fetch(`/api/admin/community/posts/${params.id}`, { cache: 'no-store' }),
-          fetch('/api/admin/community/topics?limit=200', { cache: 'no-store' }),
-          fetch('/api/admin/communities?limit=200', { cache: 'no-store' })
-        ])
-
+        const postRes = await fetch(`/api/admin/community/posts/${params.id}`, { cache: 'no-store' })
         if (!postRes.ok) {
           throw new Error('Post não encontrado')
         }
 
         const post = await postRes.json()
+        const topicsUrl = post.communityId
+          ? `/api/admin/community/topics?limit=200&communityId=${post.communityId}`
+          : '/api/admin/community/topics?limit=200'
+        const [topicsRes, communitiesRes] = await Promise.all([
+          fetch(topicsUrl, { cache: 'no-store' }),
+          fetch('/api/admin/communities?limit=200', { cache: 'no-store' })
+        ])
         const topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [] }
         const communitiesData = communitiesRes.ok ? await communitiesRes.json() : { communities: [] }
 
@@ -42,6 +44,14 @@ export default function EditCommunityPostPage({ params }: { params: { id: string
               color: t.color || '#6B7280'
             }))
           : []
+        if (cats.length === 0 && post.topic?.id) {
+          cats.push({
+            id: post.topic.id,
+            name: post.topic.name || 'Categoria',
+            description: '',
+            color: post.topic.color || '#6B7280'
+          })
+        }
         const comms = Array.isArray(communitiesData?.communities)
           ? communitiesData.communities.map((c: any) => ({ id: c.id, name: c.name }))
           : []

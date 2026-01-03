@@ -2,14 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { MessageCircle, Heart, Reply, MoreHorizontal, Flag, Edit, Trash2, Pin, Award, ChevronDown, ChevronUp, Send, Image as ImageIcon, Smile } from 'lucide-react'
+import { MessageCircle, Heart, Reply, MoreHorizontal, Edit, Trash2, Pin, Award, ChevronDown, ChevronUp, Send, Image as ImageIcon, Smile } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -59,7 +58,6 @@ interface CommentThreadProps {
   onLikeComment: (commentId: string) => Promise<void>
   onPinComment?: (commentId: string) => Promise<void>
   onMarkBestAnswer?: (commentId: string) => Promise<void>
-  onReportComment?: (commentId: string, reason: string) => Promise<void>
   className?: string
 }
 
@@ -78,7 +76,6 @@ export function CommentThread({
   onLikeComment,
   onPinComment,
   onMarkBestAnswer,
-  onReportComment,
   className
 }: CommentThreadProps) {
   const [newComment, setNewComment] = useState('')
@@ -86,8 +83,6 @@ export function CommentThread({
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
-  const [reportingComment, setReportingComment] = useState<string | null>(null)
-  const [reportReason, setReportReason] = useState('')
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -157,17 +152,6 @@ export function CommentThread({
     }
   }
 
-  const handleReportComment = async () => {
-    if (!reportingComment || !reportReason.trim()) return
-    
-    try {
-      await onReportComment?.(reportingComment, reportReason)
-      setReportingComment(null)
-      setReportReason('')
-    } catch (error) {
-      console.error('Erro ao reportar comentário:', error)
-    }
-  }
 
   const toggleCommentExpansion = (commentId: string) => {
     setExpandedComments(prev => {
@@ -440,19 +424,6 @@ export function CommentThread({
                         </DropdownMenuItem>
                       )}
                       
-                      {!isAuthor && onReportComment && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setReportingComment(comment.id)}
-                            className="text-red-600"
-                          >
-                            <Flag className="w-4 h-4 mr-2" />
-                            Reportar
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      
                       {canDelete && (
                         <>
                           <DropdownMenuSeparator />
@@ -617,43 +588,6 @@ export function CommentThread({
         )}
       </div>
       
-      {/* Report Dialog */}
-      <Dialog open={!!reportingComment} onOpenChange={() => setReportingComment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reportar comentário</DialogTitle>
-            <DialogDescription>
-              Por que você está reportando este comentário?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Descreva o motivo do report..."
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              rows={4}
-            />
-            <div className="flex items-center justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setReportingComment(null)
-                  setReportReason('')
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleReportComment}
-                disabled={!reportReason.trim()}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Reportar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

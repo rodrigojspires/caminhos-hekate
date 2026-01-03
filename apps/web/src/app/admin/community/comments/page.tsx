@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Search, MoreHorizontal, Edit, Trash2, Eye, Heart, Flag, MessageSquare, Loader2 } from 'lucide-react'
+import { Search, MoreHorizontal, Edit, Trash2, Eye, Heart, MessageSquare, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Interfaces para tipagem
@@ -58,7 +58,6 @@ interface Comment {
   } | null
   repliesCount: number
   reactionsCount: number
-  reportsCount: number
   createdAt: string
 }
 
@@ -75,7 +74,6 @@ const getComments = async (filters?: {
   search?: string
   topic?: string
   type?: string
-  reported?: string
   page?: number
   limit?: number
 }): Promise<CommentsResponse> => {
@@ -84,7 +82,6 @@ const getComments = async (filters?: {
   if (filters?.search) params.append('search', filters.search)
   if (filters?.topic && filters.topic !== 'all') params.append('topic', filters.topic)
   if (filters?.type && filters.type !== 'all') params.append('type', filters.type)
-  if (filters?.reported && filters.reported !== 'all') params.append('reported', filters.reported)
   if (filters?.page) params.append('page', filters.page.toString())
   if (filters?.limit) params.append('limit', filters.limit.toString())
 
@@ -123,8 +120,7 @@ export default function CommentsPage() {
   const [filters, setFilters] = useState({
     search: '',
     topic: 'all',
-    type: 'all',
-    reported: 'all'
+    type: 'all'
   })
   const [pagination, setPagination] = useState({
     page: 1,
@@ -248,16 +244,6 @@ export default function CommentsPage() {
                 <SelectItem value="replies">Respostas</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.reported} onValueChange={(value) => setFilters(prev => ({ ...prev, reported: value }))}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Relatórios" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="reported">Com relatórios</SelectItem>
-                <SelectItem value="clean">Sem relatórios</SelectItem>
-              </SelectContent>
-            </Select>
             <Button variant="outline" onClick={handleFilter} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Filtrar
@@ -310,12 +296,6 @@ export default function CommentsPage() {
                   <TableCell className="max-w-md">
                     <div className="space-y-2">
                       <p className="text-sm line-clamp-3">{comment.content}</p>
-                      {comment.reportsCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          <Flag className="mr-1 h-3 w-3" />
-                          {comment.reportsCount} relatório{comment.reportsCount > 1 ? 's' : ''}
-                        </Badge>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>

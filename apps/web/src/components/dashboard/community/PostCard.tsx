@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Image from 'next/image'
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Flag, Edit, Trash2, Pin, Award, Eye } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Edit, Trash2, Pin, Award, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -66,7 +66,6 @@ interface PostCardProps {
   onShare?: (postId: string) => void
   onEdit?: (postId: string) => void
   onDelete?: (postId: string) => void
-  onReport?: (postId: string) => void
   onPin?: (postId: string) => void
   onViewPost?: (postId: string) => void
   className?: string
@@ -86,7 +85,6 @@ export function PostCard({
   onShare,
   onEdit,
   onDelete,
-  onReport,
   onPin,
   onViewPost,
   className
@@ -286,10 +284,6 @@ export function PostCard({
                   </>
                 )}
                 
-                <DropdownMenuItem onClick={() => onReport?.(post.id)}>
-                  <Flag className="w-4 h-4 mr-2" />
-                  Reportar
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}

@@ -129,11 +129,11 @@ async function getTopics(searchParams: { [key: string]: string | string[] | unde
 async function getCommunities(): Promise<CommunityOption[]> {
   try {
     const baseUrl = resolveBaseUrl()
-    const headersList = headers()
+    const cookieHeader = cookies().toString()
     const response = await fetch(`${baseUrl}/api/admin/communities?limit=200&status=all`, {
       cache: 'no-store',
       headers: {
-        cookie: headersList.get('cookie') ?? ''
+        cookie: cookieHeader
       }
     })
     if (!response.ok) return []

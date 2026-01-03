@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Eye, MoreHorizontal, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Flag, Pin, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, MoreHorizontal, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, MessageSquare, Heart, Pin, EyeOff, ArrowLeft } from 'lucide-react'
 import { headers, cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
@@ -60,7 +60,6 @@ interface Post {
   }
   commentsCount: number
   reactionsCount: number
-  reportsCount: number
   createdAt: string
   updatedAt: string
 }
@@ -156,7 +155,6 @@ async function getPosts(searchParams?: URLSearchParams): Promise<{
       },
       commentsCount: post._count?.comments || 0,
       reactionsCount: post._count?.reactions || 0,
-      reportsCount: post._count?.reports || 0,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       isPinned: post.isPinned
@@ -613,12 +611,6 @@ export default async function PostsPage({ searchParams }: CommunityPostsPageProp
                         <Heart className="h-3 w-3" />
                         {post.reactionsCount}
                       </div>
-                      {post.reportsCount > 0 && (
-                        <div className="flex items-center gap-1 text-red-600">
-                          <Flag className="h-3 w-3" />
-                          {post.reportsCount}
-                        </div>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

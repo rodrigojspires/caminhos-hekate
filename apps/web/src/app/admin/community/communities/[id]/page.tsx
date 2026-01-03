@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import { ArrowLeft, FileText, MessageSquare, Tag } from 'lucide-react'
+import { ArrowLeft, Edit, Eye, FileText, MessageSquare, Tag, Trash2 } from 'lucide-react'
 
 const accessOptions = [
   { id: 'FREE', label: 'Gratuita' },
@@ -188,6 +188,36 @@ export default function CommunityManagerPage() {
       await loadData()
     } catch (error) {
       toast.error('Erro ao remover arquivo')
+    }
+  }
+
+  const handleDeleteTopic = async (topicId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return
+    try {
+      const res = await fetch(`/api/admin/community/topics/${topicId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Erro ao excluir categoria')
+      }
+      toast.success('Categoria excluída')
+      await loadData()
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao excluir categoria')
+    }
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este post?')) return
+    try {
+      const res = await fetch(`/api/admin/community/posts/${postId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Erro ao excluir post')
+      }
+      toast.success('Post excluído')
+      await loadData()
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao excluir post')
     }
   }
 
@@ -423,12 +453,6 @@ export default function CommunityManagerPage() {
             <CardTitle>{community._count?.posts ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Grupos</CardDescription>
-            <CardTitle>{community._count?.groups ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
       </div>
 
       <Tabs defaultValue="topics">
@@ -476,6 +500,7 @@ export default function CommunityManagerPage() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead>Posts</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -486,6 +511,21 @@ export default function CommunityManagerPage() {
                           <div className="text-xs text-muted-foreground">{topic.description || '-'}</div>
                         </TableCell>
                         <TableCell>{topic._count?.posts ?? 0}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/community/topics/${topic.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/community/topics/${topic.id}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteTopic(topic.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -525,6 +565,7 @@ export default function CommunityManagerPage() {
                       <TableHead>Título</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Comentários</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -538,6 +579,21 @@ export default function CommunityManagerPage() {
                           <Badge variant="secondary">{post.status}</Badge>
                         </TableCell>
                         <TableCell>{post._count?.comments ?? 0}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/community/posts/${post.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/community/posts/${post.id}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeletePost(post.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

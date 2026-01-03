@@ -5,8 +5,6 @@ import { z } from 'zod'
 // ==========================================
 
 export const PostStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'MODERATED'])
-export const ReportStatusSchema = z.enum(['PENDING', 'REVIEWED', 'RESOLVED', 'DISMISSED'])
-export const ReportTypeSchema = z.enum(['SPAM', 'INAPPROPRIATE', 'HARASSMENT', 'COPYRIGHT', 'OTHER'])
 export const SubscriptionTierSchema = z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO'])
 export const CommunityAccessModelSchema = z.enum(['FREE', 'ONE_TIME', 'SUBSCRIPTION'])
 
@@ -165,51 +163,6 @@ export const UpdateCommentSchema = CommentSchema.partial().omit({
 })
 
 // ==========================================
-// REPORT SCHEMAS
-// ==========================================
-
-export const ReportSchema = z.object({
-  id: z.string().cuid().optional(),
-  type: ReportTypeSchema,
-  reason: z.string().min(1, 'Motivo é obrigatório').max(100, 'Motivo deve ter no máximo 100 caracteres'),
-  description: z.string().max(500, 'Descrição deve ter no máximo 500 caracteres').optional(),
-  status: ReportStatusSchema.default('PENDING'),
-  postId: z.string().cuid('ID do post deve ser válido').optional(),
-  commentId: z.string().cuid('ID do comentário deve ser válido').optional(),
-  reporterId: z.string().cuid('ID do denunciante deve ser válido'),
-  reviewerId: z.string().cuid('ID do revisor deve ser válido').optional(),
-  reviewedAt: z.date().optional(),
-  actionTaken: z.string().max(200, 'Ação tomada deve ter no máximo 200 caracteres').optional(),
-  notes: z.string().max(1000, 'Notas devem ter no máximo 1000 caracteres').optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional()
-})
-
-// Validação para garantir que pelo menos um conteúdo seja reportado
-export const CreateReportSchema = ReportSchema.omit({ 
-  id: true, 
-  reporterId: true, 
-  reviewerId: true, 
-  reviewedAt: true, 
-  actionTaken: true, 
-  notes: true, 
-  createdAt: true, 
-  updatedAt: true 
-}).refine(
-  (data) => data.postId || data.commentId,
-  {
-    message: 'Deve reportar um post ou comentário',
-    path: ['postId']
-  }
-)
-
-export const UpdateReportSchema = z.object({
-  status: ReportStatusSchema.optional(),
-  actionTaken: z.string().max(200, 'Ação tomada deve ter no máximo 200 caracteres').optional(),
-  notes: z.string().max(1000, 'Notas devem ter no máximo 1000 caracteres').optional()
-})
-
-// ==========================================
 // REACTION SCHEMAS
 // ==========================================
 
@@ -271,17 +224,6 @@ export const CommunityFiltersSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc')
 })
 
-export const ReportFiltersSchema = z.object({
-  search: z.string().optional(),
-  type: ReportTypeSchema.optional(),
-  status: ReportStatusSchema.optional(),
-  reporterId: z.string().cuid().optional(),
-  reviewerId: z.string().cuid().optional(),
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(10),
-  sortBy: z.enum(['createdAt', 'updatedAt', 'type', 'status']).default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
-})
 
 // ==========================================
 // TYPE EXPORTS
@@ -303,9 +245,6 @@ export type Comment = z.infer<typeof CommentSchema>
 export type CreateComment = z.infer<typeof CreateCommentSchema>
 export type UpdateComment = z.infer<typeof UpdateCommentSchema>
 
-export type Report = z.infer<typeof ReportSchema>
-export type CreateReport = z.infer<typeof CreateReportSchema>
-export type UpdateReport = z.infer<typeof UpdateReportSchema>
 
 export type Reaction = z.infer<typeof ReactionSchema>
 export type CreateReaction = z.infer<typeof CreateReactionSchema>
@@ -314,4 +253,3 @@ export type Attachment = z.infer<typeof AttachmentSchema>
 export type CreateAttachment = z.infer<typeof CreateAttachmentSchema>
 
 export type CommunityFilters = z.infer<typeof CommunityFiltersSchema>
-export type ReportFilters = z.infer<typeof ReportFiltersSchema>
