@@ -85,7 +85,7 @@ export function CourseProgress({
       color: "text-[hsl(var(--temple-accent-gold))]",
       bgColor: "bg-[hsl(var(--temple-accent-gold))]/12",
       progress: Math.min(100, (streakDays / Math.max(7, streakDays || 1)) * 100),
-      suffix: " dias"
+      suffix: streakDays === 1 ? " dia" : " dias"
     }
   ]
 
@@ -101,12 +101,12 @@ export function CourseProgress({
                 <div className={`p-2 rounded-lg ${card.bgColor}`}>
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
+                <div className="text-right min-w-[96px]">
+                  <div className="text-xl font-bold text-[hsl(var(--temple-text-primary))] whitespace-nowrap">
                     {card.value}{card.suffix || ''}
                   </div>
                   {card.total !== undefined && (
-                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">
+                    <div className="text-xs text-[hsl(var(--temple-text-secondary))] whitespace-nowrap leading-tight">
                       de {card.total}{card.suffix || ''}
                     </div>
                   )}
@@ -115,7 +115,12 @@ export function CourseProgress({
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">{card.title}</span>
+                  <span
+                    className="text-xs font-medium text-[hsl(var(--temple-text-secondary))] truncate max-w-[160px]"
+                    title={card.title}
+                  >
+                    {card.title}
+                  </span>
                   <span className="text-xs text-[hsl(var(--temple-text-secondary))]">{card.progress.toFixed(0)}%</span>
                 </div>
                 <Progress value={card.progress} className="h-2" />
