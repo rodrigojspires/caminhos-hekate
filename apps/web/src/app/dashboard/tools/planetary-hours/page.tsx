@@ -71,8 +71,8 @@ async function geocodeCity(name: string) {
 }
 
 async function getSunriseSunset(lat: number, lon: number, startYmd: string, endYmd: string) {
-  // Open-Meteo astronomy API: two days window to get sunrise today and next sunrise
-  const url = `https://api.open-meteo.com/v1/astronomy?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=auto&start_date=${startYmd}&end_date=${endYmd}`
+  // Use Open-Meteo forecast endpoint for sunrise/sunset to avoid 404 on astronomy API.
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=auto&start_date=${startYmd}&end_date=${endYmd}`
   const r = await fetch(url)
   if (!r.ok) throw new Error("Falha ao obter horários do Sol")
   const j = await r.json()
@@ -214,24 +214,24 @@ export default function PlanetaryHoursPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Horas Planetárias</h1>
-          <p className="text-muted-foreground">{headerSubtitle}</p>
+          <h1 className="text-2xl font-bold temple-heading">Horas Planetárias</h1>
+          <p className="text-[hsl(var(--temple-text-secondary))]">{headerSubtitle}</p>
         </div>
       </div>
 
-      <Card>
+      <Card className="temple-card">
         <CardHeader>
-          <CardTitle>Parâmetros</CardTitle>
-          <CardDescription>Escolha a data e o local. Você pode buscar uma cidade ou usar sua localização atual.</CardDescription>
+          <CardTitle className="temple-section-title">Parâmetros</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Escolha a data e o local. Você pode buscar uma cidade ou usar sua localização atual.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-medium">Data</label>
+              <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Data</label>
               <Input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
             </div>
             <form className="md:col-span-2" onSubmit={handleSearch}>
-              <label className="text-sm font-medium">Cidade</label>
+              <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Cidade</label>
               <div className="flex gap-2">
                 <Input placeholder="Ex.: São Paulo" value={cityQuery} onChange={(e) => setCityQuery(e.target.value)} />
                 <Button type="submit" disabled={loading}>Buscar</Button>
@@ -240,30 +240,30 @@ export default function PlanetaryHoursPage() {
             </form>
           </div>
           {loc && (
-            <div className="text-sm text-muted-foreground">
-              Local: <span className="font-medium text-foreground">{loc.label}</span>{loc.tz ? <span> • Fuso: {loc.tz}</span> : null}
+            <div className="text-sm text-[hsl(var(--temple-text-secondary))]">
+              Local: <span className="font-medium text-[hsl(var(--temple-text-primary))]">{loc.label}</span>{loc.tz ? <span> • Fuso: {loc.tz}</span> : null}
             </div>
           )}
           {error && (
-            <div className="text-sm text-red-600">{error}</div>
+            <div className="text-sm text-red-400">{error}</div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="temple-card">
         <CardHeader>
-          <CardTitle>Tabela</CardTitle>
-          <CardDescription>Horas diurnas e noturnas calculadas a partir do nascer/pôr do Sol (12 + 12).</CardDescription>
+          <CardTitle className="temple-section-title">Tabela</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Horas diurnas e noturnas calculadas a partir do nascer/pôr do Sol (12 + 12).</CardDescription>
         </CardHeader>
         <CardContent>
           {!rows && (
-            <p className="text-sm text-muted-foreground">Informe uma cidade ou localização para gerar a tabela.</p>
+            <p className="text-sm text-[hsl(var(--temple-text-secondary))]">Informe uma cidade ou localização para gerar a tabela.</p>
           )}
           {rows && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left border-b">
+                  <tr className="text-left border-b border-[hsl(var(--temple-border-subtle))] text-[hsl(var(--temple-text-secondary))]">
                     <th className="py-2 pr-2">#</th>
                     <th className="py-2 pr-2">Período</th>
                     <th className="py-2 pr-2">Planeta</th>
@@ -278,9 +278,9 @@ export default function PlanetaryHoursPage() {
                     const info = PLANET_PT[r.planet]
                     const isDay = r.period === "Dia"
                     return (
-                      <tr key={i} className={`${i%2?"bg-muted/30":""}`}>
+                      <tr key={i} className={i % 2 ? "bg-[hsl(var(--temple-surface-2))]/60" : ""}>
                         <td className="py-2 pr-2 font-mono">{r.n}</td>
-                        <td className="py-2 pr-2">{isDay ? <Badge variant="secondary">Diurna</Badge> : <Badge variant="outline">Noturna</Badge>}</td>
+                        <td className="py-2 pr-2">{isDay ? <Badge variant="secondary" className="temple-chip">Diurna</Badge> : <Badge variant="outline" className="temple-chip">Noturna</Badge>}</td>
                         <td className="py-2 pr-2">
                           <span className="inline-flex items-center gap-2">
                             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white" style={{ backgroundColor: info.color }}>
@@ -300,7 +300,7 @@ export default function PlanetaryHoursPage() {
             </div>
           )}
           {dayRuler && (
-            <p className="text-xs text-muted-foreground mt-3">Regente do dia: {PLANET_PT[dayRuler].name}</p>
+            <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-3">Regente do dia: {PLANET_PT[dayRuler].name}</p>
           )}
         </CardContent>
       </Card>
