@@ -32,13 +32,13 @@ export function CourseProgress({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {[...Array(4)].map((_, index) => (
-          <div key={index} className="bg-card rounded-lg shadow-sm border border-border p-6 animate-pulse">
+          <div key={index} className="temple-card p-6 animate-pulse">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-8 h-8 bg-muted rounded-lg"></div>
-              <div className="w-16 h-6 bg-muted rounded"></div>
+              <div className="w-8 h-8 bg-[hsl(var(--temple-surface-2))] rounded-lg"></div>
+              <div className="w-16 h-6 bg-[hsl(var(--temple-surface-2))] rounded"></div>
             </div>
-            <div className="h-4 bg-muted rounded mb-2"></div>
-            <div className="h-2 bg-muted rounded"></div>
+            <div className="h-4 bg-[hsl(var(--temple-surface-2))] rounded mb-2"></div>
+            <div className="h-2 bg-[hsl(var(--temple-surface-2))] rounded"></div>
           </div>
         ))}
       </div>
@@ -54,8 +54,8 @@ export function CourseProgress({
       value: completedCourses,
       total: totalCourses,
       icon: CheckCircle,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-500/10 dark:bg-green-500/20",
+      color: "text-emerald-300",
+      bgColor: "bg-emerald-500/15",
       progress: totalCourses > 0 ? (completedCourses / totalCourses) * 100 : 0
     },
     {
@@ -63,8 +63,8 @@ export function CourseProgress({
       value: inProgressCourses,
       total: inProgressTotalBase || inProgressCourses,
       icon: BookOpen,
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
+      color: "text-[hsl(var(--temple-accent-gold))]",
+      bgColor: "bg-[hsl(var(--temple-accent-gold))]/10",
       progress: inProgressTotalBase > 0 ? (inProgressCourses / inProgressTotalBase) * 100 : 0
     },
     {
@@ -72,8 +72,8 @@ export function CourseProgress({
       value: completedHours,
       total: totalHours,
       icon: Clock,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-500/10 dark:bg-purple-500/20",
+      color: "text-[hsl(var(--temple-accent-violet))]",
+      bgColor: "bg-[hsl(var(--temple-accent-violet))]/12",
       progress: totalHours > 0 ? (completedHours / totalHours) * 100 : 0,
       suffix: "h"
     },
@@ -82,8 +82,8 @@ export function CourseProgress({
       value: streakDays,
       total: Math.max(7, streakDays || 1),
       icon: Target,
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
+      color: "text-[hsl(var(--temple-accent-gold))]",
+      bgColor: "bg-[hsl(var(--temple-accent-gold))]/12",
       progress: Math.min(100, (streakDays / Math.max(7, streakDays || 1)) * 100),
       suffix: " dias"
     }
@@ -96,17 +96,17 @@ export function CourseProgress({
         {progressCards.map((card, index) => {
           const Icon = card.icon
           return (
-            <div key={index} className="bg-card rounded-lg shadow-sm border border-border p-6">
+            <div key={index} className="temple-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className={`p-2 rounded-lg ${card.bgColor}`}>
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-foreground">
+                  <div className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
                     {card.value}{card.suffix || ''}
                   </div>
                   {card.total !== undefined && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">
                       de {card.total}{card.suffix || ''}
                     </div>
                   )}
@@ -115,8 +115,8 @@ export function CourseProgress({
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">{card.title}</span>
-                  <span className="text-xs text-muted-foreground">{card.progress.toFixed(0)}%</span>
+                  <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">{card.title}</span>
+                  <span className="text-xs text-[hsl(var(--temple-text-secondary))]">{card.progress.toFixed(0)}%</span>
                 </div>
                 <Progress value={card.progress} className="h-2" />
               </div>
@@ -126,15 +126,15 @@ export function CourseProgress({
       </div>
 
       {/* Progresso Geral */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Geral</h3>
+      <div className="temple-card p-6">
+        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">Progresso Geral</h3>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-muted-foreground">Progresso Médio dos Cursos</span>
-            <span className="text-sm font-bold text-foreground">{averageProgress.toFixed(1)}%</span>
+            <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Progresso Médio dos Cursos</span>
+            <span className="text-sm font-bold text-[hsl(var(--temple-text-primary))]">{averageProgress.toFixed(1)}%</span>
           </div>
           <Progress value={averageProgress} className="h-3" />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs text-[hsl(var(--temple-text-secondary))]">
             <span>0%</span>
             <span>50%</span>
             <span>100%</span>
@@ -143,19 +143,19 @@ export function CourseProgress({
       </div>
 
       {/* Progresso Semanal */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Progresso Semanal</h3>
+      <div className="temple-card p-6">
+        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">Progresso Semanal</h3>
         <div className="grid grid-cols-7 gap-2">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => {
             const activityCount = weeklySlots[index] || 0
             const isActive = activityCount > 0
             return (
               <div key={day} className="text-center">
-                <div className="text-xs text-muted-foreground mb-2">{day}</div>
+                <div className="text-xs text-[hsl(var(--temple-text-secondary))] mb-2">{day}</div>
                 <div className={`w-8 h-8 rounded-full mx-auto flex items-center justify-center ${
                   isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted text-muted-foreground'
+                    ? 'bg-[hsl(var(--temple-accent-gold))] text-[#1b1405]' 
+                    : 'bg-[hsl(var(--temple-surface-2))] text-[hsl(var(--temple-text-secondary))]'
                 }`}>
                   {isActive ? (
                     <div className="text-xs font-semibold">{activityCount}</div>

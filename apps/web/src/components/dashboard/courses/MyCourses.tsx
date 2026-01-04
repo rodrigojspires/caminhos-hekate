@@ -39,11 +39,11 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   const getStatusIcon = (status: Course['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
+        return <CheckCircle className="w-5 h-5 text-emerald-400" />
       case 'in_progress':
-        return <Play className="w-5 h-5 text-blue-500" />
+        return <Play className="w-5 h-5 text-[hsl(var(--temple-accent-gold))]" />
       case 'not_started':
-        return <AlertCircle className="w-5 h-5 text-muted-foreground" />
+        return <AlertCircle className="w-5 h-5 text-[hsl(var(--temple-text-secondary))]" />
     }
   }
 
@@ -61,11 +61,11 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   const getLevelColor = (level: Course['level']) => {
     switch (level) {
       case 'beginner':
-        return 'bg-green-100 text-green-800'
+        return 'temple-chip'
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'temple-chip'
       case 'advanced':
-        return 'bg-red-100 text-red-800'
+        return 'temple-chip'
     }
   }
 
@@ -84,16 +84,16 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
     return (
       <div className="space-y-6">
         {[...Array(3)].map((_, index) => (
-          <div key={index} className="bg-card rounded-lg shadow-sm border p-6 animate-pulse">
+          <div key={index} className="temple-card p-6 animate-pulse">
             <div className="flex gap-4">
-              <div className="w-32 h-24 bg-muted rounded-lg"></div>
+              <div className="w-32 h-24 bg-[hsl(var(--temple-surface-2))] rounded-lg"></div>
               <div className="flex-1">
-                <div className="h-5 bg-muted rounded mb-2"></div>
-                <div className="h-4 bg-muted rounded mb-4 w-3/4"></div>
-                <div className="h-2 bg-muted rounded mb-2"></div>
+                <div className="h-5 bg-[hsl(var(--temple-surface-2))] rounded mb-2"></div>
+                <div className="h-4 bg-[hsl(var(--temple-surface-2))] rounded mb-4 w-3/4"></div>
+                <div className="h-2 bg-[hsl(var(--temple-surface-2))] rounded mb-2"></div>
                 <div className="flex gap-4">
-                  <div className="h-4 bg-muted rounded w-20"></div>
-                  <div className="h-4 bg-muted rounded w-16"></div>
+                  <div className="h-4 bg-[hsl(var(--temple-surface-2))] rounded w-20"></div>
+                  <div className="h-4 bg-[hsl(var(--temple-surface-2))] rounded w-16"></div>
                 </div>
               </div>
             </div>
@@ -106,12 +106,12 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
   if (courses.length === 0) {
     return (
       <div className="text-center py-12">
-        <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum Ritual Iniciado</h3>
-        <p className="text-muted-foreground mb-6">Seu Grimório aguarda suas primeiras inscrições. Explore os mistérios disponíveis e inicie sua jornada.</p>
+        <Sparkles className="w-16 h-16 text-[hsl(var(--temple-text-secondary))] mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-[hsl(var(--temple-text-primary))] mb-2">Nenhum Ritual Iniciado</h3>
+        <p className="text-[hsl(var(--temple-text-secondary))] mb-6">Seu Grimório aguarda suas primeiras inscrições. Explore os mistérios disponíveis e inicie sua jornada.</p>
         <Link
           href="/cursos"
-          className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center px-4 py-2 temple-btn-primary rounded-lg transition-colors"
         >
           Explorar Rituais
         </Link>
@@ -124,11 +124,11 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
       {/* Lista de Cursos (sem filtros internos) */}
       <div className="space-y-4 min-w-0">
         {courses.map((course) => (
-          <div key={course.id} className="bg-card rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden">
+          <div key={course.id} className="temple-card temple-card-hover overflow-hidden">
             <div className="p-6">
               <div className="flex gap-4">
                 {/* Miniatura do Curso */}
-                <div className="relative w-32 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
+                <div className="relative w-32 h-24 rounded-lg overflow-hidden bg-[hsl(var(--temple-surface-2))] shrink-0">
                   <Image
                     src={course.thumbnail}
                     alt={course.title}
@@ -144,19 +144,19 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">{course.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{course.instructor}</p>
+                      <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-1">{course.title}</h3>
+                      <p className="text-sm text-[hsl(var(--temple-text-secondary))] mb-2">{course.instructor}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {course.enrollmentStatus === 'pending' && course.hasFreeLessons ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--temple-surface-3))] text-[hsl(var(--temple-text-primary))] px-3 py-1 text-xs font-semibold">
                           <AlertCircle className="w-4 h-4" />
                           Acesso parcial (gratuitas)
                         </span>
                       ) : (
                         <>
                           {getStatusIcon(course.status)}
-                          <span className="text-sm font-medium text-foreground">
+                          <span className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">
                             {getStatusText(course.status)}
                           </span>
                         </>
@@ -164,22 +164,22 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                     </div>
                   </div>
 
-                  <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{course.description}</p>
+                  <p className="text-[hsl(var(--temple-text-secondary))] text-sm mb-3 line-clamp-2">{course.description}</p>
 
                   {/* Barra de Progresso */}
                   <div className="mb-3">
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 bg-[hsl(var(--temple-surface-2))] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary rounded-full"
+                        className="h-full bg-[hsl(var(--temple-accent-gold))] rounded-full"
                         style={{ width: `${course.progress}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-[hsl(var(--temple-text-secondary))]">
                         <Clock className="w-4 h-4" />
                         <span>{course.duration}</span>
                       </div>
-                      <span className="text-sm font-medium text-foreground">{course.progress}% concluído</span>
+                      <span className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">{course.progress}% concluído</span>
                     </div>
                   </div>
 
@@ -189,7 +189,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                         {getLevelText(course.level)}
                       </span>
                       {/* Rating removido por ausência de sistema de avaliação */}
-                      <div className="flex items-center gap-1 text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[hsl(var(--temple-text-secondary))]">
                         <Calendar className="w-4 h-4" />
                         <span className="text-sm">{course.completedLessons}/{course.totalLessons} passos</span>
                       </div>
@@ -200,7 +200,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                         <button
                           type="button"
                           disabled
-                          className="inline-flex items-center gap-2 px-4 py-2 border border-dashed border-muted-foreground/40 text-muted-foreground/80 rounded-lg cursor-not-allowed"
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-dashed border-[hsl(var(--temple-border-subtle))] text-[hsl(var(--temple-text-secondary))] rounded-lg cursor-not-allowed"
                           title="Conclua o ritual para liberar o selo"
                         >
                           <Award className="w-4 h-4" />
@@ -209,7 +209,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       ) : (
                         <a
                           href={course.certificateUrl || `/api/certificates/${course.id}`}
-                          className="inline-flex items-center gap-2 px-4 py-2 border border-emerald-300 text-emerald-800 rounded-lg hover:bg-emerald-50 transition-colors"
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-emerald-400 text-emerald-200 rounded-lg hover:bg-emerald-400/10 transition-colors"
                           title={
                             (course.certificateIssuedAt ? 'Baixar Selo' : 'Emitir Selo') +
                             (course.certificateTemplateName ? ` • ${course.certificateTemplateName}` : '')
@@ -221,20 +221,20 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       )}
                       <Link
                         href={`/cursos/${course.slug}?view=content`}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="px-4 py-2 temple-btn-primary rounded-lg transition-colors"
                       >
                         Continuar Ritual
                       </Link>
                       <Link
                         href={`/cursos/${course.slug}?view=overview`}
-                        className="px-4 py-2 border border-input rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
+                        className="px-4 py-2 temple-btn-secondary rounded-lg transition-colors"
                       >
                         Ver Detalhes
                       </Link>
                       {course.enrollmentStatus === 'pending' && course.hasFreeLessons && (
                         <Link
                           href={course.checkoutUrl}
-                          className="px-4 py-2 border border-amber-300 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors"
+                          className="px-4 py-2 border border-[hsl(var(--temple-accent-gold))] text-[hsl(var(--temple-accent-gold))] rounded-lg hover:bg-[hsl(var(--temple-accent-gold))]/10 transition-colors"
                         >
                           Concluir compra
                         </Link>

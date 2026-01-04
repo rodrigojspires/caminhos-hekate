@@ -74,13 +74,13 @@ export function CourseCard({
   const getLevelColor = (level: string) => {
     switch (level) {
       case 'beginner':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+        return 'temple-chip'
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+        return 'temple-chip'
       case 'advanced':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+        return 'temple-chip'
       default:
-        return 'bg-muted text-foreground'
+        return 'temple-chip'
     }
   }
 
@@ -187,7 +187,7 @@ export function CourseCard({
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-3 right-3 h-8 w-8 p-0 bg-card/80 hover:bg-card"
+            className="absolute top-3 right-3 h-8 w-8 p-0 bg-[hsl(var(--temple-surface-1))]/80 hover:bg-[hsl(var(--temple-surface-1))]"
             onClick={() => onToggleFavorite?.(course.id)}
           >
             <Bookmark 
@@ -266,12 +266,12 @@ export function CourseCard({
           {course.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {course.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
+                <Badge key={tag} variant="outline" className="text-xs temple-chip">
                   {tag}
                 </Badge>
               ))}
               {course.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs temple-chip">
                   +{course.tags.length - 3}
                 </Badge>
               )}

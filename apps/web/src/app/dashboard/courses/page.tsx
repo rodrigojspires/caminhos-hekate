@@ -234,7 +234,7 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
     const stats: CourseStats = {
       totalCourses: coursesWithProgress.length,
       completedCourses: coursesWithProgress.filter(c => c.status === 'completed').length,
-      inProgressCourses: coursesWithprogress.filter(c => c.status === 'in_progress').length,
+      inProgressCourses: coursesWithProgress.filter(c => c.status === 'in_progress').length,
       notStartedCourses: coursesWithProgress.filter(c => c.status === 'not_started').length,
       totalStudyTime: coursesWithProgress.reduce((total, c) => total + c.totalStudyTime, 0),
       averageProgress: coursesWithProgress.length > 0
@@ -275,8 +275,8 @@ export default async function CoursesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Meus Rituais</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold temple-heading">Meus Rituais</h1>
+          <p className="text-[hsl(var(--temple-text-secondary))]">
             Continue sua jornada, desvendando os mistérios que aguardam.
           </p>
         </div>
