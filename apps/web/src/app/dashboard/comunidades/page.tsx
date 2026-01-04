@@ -384,6 +384,9 @@ export default function DashboardCommunitiesPage() {
           isThread ? 'border-l-blue-500' : 'border-l-amber-500'
         } ${post.isFeatured ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-200/60 shadow-sm' : ''}`}
       >
+        {post.isFeatured ? (
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+        ) : null}
         <PostViewTracker
           postId={post.id}
           className="absolute inset-0 pointer-events-none"
@@ -400,12 +403,14 @@ export default function DashboardCommunitiesPage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${post.isFeatured ? 'text-amber-950' : ''}`}>
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
                   {post.isFeatured ? <Badge className="bg-amber-200 text-amber-950">Destaque</Badge> : null}
                   {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
-                  <Badge variant="outline">{post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}</Badge>
+                  <Badge className={post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''} variant="outline">
+                    {post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}
+                  </Badge>
                   {post.topic?.name ? (
                     <span
                       className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
@@ -419,7 +424,7 @@ export default function DashboardCommunitiesPage() {
                     </span>
                   ) : null}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className={`text-xs ${post.isFeatured ? 'text-amber-900/80' : 'text-muted-foreground'}`}>
                   {dateLabel}
                   {post.topic?.name ? ` • ${post.topic.name}` : null}
                   {post.community?.name ? ` • ${post.community.name}` : null}
