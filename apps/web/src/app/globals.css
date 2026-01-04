@@ -284,6 +284,25 @@
     font-family: var(--font-serif);
     letter-spacing: 0.03em;
   }
+
+  .temple-page h1,
+  .temple-page h2,
+  .temple-page h3,
+  .temple-page h4,
+  .temple-page h5,
+  .temple-page h6 {
+    font-family: var(--font-serif);
+    letter-spacing: 0.03em;
+  }
+
+  .temple-page p,
+  .temple-page label,
+  .temple-page span,
+  .temple-page input,
+  .temple-page select,
+  .temple-page textarea {
+    letter-spacing: 0.01em;
+  }
 }
 
 /* Custom Scrollbar */
