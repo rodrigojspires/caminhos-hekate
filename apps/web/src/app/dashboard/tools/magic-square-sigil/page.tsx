@@ -130,11 +130,6 @@ type PlanetKey = typeof PLANETS[number]["key"]
 
 const mappings = [
   { key: "a1z26-wrap", label: "A1Z26 (direto, com wrap)", helper: "A=1...Z=26, mantendo a ordem original e ajustando ao tamanho do quadrado.", fn: (text: string, max: number) => latinToA1Z26(text).map(v => ((v - 1) % max) + 1) },
-  { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", fn: (text: string, max: number) => {
-      const arr = latinToA1Z26(text)
-      let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
-    }
-  },
   { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", helper: "Soma progressiva (A1Z26) para enfatizar o fluxo contínuo do desejo.", fn: (text: string, max: number) => {
       const arr = latinToA1Z26(text)
       let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
