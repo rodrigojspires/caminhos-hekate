@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface StatCardProps {
   title: string
@@ -42,6 +43,7 @@ function StatCard({ title, value, description, icon: Icon, index }: StatCardProp
 }
 
 export function DashboardStats() {
+  const { apply } = useDashboardVocabulary()
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState<null | {
     overview: {
@@ -97,33 +99,33 @@ export function DashboardStats() {
 
   const stats = [
     {
-      title: 'Rituais Ativos',
+      title: apply('Rituais Ativos'),
       value: progress?.overview?.inProgressCourses ?? '-',
-      description: 'Jornadas em progresso',
+      description: apply('Jornadas em progresso'),
       icon: BookOpen,
     },
     {
-      title: 'Horas em Rituais',
+      title: apply('Horas em Rituais'),
       value: `${monthHours}h`,
-      description: 'Dedicadas este mês',
+      description: apply('Dedicadas este mês'),
       icon: Clock,
     },
     {
-      title: 'Selos Conquistados',
+      title: apply('Selos Conquistados'),
       value: progress?.overview?.completedCourses ?? '-',
-      description: 'Conquistas totais',
+      description: apply('Conquistas totais'),
       icon: Trophy,
     },
     {
-      title: 'Progresso Médio',
+      title: apply('Progresso Médio'),
       value: `${averageProgress}%`,
-      description: 'Em todas as jornadas',
+      description: apply('Em todas as jornadas'),
       icon: Sparkles,
     },
     {
-      title: 'Chama do Conhecimento',
+      title: apply('Chama do Conhecimento'),
       value: `${streakDays} dias`,
-      description: 'Dias de dedicação',
+      description: apply('Dias de dedicação'),
       icon: Flame,
     }
   ]

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface Course {
   id: number
@@ -64,6 +65,7 @@ const getLevelColor = (level: string) => {
 }
 
 export function RecommendedCourses() {
+  const { apply } = useDashboardVocabulary()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -159,8 +161,8 @@ export function RecommendedCourses() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold temple-heading">Rituais Sugeridos pelo Oráculo</h2>
-            <p className="text-[hsl(var(--temple-text-secondary))]">Sugestões baseadas em sua afinidade e jornada.</p>
+            <h2 className="text-2xl font-bold temple-heading">{apply('Rituais Sugeridos pelo Oráculo')}</h2>
+            <p className="text-[hsl(var(--temple-text-secondary))]">{apply('Sugestões baseadas em sua afinidade e jornada.')}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -172,8 +174,8 @@ export function RecommendedCourses() {
           <div className="text-center space-y-4 text-[hsl(var(--temple-text-secondary))]">
             <AlertCircle className="h-12 w-12 text-[hsl(var(--temple-text-secondary))] mx-auto" />
             <div>
-              <h3 className="text-lg font-semibold">Falha na Consulta ao Oráculo</h3>
-              <p>{error}</p>
+              <h3 className="text-lg font-semibold">{apply('Falha na Consulta ao Oráculo')}</h3>
+              <p>{apply(error)}</p>
             </div>
             <Button onClick={handleRefresh}>
               Tentar Novamente
@@ -188,8 +190,8 @@ export function RecommendedCourses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold temple-heading">Rituais Sugeridos pelo Oráculo</h2>
-          <p className="text-[hsl(var(--temple-text-secondary))]">Sugestões baseadas em sua afinidade e jornada.</p>
+          <h2 className="text-2xl font-bold temple-heading">{apply('Rituais Sugeridos pelo Oráculo')}</h2>
+          <p className="text-[hsl(var(--temple-text-secondary))]">{apply('Sugestões baseadas em sua afinidade e jornada.')}</p>
         </div>
         <Button 
           variant="outline" 
@@ -198,7 +200,7 @@ export function RecommendedCourses() {
           disabled={refreshing}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Consultando...' : 'Novo Oráculo'}
+          {apply(refreshing ? 'Consultando...' : 'Novo Oráculo')}
         </Button>
       </div>
 
@@ -330,7 +332,7 @@ export function RecommendedCourses() {
                 {/* Action Button */}
                 <Button className="w-full" size="sm">
                   <Award className="h-4 w-4 mr-2" />
-                  Iniciar Ritual
+                  {apply('Iniciar Ritual')}
                 </Button>
               </CardContent>
             </Card>
@@ -350,11 +352,11 @@ export function RecommendedCourses() {
           <div className="text-center space-y-4 text-[hsl(var(--temple-text-secondary))]">
             <BookOpen className="h-12 w-12 mx-auto opacity-50" />
             <div>
-              <h3 className="text-lg font-semibold mb-2">O Oráculo aguarda seu progresso</h3>
-              <p className="text-sm">Avance em sua jornada para receber sugestões.</p>
+              <h3 className="text-lg font-semibold mb-2">{apply('O Oráculo aguarda seu progresso')}</h3>
+              <p className="text-sm">{apply('Avance em sua jornada para receber sugestões.')}</p>
             </div>
             <Button variant="outline">
-              Explorar Rituais
+              {apply('Explorar Rituais')}
             </Button>
           </div>
         </Card>

@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { OrdersTable, type OrderRow } from '@/components/dashboard/orders/OrdersTable'
 import { OrdersSummary, type OrdersStats } from '@/components/dashboard/orders/OrdersSummary'
+import { DASHBOARD_VOCAB_COOKIE, getDashboardVocabulary, resolveDashboardVocabularyMode } from '@/lib/dashboardVocabulary'
 
 export const metadata: Metadata = {
   title: 'Pedidos da Loja | Minha Escola',
@@ -61,14 +62,16 @@ export default async function OrdersPage() {
 
   const cookieStore = cookies()
   const cookieHeader = cookieStore.getAll().length ? cookieStore.toString() : null
+  const mode = resolveDashboardVocabularyMode(cookieStore.get(DASHBOARD_VOCAB_COOKIE)?.value)
+  const labels = getDashboardVocabulary(mode)
   const { orders, stats } = await fetchOrders(cookieHeader)
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Pedidos da Loja</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{labels.pages.ordersTitle}</h1>
         <p className="text-muted-foreground">
-          Visualize seus pedidos e conclua pagamentos pendentes quando necessário.
+          {labels.pages.ordersSubtitle}
         </p>
       </div>
 

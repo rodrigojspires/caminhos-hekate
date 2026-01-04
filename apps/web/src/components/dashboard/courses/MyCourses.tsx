@@ -3,6 +3,7 @@
 import { Play, Clock, BookOpen, Calendar, CheckCircle, AlertCircle, Award, Sparkles } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface Course {
   id: string
@@ -36,6 +37,7 @@ interface MyCoursesProps {
 }
 
 export function MyCourses({ courses, loading = false, onCourseSelect }: MyCoursesProps) {
+  const { apply } = useDashboardVocabulary()
   const getStatusIcon = (status: Course['status']) => {
     switch (status) {
       case 'completed':
@@ -107,13 +109,13 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
     return (
       <div className="text-center py-12">
         <Sparkles className="w-16 h-16 text-[hsl(var(--temple-text-secondary))] mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-[hsl(var(--temple-text-primary))] mb-2">Nenhum Ritual Iniciado</h3>
-        <p className="text-[hsl(var(--temple-text-secondary))] mb-6">Seu Grimório aguarda suas primeiras inscrições. Explore os mistérios disponíveis e inicie sua jornada.</p>
+        <h3 className="text-lg font-medium text-[hsl(var(--temple-text-primary))] mb-2">{apply('Nenhum Ritual Iniciado')}</h3>
+        <p className="text-[hsl(var(--temple-text-secondary))] mb-6">{apply('Seu Grimório aguarda suas primeiras inscrições. Explore os mistérios disponíveis e inicie sua jornada.')}</p>
         <Link
           href="/cursos"
           className="inline-flex items-center px-4 py-2 temple-btn-primary rounded-lg transition-colors"
         >
-          Explorar Rituais
+          {apply('Explorar Rituais')}
         </Link>
       </div>
     )
@@ -151,18 +153,18 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       {course.enrollmentStatus === 'pending' && course.hasFreeLessons ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--temple-surface-3))] text-[hsl(var(--temple-text-primary))] px-3 py-1 text-xs font-semibold">
                           <AlertCircle className="w-4 h-4" />
-                          Acesso parcial (gratuitas)
+                          {apply('Acesso parcial (gratuitas)')}
                         </span>
                       ) : (
                         <>
                           {getStatusIcon(course.status)}
-                          <span className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">
-                            {getStatusText(course.status)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                      <span className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">
+                        {apply(getStatusText(course.status))}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
 
                   <p className="text-[hsl(var(--temple-text-secondary))] text-sm mb-3 line-clamp-2">{course.description}</p>
 
@@ -191,7 +193,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                       {/* Rating removido por ausência de sistema de avaliação */}
                       <div className="flex items-center gap-1 text-[hsl(var(--temple-text-secondary))]">
                         <Calendar className="w-4 h-4" />
-                        <span className="text-sm">{course.completedLessons}/{course.totalLessons} passos</span>
+                      <span className="text-sm">{apply(`${course.completedLessons}/${course.totalLessons} passos`)}</span>
                       </div>
                     </div>
 
@@ -204,7 +206,7 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                           title="Conclua o ritual para liberar o selo"
                         >
                           <Award className="w-4 h-4" />
-                          Selo bloqueado
+                          {apply('Selo bloqueado')}
                         </button>
                       ) : (
                         <a
@@ -216,27 +218,27 @@ export function MyCourses({ courses, loading = false, onCourseSelect }: MyCourse
                           }
                         >
                           <Award className="w-4 h-4" />
-                          {course.certificateIssuedAt ? 'Baixar Selo' : 'Emitir Selo'}
+                          {apply(course.certificateIssuedAt ? 'Baixar Selo' : 'Emitir Selo')}
                         </a>
                       )}
                       <Link
                         href={`/cursos/${course.slug}?view=content`}
                         className="px-4 py-2 temple-btn-primary rounded-lg transition-colors"
                       >
-                        Continuar Ritual
+                        {apply('Continuar Ritual')}
                       </Link>
                       <Link
                         href={`/cursos/${course.slug}?view=overview`}
                         className="px-4 py-2 temple-btn-secondary rounded-lg transition-colors"
                       >
-                        Ver Detalhes
+                        {apply('Ver Detalhes')}
                       </Link>
                       {course.enrollmentStatus === 'pending' && course.hasFreeLessons && (
                         <Link
                           href={course.checkoutUrl}
                           className="px-4 py-2 border border-[hsl(var(--temple-accent-gold))] text-[hsl(var(--temple-accent-gold))] rounded-lg hover:bg-[hsl(var(--temple-accent-gold))]/10 transition-colors"
                         >
-                          Concluir compra
+                          {apply('Concluir compra')}
                         </Link>
                       )}
                     </div>

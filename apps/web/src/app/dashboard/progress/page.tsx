@@ -12,6 +12,7 @@ import { Sparkles, Trophy } from 'lucide-react'
 import { useGamificationStore } from '@/stores/gamificationStore'
 import RecentActivity from '@/components/gamification/dashboard/RecentActivity'
 import type { PointTransaction } from '@/types/gamification'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 type ProgressData = {
   weeklyProgress: Array<{
@@ -112,6 +113,7 @@ const getTransactionReasonLabel = (tx: PointTransaction) => {
 }
 
 export default function ProgressPage() {
+  const { labels, apply } = useDashboardVocabulary()
   const {
     userPoints,
     achievements,
@@ -297,9 +299,9 @@ export default function ProgressPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Trilha de Ascensão</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{labels.pages.progressTitle}</h1>
         <p className="text-muted-foreground">
-          Observe sua jornada evolutiva, seus marcos e as energias que você movimenta.
+          {apply('Observe sua jornada evolutiva, seus marcos e as energias que você movimenta.')}
         </p>
       </div>
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { MyCourses } from './MyCourses'
 import { CourseFilters } from './CourseFilters'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface Course {
   id: string
@@ -43,6 +44,7 @@ export function CoursesClient({
   completedCourses, 
   notStartedCourses 
 }: CoursesClientProps) {
+  const { apply } = useDashboardVocabulary()
   // Unificar todos os cursos em uma única lista
   const allCourses: Course[] = [
     ...inProgressCourses,
@@ -146,7 +148,7 @@ export function CoursesClient({
       {/* Listagem única de cursos */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold temple-section-title">Meus Rituais</h2>
+          <h2 className="text-xl font-semibold temple-section-title">{apply('Meus Rituais')}</h2>
           {filteredCourses.length > 0 && (
             <span className="temple-chip px-3 py-1 text-xs font-medium">
               {filteredCourses.length} rituais

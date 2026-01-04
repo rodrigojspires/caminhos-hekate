@@ -7,6 +7,7 @@ import { BookOpen, Play, Star, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 // Placeholder for StrophalosIcon if it's not defined elsewhere
 const StrophalosIcon = (props: any) => (
@@ -20,6 +21,7 @@ const StrophalosIcon = (props: any) => (
 );
 
 export function WelcomeCard() {
+  const { apply } = useDashboardVocabulary()
   const { data: session } = useSession()
   const [inProgress, setInProgress] = useState<number>(0)
   const [avgProgress, setAvgProgress] = useState<number>(0)
@@ -72,21 +74,21 @@ export function WelcomeCard() {
             <div className="space-y-4">
               <div>
                 <h1 className="text-2xl font-bold temple-heading text-[hsl(var(--temple-text-primary))]">
-                  {greeting}, {name}. A egrégora te saúda.
+                  {apply(`${greeting}, ${name}. A egrégora te saúda.`)}
                 </h1>
                 <p className="text-[hsl(var(--temple-text-secondary))] mt-1">
-                  Este é o seu santuário. Que a cada visita, seus passos se tornem mais firmes e sua chama interior, mais brilhante.
+                  {apply("Este é o seu santuário. Que a cada visita, seus passos se tornem mais firmes e sua chama interior, mais brilhante.")}
                 </p>
               </div>
               
               <div className="flex items-center gap-6 text-sm text-[hsl(var(--temple-text-secondary))]">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
-                  <span>{inProgress} rituais em andamento</span>
+                  <span>{apply(`${inProgress} rituais em andamento`)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
-                  <span>{avgProgress}% de ascensão percorrida</span>
+                  <span>{apply(`${avgProgress}% de ascensão percorrida`)}</span>
                 </div>
               </div>
               
@@ -97,12 +99,12 @@ export function WelcomeCard() {
                   className="temple-btn-primary"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Continuar Ritual
+                  {apply("Continuar Ritual")}
                 </Button>
                 {streak > 0 && (
                   <Badge variant="secondary" className="temple-chip flex items-center gap-2">
                     <Flame className="h-4 w-4 animate-pulse" />
-                    <span>Chama do Conhecimento: {streak} dias</span>
+                    <span>{apply(`Chama do Conhecimento: ${streak} dias`)}</span>
                   </Badge>
                 )}
               </div>

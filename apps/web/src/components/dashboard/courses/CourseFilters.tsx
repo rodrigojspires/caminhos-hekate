@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Search, Filter, BookOpen, Clock, Star } from "lucide-react"
+import { useDashboardVocabulary } from "@/components/dashboard/DashboardVocabularyProvider"
 
 interface CourseFiltersProps {
   onFilterChange: (filters: {
@@ -14,6 +15,7 @@ interface CourseFiltersProps {
 }
 
 export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
+  const { apply } = useDashboardVocabulary()
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("all")
   const [level, setLevel] = useState("all")
@@ -72,7 +74,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--temple-text-secondary))] w-5 h-5" />
           <input
             type="text"
-            placeholder="Buscar cursos..."
+            placeholder={apply("Buscar rituais...")}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-[hsl(var(--temple-border-subtle))] rounded-lg bg-[hsl(var(--temple-surface-2))] text-[hsl(var(--temple-text-primary))] placeholder:text-[hsl(var(--temple-text-secondary))] focus:ring-2 focus:ring-[hsl(var(--temple-accent-gold))] focus:border-transparent"
@@ -84,7 +86,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
           {/* Category Filter */}
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--temple-text-secondary))] mb-2">
-              Categoria
+              {apply("Categoria")}
             </label>
             <div className="relative">
               <BookOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--temple-text-secondary))] w-4 h-4" />
@@ -108,7 +110,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
           {/* Level Filter */}
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--temple-text-secondary))] mb-2">
-              Nível
+              {apply("Nível")}
             </label>
             <div className="relative">
               <Star className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--temple-text-secondary))] w-4 h-4" />
@@ -128,7 +130,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
           {/* Status Filter */}
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--temple-text-secondary))] mb-2">
-              Status
+              {apply("Status")}
             </label>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--temple-text-secondary))] w-4 h-4" />
@@ -148,7 +150,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
           {/* Sort */}
           <div>
             <label className="block text-sm font-medium text-[hsl(var(--temple-text-secondary))] mb-2">
-              Ordenar por
+              {apply("Ordenar por")}
             </label>
             <div className="relative">
               <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--temple-text-secondary))] w-4 h-4" />
@@ -169,7 +171,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
 
         {/* Quick Filters */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-[hsl(var(--temple-border-subtle))]">
-          <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Filtros rápidos:</span>
+          <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">{apply("Filtros rápidos:")}</span>
           <button
             onClick={() => {
               setStatus('in_progress')
@@ -178,7 +180,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
             }}
             className="px-3 py-1 text-xs rounded-full bg-[hsl(var(--temple-accent-gold))]/10 text-[hsl(var(--temple-accent-gold))] hover:bg-[hsl(var(--temple-accent-gold))]/20 transition-colors"
           >
-            Continuar estudando
+            {apply("Continuar estudando")}
           </button>
           <button
             onClick={() => {
@@ -188,7 +190,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
             }}
             className="px-3 py-1 text-xs rounded-full bg-[hsl(var(--temple-accent-gold))]/10 text-[hsl(var(--temple-accent-gold))] hover:bg-[hsl(var(--temple-accent-gold))]/20 transition-colors"
           >
-            Novos cursos
+            {apply("Novos rituais")}
           </button>
           <button
             onClick={() => {
@@ -198,7 +200,7 @@ export function CourseFilters({ onFilterChange }: CourseFiltersProps) {
             }}
             className="px-3 py-1 text-xs rounded-full bg-[hsl(var(--temple-accent-gold))]/10 text-[hsl(var(--temple-accent-gold))] hover:bg-[hsl(var(--temple-accent-gold))]/20 transition-colors"
           >
-            Concluídos
+            {apply("Concluídos")}
           </button>
         </div>
       </div>

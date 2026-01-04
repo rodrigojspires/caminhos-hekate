@@ -7,6 +7,7 @@ import { DashboardHeader } from './DashboardHeader'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import CookieConsentBanner from '@/components/privacy/CookieConsentBanner'
+import { DashboardVocabularyProvider } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -16,7 +17,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen temple-page temple-bg bg-[hsl(var(--temple-bg))]" data-temple-theme="true">
+    <DashboardVocabularyProvider>
+      <div className="min-h-screen temple-page temple-bg bg-[hsl(var(--temple-bg))]" data-temple-theme="true">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -48,7 +50,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </main>
       </div>
-      <CookieConsentBanner />
-    </div>
+        <CookieConsentBanner />
+      </div>
+    </DashboardVocabularyProvider>
   )
 }

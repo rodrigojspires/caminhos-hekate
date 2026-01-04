@@ -7,6 +7,8 @@ import { CourseFilters } from '@/components/dashboard/courses/CourseFilters'
 import { CourseProgress } from '@/components/dashboard/courses/CourseProgress'
 import { CoursesClient } from '@/components/dashboard/courses/CoursesClient'
 import { prisma } from '@hekate/database'
+import { cookies } from 'next/headers'
+import { DASHBOARD_VOCAB_COOKIE, getDashboardVocabulary, resolveDashboardVocabularyMode } from '@/lib/dashboardVocabulary'
 
 export const metadata: Metadata = {
   title: 'Meus Rituais | Grimório',
@@ -265,6 +267,8 @@ export default async function CoursesPage() {
   }
 
   const { courses, stats } = data
+  const mode = resolveDashboardVocabularyMode(cookies().get(DASHBOARD_VOCAB_COOKIE)?.value)
+  const labels = getDashboardVocabulary(mode)
   
   // Separar cursos por status
   const inProgressCourses = courses.filter(course => course.status === 'in_progress')
@@ -275,9 +279,9 @@ export default async function CoursesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold temple-heading">Meus Rituais</h1>
+          <h1 className="text-3xl font-bold temple-heading">{labels.pages.coursesTitle}</h1>
           <p className="text-[hsl(var(--temple-text-secondary))]">
-            Continue sua jornada, desvendando os mistérios que aguardam.
+            {labels.pages.coursesSubtitle}
           </p>
         </div>
       </div>

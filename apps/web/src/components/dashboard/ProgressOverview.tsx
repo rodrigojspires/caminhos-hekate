@@ -23,6 +23,7 @@ import {
 import { motion } from 'framer-motion'
 import { BookOpen, Clock, Target, TrendingUp, AlertCircle, Compass } from 'lucide-react'
 import { toast } from 'sonner'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 const COLORS = ['#c084fc', '#5eead4', '#a7f3d0', '#fde047', '#fda4af', '#fb923c']
 
@@ -40,6 +41,7 @@ interface ProgressData {
 }
 
 export function ProgressOverview() {
+  const { apply } = useDashboardVocabulary()
   const [progressData, setProgressData] = useState<ProgressData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -88,10 +90,12 @@ export function ProgressOverview() {
        <Card className="temple-card">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <AlertCircle className="h-12 w-12 text-red-400/80 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">Falha ao Consultar os Oráculos</h3>
-            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">Não foi possível carregar sua trilha de ascensão. As energias podem estar instáveis.</p>
+            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">{apply('Falha ao Consultar os Oráculos')}</h3>
+            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">
+              {apply('Não foi possível carregar sua trilha de ascensão. As energias podem estar instáveis.')}
+            </p>
             <Button onClick={fetchProgressData} variant="outline" className="mt-6">
-              Tentar Novamente
+              {apply('Tentar Novamente')}
             </Button>
           </CardContent>
         </Card>
@@ -108,8 +112,8 @@ export function ProgressOverview() {
     <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-                <h2 className="text-2xl font-bold temple-heading">Sua Trilha de Ascensão</h2>
-                <p className="text-[hsl(var(--temple-text-secondary))]">Uma visão detalhada da sua jornada evolutiva.</p>
+                <h2 className="text-2xl font-bold temple-heading">{apply('Sua Trilha de Ascensão')}</h2>
+                <p className="text-[hsl(var(--temple-text-secondary))]">{apply('Uma visão detalhada da sua jornada evolutiva.')}</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchProgressData} disabled={loading}>
                 {loading ? 'Atualizando...' : 'Atualizar Trilha'}
@@ -122,9 +126,9 @@ export function ProgressOverview() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
               <BookOpen className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
-              Seus Rituais em Andamento
+              {apply('Seus Rituais em Andamento')}
             </CardTitle>
-            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Visualize sua jornada em cada portal de conhecimento.</CardDescription>
+            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">{apply('Visualize sua jornada em cada portal de conhecimento.')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
             {progressData.courseProgress.length > 0 ? (
@@ -137,7 +141,7 @@ export function ProgressOverview() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-[hsl(var(--temple-text-secondary))]">
-                        {course.completedLessons}/{course.totalLessons} ritos
+                        {apply(`${course.completedLessons}/${course.totalLessons} ritos`)}
                       </span>
                       <Badge variant="secondary" className="temple-chip font-bold">{course.progress}%</Badge>
                     </div>
@@ -148,8 +152,8 @@ export function ProgressOverview() {
             ) : (
               <div className="text-center py-8 text-[hsl(var(--temple-text-secondary))]">
                 <Compass className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-semibold">Nenhum ritual iniciado.</p>
-                <p className="text-sm">Escolha um portal para começar sua jornada.</p>
+                <p className="font-semibold">{apply('Nenhum ritual iniciado.')}</p>
+                <p className="text-sm">{apply('Escolha um portal para começar sua jornada.')}</p>
               </div>
             )}
           </CardContent>
@@ -163,9 +167,9 @@ export function ProgressOverview() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
                 <Clock className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
-                Ritmo da Semana
+                {apply('Ritmo da Semana')}
               </CardTitle>
-              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Sua dedicação e rito nos últimos 7 dias.</CardDescription>
+              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">{apply('Sua dedicação e rito nos últimos 7 dias.')}</CardDescription>
             </CardHeader>
             <CardContent>
               {progressData.weeklyProgress && progressData.weeklyProgress.length > 1 ? (
@@ -182,8 +186,8 @@ export function ProgressOverview() {
                 <div className="flex items-center justify-center h-48 text-[hsl(var(--temple-text-secondary))]">
                   <div className="text-center">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-semibold">O rito da semana ainda não começou.</p>
-                    <p className="text-sm">Dedique-se aos estudos para registrar seu ritmo.</p>
+                    <p className="font-semibold">{apply('O rito da semana ainda não começou.')}</p>
+                    <p className="text-sm">{apply('Dedique-se aos estudos para registrar seu ritmo.')}</p>
                   </div>
                 </div>
               )}
@@ -197,9 +201,9 @@ export function ProgressOverview() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
                 <Target className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
-                Foco da Alma
+                {apply('Foco da Alma')}
               </CardTitle>
-              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Onde sua energia está sendo canalizada.</CardDescription>
+              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">{apply('Onde sua energia está sendo canalizada.')}</CardDescription>
             </CardHeader>
             <CardContent>
               {courseProgressChartData.length > 0 ? (
@@ -215,7 +219,7 @@ export function ProgressOverview() {
                  <div className="flex items-center justify-center h-48 text-[hsl(var(--temple-text-secondary))]">
                   <div className="text-center">
                     <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum foco definido.</p>
+                    <p>{apply('Nenhum foco definido.')}</p>
                   </div>
                 </div>
               )}
@@ -230,9 +234,9 @@ export function ProgressOverview() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
               <TrendingUp className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
-              Ciclos de Evolução
+              {apply('Ciclos de Evolução')}
             </CardTitle>
-            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Observe a sua evolução através das luas.</CardDescription>
+            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">{apply('Observe a sua evolução através das luas.')}</CardDescription>
           </CardHeader>
           <CardContent>
             {progressData.monthlyData && progressData.monthlyData.length > 1 ? (
@@ -254,8 +258,8 @@ export function ProgressOverview() {
               <div className="flex items-center justify-center h-60 text-[hsl(var(--temple-text-secondary))]">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-semibold">Ainda não há ciclos para mostrar.</p>
-                  <p className="text-sm">Sua jornada mensal será registrada aqui.</p>
+                  <p className="font-semibold">{apply('Ainda não há ciclos para mostrar.')}</p>
+                  <p className="text-sm">{apply('Sua jornada mensal será registrada aqui.')}</p>
                 </div>
               </div>
             )}

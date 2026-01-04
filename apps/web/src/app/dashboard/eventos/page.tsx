@@ -11,8 +11,10 @@ import { EventModal } from '@/components/events/EventModal'
 import { CalendarFilters } from '@/components/events/CalendarFilters'
 import { useEventsStore } from '@/stores/eventsStore'
 import { CalendarEvent } from '@/types/events'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 export default function DashboardEventsPage() {
+  const { labels } = useDashboardVocabulary()
   const { events, loading, error, filters, fetchEvents, setFilters, registerForEvent } = useEventsStore()
   const [tabValue, setTabValue] = useState<'list' | 'calendar'>('list')
   const [listTab, setListTab] = useState<'all' | 'mine'>('all')
@@ -166,9 +168,9 @@ export default function DashboardEventsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold temple-heading">Eventos</h1>
+        <h1 className="text-3xl font-bold temple-heading">{labels.pages.eventsTitle}</h1>
         <p className="text-[hsl(var(--temple-text-secondary))]">
-          Acompanhe os eventos da comunidade e alterne entre lista e calendario.
+          {labels.pages.eventsSubtitle}
         </p>
       </div>
 

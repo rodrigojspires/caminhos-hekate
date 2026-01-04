@@ -16,6 +16,7 @@ import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
 import FollowToggle from '@/components/public/community/FollowToggle'
 import { Input } from '@/components/ui/input'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 import {
   Dialog,
   DialogContent,
@@ -101,6 +102,7 @@ const getReadableTextColor = (color?: string | null) => {
 }
 
 export default function CommunityDetailPage() {
+  const { apply } = useDashboardVocabulary()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const communityId = params.id
@@ -834,7 +836,7 @@ export default function CommunityDetailPage() {
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-24 lg:h-[calc(100vh-140px)]">
           <div className="text-xs uppercase tracking-[0.3em] text-[hsl(var(--temple-text-secondary))]">
-            Painel do Santuário
+            {apply('Painel do Santuário')}
           </div>
           <Card className="shrink-0 temple-card">
             <CardContent className="py-3">

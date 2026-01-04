@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { useDashboardVocabulary } from "@/components/dashboard/DashboardVocabularyProvider"
 
 // ===================== Utils (baseados no MVP fornecido) =====================
 const cleanText = (text: string) =>
@@ -193,6 +194,7 @@ function computeTickSegment(p: {x:number;y:number}, stroke: number, size: number
 
 // ===================== Página =====================
 export default function MagicSquareSigilPage() {
+  const { labels } = useDashboardVocabulary()
   const [text, setText] = useState("HEKATE")
   const [planetKey, setPlanetKey] = useState<PlanetKey>("venus")
   const [mappingKey, setMappingKey] = useState<MappingKey>("a1z26-cum")
@@ -301,8 +303,8 @@ export default function MagicSquareSigilPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold temple-heading">Sigilo em Quadrado Mágico</h1>
-          <p className="text-[hsl(var(--temple-text-secondary))]">Mesmo conjunto de parâmetros do arquivo original: mapeamentos, pré-processamento, marcadores e dimensões — com traçado corretamente dentro do quadrado.</p>
+          <h1 className="text-2xl font-bold temple-heading">{labels.pages.sigilTitle}</h1>
+          <p className="text-[hsl(var(--temple-text-secondary))]">{labels.pages.sigilSubtitle}</p>
         </div>
       </div>
 

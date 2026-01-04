@@ -25,6 +25,7 @@ import { Flame, MessageCircle, Pin, Star, ThumbsUp, TrendingUp, Users } from 'lu
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
 import FollowToggle from '@/components/public/community/FollowToggle'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 type Community = {
   id: string
@@ -93,6 +94,7 @@ const getReadableTextColor = (color?: string | null) => {
 }
 
 export default function DashboardCommunitiesPage() {
+  const { apply } = useDashboardVocabulary()
   const [communities, setCommunities] = useState<Community[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [posts, setPosts] = useState<Post[]>([])
@@ -614,7 +616,7 @@ export default function DashboardCommunitiesPage() {
 
         <aside className="space-y-6">
           <div className="text-xs uppercase tracking-[0.3em] text-[hsl(var(--temple-text-secondary))]">
-            Painel do Santuário
+            {apply('Painel do Santuário')}
           </div>
           <Card className="temple-card temple-card-hover">
             <CardHeader>

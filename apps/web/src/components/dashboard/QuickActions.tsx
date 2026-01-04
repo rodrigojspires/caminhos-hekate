@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { format, formatDistanceToNowStrict, isToday, isTomorrow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface QuickActionProps {
   title: string
@@ -66,6 +67,7 @@ interface ApiEvent {
 }
 
 export function QuickActions() {
+  const { apply } = useDashboardVocabulary()
   // Estado para próxima live
   const [nextLive, setNextLive] = useState<ApiEvent | null>(null)
   const [loadingLive, setLoadingLive] = useState<boolean>(true)
@@ -131,39 +133,39 @@ export function QuickActions() {
 
   const actions = [
     {
-      title: 'Continuar Ritual',
-      description: 'Retome sua jornada',
+      title: apply('Continuar Ritual'),
+      description: apply('Retome sua jornada'),
       icon: BookOpen,
       href: '/dashboard/courses',
     },
     {
-      title: 'Explorar Rituais',
-      description: 'Novos cursos e chaves',
+      title: apply('Explorar Rituais'),
+      description: apply('Novos cursos e chaves'),
       icon: Compass,
       href: '/cursos'
     },
     {
-      title: 'Comunidade',
-      description: 'Conecte-se à egrégora',
+      title: apply('Comunidade'),
+      description: apply('Conecte-se à egrégora'),
       icon: Users,
       href: '/comunidade'
     },
     {
-      title: 'Ritual ao Vivo',
-      description: liveDescription,
+      title: apply('Ritual ao Vivo'),
+      description: apply(liveDescription),
       icon: Video,
       href: liveHref,
       livePulse
     },
     {
-      title: 'Trilha de Ascensão',
-      description: 'Veja sua evolução',
+      title: apply('Trilha de Ascensão'),
+      description: apply('Veja sua evolução'),
       icon: Sparkles,
       href: '/dashboard/progress'
     },
     {
-      title: 'Oráculo do Grimório',
-      description: 'Pergunte e compartilhe',
+      title: apply('Oráculo do Grimório'),
+      description: apply('Pergunte e compartilhe'),
       icon: Scroll,
       href: '/forum' // Supondo que /forum seja a rota
     }
@@ -172,9 +174,9 @@ export function QuickActions() {
   return (
     <div className="space-y-4 my-8">
       <div className="flex items-center justify-between px-2">
-        <h2 className="text-xl font-semibold temple-section-title">Atalhos Arcanos</h2>
+        <h2 className="text-xl font-semibold temple-section-title">{apply('Atalhos Arcanos')}</h2>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/tools" className="text-[hsl(var(--temple-accent-gold))] hover:text-[hsl(var(--temple-accent-gold))]/80">Ver todos</Link>
+          <Link href="/dashboard/tools" className="text-[hsl(var(--temple-accent-gold))] hover:text-[hsl(var(--temple-accent-gold))]/80">{apply('Ver todos')}</Link>
         </Button>
       </div>
       

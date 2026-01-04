@@ -18,6 +18,7 @@ import { useAdminSession } from '@/hooks/use-admin-session'
 import { useSession, signOut } from 'next-auth/react'
 import { useGamificationStore } from '@/stores/gamificationStore'
 import { useEffect, useMemo } from 'react'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -25,6 +26,7 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const { apply } = useDashboardVocabulary()
   const { data: session } = useSession()
   const user = session?.user
   const { hasAdminAccess } = useAdminSession()
@@ -66,7 +68,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar cursos, lições..."
+            placeholder={apply("Buscar rituais, lições...")}
             className="pl-10"
           />
         </div>

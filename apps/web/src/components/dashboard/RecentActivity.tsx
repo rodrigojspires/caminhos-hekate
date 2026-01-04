@@ -24,6 +24,7 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 type ActivityType = 
   | 'lesson_completed' 
@@ -69,6 +70,7 @@ const getActivityProps = (type: ActivityType) => {
 }
 
 export function RecentActivity() {
+  const { apply } = useDashboardVocabulary()
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -122,10 +124,10 @@ export function RecentActivity() {
       <Card className="temple-card h-full">
         <CardContent className="flex flex-col items-center justify-center text-center h-full">
             <AlertCircle className="h-12 w-12 text-red-400/80 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">Falha ao Ler os Rastros</h3>
-            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">{error}</p>
+            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">{apply('Falha ao Ler os Rastros')}</h3>
+            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">{apply(error)}</p>
             <Button onClick={fetchActivities} variant="outline" className="mt-6">
-              Tentar Novamente
+              {apply('Tentar Novamente')}
             </Button>
         </CardContent>
       </Card>
@@ -135,8 +137,10 @@ export function RecentActivity() {
   return (
     <Card className="temple-card h-full flex flex-col">
       <CardHeader>
-          <CardTitle className="font-serif text-[hsl(var(--temple-text-primary))]">Ecos Recentes</CardTitle>
-          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Os ecos de suas ações mais recentes no caminho da sabedoria.</CardDescription>
+          <CardTitle className="font-serif text-[hsl(var(--temple-text-primary))]">{apply('Ecos Recentes')}</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">
+            {apply('Os ecos de suas ações mais recentes no caminho da sabedoria.')}
+          </CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-grow">
         <ScrollArea className="h-[500px] px-6">
@@ -173,8 +177,8 @@ export function RecentActivity() {
               <div className="flex items-center justify-center h-full py-12 text-[hsl(var(--temple-text-secondary))]">
                 <div className="text-center">
                   <Feather className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="font-semibold mb-1">Seus ecos ainda serão marcados.</h3>
-                  <p className="text-sm">Inicie sua jornada para deixar sua marca na trilha.</p>
+                  <h3 className="font-semibold mb-1">{apply('Seus ecos ainda serão marcados.')}</h3>
+                  <p className="text-sm">{apply('Inicie sua jornada para deixar sua marca na trilha.')}</p>
                 </div>
               </div>
             )}

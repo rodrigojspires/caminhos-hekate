@@ -5,6 +5,7 @@ import { CalendarDays, List, Loader2, MapPin, RefreshCw, Wifi, Moon } from 'luci
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 type EventStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELED' | 'COMPLETED' | string
 
@@ -58,6 +59,7 @@ const getAccessLabel = (event: EventItem) => {
 }
 
 export function EventsWidget() {
+  const { apply } = useDashboardVocabulary()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
@@ -131,8 +133,10 @@ export function EventsWidget() {
     <Card className="temple-card">
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <CardTitle className="text-lg temple-section-title">Próximos Alinhamentos</CardTitle>
-          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Consulte os próximos rituais, encontros e alinhamentos cósmicos da nossa egrégora.</CardDescription>
+          <CardTitle className="text-lg temple-section-title">{apply('Próximos Alinhamentos')}</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">
+            {apply('Consulte os próximos rituais, encontros e alinhamentos da nossa comunidade.')}
+          </CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <div className="bg-[hsl(var(--temple-surface-2))] rounded-lg p-1 flex items-center">

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { useDashboardVocabulary } from "@/components/dashboard/DashboardVocabularyProvider"
 
 // Chaldean order and day rulers
 const CHALDEAN: Array<"Saturn"|"Jupiter"|"Mars"|"Sun"|"Venus"|"Mercury"|"Moon"> = [
@@ -109,6 +110,7 @@ type HourRow = {
 }
 
 export default function PlanetaryHoursPage() {
+  const { labels } = useDashboardVocabulary()
   const [dateStr, setDateStr] = useState<string>(() => ymd(new Date()))
   const [cityQuery, setCityQuery] = useState<string>("")
   const [loc, setLoc] = useState<{label:string,lat:number,lon:number,tz?:string}|null>(null)
@@ -205,16 +207,16 @@ export default function PlanetaryHoursPage() {
   }
 
   const headerSubtitle = useMemo(() => {
-    if (!loc) return "Selecione a data e o local para calcular as 24 horas planetárias (ordem caldaica)."
+    if (!loc) return labels.pages.planetarySubtitle
     const d = new Date(`${dateStr}T12:00:00Z`)
     return `${formatDate(d, loc.tz)} • ${loc.label}`
-  }, [loc, dateStr])
+  }, [loc, dateStr, labels.pages.planetarySubtitle])
 
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold temple-heading">Horas Planetárias</h1>
+          <h1 className="text-2xl font-bold temple-heading">{labels.pages.planetaryTitle}</h1>
           <p className="text-[hsl(var(--temple-text-secondary))]">{headerSubtitle}</p>
         </div>
       </div>

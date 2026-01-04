@@ -2,6 +2,7 @@
 
 import { Progress } from "@/components/ui/progress"
 import { Clock, BookOpen, CheckCircle, Target } from "lucide-react"
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface CourseProgressProps {
   totalCourses: number
@@ -28,6 +29,7 @@ export function CourseProgress({
   streakDays = 0,
   loading = false 
 }: CourseProgressProps) {
+  const { apply } = useDashboardVocabulary()
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -50,7 +52,7 @@ export function CourseProgress({
   
   const progressCards = [
     {
-      title: "Cursos Concluídos",
+      title: apply("Rituais Concluídos"),
       value: completedCourses,
       total: totalCourses,
       icon: CheckCircle,
@@ -59,7 +61,7 @@ export function CourseProgress({
       progress: totalCourses > 0 ? (completedCourses / totalCourses) * 100 : 0
     },
     {
-      title: "Em Progresso",
+      title: apply("Em Progresso"),
       value: inProgressCourses,
       total: inProgressTotalBase || inProgressCourses,
       icon: BookOpen,
@@ -68,7 +70,7 @@ export function CourseProgress({
       progress: inProgressTotalBase > 0 ? (inProgressCourses / inProgressTotalBase) * 100 : 0
     },
     {
-      title: "Horas de Estudo",
+      title: apply("Horas de Ritual"),
       value: completedHours,
       total: totalHours,
       icon: Clock,
@@ -78,7 +80,7 @@ export function CourseProgress({
       suffix: "h"
     },
     {
-      title: "Sequência de Dias",
+      title: apply("Sequência de Dias"),
       value: streakDays,
       total: Math.max(7, streakDays || 1),
       icon: Target,
@@ -132,10 +134,10 @@ export function CourseProgress({
 
       {/* Progresso Geral */}
       <div className="temple-card p-6">
-        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">Progresso Geral</h3>
+        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">{apply('Progresso Geral')}</h3>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Progresso Médio dos Cursos</span>
+            <span className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">{apply('Progresso Médio dos Rituais')}</span>
             <span className="text-sm font-bold text-[hsl(var(--temple-text-primary))]">{averageProgress.toFixed(1)}%</span>
           </div>
           <Progress value={averageProgress} className="h-3" />
@@ -149,7 +151,7 @@ export function CourseProgress({
 
       {/* Progresso Semanal */}
       <div className="temple-card p-6">
-        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">Progresso Semanal</h3>
+        <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))] mb-4">{apply('Progresso Semanal')}</h3>
         <div className="grid grid-cols-7 gap-2">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => {
             const activityCount = weeklySlots[index] || 0

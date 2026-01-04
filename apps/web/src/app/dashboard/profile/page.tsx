@@ -8,18 +8,53 @@ import CommunicationPreferences from '@/components/dashboard/profile/Communicati
 import Security2FA from '@/components/dashboard/profile/Security2FA'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 // Metadata moved to parent layout or removed for client component compliance
 
 export default function ProfilePage() {
+  const { mode, setMode, labels } = useDashboardVocabulary()
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Meu Perfil</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{labels.pages.profileTitle}</h1>
         <p className="text-muted-foreground">
-          Gerencie suas informações pessoais e preferências
+          {labels.pages.profileSubtitle}
         </p>
       </div>
+
+      <Card className="temple-card">
+        <CardHeader>
+          <CardTitle className="temple-section-title">Vocabulário do Dashboard</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">
+            Escolha a linguagem exibida nos menus e textos do dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">Linguagem iniciática</p>
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">Termos ritualísticos e simbólicos.</p>
+            </div>
+            <Switch
+              checked={mode === 'initiatic'}
+              onCheckedChange={(checked) => setMode(checked ? 'initiatic' : 'plain')}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">Linguagem leiga</p>
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">Termos diretos e fáceis para iniciantes.</p>
+            </div>
+            <Switch
+              checked={mode === 'plain'}
+              onCheckedChange={(checked) => setMode(checked ? 'plain' : 'initiatic')}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList>

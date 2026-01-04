@@ -28,77 +28,79 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { useDashboardVocabulary } from '@/components/dashboard/DashboardVocabularyProvider'
 
 interface DashboardSidebarProps {
   onClose?: () => void
 }
 
-const navigation = [
-  {
-    name: 'Santuário',
-    href: '/dashboard',
-    icon: Sparkles,
-  },
-  {
-    name: 'Meus Rituais',
-    href: '/dashboard/courses',
-    icon: BookOpen,
-  },
-  {
-    name: 'Trilha de Ascensão',
-    href: '/dashboard/progress',
-    icon: TrendingUp,
-  },
-  {
-    name: 'Meu Caldeirão',
-    href: '/dashboard/orders',
-    icon: CookingPot,
-  },
-  {
-    name: 'Ritos Sazonais',
-    href: '/dashboard/eventos',
-    icon: Moon,
-  },
-  {
-    name: 'Comunidades',
-    href: '/dashboard/comunidades',
-    icon: MessageSquare,
-  },
-  {
-    name: 'Oráculo Planetário',
-    href: '/dashboard/tools/planetary-hours',
-    icon: Orbit,
-  },
-  {
-    name: 'Oficina de Sigilos',
-    href: '/dashboard/tools/magic-square-sigil',
-    icon: PencilRuler,
-  },
-]
-
-const secondaryNavigation = [
-  {
-    name: 'Eu Astral',
-    href: '/dashboard/profile',
-    icon: User,
-  },
-  {
-    name: 'Altar Pessoal',
-    href: '/dashboard/settings',
-    icon: Palette,
-  },
-  {
-    name: 'Ajustes Arcanos',
-    href: '/dashboard/settings',
-    icon: Settings,
-  },
-]
-
 export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const { labels } = useDashboardVocabulary()
   const [courseCount, setCourseCount] = useState<number | null>(null)
   const [upcomingRegisteredCount, setUpcomingRegisteredCount] = useState<number | null>(null)
   const [communityCount, setCommunityCount] = useState<number | null>(null)
+
+  const navigation = [
+    {
+      name: labels.menu.home,
+      href: '/dashboard',
+      icon: Sparkles,
+    },
+    {
+      name: labels.menu.courses,
+      href: '/dashboard/courses',
+      icon: BookOpen,
+    },
+    {
+      name: labels.menu.progress,
+      href: '/dashboard/progress',
+      icon: TrendingUp,
+    },
+    {
+      name: labels.menu.orders,
+      href: '/dashboard/orders',
+      icon: CookingPot,
+    },
+    {
+      name: labels.menu.events,
+      href: '/dashboard/eventos',
+      icon: Moon,
+    },
+    {
+      name: labels.menu.communities,
+      href: '/dashboard/comunidades',
+      icon: MessageSquare,
+    },
+    {
+      name: labels.menu.planetaryHours,
+      href: '/dashboard/tools/planetary-hours',
+      icon: Orbit,
+    },
+    {
+      name: labels.menu.sigils,
+      href: '/dashboard/tools/magic-square-sigil',
+      icon: PencilRuler,
+    },
+  ]
+
+  const secondaryNavigation = [
+    {
+      name: labels.menu.profile,
+      href: '/dashboard/profile',
+      icon: User,
+    },
+    {
+      name: labels.menu.altar,
+      href: '/dashboard/settings',
+      icon: Palette,
+    },
+    {
+      name: labels.menu.settings,
+      href: '/dashboard/settings',
+      icon: Settings,
+    },
+  ]
 
   useEffect(() => {
     let isMounted = true
