@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
-import { ArrowLeft, FileText, Flame, MessageCircle, MessageSquare, Pin, Sparkles, ThumbsUp, TrendingUp, Users } from 'lucide-react'
+import { ArrowLeft, FileText, Flame, MessageCircle, MessageSquare, Pin, Star, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
@@ -565,7 +565,7 @@ export default function CommunityDetailPage() {
                   ) : null}
                   {post.isFeatured ? (
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
-                      <Sparkles className="h-3 w-3 text-[hsl(var(--temple-accent-violet))]" />
+                      <Star className="h-3 w-3 text-[hsl(var(--temple-accent-violet))]" />
                       <span className="sr-only">Destaque</span>
                     </span>
                   ) : null}

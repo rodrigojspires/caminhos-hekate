@@ -49,7 +49,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     : 'US'
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-1))]/90 backdrop-blur supports-[backdrop-filter]:bg-[hsl(var(--temple-surface-1))]/70 px-6">
       {/* Mobile menu button */}
       <Button
         variant="ghost"
@@ -89,10 +89,10 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           </Button>
         )}
 
-        <div className="hidden md:flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-sm shadow-sm">
-          <Star className="h-4 w-4 text-yellow-500" />
+        <div className="hidden md:flex items-center gap-2 rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-3 py-1.5 text-sm shadow-sm">
+          <Star className="h-4 w-4 text-[hsl(var(--temple-accent-gold))]" />
           <div className="flex flex-col leading-tight">
-            <span className="text-xs text-muted-foreground">Seus pontos</span>
+            <span className="text-xs text-[hsl(var(--temple-text-secondary))]">Seus pontos</span>
             <span className="font-semibold">
               {isLoadingPoints ? '…' : totalPoints.toLocaleString('pt-BR')}
             </span>

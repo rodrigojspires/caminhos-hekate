@@ -16,7 +16,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen temple-page temple-bg bg-[hsl(var(--temple-bg))]" data-temple-theme="true">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 

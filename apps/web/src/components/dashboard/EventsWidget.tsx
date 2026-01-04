@@ -128,14 +128,14 @@ export function EventsWidget() {
   }
 
   return (
-    <Card className="glass-dark border border-hekate-gold/20">
+    <Card className="temple-card">
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <CardTitle className="text-lg font-serif text-hekate-goldLight">Próximos Alinhamentos</CardTitle>
-          <CardDescription className="text-hekate-pearl/70">Consulte os próximos rituais, encontros e alinhamentos cósmicos da nossa egrégora.</CardDescription>
+          <CardTitle className="text-lg temple-section-title">Próximos Alinhamentos</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Consulte os próximos rituais, encontros e alinhamentos cósmicos da nossa egrégora.</CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-black/20 rounded-lg p-1 flex items-center">
+          <div className="bg-[hsl(var(--temple-surface-2))] rounded-lg p-1 flex items-center">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
@@ -158,7 +158,7 @@ export function EventsWidget() {
               <Button variant="ghost" size="icon" onClick={() => changeMonth(-1)} aria-label="Mês anterior">
                 ‹
               </Button>
-              <div className="text-sm font-medium min-w-[130px] text-center text-hekate-pearl">
+              <div className="text-sm font-medium min-w-[130px] text-center text-[hsl(var(--temple-text-primary))]">
                 {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
               </div>
               <Button variant="ghost" size="icon" onClick={() => changeMonth(1)} aria-label="Próximo mês">
@@ -174,11 +174,11 @@ export function EventsWidget() {
 
       <CardContent>
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-hekate-pearl/60">
+          <div className="flex items-center justify-center py-12 text-[hsl(var(--temple-text-secondary))]">
             <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Consultando os astros...
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-10 text-hekate-pearl/60">
+          <div className="text-center py-10 text-[hsl(var(--temple-text-secondary))]">
             <CalendarDays className="h-10 w-10 mx-auto mb-3" />
             <p className="font-semibold">Nenhum alinhamento agendado.</p>
             <p className="text-sm">O oráculo está em silêncio por agora.</p>
@@ -188,23 +188,23 @@ export function EventsWidget() {
             {eventsSorted.map((event) => (
               <div
                 key={event.id}
-                className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-hekate-gold/20 bg-black/20 px-4 py-3"
+                className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-4 py-3"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-hekate-pearl">{event.title}</span>
+                    <span className="font-bold text-[hsl(var(--temple-text-primary))]">{event.title}</span>
                     {event.mode && (
-                      <Badge variant="secondary" className="gap-1 text-xs border border-hekate-purple/50 bg-hekate-purple/10 text-hekate-purple-300">
+                      <Badge variant="secondary" className="gap-1 text-xs temple-chip">
                         {event.mode === 'IN_PERSON' ? <MapPin className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
                         {event.mode === 'IN_PERSON' ? 'Presencial' : event.mode === 'HYBRID' ? 'Híbrido' : 'Online'}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="text-xs border-hekate-gold/50 text-hekate-gold">{getAccessLabel(event)}</Badge>
+                    <Badge variant="outline" className="text-xs temple-chip">{getAccessLabel(event)}</Badge>
                   </div>
                   {event.description && (
-                    <p className="text-sm text-hekate-pearl/70 mt-1 line-clamp-2">{event.description}</p>
+                    <p className="text-sm text-[hsl(var(--temple-text-secondary))] mt-1 line-clamp-2">{event.description}</p>
                   )}
-                   <div className="flex flex-wrap items-center gap-3 text-xs text-hekate-pearl/60 mt-2">
+                   <div className="flex flex-wrap items-center gap-3 text-xs text-[hsl(var(--temple-text-secondary))] mt-2">
                     <span>
                       {formatDate(event.startDate)}
                       {event.endDate ? ` — ${formatDate(event.endDate)}` : ''}
@@ -216,7 +216,7 @@ export function EventsWidget() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-7 text-xs font-medium text-hekate-pearl/50 px-1">
+            <div className="grid grid-cols-7 text-xs font-medium text-[hsl(var(--temple-text-secondary))] px-1">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
                 <div key={d} className="text-center">
                   {d}
@@ -231,11 +231,11 @@ export function EventsWidget() {
                   <div
                     key={idx}
                     className={`min-h-[100px] rounded-md border p-2 text-sm transition-colors duration-300 ${
-                      cell.day ? 'bg-black/20 border-hekate-gold/20' : 'bg-black/10 border-transparent'
-                    } ${isToday ? 'border-hekate-gold' : ''}`}
+                      cell.day ? 'bg-[hsl(var(--temple-surface-2))] border-[hsl(var(--temple-border-subtle))]' : 'bg-transparent border-transparent'
+                    } ${isToday ? 'border-[hsl(var(--temple-accent-gold))]' : ''}`}
                   >
                     {cell.day && (
-                      <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-hekate-gold' : 'text-hekate-pearl/50'}`}>
+                      <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-[hsl(var(--temple-accent-gold))]' : 'text-[hsl(var(--temple-text-secondary))]'}`}>
                         {cell.day}
                       </div>
                     )}
@@ -243,13 +243,13 @@ export function EventsWidget() {
                       {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="rounded bg-hekate-purple/20 text-hekate-purple-300 px-2 py-1 text-[10px] font-semibold line-clamp-1 cursor-pointer hover:bg-hekate-purple/30"
+                          className="rounded bg-[hsl(var(--temple-surface-3))] text-[hsl(var(--temple-text-primary))] px-2 py-1 text-[10px] font-semibold line-clamp-1 cursor-pointer hover:opacity-90"
                         >
                           {event.title}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <div className="text-[10px] text-hekate-pearl/50">+{dayEvents.length - 2} mais</div>
+                        <div className="text-[10px] text-[hsl(var(--temple-text-secondary))]">+{dayEvents.length - 2} mais</div>
                       )}
                     </div>
                   </div>

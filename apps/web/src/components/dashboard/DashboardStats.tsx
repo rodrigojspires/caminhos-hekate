@@ -27,14 +27,14 @@ function StatCard({ title, value, description, icon: Icon, index }: StatCardProp
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
     >
-      <Card className="glass-dark border border-hekate-gold/20 h-full">
+      <Card className="temple-card temple-card-hover h-full">
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-semibold text-hekate-pearl/90">{title}</CardTitle>
-          <Icon className="h-5 w-5 text-hekate-gold" />
+          <CardTitle className="text-sm font-semibold text-[hsl(var(--temple-text-primary))]">{title}</CardTitle>
+          <Icon className="h-5 w-5 text-[hsl(var(--temple-accent-gold))]" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold font-serif gradient-text-gold">{value}</div>
-          <p className="text-xs text-hekate-pearl/60 mt-1">{description}</p>
+          <div className="text-3xl font-semibold font-serif text-[hsl(var(--temple-accent-gold))]">{value}</div>
+          <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">{description}</p>
         </CardContent>
       </Card>
     </motion.div>
@@ -130,7 +130,7 @@ export function DashboardStats() {
 
   return (
     <div className="my-8">
-      <h2 className="text-xl font-semibold font-serif text-hekate-pearl mb-4 px-2">Seu Poder</h2>
+      <h2 className="text-xl font-semibold temple-section-title mb-4 px-2">Seu Poder</h2>
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {stats.map((stat, index) => (
           <StatCard

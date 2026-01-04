@@ -95,7 +95,7 @@ export function RecentActivity() {
 
   if (loading) {
     return (
-      <Card className="glass-dark border border-hekate-gold/20 h-full">
+      <Card className="temple-card h-full">
         <CardHeader>
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-72 mt-2" />
@@ -119,11 +119,11 @@ export function RecentActivity() {
 
   if (error) {
     return (
-      <Card className="glass-dark border border-red-500/30 h-full">
+      <Card className="temple-card h-full">
         <CardContent className="flex flex-col items-center justify-center text-center h-full">
             <AlertCircle className="h-12 w-12 text-red-400/80 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-hekate-pearl">Falha ao Ler os Rastros</h3>
-            <p className="text-hekate-pearl/70 text-sm max-w-sm mx-auto">{error}</p>
+            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">Falha ao Ler os Rastros</h3>
+            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">{error}</p>
             <Button onClick={fetchActivities} variant="outline" className="mt-6">
               Tentar Novamente
             </Button>
@@ -133,16 +133,16 @@ export function RecentActivity() {
   }
 
   return (
-    <Card className="glass-dark border border-hekate-gold/20 h-full flex flex-col">
+    <Card className="temple-card h-full flex flex-col">
       <CardHeader>
-          <CardTitle className="font-serif text-hekate-goldLight">Ecos Recentes</CardTitle>
-          <CardDescription className="text-hekate-pearl/70">Os ecos de suas ações mais recentes no caminho da sabedoria.</CardDescription>
+          <CardTitle className="font-serif text-[hsl(var(--temple-text-primary))]">Ecos Recentes</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Os ecos de suas ações mais recentes no caminho da sabedoria.</CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-grow">
         <ScrollArea className="h-[500px] px-6">
           <div className="relative space-y-6 pb-6">
             {/* Timeline Line */}
-            <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-hekate-gold/20" />
+            <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-[hsl(var(--temple-border-subtle))]" />
             {activities.length > 0 ? (
               activities.map((activity, index) => {
                 const { icon: Icon, color, title } = getActivityProps(activity.type)
@@ -156,13 +156,13 @@ export function RecentActivity() {
                     transition={{ duration: 0.4, delay: index * 0.08 }}
                     className="flex items-start gap-4 relative"
                   >
-                    <div className={`h-8 w-8 rounded-full bg-black flex items-center justify-center flex-shrink-0 border-2 border-hekate-gold/30 z-10`}>
+                    <div className="h-8 w-8 rounded-full bg-[hsl(var(--temple-surface-3))] flex items-center justify-center flex-shrink-0 border-2 border-[hsl(var(--temple-border-subtle))] z-10">
                         <Icon className={`h-4 w-4 ${color}`} />
                     </div>
                     <div className="flex-1 min-w-0 pt-1">
-                        <h4 className="font-bold text-sm text-hekate-pearl/90">{title}</h4>
-                        <p className="text-sm text-hekate-pearl/70 truncate">{description}</p>
-                        <time className="text-xs text-hekate-pearl/50">
+                        <h4 className="font-bold text-sm text-[hsl(var(--temple-text-primary))]">{title}</h4>
+                        <p className="text-sm text-[hsl(var(--temple-text-secondary))] truncate">{description}</p>
+                        <time className="text-xs text-[hsl(var(--temple-text-secondary))]">
                             {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true, locale: ptBR })}
                         </time>
                     </div>
@@ -170,7 +170,7 @@ export function RecentActivity() {
                 )
               })
             ) : (
-              <div className="flex items-center justify-center h-full py-12 text-hekate-pearl/60">
+              <div className="flex items-center justify-center h-full py-12 text-[hsl(var(--temple-text-secondary))]">
                 <div className="text-center">
                   <Feather className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <h3 className="font-semibold mb-1">Seus ecos ainda serão marcados.</h3>

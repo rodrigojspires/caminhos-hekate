@@ -119,6 +119,13 @@
     box-shadow: var(--temple-shadow-soft);
   }
 
+  .temple-page [data-temple-card] {
+    background: linear-gradient(160deg, hsl(var(--temple-surface-2)) 0%, hsl(var(--temple-surface-1)) 100%);
+    border: 1px solid hsl(var(--temple-border-subtle));
+    border-radius: var(--temple-radius-lg);
+    box-shadow: var(--temple-shadow-soft);
+  }
+
   .temple-card-highlight {
     background: linear-gradient(150deg, hsl(var(--temple-surface-3)) 0%, hsl(var(--temple-surface-1)) 80%);
     border-color: hsl(var(--temple-accent-gold) / 0.5);
@@ -139,6 +146,66 @@
     border: 1px solid hsl(var(--temple-border-subtle));
     background: hsl(var(--temple-surface-3) / 0.6);
     color: hsl(var(--temple-text-primary));
+  }
+
+  .temple-page [data-temple-badge] {
+    border-radius: 999px;
+    border: 1px solid hsl(var(--temple-border-subtle));
+    background: hsl(var(--temple-surface-3) / 0.6);
+    color: hsl(var(--temple-text-primary));
+  }
+
+  .temple-page [data-temple-badge][data-variant="secondary"] {
+    background: hsl(var(--temple-surface-2));
+    border-color: hsl(var(--temple-border-subtle));
+    color: hsl(var(--temple-text-primary));
+  }
+
+  .temple-page [data-temple-badge][data-variant="outline"] {
+    background: transparent;
+    border-color: hsl(var(--temple-border-subtle));
+    color: hsl(var(--temple-text-secondary));
+  }
+
+  .temple-page [data-temple-badge][data-variant="destructive"] {
+    background: hsl(var(--destructive) / 0.18);
+    border-color: hsl(var(--destructive) / 0.35);
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .temple-page [data-temple-input] {
+    border-radius: var(--temple-radius-md);
+    border: 1px solid hsl(var(--temple-border-subtle));
+    background: hsl(var(--temple-surface-2));
+    color: hsl(var(--temple-text-primary));
+  }
+
+  .temple-page [data-temple-input]::placeholder {
+    color: hsl(var(--temple-text-secondary));
+  }
+
+  .temple-page [data-temple-input]:focus-visible {
+    outline: 2px solid hsl(var(--temple-accent-gold));
+    outline-offset: 2px;
+    box-shadow: var(--temple-glow-candle);
+  }
+
+  .temple-page [data-temple-tabs-list] {
+    border-radius: 999px;
+    border: 1px solid hsl(var(--temple-border-subtle));
+    background: hsl(var(--temple-surface-2));
+    color: hsl(var(--temple-text-secondary));
+  }
+
+  .temple-page [data-temple-tabs-trigger] {
+    border-radius: 999px;
+    color: hsl(var(--temple-text-secondary));
+  }
+
+  .temple-page [data-temple-tabs-trigger][data-state="active"] {
+    background: hsl(var(--temple-surface-3));
+    color: hsl(var(--temple-text-primary));
+    box-shadow: var(--temple-glow-candle);
   }
 
   .temple-btn-primary {

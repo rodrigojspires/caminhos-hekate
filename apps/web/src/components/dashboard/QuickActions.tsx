@@ -37,18 +37,18 @@ function QuickActionCard({ title, description, icon: Icon, href, badge, index, l
       className="h-full"
     >
       <Link href={href} className="h-full flex flex-col">
-        <Card className="glass-dark flex-grow cursor-pointer transition-all border border-hekate-gold/20 hover:border-hekate-gold/50 flex flex-col p-4 text-center items-center justify-center">
-            <div className="p-3 rounded-full bg-hekate-gold/10 mb-3 relative">
+        <Card className="temple-card temple-card-hover flex-grow cursor-pointer flex flex-col p-4 text-center items-center justify-center">
+            <div className="p-3 rounded-full bg-[hsl(var(--temple-surface-3))] mb-3 relative">
               {livePulse && (
                 <span className="absolute top-0 right-0 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                 </span>
               )}
-              <Icon className="h-6 w-6 text-hekate-gold" />
+              <Icon className="h-6 w-6 text-[hsl(var(--temple-accent-gold))]" />
             </div>
-            <h3 className="font-bold text-sm text-hekate-pearl mb-1">{title}</h3>
-            <p className="text-xs text-hekate-pearl/60">{description}</p>
+            <h3 className="font-bold text-sm text-[hsl(var(--temple-text-primary))] mb-1">{title}</h3>
+            <p className="text-xs text-[hsl(var(--temple-text-secondary))]">{description}</p>
         </Card>
       </Link>
     </motion.div>
@@ -172,9 +172,9 @@ export function QuickActions() {
   return (
     <div className="space-y-4 my-8">
       <div className="flex items-center justify-between px-2">
-        <h2 className="text-xl font-semibold font-serif text-hekate-pearl">Atalhos Arcanos</h2>
+        <h2 className="text-xl font-semibold temple-section-title">Atalhos Arcanos</h2>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/tools" className="text-hekate-gold hover:text-hekate-goldLight">Ver todos</Link>
+          <Link href="/dashboard/tools" className="text-[hsl(var(--temple-accent-gold))] hover:text-[hsl(var(--temple-accent-gold))]/80">Ver todos</Link>
         </Button>
       </div>
       

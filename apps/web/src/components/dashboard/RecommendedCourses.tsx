@@ -53,13 +53,13 @@ interface RecommendedCoursesResponse {
 const getLevelColor = (level: string) => {
   switch (level) {
     case 'Neófito':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+      return 'temple-chip'
     case 'Iniciado':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+      return 'temple-chip'
     case 'Adepto':
-      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+      return 'temple-chip'
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+      return 'temple-chip'
   }
 }
 
@@ -159,8 +159,8 @@ export function RecommendedCourses() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Rituais Sugeridos pelo Oráculo</h2>
-            <p className="text-muted-foreground">Sugestões baseadas em sua afinidade e jornada.</p>
+            <h2 className="text-2xl font-bold temple-heading">Rituais Sugeridos pelo Oráculo</h2>
+            <p className="text-[hsl(var(--temple-text-secondary))]">Sugestões baseadas em sua afinidade e jornada.</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -168,12 +168,12 @@ export function RecommendedCourses() {
           </Button>
         </div>
         
-        <Card className="p-12">
-          <div className="text-center space-y-4">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
+        <Card className="p-12 temple-card">
+          <div className="text-center space-y-4 text-[hsl(var(--temple-text-secondary))]">
+            <AlertCircle className="h-12 w-12 text-[hsl(var(--temple-text-secondary))] mx-auto" />
             <div>
               <h3 className="text-lg font-semibold">Falha na Consulta ao Oráculo</h3>
-              <p className="text-muted-foreground">{error}</p>
+              <p>{error}</p>
             </div>
             <Button onClick={handleRefresh}>
               Tentar Novamente
@@ -188,8 +188,8 @@ export function RecommendedCourses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Rituais Sugeridos pelo Oráculo</h2>
-          <p className="text-muted-foreground">Sugestões baseadas em sua afinidade e jornada.</p>
+          <h2 className="text-2xl font-bold temple-heading">Rituais Sugeridos pelo Oráculo</h2>
+          <p className="text-[hsl(var(--temple-text-secondary))]">Sugestões baseadas em sua afinidade e jornada.</p>
         </div>
         <Button 
           variant="outline" 
@@ -224,12 +224,12 @@ export function RecommendedCourses() {
                 {/* Badges */}
                 <div className="absolute top-3 left-3 flex gap-2">
                   {course.isNew && (
-                    <Badge className="bg-green-500 hover:bg-green-600">
+                    <Badge className="temple-chip text-xs">
                       Recente
                     </Badge>
                   )}
                   {course.isTrending && (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                    <Badge variant="secondary" className="temple-chip text-xs">
                       <TrendingUp className="h-3 w-3 mr-1" />
                       Em Ascensão
                     </Badge>
@@ -238,7 +238,7 @@ export function RecommendedCourses() {
 
                 {/* Match Percentage */}
                 <div className="absolute top-3 right-3">
-                  <Badge variant="secondary" className="bg-white/90 text-purple-700">
+                  <Badge variant="secondary" className="temple-chip text-xs">
                     {course.matchPercentage}% de Afinidade
                   </Badge>
                 </div>
@@ -258,7 +258,7 @@ export function RecommendedCourses() {
                 {/* Course Info */}
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg leading-tight group-hover:text-purple-600 transition-colors">
+                    <h3 className="font-semibold text-lg leading-tight group-hover:text-[hsl(var(--temple-accent-gold))] transition-colors">
                       {course.title}
                     </h3>
                     <Button variant="ghost" size="icon" className="shrink-0">
@@ -274,9 +274,9 @@ export function RecommendedCourses() {
                 {/* Instructor */}
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-purple-100 text-purple-700">
-                      {course.instructor.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
+                  <AvatarFallback className="bg-[hsl(var(--temple-surface-3))] text-[hsl(var(--temple-text-primary))]">
+                    {course.instructor.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{course.instructor.name}</p>
@@ -306,12 +306,12 @@ export function RecommendedCourses() {
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1">
                   {course.tags.slice(0, 2).map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
+                    <Badge key={tag} variant="outline" className="text-xs temple-chip">
                       {tag}
                     </Badge>
                   ))}
                   {course.tags.length > 2 && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs temple-chip">
                       +{course.tags.length - 2}
                     </Badge>
                   )}
@@ -346,8 +346,8 @@ export function RecommendedCourses() {
           </div>
         </>
       ) : (
-        <Card className="p-12">
-          <div className="text-center space-y-4 text-muted-foreground">
+        <Card className="p-12 temple-card">
+          <div className="text-center space-y-4 text-[hsl(var(--temple-text-secondary))]">
             <BookOpen className="h-12 w-12 mx-auto opacity-50" />
             <div>
               <h3 className="text-lg font-semibold mb-2">O Oráculo aguarda seu progresso</h3>

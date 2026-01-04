@@ -67,7 +67,7 @@ export function ProgressOverview() {
 
   if (loading) {
     return (
-      <Card className="glass-dark border border-hekate-gold/20">
+      <Card className="temple-card">
         <CardHeader>
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-80 mt-2" />
@@ -85,11 +85,11 @@ export function ProgressOverview() {
 
   if (error || !progressData) {
     return (
-       <Card className="glass-dark border border-red-500/30">
+       <Card className="temple-card">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <AlertCircle className="h-12 w-12 text-red-400/80 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-hekate-pearl">Falha ao Consultar os Oráculos</h3>
-            <p className="text-hekate-pearl/70 text-sm max-w-sm mx-auto">Não foi possível carregar sua trilha de ascensão. As energias podem estar instáveis.</p>
+            <h3 className="text-lg font-semibold text-[hsl(var(--temple-text-primary))]">Falha ao Consultar os Oráculos</h3>
+            <p className="text-[hsl(var(--temple-text-secondary))] text-sm max-w-sm mx-auto">Não foi possível carregar sua trilha de ascensão. As energias podem estar instáveis.</p>
             <Button onClick={fetchProgressData} variant="outline" className="mt-6">
               Tentar Novamente
             </Button>
@@ -108,8 +108,8 @@ export function ProgressOverview() {
     <div className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-                <h2 className="text-2xl font-bold font-serif tracking-tight text-hekate-goldLight">Sua Trilha de Ascensão</h2>
-                <p className="text-hekate-pearl/70">Uma visão detalhada da sua jornada evolutiva.</p>
+                <h2 className="text-2xl font-bold temple-heading">Sua Trilha de Ascensão</h2>
+                <p className="text-[hsl(var(--temple-text-secondary))]">Uma visão detalhada da sua jornada evolutiva.</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchProgressData} disabled={loading}>
                 {loading ? 'Atualizando...' : 'Atualizar Trilha'}
@@ -118,13 +118,13 @@ export function ProgressOverview() {
 
       {/* Current Courses Progress */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card className="glass-dark border border-hekate-gold/20">
+        <Card className="temple-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
-              <BookOpen className="h-5 w-5 text-hekate-purple-300" />
+            <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
+              <BookOpen className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
               Seus Rituais em Andamento
             </CardTitle>
-            <CardDescription className="text-hekate-pearl/70">Visualize sua jornada em cada portal de conhecimento.</CardDescription>
+            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Visualize sua jornada em cada portal de conhecimento.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
             {progressData.courseProgress.length > 0 ? (
@@ -133,20 +133,20 @@ export function ProgressOverview() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}/>
-                      <span className="font-medium text-hekate-pearl/90">{course.courseTitle}</span>
+                      <span className="font-medium text-[hsl(var(--temple-text-primary))]">{course.courseTitle}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-hekate-pearl/60">
+                      <span className="text-xs text-[hsl(var(--temple-text-secondary))]">
                         {course.completedLessons}/{course.totalLessons} ritos
                       </span>
-                      <Badge variant="secondary" className="bg-hekate-purple/20 text-hekate-purple-300 border border-hekate-purple/40 font-bold">{course.progress}%</Badge>
+                      <Badge variant="secondary" className="temple-chip font-bold">{course.progress}%</Badge>
                     </div>
                   </div>
-                  <Progress value={course.progress} className="h-2" indicatorClassName={`bg-gradient-to-r from-hekate-purple to-hekate-gold`} />
+                  <Progress value={course.progress} className="h-2" indicatorClassName={`bg-gradient-to-r from-[hsl(var(--temple-accent-violet))] to-[hsl(var(--temple-accent-gold))]`} />
                 </motion.div>
               ))
             ) : (
-              <div className="text-center py-8 text-hekate-pearl/60">
+              <div className="text-center py-8 text-[hsl(var(--temple-text-secondary))]">
                 <Compass className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="font-semibold">Nenhum ritual iniciado.</p>
                 <p className="text-sm">Escolha um portal para começar sua jornada.</p>
@@ -159,13 +159,13 @@ export function ProgressOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Weekly Activity Chart */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          <Card className="glass-dark border border-hekate-gold/20 h-full">
+          <Card className="temple-card h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
-                <Clock className="h-5 w-5 text-hekate-purple-300" />
+              <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
+                <Clock className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
                 Ritmo da Semana
               </CardTitle>
-              <CardDescription className="text-hekate-pearl/70">Sua dedicação e rito nos últimos 7 dias.</CardDescription>
+              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Sua dedicação e rito nos últimos 7 dias.</CardDescription>
             </CardHeader>
             <CardContent>
               {progressData.weeklyProgress && progressData.weeklyProgress.length > 1 ? (
@@ -179,7 +179,7 @@ export function ProgressOverview() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-48 text-hekate-pearl/60">
+                <div className="flex items-center justify-center h-48 text-[hsl(var(--temple-text-secondary))]">
                   <div className="text-center">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p className="font-semibold">O rito da semana ainda não começou.</p>
@@ -193,13 +193,13 @@ export function ProgressOverview() {
 
         {/* Course Distribution */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-          <Card className="glass-dark border border-hekate-gold/20 h-full">
+          <Card className="temple-card h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
-                <Target className="h-5 w-5 text-hekate-purple-300" />
+              <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
+                <Target className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
                 Foco da Alma
               </CardTitle>
-              <CardDescription className="text-hekate-pearl/70">Onde sua energia está sendo canalizada.</CardDescription>
+              <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Onde sua energia está sendo canalizada.</CardDescription>
             </CardHeader>
             <CardContent>
               {courseProgressChartData.length > 0 ? (
@@ -212,7 +212,7 @@ export function ProgressOverview() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                 <div className="flex items-center justify-center h-48 text-hekate-pearl/60">
+                 <div className="flex items-center justify-center h-48 text-[hsl(var(--temple-text-secondary))]">
                   <div className="text-center">
                     <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Nenhum foco definido.</p>
@@ -226,13 +226,13 @@ export function ProgressOverview() {
 
       {/* Monthly Progress Trend */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-        <Card className="glass-dark border border-hekate-gold/20">
+        <Card className="temple-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-serif text-hekate-pearl">
-              <TrendingUp className="h-5 w-5 text-hekate-purple-300" />
+            <CardTitle className="flex items-center gap-2 font-serif text-[hsl(var(--temple-text-primary))]">
+              <TrendingUp className="h-5 w-5 text-[hsl(var(--temple-accent-violet))]" />
               Ciclos de Evolução
             </CardTitle>
-            <CardDescription className="text-hekate-pearl/70">Observe a sua evolução através das luas.</CardDescription>
+            <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Observe a sua evolução através das luas.</CardDescription>
           </CardHeader>
           <CardContent>
             {progressData.monthlyData && progressData.monthlyData.length > 1 ? (
@@ -251,7 +251,7 @@ export function ProgressOverview() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-60 text-hekate-pearl/60">
+              <div className="flex items-center justify-center h-60 text-[hsl(var(--temple-text-secondary))]">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="font-semibold">Ainda não há ciclos para mostrar.</p>

@@ -94,12 +94,12 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
   }
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics da Minha Escola</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold temple-heading">Analytics da Minha Escola</h1>
+          <p className="text-[hsl(var(--temple-text-secondary))]">
             Acompanhe métricas e eventos em tempo real
           </p>
         </div>
@@ -108,7 +108,7 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as '1d' | '7d' | '30d' | '90d')}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] text-[hsl(var(--temple-text-primary))]"
           >
             <option value="1d">Últimas 24h</option>
             <option value="7d">Últimos 7 dias</option>
@@ -131,53 +131,53 @@ export function AnalyticsDashboard({ userId, isAdmin = false }: AnalyticsDashboa
       {/* Métricas principais */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="temple-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-[hsl(var(--temple-text-secondary))]" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">
                 Usuários únicos registrados
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="temple-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-4 w-4 text-[hsl(var(--temple-text-secondary))]" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeUsers.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">
                 Ativos nas últimas 24h
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="temple-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Eventos</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-[hsl(var(--temple-text-secondary))]" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalEvents.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">
                 Eventos registrados
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="temple-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Métricas</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <Eye className="h-4 w-4 text-[hsl(var(--temple-text-secondary))]" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalMetrics.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))]">
                 Métricas coletadas
               </p>
             </CardContent>

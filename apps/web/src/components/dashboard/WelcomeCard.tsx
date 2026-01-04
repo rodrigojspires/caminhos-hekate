@@ -66,26 +66,26 @@ export function WelcomeCard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="relative overflow-hidden bg-gradient-to-r from-gray-900 via-purple-950 to-black text-white border border-hekate-gold/20 shadow-lg shadow-hekate-purple/10">
+      <Card className="relative overflow-hidden temple-card temple-card-highlight">
         <CardContent className="p-8">
           <div className="flex items-center justify-between">
             <div className="space-y-4">
               <div>
-                <h1 className="text-2xl font-bold font-serif text-hekate-goldLight">
+                <h1 className="text-2xl font-bold temple-heading text-[hsl(var(--temple-text-primary))]">
                   {greeting}, {name}. A egrégora te saúda.
                 </h1>
-                <p className="text-hekate-pearl/80 mt-1">
+                <p className="text-[hsl(var(--temple-text-secondary))] mt-1">
                   Este é o seu santuário. Que a cada visita, seus passos se tornem mais firmes e sua chama interior, mais brilhante.
                 </p>
               </div>
               
-              <div className="flex items-center gap-6 text-sm text-hekate-pearl/70">
+              <div className="flex items-center gap-6 text-sm text-[hsl(var(--temple-text-secondary))]">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-hekate-purple-300" />
+                  <BookOpen className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
                   <span>{inProgress} rituais em andamento</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-hekate-purple-300" />
+                  <Star className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
                   <span>{avgProgress}% de ascensão percorrida</span>
                 </div>
               </div>
@@ -94,13 +94,13 @@ export function WelcomeCard() {
                 <Button 
                   variant="secondary" 
                   size="sm"
-                  className="bg-hekate-gold/90 hover:bg-hekate-gold text-hekate-black border-none shadow-md"
+                  className="temple-btn-primary"
                 >
                   <Play className="h-4 w-4 mr-2" />
                   Continuar Ritual
                 </Button>
                 {streak > 0 && (
-                  <Badge variant="secondary" className="bg-transparent text-hekate-gold border-hekate-gold/30 flex items-center gap-2">
+                  <Badge variant="secondary" className="temple-chip flex items-center gap-2">
                     <Flame className="h-4 w-4 animate-pulse" />
                     <span>Chama do Conhecimento: {streak} dias</span>
                   </Badge>
@@ -110,8 +110,8 @@ export function WelcomeCard() {
             
             {/* Decorative elements */}
             <div className="hidden md:block relative z-10">
-              <div className="w-24 h-24 bg-hekate-gold/10 rounded-2xl flex items-center justify-center transform rotate-12">
-                <StrophalosIcon className="h-12 w-12 text-hekate-gold opacity-70" />
+              <div className="w-24 h-24 bg-[hsl(var(--temple-surface-3))] rounded-2xl flex items-center justify-center transform rotate-12">
+                <StrophalosIcon className="h-12 w-12 text-[hsl(var(--temple-accent-gold))] opacity-70" />
               </div>
             </div>
           </div>

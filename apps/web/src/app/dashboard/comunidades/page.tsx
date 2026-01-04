@@ -21,7 +21,7 @@ import { PaymentForm } from '@/components/payments/PaymentForm'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Flame, MessageCircle, Pin, Sparkles, ThumbsUp, TrendingUp, Users } from 'lucide-react'
+import { Flame, MessageCircle, Pin, Star, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
 import FollowToggle from '@/components/public/community/FollowToggle'
@@ -425,7 +425,7 @@ export default function DashboardCommunitiesPage() {
                   ) : null}
                   {post.isFeatured ? (
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
-                      <Sparkles className="h-3 w-3 text-[hsl(var(--temple-accent-violet))]" />
+                      <Star className="h-3 w-3 text-[hsl(var(--temple-accent-violet))]" />
                       <span className="sr-only">Destaque</span>
                     </span>
                   ) : null}

@@ -52,58 +52,58 @@ export function GamificationDashboard() {
     <div className="space-y-6">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+        <Card className="temple-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-yellow-600">Pontos Totais</p>
-                <p className="text-2xl font-bold text-yellow-900">
+                <p className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Pontos Totais</p>
+                <p className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
                   {userStats?.totalPoints?.toLocaleString() || 0}
                 </p>
               </div>
-              <Trophy className="h-8 w-8 text-yellow-600" />
+              <Trophy className="h-8 w-8 text-[hsl(var(--temple-accent-gold))]" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+        <Card className="temple-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Nível Atual</p>
-                <p className="text-2xl font-bold text-purple-900">
+                <p className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Nível Atual</p>
+                <p className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
                   {userStats?.currentLevel || 1}
                 </p>
               </div>
-              <Star className="h-8 w-8 text-purple-600" />
+              <Star className="h-8 w-8 text-[hsl(var(--temple-accent-violet))]" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+        <Card className="temple-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600">Sequência Atual</p>
-                <p className="text-2xl font-bold text-orange-900">
+                <p className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Sequência Atual</p>
+                <p className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
                   {userStreak?.currentStreak || 0} dias
                 </p>
               </div>
-              <Flame className="h-8 w-8 text-orange-600" />
+              <Flame className="h-8 w-8 text-[hsl(var(--temple-accent-gold))]" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+        <Card className="temple-card">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Conquistas</p>
-                <p className="text-2xl font-bold text-green-900">
+                <p className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Conquistas</p>
+                <p className="text-2xl font-bold text-[hsl(var(--temple-text-primary))]">
                   {userStats?.achievementsCount || 0}
                 </p>
               </div>
-              <Award className="h-8 w-8 text-green-600" />
+              <Award className="h-8 w-8 text-[hsl(var(--temple-accent-violet))]" />
             </div>
           </CardContent>
         </Card>
@@ -124,7 +124,7 @@ export function GamificationDashboard() {
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Achievements */}
-            <Card>
+            <Card className="temple-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5" />
@@ -150,7 +150,7 @@ export function GamificationDashboard() {
             </Card>
 
             {/* Streak Display */}
-            <Card>
+            <Card className="temple-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Flame className="h-5 w-5" />

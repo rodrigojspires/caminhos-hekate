@@ -100,14 +100,14 @@ export default function DashboardEventsPage() {
     const dateParts = formatDateParts(event.start)
 
     return (
-      <Card key={event.id} className="border border-border/70">
+      <Card key={event.id} className="temple-card temple-card-hover">
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex gap-4">
-              <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/60 px-3 py-2 text-center">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-3 py-2 text-center">
                 <span className="text-2xl font-bold leading-none">{dateParts.day}</span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">{dateParts.month}</span>
-                <span className="text-[11px] text-muted-foreground">{dateParts.year}</span>
+                <span className="text-xs uppercase tracking-wide text-[hsl(var(--temple-text-secondary))]">{dateParts.month}</span>
+                <span className="text-[11px] text-[hsl(var(--temple-text-secondary))]">{dateParts.year}</span>
                 <span className="mt-1 text-xs font-semibold">{dateParts.time}</span>
               </div>
 
@@ -117,9 +117,9 @@ export default function DashboardEventsPage() {
                   {event.userRegistration && <Badge variant="secondary">Inscrito</Badge>}
                 </div>
                 {event.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                  <p className="text-sm text-[hsl(var(--temple-text-secondary))] line-clamp-2">{event.description}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-[hsl(var(--temple-text-secondary))]">
                   {event.location && (
                     <span className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
@@ -166,8 +166,8 @@ export default function DashboardEventsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Eventos</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold temple-heading">Eventos</h1>
+        <p className="text-[hsl(var(--temple-text-secondary))]">
           Acompanhe os eventos da comunidade e alterne entre lista e calendario.
         </p>
       </div>
