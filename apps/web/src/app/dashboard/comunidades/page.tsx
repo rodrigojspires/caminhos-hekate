@@ -21,7 +21,7 @@ import { PaymentForm } from '@/components/payments/PaymentForm'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Flame, MessageCircle, ThumbsUp, TrendingUp, Users } from 'lucide-react'
+import { Flame, MessageCircle, Pin, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
 import FollowToggle from '@/components/public/community/FollowToggle'
@@ -79,6 +79,17 @@ type LeaderboardEntry = {
   userId: string
   user?: { id: string; name?: string | null; image?: string | null } | null
   score: number
+}
+
+const getReadableTextColor = (color?: string | null) => {
+  if (!color) return '#f6efdb'
+  const hex = color.replace('#', '').trim()
+  if (hex.length !== 6) return '#f6efdb'
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.62 ? '#1d1608' : '#f6efdb'
 }
 
 export default function DashboardCommunitiesPage() {
@@ -327,27 +338,27 @@ export default function DashboardCommunitiesPage() {
           <Link href={detailUrl} className="font-medium text-sm hover:underline">
             {community.name}
           </Link>
-          <p className="text-xs text-muted-foreground truncate">{community.accessLabel}</p>
+          <p className="text-xs text-[hsl(var(--temple-text-secondary))] truncate">{community.accessLabel}</p>
           {!community.isMember && community.price != null ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[hsl(var(--temple-text-secondary))]">
               R$ {community.price.toFixed(2)} / mês
             </p>
           ) : null}
-          <p className="text-xs text-muted-foreground">{community.membersCount} membros</p>
+          <p className="text-xs text-[hsl(var(--temple-text-secondary))]">{community.membersCount} membros</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {community.unreadChatCount && community.unreadChatCount > 0 ? (
-            <Badge variant="secondary" className="text-xs">
+            <Badge className="text-xs temple-chip">
               {community.unreadChatCount} novas
             </Badge>
           ) : null}
           {community.isMember ? (
-            <Badge variant={isPending ? 'secondary' : 'default'} className="text-xs">
+            <Badge className="text-xs temple-chip">
               {isPending ? 'Pendente' : 'Inscrito'}
             </Badge>
           ) : null}
           {community.isMember ? (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="temple-btn-secondary">
               <Link href={detailUrl}>Abrir</Link>
             </Button>
           ) : (
@@ -355,6 +366,7 @@ export default function DashboardCommunitiesPage() {
               onClick={() => handleEnroll(community)}
               disabled={actionId === community.id || isInactive}
               size="sm"
+              className="temple-btn-primary"
             >
               {isInactive ? 'Indisponível' : actionId === community.id ? 'Processando...' : 'Participar'}
             </Button>
@@ -380,9 +392,9 @@ export default function DashboardCommunitiesPage() {
     return (
       <Card
         key={post.id}
-        className={`relative overflow-hidden border-l-4 ${
+        className={`relative overflow-hidden border-l-4 temple-card temple-card-hover ${
           isThread ? 'border-l-blue-500' : 'border-l-amber-500'
-        } ${post.isFeatured ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-200/60 shadow-sm' : ''}`}
+        } ${post.isFeatured ? 'temple-card-highlight' : ''}`}
       >
         {post.isFeatured ? (
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
@@ -405,10 +417,14 @@ export default function DashboardCommunitiesPage() {
               <div>
                 <div className={`flex items-center gap-2 ${post.isFeatured ? 'text-amber-950' : ''}`}>
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
-                  {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
-                  {post.isFeatured ? <Badge className="bg-amber-200 text-amber-950">Destaque</Badge> : null}
-                  {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
-                  <Badge className={post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''} variant="outline">
+                  {post.isPinned ? (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
+                      <Pin className="h-3 w-3 text-[hsl(var(--temple-accent-gold))]" />
+                      <span className="sr-only">Fixado</span>
+                    </span>
+                  ) : null}
+                  {post.locked ? <Badge className="temple-chip">Nível {post.tier}</Badge> : null}
+                  <Badge className={`temple-chip ${post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''}`} variant="outline">
                     {post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}
                   </Badge>
                   {post.topic?.name ? (
@@ -416,8 +432,8 @@ export default function DashboardCommunitiesPage() {
                       className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                       style={{
                         backgroundColor: post.topic.color || '#94a3b8',
-                        color: '#ffffff',
-                        textShadow: '0 1px 1px rgba(0,0,0,0.25)'
+                        color: getReadableTextColor(post.topic.color),
+                        border: `1px solid ${getReadableTextColor(post.topic.color) === '#1d1608' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}`
                       }}
                     >
                       {post.topic.name}
@@ -434,9 +450,9 @@ export default function DashboardCommunitiesPage() {
             <FollowToggle type="post" id={post.id} />
           </div>
           <div>
-            <CardTitle className={`text-lg ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
+            <CardTitle className={`text-lg temple-section-title ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
             <CardDescription
-              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : ''}`}
+              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : 'text-[hsl(var(--temple-text-secondary))]'}`}
             >
               {post.locked ? 'Conteúdo disponível após inscrição.' : contentPreview}
             </CardDescription>
@@ -444,7 +460,7 @@ export default function DashboardCommunitiesPage() {
               <Button
                 type="button"
                 variant="link"
-                className="px-0 text-xs"
+                className="px-0 text-xs temple-btn-ghost"
                 onClick={() => {
                   setExpandedPosts((prev) => {
                     const next = new Set(prev)
@@ -463,10 +479,10 @@ export default function DashboardCommunitiesPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-[hsl(var(--temple-text-secondary))]">
             <button
               type="button"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 hover:text-[hsl(var(--temple-text-primary))] transition-colors"
               onClick={() => toggleComments(post.id)}
             >
               <MessageCircle className="h-4 w-4" />
@@ -478,8 +494,8 @@ export default function DashboardCommunitiesPage() {
             </span>
             <button
               type="button"
-              className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${
-                reactionState[post.id] ? 'text-foreground' : ''
+              className={`inline-flex items-center gap-1 hover:text-[hsl(var(--temple-text-primary))] transition-colors ${
+                reactionState[post.id] ? 'text-[hsl(var(--temple-text-primary))]' : ''
               }`}
               onClick={() => togglePostReaction(post.id)}
             >
@@ -502,7 +518,7 @@ export default function DashboardCommunitiesPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={index}>
+            <Card key={index} className="temple-card">
               <CardHeader>
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-4 w-64" />
@@ -520,10 +536,10 @@ export default function DashboardCommunitiesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 temple-page temple-bg min-h-screen px-1">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">Comunidades</h1>
-        <Button variant="outline" onClick={() => setSuggestOpen(true)}>
+        <h1 className="text-3xl font-bold temple-heading">Comunidades</h1>
+        <Button variant="outline" className="temple-btn-secondary" onClick={() => setSuggestOpen(true)}>
           Sugerir comunidade
         </Button>
       </div>
@@ -531,10 +547,10 @@ export default function DashboardCommunitiesPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Linha do tempo</h2>
+            <h2 className="text-xl font-semibold temple-section-title">Linha do tempo</h2>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={feedFilter} onValueChange={(value) => setFeedFilter(value as 'all' | 'featured')}>
-                <SelectTrigger className="w-[170px]">
+                <SelectTrigger className="w-[170px] temple-card">
                   <SelectValue placeholder="Filtro" />
                 </SelectTrigger>
                 <SelectContent>
@@ -543,7 +559,7 @@ export default function DashboardCommunitiesPage() {
                 </SelectContent>
               </Select>
               <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-[220px] temple-card">
                   <SelectValue placeholder="Categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,7 +577,7 @@ export default function DashboardCommunitiesPage() {
           {feedLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
-                <Card key={index}>
+                <Card key={index} className="temple-card">
                   <CardHeader>
                     <Skeleton className="h-5 w-40" />
                     <Skeleton className="h-4 w-64" />
@@ -575,8 +591,8 @@ export default function DashboardCommunitiesPage() {
               ))}
             </div>
           ) : timelineItems.length === 0 ? (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
+            <Card className="temple-card">
+              <CardContent className="py-6 text-sm text-[hsl(var(--temple-text-secondary))]">
                 Nenhum conteúdo das suas comunidades.
               </CardContent>
             </Card>
@@ -588,22 +604,25 @@ export default function DashboardCommunitiesPage() {
         </section>
 
         <aside className="space-y-6">
-          <Card>
+          <div className="text-xs uppercase tracking-[0.3em] text-[hsl(var(--temple-text-secondary))]">
+            Painel do Santuário
+          </div>
+          <Card className="temple-card temple-card-hover">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 temple-section-title">
                 <Users className="h-5 w-5" />
                 Minhas comunidades
               </CardTitle>
-              <CardDescription>Seus espaços ativos no momento.</CardDescription>
+              <CardDescription className="temple-subheading">Seus espaços ativos no momento.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {showInactiveNotice ? (
-                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                <div className="rounded-md border border-dashed border-[hsl(var(--temple-border-subtle))] p-3 text-xs text-[hsl(var(--temple-text-secondary))]">
                   Nenhuma comunidade ativa encontrada. Exibindo comunidades inativas.
                 </div>
               ) : null}
               {myCommunities.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-[hsl(var(--temple-text-secondary))]">
                   Você ainda não participa de nenhuma comunidade.
                 </div>
               ) : (
@@ -614,14 +633,14 @@ export default function DashboardCommunitiesPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="temple-card temple-card-hover">
             <CardHeader>
-              <CardTitle>Comunidades disponíveis</CardTitle>
-              <CardDescription>Explore outras comunidades.</CardDescription>
+              <CardTitle className="temple-section-title">Comunidades disponíveis</CardTitle>
+              <CardDescription className="temple-subheading">Explore outras comunidades.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {availableCommunities.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Nenhuma comunidade disponível.</div>
+                <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Nenhuma comunidade disponível.</div>
               ) : (
                 <div className="space-y-4">
                   {availableCommunities.map(renderCommunityRow)}
@@ -630,14 +649,14 @@ export default function DashboardCommunitiesPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="temple-card temple-card-hover">
             <CardHeader>
-              <CardTitle>Maiores contribuidores do mês</CardTitle>
-              <CardDescription>Ranking por atividade (posts, comentários e reações).</CardDescription>
+              <CardTitle className="temple-section-title">Maiores contribuidores do mês</CardTitle>
+              <CardDescription className="temple-subheading">Ranking por atividade (posts, comentários e reações).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Select value={leaderboardCommunityId} onValueChange={setLeaderboardCommunityId}>
-                <SelectTrigger>
+                <SelectTrigger className="temple-card">
                   <SelectValue placeholder="Selecione a comunidade" />
                 </SelectTrigger>
                 <SelectContent>
@@ -669,9 +688,11 @@ export default function DashboardCommunitiesPage() {
                           <div className="text-xs text-muted-foreground">#{entry.rank}</div>
                         </div>
                       </div>
-                      <Badge variant="secondary">{entry.score} pts</Badge>
+                      <Badge className="temple-chip">{entry.score} pts</Badge>
                     </div>
-                    {index < leaderboard.length - 1 ? <Separator className="mt-4" /> : null}
+                    {index < leaderboard.length - 1 ? (
+                      <Separator className="mt-4 bg-[hsl(var(--temple-border-subtle))]" />
+                    ) : null}
                   </div>
                 ))
               )}
@@ -681,7 +702,7 @@ export default function DashboardCommunitiesPage() {
       </div>
 
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl temple-card">
           <DialogHeader>
             <DialogTitle>Upgrade de plano</DialogTitle>
             <DialogDescription>Escolha um plano para acessar esta comunidade.</DialogDescription>
@@ -690,12 +711,14 @@ export default function DashboardCommunitiesPage() {
             <Button
               variant={upgradeBilling === 'MONTHLY' ? 'default' : 'outline'}
               onClick={() => setUpgradeBilling('MONTHLY')}
+              className={upgradeBilling === 'MONTHLY' ? 'temple-btn-primary' : 'temple-btn-secondary'}
             >
               Mensal
             </Button>
             <Button
               variant={upgradeBilling === 'YEARLY' ? 'default' : 'outline'}
               onClick={() => setUpgradeBilling('YEARLY')}
+              className={upgradeBilling === 'YEARLY' ? 'temple-btn-primary' : 'temple-btn-secondary'}
             >
               Anual
             </Button>
@@ -707,7 +730,7 @@ export default function DashboardCommunitiesPage() {
             columns={4}
           />
           {upgradePlan ? (
-            <Card>
+            <Card className="temple-card">
               <CardHeader>
                 <CardTitle>Assinar {upgradePlan.name}</CardTitle>
               </CardHeader>
@@ -728,7 +751,7 @@ export default function DashboardCommunitiesPage() {
       </Dialog>
 
       <Dialog open={suggestOpen} onOpenChange={setSuggestOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg temple-card">
           <DialogHeader>
             <DialogTitle>Sugerir comunidade</DialogTitle>
             <DialogDescription>Envie sua ideia para o time avaliar.</DialogDescription>
@@ -738,18 +761,21 @@ export default function DashboardCommunitiesPage() {
               placeholder="Nome da comunidade"
               value={suggestTitle}
               onChange={(event) => setSuggestTitle(event.target.value)}
+              className="temple-card"
             />
             <Textarea
               placeholder="Conteúdo, público e objetivos da comunidade..."
               value={suggestDescription}
               onChange={(event) => setSuggestDescription(event.target.value)}
               rows={5}
+              className="temple-card"
             />
           </div>
           <div className="flex justify-end">
             <Button
               onClick={submitSuggestion}
               disabled={suggestSubmitting || !suggestTitle.trim() || !suggestDescription.trim()}
+              className="temple-btn-primary"
             >
               {suggestSubmitting ? 'Enviando...' : 'Enviar sugestão'}
             </Button>

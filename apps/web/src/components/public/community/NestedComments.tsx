@@ -100,27 +100,40 @@ export default function NestedComments({ postId, locked }: { postId: string; loc
 
   const renderComment = (c: TreeComment, depth = 0) => (
     <div key={c.id} className="mt-3" style={{ marginLeft: depth > 0 ? depth * 16 : 0 }}>
-      <div className="text-sm"><span className="font-medium">{c.author.name}</span> <span className="text-muted-foreground">• {new Date(c.createdAt).toLocaleString('pt-BR')}</span></div>
-      <div className="text-sm mt-1 whitespace-pre-wrap">{c.content}</div>
-      <div className="flex items-center gap-3 mt-1 text-xs">
+      <div className="rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] p-3">
+        <div className="text-sm">
+          <span className="font-medium">{c.author.name}</span>{' '}
+          <span className="text-[hsl(var(--temple-text-secondary))]">• {new Date(c.createdAt).toLocaleString('pt-BR')}</span>
+        </div>
+        <div className="text-sm mt-1 whitespace-pre-wrap text-[hsl(var(--temple-text-primary))]">{c.content}</div>
+        <div className="flex items-center gap-3 mt-2 text-xs text-[hsl(var(--temple-text-secondary))]">
         {(() => {
           const likeCount = (c.reactions || []).filter(r => r.type === 'LIKE').length
           const heartCount = (c.reactions || []).filter(r => r.type === 'HEART').length
           return (
             <>
-              <button className="text-primary" onClick={() => toggleReaction(c.id, 'LIKE')}>Curtir{likeCount > 0 ? ` (${likeCount})` : ''}</button>
-              <button className="text-pink-600" onClick={() => toggleReaction(c.id, 'HEART')}>❤️{heartCount > 0 ? ` (${heartCount})` : ''}</button>
+              <button className="text-[hsl(var(--temple-accent-gold))]" onClick={() => toggleReaction(c.id, 'LIKE')}>
+                Curtir{likeCount > 0 ? ` (${likeCount})` : ''}
+              </button>
+              <button className="text-[hsl(var(--temple-accent-violet))]" onClick={() => toggleReaction(c.id, 'HEART')}>
+                ❤️{heartCount > 0 ? ` (${heartCount})` : ''}
+              </button>
             </>
           )
         })()}
-        {!locked && <button className="text-muted-foreground hover:text-primary" onClick={() => setReplyTo(c.id)}>Responder</button>}
+        {!locked && (
+          <button className="hover:text-[hsl(var(--temple-text-primary))]" onClick={() => setReplyTo(c.id)}>
+            Responder
+          </button>
+        )}
+      </div>
       </div>
       {replyTo === c.id && !locked && (
         <div className="mt-2">
-          <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva uma resposta..." className="mb-2" />
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva uma resposta..." className="mb-2 temple-card" />
           <div className="flex gap-2">
-            <Button size="sm" onClick={submit} disabled={submitting}>Enviar</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setReplyTo(null); setText('') }}>Cancelar</Button>
+            <Button size="sm" className="temple-btn-primary" onClick={submit} disabled={submitting}>Enviar</Button>
+            <Button size="sm" variant="ghost" className="temple-btn-ghost" onClick={() => { setReplyTo(null); setText('') }}>Cancelar</Button>
           </div>
         </div>
       )}
@@ -129,14 +142,14 @@ export default function NestedComments({ postId, locked }: { postId: string; loc
   )
 
   return (
-    <section className="mt-8">
-      <h3 className="text-base font-semibold">Comentários</h3>
-      {loading && <div className="text-sm text-muted-foreground mt-2">Carregando comentários...</div>}
+    <section className="mt-8 temple-card p-4">
+      <h3 className="text-base font-semibold temple-section-title">Comentários</h3>
+      {loading && <div className="text-sm text-[hsl(var(--temple-text-secondary))] mt-2">Carregando comentários...</div>}
       {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
       {!locked && (
         <div className="mt-3">
-          <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva um comentário..." className="mb-2" />
-          <Button size="sm" onClick={submit} disabled={submitting}>Comentar</Button>
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva um comentário..." className="mb-2 temple-card" />
+          <Button size="sm" className="temple-btn-primary" onClick={submit} disabled={submitting}>Comentar</Button>
         </div>
       )}
       <div className="mt-4">

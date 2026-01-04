@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
-import { ArrowLeft, FileText, Flame, MessageCircle, MessageSquare, ThumbsUp, TrendingUp, Users } from 'lucide-react'
+import { ArrowLeft, FileText, Flame, MessageCircle, MessageSquare, Pin, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
@@ -87,6 +87,17 @@ type ChatMessage = {
   content: string
   createdAt: string
   author: { id: string; name?: string | null; image?: string | null }
+}
+
+const getReadableTextColor = (color?: string | null) => {
+  if (!color) return '#f6efdb'
+  const hex = color.replace('#', '').trim()
+  if (hex.length !== 6) return '#f6efdb'
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.62 ? '#1d1608' : '#f6efdb'
 }
 
 export default function CommunityDetailPage() {
@@ -521,9 +532,9 @@ export default function CommunityDetailPage() {
     return (
       <Card
         key={post.id}
-        className={`relative overflow-hidden border-l-4 ${
+        className={`relative overflow-hidden border-l-4 temple-card temple-card-hover ${
           isThread ? 'border-l-blue-500' : 'border-l-amber-500'
-        } ${post.isFeatured ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-200/60 shadow-sm' : ''}`}
+        } ${post.isFeatured ? 'temple-card-highlight' : ''}`}
       >
         {post.isFeatured ? (
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
@@ -546,10 +557,14 @@ export default function CommunityDetailPage() {
               <div>
                 <div className={`flex items-center gap-2 ${post.isFeatured ? 'text-amber-950' : ''}`}>
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
-                  {post.isPinned ? <Badge variant="secondary">Fixado</Badge> : null}
-                  {post.isFeatured ? <Badge className="bg-amber-200 text-amber-950">Destaque</Badge> : null}
-                  {post.locked ? <Badge variant="outline">Nível {post.tier}</Badge> : null}
-                  <Badge className={post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''} variant="outline">
+                  {post.isPinned ? (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
+                      <Pin className="h-3 w-3 text-[hsl(var(--temple-accent-gold))]" />
+                      <span className="sr-only">Fixado</span>
+                    </span>
+                  ) : null}
+                  {post.locked ? <Badge className="temple-chip">Nível {post.tier}</Badge> : null}
+                  <Badge className={`temple-chip ${post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''}`} variant="outline">
                     {post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}
                   </Badge>
                   {post.topic?.name ? (
@@ -557,15 +572,15 @@ export default function CommunityDetailPage() {
                       className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                       style={{
                         backgroundColor: post.topic.color || '#94a3b8',
-                        color: '#ffffff',
-                        textShadow: '0 1px 1px rgba(0,0,0,0.25)'
+                        color: getReadableTextColor(post.topic.color),
+                        border: `1px solid ${getReadableTextColor(post.topic.color) === '#1d1608' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}`
                       }}
                     >
                       {post.topic.name}
                     </span>
                   ) : null}
                 </div>
-                <div className={`text-xs ${post.isFeatured ? 'text-amber-900/80' : 'text-muted-foreground'}`}>
+                <div className={`text-xs ${post.isFeatured ? 'text-amber-900/80' : 'text-[hsl(var(--temple-text-secondary))]'}`}>
                   {dateLabel}
                   {post.topic?.name ? ` • ${post.topic.name}` : null}
                   {post.community?.name ? ` • ${post.community.name}` : null}
@@ -575,9 +590,9 @@ export default function CommunityDetailPage() {
             <FollowToggle type="post" id={post.id} />
           </div>
           <div>
-            <CardTitle className={`text-lg ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
+            <CardTitle className={`text-lg temple-section-title ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
             <CardDescription
-              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : ''}`}
+              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : 'text-[hsl(var(--temple-text-secondary))]'}`}
             >
               {post.locked ? 'Conteúdo disponível após inscrição.' : contentPreview}
             </CardDescription>
@@ -585,7 +600,7 @@ export default function CommunityDetailPage() {
               <Button
                 type="button"
                 variant="link"
-                className="px-0 text-xs"
+                className="px-0 text-xs temple-btn-ghost"
                 onClick={() => {
                   setExpandedPosts((prev) => {
                     const next = new Set(prev)
@@ -604,10 +619,10 @@ export default function CommunityDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-[hsl(var(--temple-text-secondary))]">
             <button
               type="button"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 hover:text-[hsl(var(--temple-text-primary))] transition-colors"
               onClick={() => toggleComments(post.id)}
             >
               <MessageCircle className="h-4 w-4" />
@@ -619,8 +634,8 @@ export default function CommunityDetailPage() {
             </span>
             <button
               type="button"
-              className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${
-                reactionState[post.id] ? 'text-foreground' : ''
+              className={`inline-flex items-center gap-1 hover:text-[hsl(var(--temple-text-primary))] transition-colors ${
+                reactionState[post.id] ? 'text-[hsl(var(--temple-text-primary))]' : ''
               }`}
               onClick={() => togglePostReaction(post.id)}
             >
@@ -658,12 +673,12 @@ export default function CommunityDetailPage() {
   if (!community) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" className="temple-btn-secondary" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+        <Card className="temple-card">
+          <CardContent className="py-8 text-center text-sm text-[hsl(var(--temple-text-secondary))]">
             Comunidade não encontrada.
           </CardContent>
         </Card>
@@ -672,36 +687,37 @@ export default function CommunityDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 temple-page temple-bg min-h-screen px-1">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
+        <Button variant="outline" size="icon" className="temple-btn-secondary" asChild>
           <Link href="/dashboard/comunidades">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{community.name}</h1>
-          <p className="text-muted-foreground">{community.description || 'Sem descrição cadastrada.'}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold temple-heading">{community.name}</h1>
+          <p className="temple-subheading">{community.description || 'Sem descrição cadastrada.'}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[hsl(var(--temple-text-secondary))]">
             <span>{accessLabel || 'Sem modelo de acesso definido'}</span>
             {community.price != null ? <span>• R$ {community.price.toFixed(2)}</span> : null}
-            {!community.isActive ? <Badge variant="secondary">Inativa</Badge> : null}
+            {!community.isActive ? <Badge className="temple-chip">Inativa</Badge> : null}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {!isMember ? (
-            <Button onClick={handleEnroll} disabled={actionLoading || !community.isActive}>
+            <Button onClick={handleEnroll} disabled={actionLoading || !community.isActive} className="temple-btn-primary">
               {actionLoading ? 'Processando...' : community.isActive ? 'Participar' : 'Indisponível'}
             </Button>
           ) : membershipStatus === 'pending' ? (
             <>
-              <Badge variant="secondary">Pendente</Badge>
-              <Button variant="outline" onClick={cancelMembership} disabled={actionLoading}>
+              <Badge className="temple-chip">Pendente</Badge>
+              <Button variant="outline" className="temple-btn-secondary" onClick={cancelMembership} disabled={actionLoading}>
                 Cancelar inscrição
               </Button>
               {community.accessModels.includes('ONE_TIME') ? (
                 <Button
                   variant="outline"
+                  className="temple-btn-secondary"
                   onClick={() => router.push(`/checkout?communityId=${community.id}`)}
                   disabled={actionLoading}
                 >
@@ -710,24 +726,24 @@ export default function CommunityDetailPage() {
               ) : null}
             </>
           ) : membershipStatus === 'cancelled' ? (
-            <Badge variant="secondary">Cancelamento agendado</Badge>
+            <Badge className="temple-chip">Cancelamento agendado</Badge>
           ) : (
             <>
-              <Badge>Inscrito</Badge>
+              <Badge className="temple-chip">Inscrito</Badge>
               {community.accessModels.includes('ONE_TIME') ? (
-                <Button variant="outline" onClick={cancelMembership} disabled={actionLoading}>
+                <Button variant="outline" className="temple-btn-secondary" onClick={cancelMembership} disabled={actionLoading}>
                   Cancelar renovação
                 </Button>
               ) : null}
             </>
           )}
           {!canAccess && community.accessModels.includes('SUBSCRIPTION') ? (
-            <Button variant="outline" onClick={() => setUpgradeOpen(true)} disabled={actionLoading}>
+            <Button variant="outline" className="temple-btn-secondary" onClick={() => setUpgradeOpen(true)} disabled={actionLoading}>
               Ver planos
             </Button>
           ) : null}
           {!canAccess && membershipStatus !== 'pending' && community.accessModels.includes('ONE_TIME') ? (
-            <Button variant="outline" onClick={() => router.push(`/checkout?communityId=${community.id}`)} disabled={actionLoading}>
+            <Button variant="outline" className="temple-btn-secondary" onClick={() => router.push(`/checkout?communityId=${community.id}`)} disabled={actionLoading}>
               Ir para o checkout
             </Button>
           ) : null}
@@ -735,14 +751,14 @@ export default function CommunityDetailPage() {
       </div>
 
       {membershipPaidUntil ? (
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-[hsl(var(--temple-text-secondary))]">
           Acesso válido até {new Date(membershipPaidUntil).toLocaleDateString('pt-BR')}
         </div>
       ) : null}
 
       {!canAccess ? (
-        <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground">
+        <Card className="temple-card">
+          <CardContent className="py-6 text-sm text-[hsl(var(--temple-text-secondary))]">
             Para visualizar os conteúdos desta comunidade, finalize sua inscrição.
           </CardContent>
         </Card>
@@ -751,10 +767,10 @@ export default function CommunityDetailPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Posts da comunidade</h2>
+            <h2 className="text-xl font-semibold temple-section-title">Posts da comunidade</h2>
             <div className="flex items-center gap-2">
               <Select value={postFilter} onValueChange={(value) => setPostFilter(value as 'all' | 'featured')}>
-                <SelectTrigger className="w-[170px]">
+                <SelectTrigger className="w-[170px] temple-card">
                   <SelectValue placeholder="Filtro" />
                 </SelectTrigger>
                 <SelectContent>
@@ -765,6 +781,7 @@ export default function CommunityDetailPage() {
               <Button
                 onClick={() => setDiscussionOpen(true)}
                 disabled={!canAccess}
+                className="temple-btn-primary"
               >
                 Nova discussão
               </Button>
@@ -772,15 +789,15 @@ export default function CommunityDetailPage() {
           </div>
 
           {!canAccess ? (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
+            <Card className="temple-card">
+              <CardContent className="py-6 text-sm text-[hsl(var(--temple-text-secondary))]">
                 Conteúdo disponível após inscrição.
               </CardContent>
             </Card>
           ) : postsLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
-                <Card key={index}>
+                <Card key={index} className="temple-card">
                   <CardHeader>
                     <Skeleton className="h-5 w-40" />
                     <Skeleton className="h-4 w-64" />
@@ -794,8 +811,8 @@ export default function CommunityDetailPage() {
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
+            <Card className="temple-card">
+              <CardContent className="py-6 text-sm text-[hsl(var(--temple-text-secondary))]">
                 Nenhum post encontrado.
               </CardContent>
             </Card>
@@ -807,13 +824,17 @@ export default function CommunityDetailPage() {
         </section>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-24 lg:h-[calc(100vh-140px)]">
-          <Card className="shrink-0">
+          <div className="text-xs uppercase tracking-[0.3em] text-[hsl(var(--temple-text-secondary))]">
+            Painel do Santuário
+          </div>
+          <Card className="shrink-0 temple-card">
             <CardContent className="py-3">
               <div className="flex items-center justify-between gap-2">
                 <Button
                   variant={sidebarSection === 'chat' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setSidebarSection('chat')}
+                  className={sidebarSection === 'chat' ? 'temple-btn-primary' : 'temple-btn-ghost'}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Chat
@@ -822,6 +843,7 @@ export default function CommunityDetailPage() {
                   variant={sidebarSection === 'files' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setSidebarSection('files')}
+                  className={sidebarSection === 'files' ? 'temple-btn-primary' : 'temple-btn-ghost'}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Arquivos
@@ -830,6 +852,7 @@ export default function CommunityDetailPage() {
                   variant={sidebarSection === 'members' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setSidebarSection('members')}
+                  className={sidebarSection === 'members' ? 'temple-btn-primary' : 'temple-btn-ghost'}
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Membros
@@ -838,34 +861,34 @@ export default function CommunityDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex-1 overflow-hidden flex flex-col">
+          <Card className="flex-1 overflow-hidden flex flex-col temple-card">
             {sidebarSection === 'chat' ? (
               <>
                 <CardHeader className="pb-3">
-                  <CardTitle>Chat da comunidade</CardTitle>
-                  <CardDescription>Converse em tempo real com outros membros.</CardDescription>
+                  <CardTitle className="temple-section-title">Chat da comunidade</CardTitle>
+                  <CardDescription className="temple-subheading">Converse em tempo real com outros membros.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col gap-3">
                   {!canAccess ? (
-                    <div className="text-sm text-muted-foreground">Conteúdo disponível após inscrição.</div>
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Conteúdo disponível após inscrição.</div>
                   ) : (
                     <>
-                      <div className="flex-1 overflow-y-auto space-y-3 rounded-md border p-3">
+                      <div className="flex-1 overflow-y-auto space-y-3 rounded-md border border-[hsl(var(--temple-border-subtle))] p-3">
                         {chatLoading && chatMessages.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">Carregando mensagens...</div>
+                          <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Carregando mensagens...</div>
                         ) : chatMessages.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</div>
+                          <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Nenhuma mensagem ainda.</div>
                         ) : (
                           chatMessages.map((message) => (
                             <div key={message.id}>
                               {firstUnreadMessageId === message.id ? (
-                                <div className="flex items-center gap-2 text-xs text-amber-700">
-                                  <span className="h-px flex-1 bg-amber-200" />
+                                <div className="flex items-center gap-2 text-xs text-amber-300">
+                                  <span className="h-px flex-1 bg-amber-300/40" />
                                   Novas mensagens
-                                  <span className="h-px flex-1 bg-amber-200" />
+                                  <span className="h-px flex-1 bg-amber-300/40" />
                                 </div>
                               ) : null}
-                              <div className="flex items-start gap-2">
+                              <div className="flex items-start gap-2 rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] p-2">
                                 <Avatar className="h-8 w-8">
                                   <AvatarImage src={message.author.image || ''} />
                                   <AvatarFallback>
@@ -873,7 +896,7 @@ export default function CommunityDetailPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className="text-xs text-[hsl(var(--temple-text-secondary))]">
                                     {message.author.name || 'Usuário'} •{' '}
                                     {new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                   </div>
@@ -892,8 +915,9 @@ export default function CommunityDetailPage() {
                           onKeyDown={handleChatKeyDown}
                           placeholder="Escreva sua mensagem..."
                           rows={3}
+                          className="temple-card"
                         />
-                        <Button onClick={sendChat} disabled={chatLoading || !chatText.trim()}>
+                        <Button onClick={sendChat} disabled={chatLoading || !chatText.trim()} className="temple-btn-primary">
                           Enviar mensagem
                         </Button>
                       </div>
@@ -904,23 +928,23 @@ export default function CommunityDetailPage() {
             ) : sidebarSection === 'files' ? (
               <>
                 <CardHeader className="pb-3">
-                  <CardTitle>Arquivos da comunidade</CardTitle>
-                  <CardDescription>Materiais e documentos compartilhados.</CardDescription>
+                  <CardTitle className="temple-section-title">Arquivos da comunidade</CardTitle>
+                  <CardDescription className="temple-subheading">Materiais e documentos compartilhados.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-3 overflow-y-auto">
                   {!canAccess ? (
-                    <div className="text-sm text-muted-foreground">Conteúdo disponível após inscrição.</div>
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Conteúdo disponível após inscrição.</div>
                   ) : files.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Nenhum arquivo cadastrado.</div>
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Nenhum arquivo cadastrado.</div>
                   ) : (
                     files.map((file) => (
-                      <Card key={file.id}>
+                      <Card key={file.id} className="temple-card">
                         <CardHeader>
-                          <CardTitle className="text-base">{file.title}</CardTitle>
-                          <CardDescription>{file.description || 'Sem descrição'}</CardDescription>
+                          <CardTitle className="text-base temple-section-title">{file.title}</CardTitle>
+                          <CardDescription className="temple-subheading">{file.description || 'Sem descrição'}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <Button asChild variant="outline" size="sm">
+                          <Button asChild variant="outline" size="sm" className="temple-btn-secondary">
                             <a href={file.fileUrl} target="_blank" rel="noreferrer">Abrir arquivo</a>
                           </Button>
                         </CardContent>
@@ -932,14 +956,14 @@ export default function CommunityDetailPage() {
             ) : (
               <>
                 <CardHeader className="pb-3">
-                  <CardTitle>Membros</CardTitle>
-                  <CardDescription>{membersCount} inscritos</CardDescription>
+                  <CardTitle className="temple-section-title">Membros</CardTitle>
+                  <CardDescription className="temple-subheading">{membersCount} inscritos</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-3 overflow-y-auto">
                   {!canAccess ? (
-                    <div className="text-sm text-muted-foreground">Conteúdo disponível após inscrição.</div>
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Conteúdo disponível após inscrição.</div>
                   ) : members.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Nenhum membro encontrado.</div>
+                    <div className="text-sm text-[hsl(var(--temple-text-secondary))]">Nenhum membro encontrado.</div>
                   ) : (
                     <div className="space-y-3">
                       {members.map((member) => (
@@ -954,12 +978,12 @@ export default function CommunityDetailPage() {
                             <span className="text-sm">{member.name || 'Usuário'}</span>
                           </div>
                           {onlineSet.has(member.id) ? (
-                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+                            <span className="flex items-center gap-1 text-xs text-emerald-400">
                               <span className="h-2 w-2 rounded-full bg-emerald-500" />
                               online
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">offline</span>
+                            <span className="text-xs text-[hsl(var(--temple-text-secondary))]">offline</span>
                           )}
                         </div>
                       ))}
@@ -973,7 +997,7 @@ export default function CommunityDetailPage() {
       </div>
 
       <Dialog open={discussionOpen} onOpenChange={setDiscussionOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg temple-card">
           <DialogHeader>
             <DialogTitle>Nova discussão</DialogTitle>
             <DialogDescription>Inicie um tópico para conversar com a comunidade.</DialogDescription>
@@ -983,12 +1007,14 @@ export default function CommunityDetailPage() {
               placeholder="Título da discussão"
               value={discussionTitle}
               onChange={(event) => setDiscussionTitle(event.target.value)}
+              className="temple-card"
             />
             <Textarea
               placeholder="Compartilhe sua dúvida ou reflexão..."
               value={discussionContent}
               onChange={(event) => setDiscussionContent(event.target.value)}
               rows={5}
+              className="temple-card"
             />
           </div>
           <DialogFooter>
@@ -1000,6 +1026,7 @@ export default function CommunityDetailPage() {
                 !discussionContent.trim() ||
                 !canAccess
               }
+              className="temple-btn-primary"
             >
               {discussionSubmitting ? 'Publicando...' : 'Publicar discussão'}
             </Button>
@@ -1008,7 +1035,7 @@ export default function CommunityDetailPage() {
       </Dialog>
 
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl temple-card">
           <DialogHeader>
             <DialogTitle>Upgrade de plano</DialogTitle>
             <DialogDescription>Escolha um plano para acessar esta comunidade.</DialogDescription>
@@ -1017,12 +1044,14 @@ export default function CommunityDetailPage() {
             <Button
               variant={upgradeBilling === 'MONTHLY' ? 'default' : 'outline'}
               onClick={() => setUpgradeBilling('MONTHLY')}
+              className={upgradeBilling === 'MONTHLY' ? 'temple-btn-primary' : 'temple-btn-secondary'}
             >
               Mensal
             </Button>
             <Button
               variant={upgradeBilling === 'YEARLY' ? 'default' : 'outline'}
               onClick={() => setUpgradeBilling('YEARLY')}
+              className={upgradeBilling === 'YEARLY' ? 'temple-btn-primary' : 'temple-btn-secondary'}
             >
               Anual
             </Button>
@@ -1034,7 +1063,7 @@ export default function CommunityDetailPage() {
             columns={4}
           />
           {upgradePlan ? (
-            <Card>
+            <Card className="temple-card">
               <CardHeader>
                 <CardTitle>Assinar {upgradePlan.name}</CardTitle>
               </CardHeader>

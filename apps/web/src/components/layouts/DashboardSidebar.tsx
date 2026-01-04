@@ -157,9 +157,9 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
   }, [])
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col temple-page bg-[hsl(var(--temple-surface-1))]">
       {/* Header */}
-      <div className="flex h-16 items-center justify-between px-6 border-b">
+      <div className="flex h-16 items-center justify-between px-6 border-b border-[hsl(var(--temple-border-subtle))]">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="relative h-8 w-8">
             <Image
@@ -169,7 +169,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
               className="object-contain"
             />
           </div>
-          <span className="font-semibold text-lg">Grimório</span>
+          <span className="font-semibold text-lg tracking-wide">Grimório</span>
         </Link>
         
         {onClose && (
@@ -200,24 +200,24 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                  "temple-nav-item flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground"
+                    ? "temple-nav-item-active"
+                    : "text-[hsl(var(--temple-text-secondary))]"
                 )}
               >
                 <item.icon className="h-4 w-4" />
                 <span className="flex-1">{item.name}</span>
                 {(isCourses && !!courseCount) ? (
-                  <Badge variant="secondary" className="ml-auto">
+                  <Badge variant="secondary" className="ml-auto temple-badge">
                     {courseCount}
                   </Badge>
                 ) : (isEvents && !!upcomingRegisteredCount) ? (
-                  <Badge variant="secondary" className="ml-auto">
+                  <Badge variant="secondary" className="ml-auto temple-badge">
                     {upcomingRegisteredCount}
                   </Badge>
                 ) : (isCommunities && !!communityCount) ? (
-                  <Badge variant="secondary" className="ml-auto">
+                  <Badge variant="secondary" className="ml-auto temple-badge">
                     {communityCount}
                   </Badge>
                 ) : null}
@@ -228,7 +228,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
 
         {/* Secondary Navigation */}
         <div className="mt-8">
-          <h4 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <h4 className="px-3 text-xs font-semibold uppercase tracking-wider mb-2 text-[hsl(var(--temple-text-secondary))]">
             Sua Jornada
           </h4>
           <nav className="space-y-2">
@@ -240,10 +240,10 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "temple-nav-item flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground"
+                      ? "temple-nav-item-active"
+                      : "text-[hsl(var(--temple-text-secondary))]"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -256,9 +256,9 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <div className="h-2 w-2 rounded-full bg-green-500" />
+      <div className="border-t border-[hsl(var(--temple-border-subtle))] p-4">
+        <div className="flex items-center gap-3 text-sm text-[hsl(var(--temple-text-secondary))]">
+          <div className="h-2 w-2 rounded-full bg-emerald-400" />
           <span>Conectado</span>
         </div>
       </div>
