@@ -96,13 +96,13 @@ export function CourseProgress({
         {progressCards.map((card, index) => {
           const Icon = card.icon
           return (
-            <div key={index} className="temple-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 rounded-lg ${card.bgColor}`}>
+            <div key={index} className="temple-card p-6 overflow-hidden">
+              <div className="flex items-start gap-3 mb-4">
+                <div className={`p-2 rounded-lg ${card.bgColor} shrink-0`}>
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
-                <div className="text-right min-w-[96px]">
-                  <div className="text-xl font-bold text-[hsl(var(--temple-text-primary))] whitespace-nowrap">
+                <div className="ml-auto text-right">
+                  <div className="text-lg font-bold text-[hsl(var(--temple-text-primary))] whitespace-nowrap leading-tight">
                     {card.value}{card.suffix || ''}
                   </div>
                   {card.total !== undefined && (
