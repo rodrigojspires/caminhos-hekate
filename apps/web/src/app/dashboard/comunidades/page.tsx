@@ -21,7 +21,7 @@ import { PaymentForm } from '@/components/payments/PaymentForm'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Flame, MessageCircle, Pin, ThumbsUp, TrendingUp, Users } from 'lucide-react'
+import { Flame, MessageCircle, Pin, Sparkles, ThumbsUp, TrendingUp, Users } from 'lucide-react'
 import NestedComments from '@/components/public/community/NestedComments'
 import PostViewTracker from '@/components/public/community/PostViewTracker'
 import FollowToggle from '@/components/public/community/FollowToggle'
@@ -415,12 +415,18 @@ export default function DashboardCommunitiesPage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className={`flex items-center gap-2 ${post.isFeatured ? 'text-amber-950' : ''}`}>
+                <div className="flex items-center gap-2">
                   <span className="font-medium">{post.author.name || 'Usuário'}</span>
                   {post.isPinned ? (
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
                       <Pin className="h-3 w-3 text-[hsl(var(--temple-accent-gold))]" />
                       <span className="sr-only">Fixado</span>
+                    </span>
+                  ) : null}
+                  {post.isFeatured ? (
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-3))]">
+                      <Sparkles className="h-3 w-3 text-[hsl(var(--temple-accent-violet))]" />
+                      <span className="sr-only">Destaque</span>
                     </span>
                   ) : null}
                   {post.locked ? <Badge className="temple-chip">Nível {post.tier}</Badge> : null}
@@ -440,7 +446,7 @@ export default function DashboardCommunitiesPage() {
                     </span>
                   ) : null}
                 </div>
-                <div className={`text-xs ${post.isFeatured ? 'text-amber-900/80' : 'text-muted-foreground'}`}>
+                <div className="text-xs text-[hsl(var(--temple-text-secondary))]">
                   {dateLabel}
                   {post.topic?.name ? ` • ${post.topic.name}` : null}
                   {post.community?.name ? ` • ${post.community.name}` : null}
@@ -450,9 +456,9 @@ export default function DashboardCommunitiesPage() {
             <FollowToggle type="post" id={post.id} />
           </div>
           <div>
-            <CardTitle className={`text-lg temple-section-title ${post.isFeatured ? 'text-amber-950' : ''}`}>{post.title}</CardTitle>
+            <CardTitle className="text-lg temple-section-title">{post.title}</CardTitle>
             <CardDescription
-              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} ${post.isFeatured ? 'text-amber-950/90' : 'text-[hsl(var(--temple-text-secondary))]'}`}
+              className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} text-[hsl(var(--temple-text-secondary))]`}
             >
               {post.locked ? 'Conteúdo disponível após inscrição.' : contentPreview}
             </CardDescription>

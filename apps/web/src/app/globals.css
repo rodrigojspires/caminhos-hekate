@@ -198,9 +198,9 @@
   }
 
   .temple-badge {
-    background: hsl(var(--temple-surface-3) / 0.7);
-    border: 1px solid hsl(var(--temple-border-subtle));
-    color: hsl(var(--temple-text-primary));
+    background: hsl(var(--temple-accent-gold));
+    border: 1px solid hsl(var(--temple-accent-gold));
+    color: #1b1405;
   }
 
   .temple-heading {
