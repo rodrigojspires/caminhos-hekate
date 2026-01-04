@@ -261,7 +261,7 @@
 
   .temple-nav-item:hover {
     background: hsl(var(--temple-surface-2));
-    color: hsl(var(--temple-text-primary));
+    color: hsl(var(--temple-accent-gold));
   }
 
   .temple-badge {

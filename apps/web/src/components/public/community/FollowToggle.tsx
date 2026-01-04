@@ -38,7 +38,13 @@ export default function FollowToggle({ type, id }: FollowToggleProps) {
   }
 
   return (
-    <Button size="sm" variant={followed ? 'secondary' : 'outline'} disabled={loading} onClick={toggle}>
+    <Button
+      size="sm"
+      variant={followed ? 'secondary' : 'outline'}
+      className={followed ? 'temple-btn-secondary border border-[hsl(var(--temple-accent-gold))]/40 bg-[hsl(var(--temple-surface-2))]' : 'temple-btn-secondary'}
+      disabled={loading}
+      onClick={toggle}
+    >
       {followed ? 'Seguindo' : 'Seguir'}
     </Button>
   )

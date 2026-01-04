@@ -433,18 +433,6 @@ export default function DashboardCommunitiesPage() {
                   <Badge className={`temple-chip ${post.isFeatured ? 'bg-amber-100 text-amber-950 border-amber-200' : ''}`} variant="outline">
                     {post.type === 'THREAD' ? 'Discussão' : 'Conteúdo'}
                   </Badge>
-                  {post.topic?.name ? (
-                    <span
-                      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                      style={{
-                        backgroundColor: post.topic.color || '#94a3b8',
-                        color: getReadableTextColor(post.topic.color),
-                        border: `1px solid ${getReadableTextColor(post.topic.color) === '#1d1608' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}`
-                      }}
-                    >
-                      {post.topic.name}
-                    </span>
-                  ) : null}
                 </div>
                 <div className="text-xs text-[hsl(var(--temple-text-secondary))]">
                   {dateLabel}
@@ -456,7 +444,21 @@ export default function DashboardCommunitiesPage() {
             <FollowToggle type="post" id={post.id} />
           </div>
           <div>
-            <CardTitle className="text-lg temple-section-title">{post.title}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg temple-section-title">{post.title}</CardTitle>
+              {post.topic?.name ? (
+                <span
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  style={{
+                    backgroundColor: post.topic.color || '#94a3b8',
+                    color: getReadableTextColor(post.topic.color),
+                    border: `1px solid ${getReadableTextColor(post.topic.color) === '#1d1608' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}`
+                  }}
+                >
+                  {post.topic.name}
+                </span>
+              ) : null}
+            </div>
             <CardDescription
               className={`mt-2 ${!isExpanded && shouldTruncate ? 'line-clamp-3' : ''} text-[hsl(var(--temple-text-secondary))]`}
             >
