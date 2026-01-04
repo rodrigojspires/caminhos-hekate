@@ -448,14 +448,15 @@ export default function DashboardCommunitiesPage() {
               <CardTitle className="text-lg temple-section-title">{post.title}</CardTitle>
               {post.topic?.name ? (
                 <span
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  className="temple-topic-chip text-xs font-medium"
+                  title={post.topic.name}
                   style={{
                     backgroundColor: post.topic.color || '#94a3b8',
                     color: getReadableTextColor(post.topic.color),
                     border: `1px solid ${getReadableTextColor(post.topic.color) === '#1d1608' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'}`
                   }}
                 >
-                  {post.topic.name}
+                  <span className="temple-topic-chip-label">{post.topic.name}</span>
                 </span>
               ) : null}
             </div>
