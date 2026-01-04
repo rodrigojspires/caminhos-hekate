@@ -129,18 +129,18 @@ const PLANETS = [
 type PlanetKey = typeof PLANETS[number]["key"]
 
 const mappings = [
-  { key: "a1z26-wrap", label: "A1Z26 (direto, com wrap)", helper: "A=1...Z=26, mantendo a ordem original e ajustando ao tamanho do quadrado.", fn: (text: string, max: number) => latinToA1Z26(text).map(v => ((v - 1) % max) + 1) },
-  { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", helper: "Soma progressiva (A1Z26) para enfatizar o fluxo contínuo do desejo.", fn: (text: string, max: number) => {
+  { key: "a1z26-wrap", label: "A1Z26 (direto, com wrap)", helper: "Converte letras em números (A=1...Z=26) na ordem original. Se passar do tamanho do quadrado, volta ao início (wrap).", fn: (text: string, max: number) => latinToA1Z26(text).map(v => ((v - 1) % max) + 1) },
+  { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", helper: "Converte A=1...Z=26 e soma progressivamente: cada ponto é a soma acumulada até ali. Bom para criar um traçado contínuo.", fn: (text: string, max: number) => {
       const arr = latinToA1Z26(text)
       let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
     }
   },
-  { key: "pyth-cum", label: "Pitagórico 1–9 (soma cumulativa)", helper: "Numerologia pitagórica (1–9) com soma progressiva.", fn: (text: string, max: number) => {
+  { key: "pyth-cum", label: "Pitagórico 1–9 (soma cumulativa)", helper: "Converte letras para valores 1–9 (tabela pitagórica) e soma progressivamente. Mais compacto e simbólico.", fn: (text: string, max: number) => {
       const arr = latinToPythagorean(text)
       let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
     }
   },
-  { key: "hebrew-1to400-wrap", label: "Gematria Hebraica (1–400) + transliteração simples", helper: "Translitera o texto para valores gemátricos e adapta ao quadrado.", fn: (text: string, max: number) => latinToHebrewGematriaSimple(text).map(v => ((v - 1) % max) + 1) },
+  { key: "hebrew-1to400-wrap", label: "Gematria Hebraica (1–400) + transliteração simples", helper: "Translitera letras latinas para valores gemátricos e aplica wrap no quadrado. Útil para abordagens cabalísticas.", fn: (text: string, max: number) => latinToHebrewGematriaSimple(text).map(v => ((v - 1) % max) + 1) },
 ] as const
 
 type MappingKey = typeof mappings[number]["key"]
@@ -209,6 +209,7 @@ export default function MagicSquareSigilPage() {
   const [padding, setPadding] = useState(24)
   const [removeVowels, setRemoveVowels] = useState(false)
   const [removeDuplicates, setRemoveDuplicates] = useState(false)
+  const [showMappingExample, setShowMappingExample] = useState(false)
 
   const svgRef = useRef<SVGSVGElement | null>(null)
 
@@ -220,6 +221,11 @@ export default function MagicSquareSigilPage() {
   const mapping = mappings.find(m => m.key === mappingKey) ?? mappings[0]
   const processed = useMemo(() => preprocessText(text, removeVowels, removeDuplicates), [text, removeVowels, removeDuplicates])
   const seq = useMemo(() => mapping.fn(processed, maxVal), [mapping, processed, maxVal])
+  const mappingExample = useMemo(() => {
+    const sample = "Eu sou prospero e abundante"
+    const values = mapping.fn(sample, maxVal)
+    return values.join(", ")
+  }, [mapping, maxVal])
 
   const index = useNumberIndex(grid)
   const coords: Coord[] = useMemo(() => toPathCoords(seq, index, n, size, padding), [seq, index, n, size, padding])
@@ -342,7 +348,23 @@ export default function MagicSquareSigilPage() {
                     <option key={m.key} value={m.key}>{m.label}</option>
                   ))}
                 </select>
-                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">{mappings.find(m => m.key === mappingKey)?.helper}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowMappingExample((prev) => !prev)}
+                  >
+                    {showMappingExample ? "Ocultar exemplo" : "Ver exemplo"}
+                  </Button>
+                  <span className="text-xs text-[hsl(var(--temple-text-secondary))]">Usa a frase “Eu sou prospero e abundante” como amostra.</span>
+                </div>
+                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-2">{mappings.find(m => m.key === mappingKey)?.helper}</p>
+                {showMappingExample ? (
+                  <div className="mt-2 rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-3 py-2 text-xs text-[hsl(var(--temple-text-secondary))]">
+                    Exemplo (Eu sou prospero e abundante): {mappingExample}
+                  </div>
+                ) : null}
               </div>
 
               <div>
