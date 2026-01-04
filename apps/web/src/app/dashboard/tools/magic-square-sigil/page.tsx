@@ -117,30 +117,35 @@ const MAGIC_8 = [
 ]
 
 const PLANETS = [
-  { key: "saturn", name: "Saturno (3x3)", n: 3, grid: magicOdd(3) },
-  { key: "jupiter", name: "Júpiter (4x4)", n: 4, grid: MAGIC_4 },
-  { key: "mars", name: "Marte (5x5)", n: 5, grid: magicOdd(5) },
-  { key: "sun", name: "Sol (6x6)", n: 6, grid: MAGIC_6 },
-  { key: "venus", name: "Vênus (7x7)", n: 7, grid: magicOdd(7) },
-  { key: "mercury", name: "Mercúrio (8x8)", n: 8, grid: MAGIC_8 },
-  { key: "moon", name: "Lua (9x9)", n: 9, grid: magicOdd(9) },
+  { key: "saturn", name: "Saturno (3x3)", n: 3, grid: magicOdd(3), helper: "Estrutura para limites, disciplina, proteção e encerramentos." },
+  { key: "jupiter", name: "Júpiter (4x4)", n: 4, grid: MAGIC_4, helper: "Expansão, abundância, benevolência e prosperidade." },
+  { key: "mars", name: "Marte (5x5)", n: 5, grid: magicOdd(5), helper: "Ação, coragem, assertividade e corte de obstáculos." },
+  { key: "sun", name: "Sol (6x6)", n: 6, grid: MAGIC_6, helper: "Vitalidade, clareza, liderança e realização." },
+  { key: "venus", name: "Vênus (7x7)", n: 7, grid: magicOdd(7), helper: "Harmonia, atração, beleza, vínculos e prazer." },
+  { key: "mercury", name: "Mercúrio (8x8)", n: 8, grid: MAGIC_8, helper: "Comunicação, estudo, agilidade e troca." },
+  { key: "moon", name: "Lua (9x9)", n: 9, grid: magicOdd(9), helper: "Intuição, sonhos, ciclos, emoções e proteção noturna." },
 ] as const
 
 type PlanetKey = typeof PLANETS[number]["key"]
 
 const mappings = [
-  { key: "a1z26-wrap", label: "A1Z26 (direto, com wrap)", fn: (text: string, max: number) => latinToA1Z26(text).map(v => ((v - 1) % max) + 1) },
+  { key: "a1z26-wrap", label: "A1Z26 (direto, com wrap)", helper: "A=1...Z=26, mantendo a ordem original e ajustando ao tamanho do quadrado.", fn: (text: string, max: number) => latinToA1Z26(text).map(v => ((v - 1) % max) + 1) },
   { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", fn: (text: string, max: number) => {
       const arr = latinToA1Z26(text)
       let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
     }
   },
-  { key: "pyth-cum", label: "Pitagórico 1–9 (soma cumulativa)", fn: (text: string, max: number) => {
+  { key: "a1z26-cum", label: "A1Z26 (soma cumulativa)", helper: "Soma progressiva (A1Z26) para enfatizar o fluxo contínuo do desejo.", fn: (text: string, max: number) => {
+      const arr = latinToA1Z26(text)
+      let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
+    }
+  },
+  { key: "pyth-cum", label: "Pitagórico 1–9 (soma cumulativa)", helper: "Numerologia pitagórica (1–9) com soma progressiva.", fn: (text: string, max: number) => {
       const arr = latinToPythagorean(text)
       let sum = 0; return arr.map(v => { sum += v; return ((sum - 1) % max) + 1 })
     }
   },
-  { key: "hebrew-1to400-wrap", label: "Gematria Hebraica (1–400) + transliteração simples", fn: (text: string, max: number) => latinToHebrewGematriaSimple(text).map(v => ((v - 1) % max) + 1) },
+  { key: "hebrew-1to400-wrap", label: "Gematria Hebraica (1–400) + transliteração simples", helper: "Translitera o texto para valores gemátricos e adapta ao quadrado.", fn: (text: string, max: number) => latinToHebrewGematriaSimple(text).map(v => ((v - 1) % max) + 1) },
 ] as const
 
 type MappingKey = typeof mappings[number]["key"]
@@ -295,61 +300,63 @@ export default function MagicSquareSigilPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Sigilo em Quadrado Mágico</h1>
-          <p className="text-muted-foreground">Mesmo conjunto de parâmetros do arquivo original: mapeamentos, pré-processamento, marcadores e dimensões — com traçado corretamente dentro do quadrado.</p>
+          <h1 className="text-2xl font-bold temple-heading">Sigilo em Quadrado Mágico</h1>
+          <p className="text-[hsl(var(--temple-text-secondary))]">Mesmo conjunto de parâmetros do arquivo original: mapeamentos, pré-processamento, marcadores e dimensões — com traçado corretamente dentro do quadrado.</p>
         </div>
       </div>
 
       {/* Controles */}
-      <Card>
+      <Card className="temple-card">
         <CardHeader>
-          <CardTitle>Configurações</CardTitle>
-          <CardDescription>Texto, quadrado planetário, mapeamento e opções visuais.</CardDescription>
+          <CardTitle className="temple-section-title">Configurações</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">Texto, quadrado planetário, mapeamento e opções visuais.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">Texto (letras e números)</label>
+              <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Texto (letras e números)</label>
               <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Ex.: HEKATE, CAMINHOS DE HEKATE" rows={5} />
-              <p className="text-xs text-muted-foreground mt-2">Diacríticos e espaços são removidos automaticamente.</p>
-              <div className="text-xs text-muted-foreground mt-2">Texto processado: <Badge variant="secondary">{processed || "(vazio)"}</Badge></div>
+              <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-2">Diacríticos e espaços são removidos automaticamente.</p>
+              <div className="text-xs text-[hsl(var(--temple-text-secondary))] mt-2">Texto processado: <Badge variant="secondary" className="temple-chip">{processed || "(vazio)"}</Badge></div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Quadrado Planetário</label>
+                <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Quadrado Planetário</label>
                 <select
                   value={planetKey}
                   onChange={(e) => setPlanetKey(e.target.value as PlanetKey)}
-                  className="mt-2 w-full rounded-md border px-3 py-2"
+                  className="mt-2 w-full rounded-md border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-3 py-2 text-[hsl(var(--temple-text-primary))]"
                 >
                   {PLANETS.map(p => (
                     <option key={p.key} value={p.key}>{p.name}</option>
                   ))}
                 </select>
-                <p className="text-xs text-muted-foreground mt-1">Ímpares (3,5,7,9) via método Siamês; 4,6,8 usam arranjos clássicos.</p>
+                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">{PLANETS.find(p => p.key === planetKey)?.helper}</p>
+                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">Ímpares (3,5,7,9) via método Siamês; 4,6,8 usam arranjos clássicos.</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium">Mapeamento de Letras → Números</label>
+                <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Mapeamento de Letras → Números</label>
                 <select
                   value={mappingKey}
                   onChange={(e) => setMappingKey(e.target.value as MappingKey)}
-                  className="mt-2 w-full rounded-md border px-3 py-2"
+                  className="mt-2 w-full rounded-md border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-3 py-2 text-[hsl(var(--temple-text-primary))]"
                 >
                   {mappings.map(m => (
                     <option key={m.key} value={m.key}>{m.label}</option>
                   ))}
                 </select>
+                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">{mappings.find(m => m.key === mappingKey)?.helper}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium">Pré-processamento do texto</label>
+                <label className="text-sm font-medium text-[hsl(var(--temple-text-secondary))]">Pré-processamento do texto</label>
                 <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
                   <label className="flex items-center gap-2"><input type="checkbox" checked={removeVowels} onChange={(e)=>setRemoveVowels(e.target.checked)} /> Remover vogais (A,E,I,O,U)</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={removeDuplicates} onChange={(e)=>setRemoveDuplicates(e.target.checked)} /> Remover letras duplicadas</label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Aplicado antes do mapeamento (estilo clássico de sigilização).</p>
+                <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">Aplicado antes do mapeamento (estilo clássico de sigilização).</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -369,15 +376,15 @@ export default function MagicSquareSigilPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-sm">Tamanho (px)</label>
+                  <label className="text-sm text-[hsl(var(--temple-text-secondary))]">Tamanho (px)</label>
                   <Input type="number" value={size} onChange={(e)=>setSize(parseInt(e.target.value || '0',10))} min={200} max={2000} />
                 </div>
                 <div>
-                  <label className="text-sm">Espessura (px)</label>
+                  <label className="text-sm text-[hsl(var(--temple-text-secondary))]">Espessura (px)</label>
                   <Input type="number" value={stroke} onChange={(e)=>setStroke(parseInt(e.target.value || '0',10))} min={1} max={20} />
                 </div>
                 <div>
-                  <label className="text-sm">Margem (px)</label>
+                  <label className="text-sm text-[hsl(var(--temple-text-secondary))]">Margem (px)</label>
                   <Input type="number" value={padding} onChange={(e)=>setPadding(parseInt(e.target.value || '0',10))} min={0} max={200} />
                 </div>
               </div>
@@ -390,19 +397,19 @@ export default function MagicSquareSigilPage() {
 
           <div>
             <h3 className="font-medium mb-2">Sequência numérica derivada</h3>
-            <div className="text-xs text-muted-foreground break-words">{seq.join(", ") || "(vazia)"}</div>
+            <div className="text-xs text-[hsl(var(--temple-text-secondary))] break-words">{seq.join(", ") || "(vazia)"}</div>
           </div>
         </CardContent>
       </Card>
 
       {/* Pré-visualização */}
-      <Card>
+      <Card className="temple-card">
         <CardHeader>
-          <CardTitle>Pré-visualização</CardTitle>
-          <CardDescription>{PLANETS.find(p=>p.key===planetKey)?.name} • {n}×{n} • {seq.length} pontos</CardDescription>
+          <CardTitle className="temple-section-title">Pré-visualização</CardTitle>
+          <CardDescription className="text-[hsl(var(--temple-text-secondary))]">{PLANETS.find(p=>p.key===planetKey)?.name} • {n}×{n} • {seq.length} pontos</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-xl inline-block bg-white overflow-hidden">
+          <div className="border border-[hsl(var(--temple-border-subtle))] rounded-xl inline-block bg-[hsl(var(--temple-surface-1))] overflow-hidden">
             <svg ref={svgRef} width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
               {/* fundo */}
               <rect x="0" y="0" width={size} height={size} fill="#ffffff" />
