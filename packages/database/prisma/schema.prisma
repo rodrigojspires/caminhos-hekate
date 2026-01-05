@@ -1653,6 +1653,7 @@ model Achievement {
   userAchievements UserAchievement[]
   rewards          AchievementReward[]
   userRewards      UserReward[]
+  gamificationGoals GamificationGoal[]
 
   @@index([categoryId])
   @@index([rarity])
