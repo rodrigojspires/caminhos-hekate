@@ -45,7 +45,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">Linguagem leiga</p>
+              <p className="text-sm font-medium text-[hsl(var(--temple-text-primary))]">Linguagem simples</p>
               <p className="text-xs text-[hsl(var(--temple-text-secondary))]">Termos diretos e fáceis para iniciantes.</p>
             </div>
             <Switch

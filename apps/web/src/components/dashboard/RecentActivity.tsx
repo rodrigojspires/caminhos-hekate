@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,7 @@ export function RecentActivity() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const favorites: Activity[] = []
 
   const fetchActivities = async () => {
     try {
@@ -137,15 +139,40 @@ export function RecentActivity() {
   return (
     <Card className="temple-card h-full flex flex-col">
       <CardHeader>
-          <CardTitle className="font-serif text-[hsl(var(--temple-text-primary))]">{apply('Ecos Recentes')}</CardTitle>
+          <CardTitle className="font-serif text-[hsl(var(--temple-text-primary))]">{apply('Recente & Favoritos')}</CardTitle>
           <CardDescription className="text-[hsl(var(--temple-text-secondary))]">
-            {apply('Os ecos de suas ações mais recentes no caminho da sabedoria.')}
+            {apply('Materiais vistos recentemente e atalhos guardados para retorno rápido.')}
           </CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-grow">
-        <ScrollArea className="h-[500px] px-6">
+        <div className="px-6 pt-2 pb-4">
+          <div className="rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-[hsl(var(--temple-text-primary))]">{apply('Favoritos')}</span>
+              <Badge variant="secondary" className="temple-chip text-xs">
+                {apply(`${favorites.length} salvos`)}
+              </Badge>
+            </div>
+            {favorites.length ? (
+              <div className="mt-3 space-y-2">
+                {favorites.slice(0, 3).map((favorite) => (
+                  <div key={favorite.id} className="text-xs text-[hsl(var(--temple-text-secondary))]">
+                    {favorite.title}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-[hsl(var(--temple-text-secondary))]">
+                {apply('Sem favoritos ainda. Guarde materiais para acesso rápido.')}
+              </div>
+            )}
+            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
+              <Link href="/dashboard/courses">{apply('Explorar biblioteca')}</Link>
+            </Button>
+          </div>
+        </div>
+        <ScrollArea className="h-[420px] px-6">
           <div className="relative space-y-6 pb-6">
-            {/* Timeline Line */}
             <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-[hsl(var(--temple-border-subtle))]" />
             {activities.length > 0 ? (
               activities.map((activity, index) => {
