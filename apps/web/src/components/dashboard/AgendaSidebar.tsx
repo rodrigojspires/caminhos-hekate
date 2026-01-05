@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, Users } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,7 @@ interface EventItem {
   title: string
   startDate?: string
   status?: EventStatus
+  registrations?: Array<{ id: string }>
 }
 
 interface EventsResponse {
@@ -54,7 +55,7 @@ export function AgendaSidebar() {
     const load = async () => {
       try {
         setLoading(true)
-        const response = await fetch('/api/events?limit=6&status=PUBLISHED')
+        const response = await fetch('/api/events?limit=8&status=PUBLISHED')
         if (!response.ok) throw new Error('Erro ao carregar eventos')
         const data: EventsResponse = await response.json()
         if (!cancelled) setEvents(data.events || [])
@@ -73,6 +74,7 @@ export function AgendaSidebar() {
   const upcomingEvents = useMemo(() => {
     return [...events]
       .filter((ev) => ev.startDate)
+      .filter((ev) => !ev.registrations || ev.registrations.length === 0)
       .sort((a, b) => new Date(a.startDate || '').getTime() - new Date(b.startDate || '').getTime())
       .slice(0, 4)
   }, [events])
@@ -96,20 +98,20 @@ export function AgendaSidebar() {
             ))}
           </>
         ) : upcomingEvents.length ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {upcomingEvents.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-4 py-3"
+                className="rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] px-4 py-3"
               >
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-[hsl(var(--temple-text-primary))]">{event.title}</p>
-                  <div className="flex items-center gap-2 text-xs text-[hsl(var(--temple-text-secondary))]">
-                    <span>{formatDate(event.startDate)}</span>
-                    <Badge className={`text-[10px] ${statusTone(event.status)}`}>{apply(statusLabel(event.status))}</Badge>
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[hsl(var(--temple-text-primary))] line-clamp-2">{event.title}</p>
+                  <CalendarDays className="h-4 w-4 text-[hsl(var(--temple-accent-gold))]" />
                 </div>
-                <CalendarDays className="h-4 w-4 text-[hsl(var(--temple-accent-gold))]" />
+                <div className="mt-2 flex items-center gap-2 text-xs text-[hsl(var(--temple-text-secondary))]">
+                  <span>{formatDate(event.startDate)}</span>
+                  <Badge className={`text-[10px] ${statusTone(event.status)}`}>{apply(statusLabel(event.status))}</Badge>
+                </div>
               </div>
             ))}
           </div>
@@ -121,19 +123,6 @@ export function AgendaSidebar() {
             </p>
           </div>
         )}
-
-        <div className="rounded-lg border border-[hsl(var(--temple-border-subtle))] bg-[hsl(var(--temple-surface-2))] p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--temple-text-primary))]">
-            <Users className="h-4 w-4 text-[hsl(var(--temple-accent-gold))]" />
-            {apply('Encontros da comunidade')}
-          </div>
-          <p className="text-xs text-[hsl(var(--temple-text-secondary))] mt-1">
-            {apply('Veja os encontros ativos e as salas de troca entre alunos.')}
-          </p>
-          <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-            <Link href="/dashboard/comunidades">{apply('Ver comunidades')}</Link>
-          </Button>
-        </div>
 
         <Button asChild variant="outline" size="sm" className="w-full">
           <Link href="/dashboard/eventos">{apply('Ver agenda completa')}</Link>

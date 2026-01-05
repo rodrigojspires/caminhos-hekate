@@ -121,9 +121,16 @@ export function RitualInProgressCard() {
               ? apply(`Próximo portal: ${nextCourse.courseTitle}`)
               : apply('Escolha um portal para iniciar sua jornada.')}
           </p>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/progress">{apply('Ver trilha completa')}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link href="/dashboard/courses">
+                {apply(nextCourse ? 'Continuar trilha' : 'Explorar cursos')}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/progress">{apply('Ver trilha completa')}</Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

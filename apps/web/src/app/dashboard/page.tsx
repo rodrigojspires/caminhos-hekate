@@ -3,8 +3,10 @@ import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard'
 import { RitualInProgressCard } from '@/components/dashboard/RitualInProgressCard'
 import { RoutineGoalsCard } from '@/components/dashboard/RoutineGoalsCard'
-import { HighlightsSidebar } from '@/components/dashboard/HighlightsSidebar'
 import { AgendaSidebar } from '@/components/dashboard/AgendaSidebar'
+import { CoursesHighlightsSidebar } from '@/components/dashboard/CoursesHighlightsSidebar'
+import { ProductsHighlightsSidebar } from '@/components/dashboard/ProductsHighlightsSidebar'
+import { CommunityPulseSidebar } from '@/components/dashboard/CommunityPulseSidebar'
 
 export const metadata: Metadata = {
   title: 'Grimório | Caminhos de Hekate',
@@ -24,7 +26,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-8">
-          <HighlightsSidebar />
+          <CoursesHighlightsSidebar />
+          <ProductsHighlightsSidebar />
+          <CommunityPulseSidebar />
           <AgendaSidebar />
         </div>
       </div>

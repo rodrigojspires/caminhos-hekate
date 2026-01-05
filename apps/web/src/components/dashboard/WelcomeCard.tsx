@@ -1,9 +1,6 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { BookOpen, Play, Star, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
@@ -23,54 +20,12 @@ const StrophalosIcon = (props: any) => (
 export function WelcomeCard() {
   const { apply } = useDashboardVocabulary()
   const { data: session } = useSession()
-  const [inProgress, setInProgress] = useState<number>(0)
-  const [avgProgress, setAvgProgress] = useState<number>(0)
-  const [streak, setStreak] = useState<number>(0)
   const [greeting, setGreeting] = useState<string>('Salve')
-  const [lastActivity, setLastActivity] = useState<string | null>(null)
-  const [nextPortal, setNextPortal] = useState<string | null>(null)
   useEffect(() => {
     const hour = new Date().getHours()
     setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite')
   }, [])
   const name = session?.user?.name || 'Iniciado(a)'
-
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        const [pRes, sRes, aRes] = await Promise.all([
-          fetch('/api/user/progress'),
-          fetch('/api/gamification/streaks?active=true'),
-          fetch('/api/user/activities?limit=1')
-        ])
-        if (pRes.ok) {
-          const p = await pRes.json()
-          if (!cancelled) {
-            const ip = Number(p?.overview?.inProgressCourses || 0)
-            setInProgress(ip)
-            const list = Array.isArray(p?.courseProgress) ? p.courseProgress : []
-            const avg = list.length ? Math.round(list.reduce((a: number, c: any) => a + (Number(c.progress)||0), 0) / list.length) : 0
-            setAvgProgress(avg)
-            const next = list.length ? [...list].sort((a: any, b: any) => Number(b.progress || 0) - Number(a.progress || 0))[0] : null
-            setNextPortal(next?.courseTitle || null)
-          }
-        }
-        if (sRes.ok) {
-          const s = await sRes.json()
-          const current = Array.isArray(s) ? Math.max(0, ...s.map((x: any) => Number(x.currentStreak || 0))) : 0
-          if (!cancelled) setStreak(Number.isFinite(current) ? current : 0)
-        }
-        if (aRes.ok) {
-          const a = await aRes.json()
-          const item = Array.isArray(a?.activities) ? a.activities[0] : null
-          if (!cancelled) setLastActivity(item?.description || item?.title || null)
-        }
-      } catch { /* noop */ }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [])
   
   return (
     <motion.div
@@ -83,55 +38,12 @@ export function WelcomeCard() {
           <div className="flex items-center justify-between">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Badge variant="secondary" className="temple-chip w-fit text-xs uppercase tracking-wide">
-                  {apply('Bússola do Dia')}
-                </Badge>
                 <h1 className="text-2xl font-bold temple-heading text-[hsl(var(--temple-text-primary))]">
                   {apply(`${greeting}, ${name}. A egrégora te saúda.`)}
                 </h1>
                 <p className="text-[hsl(var(--temple-text-secondary))] mt-1">
                   {apply("Hoje é dia de aprofundar a chama ou iniciar um novo ciclo de prática.")}
                 </p>
-              </div>
-              
-              <div className="flex items-center gap-6 text-sm text-[hsl(var(--temple-text-secondary))]">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
-                  <span>{apply(`${inProgress} rituais em andamento`)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-[hsl(var(--temple-accent-violet))]" />
-                  <span>{apply(`${avgProgress}% de ascensão percorrida`)}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="secondary" 
-                  size="sm"
-                  className="temple-btn-primary"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  {apply(inProgress > 0 ? "Continuar trilha" : "Iniciar prática")}
-                </Button>
-                {streak > 0 && (
-                  <Badge variant="secondary" className="temple-chip flex items-center gap-2">
-                    <Flame className="h-4 w-4 animate-pulse" />
-                    <span>{apply(`Chama do Conhecimento: ${streak} dias`)}</span>
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-[hsl(var(--temple-text-secondary))]">
-                <span>
-                  {apply(`Último eco: ${lastActivity || 'Sem registros ainda'}`)}
-                </span>
-                <span className="text-[hsl(var(--temple-text-secondary))]">•</span>
-                <span>
-                  {nextPortal
-                    ? apply(`Próximo portal: ${nextPortal}`)
-                    : apply('Próximo portal: escolha sua trilha')}
-                </span>
               </div>
             </div>
             
