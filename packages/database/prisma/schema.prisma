@@ -75,6 +75,7 @@ model User {
   gamificationNotifications     GamificationNotification[]     @relation("UserGamificationNotifications")
   userBadges                    UserBadge[]                    @relation("UserBadges")
   userRewards                   UserReward[]
+  gamificationGoalProgress      GamificationGoalProgress[]
   // Gamification Events Relations
   gamificationEventParticipants GamificationEventParticipant[]
   gamificationUserRewards       GamificationUserReward[]
@@ -1714,6 +1715,51 @@ model PointTransaction {
   @@map("point_transactions")
 }
 
+model GamificationGoal {
+  id            String                 @id @default(cuid())
+  title         String
+  description   String?
+  goalType      GamificationGoalType  @map("goal_type")
+  metric        GamificationGoalMetric
+  targetValue   Int                    @map("target_value")
+  startDate     DateTime               @map("start_date")
+  endDate       DateTime               @map("end_date")
+  rewardMode    GamificationGoalRewardMode @default(BOTH) @map("reward_mode")
+  points        Int                    @default(0)
+  achievementId String?                @map("achievement_id")
+  isActive      Boolean                @default(true) @map("is_active")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  achievement Achievement?           @relation(fields: [achievementId], references: [id], onDelete: SetNull)
+  progress    GamificationGoalProgress[]
+
+  @@index([goalType])
+  @@index([metric])
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("gamification_goals")
+}
+
+model GamificationGoalProgress {
+  id              String           @id @default(cuid())
+  goalId          String           @map("goal_id")
+  userId          String           @map("user_id")
+  currentValue    Int              @default(0) @map("current_value")
+  completedAt     DateTime?        @map("completed_at")
+  lastEvaluatedAt DateTime?        @map("last_evaluated_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  goal GamificationGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, userId])
+  @@index([userId])
+  @@index([goalId])
+  @@map("gamification_goal_progress")
+}
+
 model LeaderboardEntry {
   id          String              @id @default(cuid())
   userId      String
@@ -2794,6 +2840,30 @@ enum GamificationRarity {
   MYTHIC
 
   @@map("gamification_rarity")
+}
+
+enum GamificationGoalType {
+  COURSE
+  COMMUNITY
+  PRODUCT
+
+  @@map("gamification_goal_type")
+}
+
+enum GamificationGoalMetric {
+  LESSONS_COMPLETED
+  COMMUNITY_MESSAGES
+  PRODUCT_PURCHASES
+
+  @@map("gamification_goal_metric")
+}
+
+enum GamificationGoalRewardMode {
+  POINTS
+  BADGE
+  BOTH
+
+  @@map("gamification_goal_reward_mode")
 }
 
 // Notification Logs Models

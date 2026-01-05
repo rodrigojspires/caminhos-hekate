@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Star, Flame, TrendingUp, Award, Target } from 'lucide-react';
+import { Trophy, Star, Flame, Award } from 'lucide-react';
 import { useGamificationStore, useInitializeGamification } from '@/stores/gamificationStore';
 import type { Achievement } from '@/types/gamification';
 import { AchievementBadge } from '../achievements/AchievementBadge';
@@ -14,6 +14,7 @@ import { StreakDisplay } from '../streaks/StreakDisplay';
 import { LeaderboardPreview } from '../leaderboard/LeaderboardPreview';
 import { RecentActivity } from './RecentActivity';
 import { LevelProgress } from './LevelProgress';
+import { GoalProgress } from './GoalProgress';
 
 export function GamificationDashboard() {
   const {
@@ -114,8 +115,9 @@ export function GamificationDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="goals">Metas</TabsTrigger>
           <TabsTrigger value="achievements">Conquistas</TabsTrigger>
           <TabsTrigger value="progress">Progresso</TabsTrigger>
           <TabsTrigger value="leaderboard">Ranking</TabsTrigger>
@@ -165,6 +167,10 @@ export function GamificationDashboard() {
 
           {/* Recent Activity */}
           <RecentActivity />
+        </TabsContent>
+
+        <TabsContent value="goals" className="space-y-4">
+          <GoalProgress />
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-4">

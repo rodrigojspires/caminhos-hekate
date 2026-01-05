@@ -95,6 +95,10 @@ const UPLOAD_TYPE_CONFIG: Record<string, { allowedTypes: string[]; maxFileSize: 
     allowedTypes: IMAGE_TYPES,
     maxFileSize: DEFAULT_MAX_FILE_SIZE
   },
+  badges: {
+    allowedTypes: IMAGE_TYPES,
+    maxFileSize: DEFAULT_MAX_FILE_SIZE
+  },
   'course-videos': {
     allowedTypes: VIDEO_TYPES,
     maxFileSize: VIDEO_MAX_FILE_SIZE
