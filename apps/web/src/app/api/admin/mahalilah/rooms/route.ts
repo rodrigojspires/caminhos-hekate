@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma, MahaLilahParticipantRole, MahaLilahRoomStatus, MahaLilahPlanType } from '@hekate/database'
 import { z } from 'zod'
 import { customAlphabet } from 'nanoid'
+import { resendEmailService } from '@/lib/resend-email'
 
 const CreateRoomSchema = z.object({
   therapistEmail: z.string().email(),
@@ -125,6 +126,36 @@ export async function POST(request: NextRequest) {
 
       return created
     })
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_MAHALILAH_URL ||
+      process.env.NEXTAUTH_URL_MAHALILAH ||
+      'https://mahalilahonline.com.br'
+    const roomUrl = `${baseUrl}/rooms/${room.code}`
+
+    try {
+      await resendEmailService.sendEmail({
+        to: therapist.email,
+        subject: `Sua sala Maha Lilah foi criada (${room.code})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+            <h2>Sala Maha Lilah criada com sucesso</h2>
+            <p>Olá ${therapist.name || therapist.email},</p>
+            <p>Uma nova sala foi criada para você no Maha Lilah Online.</p>
+            <p><strong>Código:</strong> ${room.code}</p>
+            <p>
+              <a href="${roomUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+                Entrar na sala
+              </a>
+            </p>
+            <p style="font-size:12px;color:#5d6b75;">Se você não esperava esta criação, ignore este email.</p>
+          </div>
+        `,
+        text: `Sala Maha Lilah criada.\nCódigo: ${room.code}\nAcesse: ${roomUrl}`
+      })
+    } catch (error) {
+      console.warn('Falha ao enviar email de criação de sala Maha Lilah:', error)
+    }
 
     return NextResponse.json({ room }, { status: 201 })
   } catch (error) {

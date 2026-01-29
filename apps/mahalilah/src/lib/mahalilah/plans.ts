@@ -26,6 +26,7 @@ const PlanConfigSchema = z.object({
 const DEFAULT_CONFIG = {
   singleSession: {
     pricesByParticipants: {
+      '1': 180,
       '2': 180,
       '4': 260,
       '6': 320,

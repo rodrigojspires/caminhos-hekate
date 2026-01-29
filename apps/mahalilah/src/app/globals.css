@@ -1,13 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  color-scheme: light;
-  --bg: #f8f6f1;
-  --panel: #ffffff;
-  --text: #1f2a2f;
-  --muted: #5d6b75;
-  --accent: #2f7f6f;
-  --accent-2: #e6b35a;
-  --border: #e3ded5;
-  --shadow: 0 16px 40px rgba(31, 42, 47, 0.08);
+  color-scheme: dark;
+  --bg: #0b0e13;
+  --surface: #111621;
+  --surface-2: #151c2a;
+  --ink: #f3efe7;
+  --ink-muted: #b8b1a6;
+  --gold: #d9a441;
+  --gold-soft: #f1d59a;
+  --teal: #6ad3b0;
+  --border: #273044;
+  --shadow: 0 24px 60px rgba(8, 12, 20, 0.55);
+  --ring: rgba(241, 213, 154, 0.45);
+  --text: var(--ink);
+  --muted: var(--ink-muted);
+  --accent: var(--gold);
+  --accent-2: var(--teal);
+  --panel: var(--surface);
   font-synthesis-weight: none;
 }
 
@@ -19,9 +31,13 @@ html, body {
   padding: 0;
   margin: 0;
   min-height: 100%;
-  font-family: 'Georgia', 'Times New Roman', serif;
-  background: radial-gradient(1200px 900px at 20% 10%, #fff7e4 0%, var(--bg) 60%, #f1ede4 100%);
-  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  background: radial-gradient(1200px 800px at 15% 10%, rgba(217, 164, 65, 0.12) 0%, rgba(13, 17, 26, 0.95) 55%, #0b0e13 100%);
+  color: var(--ink);
+  line-height: 1.6;
 }
 
 a {
@@ -43,7 +59,8 @@ input, textarea {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fffdfa;
+  background: #0f141f;
+  color: var(--ink);
 }
 
 button {
@@ -51,19 +68,24 @@ button {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 10px 18px;
-  background: var(--accent);
-  color: white;
+  background: var(--gold);
+  color: #1a1307;
   font-weight: 600;
 }
 
 button.secondary {
   background: transparent;
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
 }
 
 .card {
-  background: var(--panel);
+  background: var(--surface);
   border-radius: 18px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -85,9 +107,11 @@ button.secondary {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f0ede5;
-  color: var(--muted);
+  background: rgba(241, 213, 154, 0.16);
+  color: var(--gold-soft);
   font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .pill {
@@ -97,31 +121,31 @@ button.secondary {
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: #fffaf0;
-  color: var(--text);
+  background: rgba(17, 22, 33, 0.8);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
 }
 
 .status-pill {
-  background: #f0ede5;
+  background: rgba(241, 213, 154, 0.18);
   border-color: transparent;
   font-weight: 700;
 }
 
 .status-pill.active {
-  background: #e7f7ef;
-  color: #25664f;
+  background: rgba(106, 211, 176, 0.18);
+  color: #9fe6cc;
 }
 
 .status-pill.closed {
-  background: #fff0e0;
-  color: #8a5b1e;
+  background: rgba(241, 213, 154, 0.2);
+  color: #f1d59a;
 }
 
 .status-pill.completed {
-  background: #edf2ff;
-  color: #2b3a7a;
+  background: rgba(116, 164, 255, 0.22);
+  color: #c1d6ff;
 }
 
 .section-title {
@@ -131,19 +155,33 @@ button.secondary {
 
 .small-muted {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .notice {
-  background: #fff5dc;
-  border: 1px solid #f0d8a6;
+  background: rgba(241, 213, 154, 0.16);
+  border: 1px solid rgba(241, 213, 154, 0.4);
   padding: 12px 14px;
   border-radius: 12px;
-  color: #6a4c12;
+  color: var(--gold-soft);
 }
 
 .notice.good {
-  background: #e7f7ef;
-  border-color: #b8e6d0;
-  color: #25664f;
+  background: rgba(106, 211, 176, 0.16);
+  border-color: rgba(106, 211, 176, 0.4);
+  color: #b7f1dc;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-gold px-5 py-2 text-sm font-semibold text-[#1a1307] shadow-glow transition hover:brightness-105;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-gold/70 px-5 py-2 text-sm font-semibold text-gold transition hover:border-gold hover:text-gold-soft;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-full border border-border/70 px-5 py-2 text-sm font-semibold text-ink-muted transition hover:text-ink;
+  }
 }

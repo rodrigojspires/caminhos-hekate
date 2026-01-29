@@ -8,7 +8,7 @@ import { resolvePlan, type PlanType } from '@/lib/mahalilah/plans'
 
 const CheckoutSchema = z.object({
   planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']),
-  maxParticipants: z.number().int().min(2).max(12).optional()
+  maxParticipants: z.number().int().min(1).max(12).optional()
 })
 
 function generateOrderNumber() {
