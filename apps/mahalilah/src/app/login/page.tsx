@@ -41,11 +41,8 @@ export default function LoginPage() {
       return
     }
 
-    if (result?.url) {
-      window.location.href = result.url
-    } else {
-      window.location.href = safeCallback
-    }
+    // Força o redirect local para evitar cair no domínio do Caminhos
+    window.location.href = safeCallback
   }
 
   return (
