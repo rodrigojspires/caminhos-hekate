@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { LinkButton, SectionHeader, SectionShell } from '@/components/marketing/ui'
 import type { Cta } from '@/components/marketing/ui'
 
 export type PricingPlan = {
   name: string
-  price: string
+  price: string | ReactNode
   description: string
   forWho: string
   includes: string[]
@@ -36,7 +37,13 @@ export function PricingCards({
           >
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.3em] text-ink-muted">{plan.name}</span>
-              <h3 className="font-serif text-3xl text-ink">{plan.price}</h3>
+              {typeof plan.price === 'string' ? (
+                <h3 className="font-serif text-3xl text-ink">{plan.price}</h3>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {plan.price}
+                </div>
+              )}
               <p className="text-sm text-ink-muted">{plan.description}</p>
             </div>
             <div className="space-y-2 text-sm text-ink-muted">

@@ -18,7 +18,8 @@ const staticRoutes = [
   '/privacidade',
   '/cookies',
   '/politica-de-reembolso',
-  '/login'
+  '/login',
+  '/register'
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -3,7 +3,6 @@ import { LoginForm } from '@/components/marketing/LoginForm'
 import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
-import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionShell } from '@/components/marketing/ui'
 
 export const metadata: Metadata = {
@@ -34,25 +33,17 @@ const faqItems = [
 export default function LoginPage() {
   return (
     <div>
-      <Hero
-        eyebrow="Área segura"
-        title="Entre para abrir sua sala"
-        subtitle="Acesse com login obrigatório para participar de sessões ao vivo, convites por e-mail e histórico completo."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
-        mediaLabel="Tela de login e acesso seguro"
-        note="Atendimento profissional, sem promessas milagrosas"
-      />
-
-      <SectionShell>
+      <SectionShell className="pt-8">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-4">
-            <h2 className="font-serif text-3xl text-ink">Seu acesso, seu ritmo</h2>
-            <p className="text-base text-ink-muted">
-              Use o mesmo login do Caminhos de Hekate. O acesso garante que cada participante esteja
-              identificado e que os registros fiquem vinculados ao perfil correto.
-            </p>
+          <div className="flex flex-col gap-6">
             <LoginForm />
+            <div className="flex flex-col gap-3">
+              <h2 className="font-serif text-3xl text-ink">Seu acesso, seu ritmo</h2>
+              <p className="text-base text-ink-muted">
+                Use o mesmo login do Caminhos de Hekate. O acesso garante que cada participante esteja
+                identificado e que os registros fiquem vinculados ao perfil correto.
+              </p>
+            </div>
           </div>
           <MediaPlaceholder variant="vertical" label="Imagem institucional: entrada na sala" />
         </div>

@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { signOut } from 'next-auth/react'
 import { useCallback, useEffect, useState } from 'react'
 
 type RoomInvite = {
@@ -80,6 +82,7 @@ export function DashboardClient() {
   const [creating, setCreating] = useState(false)
   const [maxParticipants, setMaxParticipants] = useState(4)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const [canCreateRoom, setCanCreateRoom] = useState(false)
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({})
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({})
   const [details, setDetails] = useState<Record<string, { loading: boolean; moves: TimelineMove[]; aiReports: AiReport[]; cardDraws: StandaloneCardDraw[]; error?: string }>>({})
@@ -111,6 +114,7 @@ export function DashboardClient() {
     }
     const data = await res.json()
     setRooms(data.rooms || [])
+    setCanCreateRoom(Boolean(data.canCreateRoom))
     setLoading(false)
   }, [filters])
 
@@ -455,37 +459,53 @@ export function DashboardClient() {
 
   return (
     <div className="grid" style={{ gap: 24 }}>
-      <div className="card" style={{ display: 'grid', gap: 12 }}>
-        <strong>Criar nova sala</strong>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span>Participantes máximos</span>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={maxParticipants}
-              onChange={(event) => setMaxParticipants(Number(event.target.value))}
-            />
-          </label>
-          <button onClick={handleCreateRoom} disabled={creating}>
-            {creating ? 'Criando...' : 'Criar sala'}
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+        <div>
+          <div className="badge">Dashboard</div>
+          <div style={{ marginTop: 6, color: 'var(--muted)' }}>Acesso administrativo do terapeuta</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Link href="/">
+            <button className="secondary">Site institucional</button>
+          </Link>
+          <button className="secondary" onClick={() => signOut({ callbackUrl: '/' })}>
+            Sair
           </button>
         </div>
-        <p className="small-muted">
-          O terapeuta já entra como participante automaticamente. Convites são enviados com link único.
-        </p>
-        {notice && (
-          <div className={`notice ${notice.variant === 'success' ? 'good' : ''}`}>
-            {notice.message}
-          </div>
-        )}
       </div>
+      {notice && (
+        <div className={`notice ${notice.variant === 'success' ? 'good' : ''}`}>
+          {notice.message}
+        </div>
+      )}
+      {canCreateRoom && (
+        <div className="card" style={{ display: 'grid', gap: 12 }}>
+          <strong>Criar nova sala</strong>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span>Participantes máximos</span>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={maxParticipants}
+                onChange={(event) => setMaxParticipants(Number(event.target.value))}
+              />
+            </label>
+            <button onClick={handleCreateRoom} disabled={creating}>
+              {creating ? 'Criando...' : 'Criar sala'}
+            </button>
+          </div>
+          <p className="small-muted">
+            O terapeuta já entra como participante automaticamente. Convites são enviados com link único.
+          </p>
+        </div>
+      )}
 
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <h2 className="section-title">Filtros de sessão</h2>
-          <button className="secondary" onClick={() => {
+          <button className="secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => {
             setFilters({ status: '', from: '', to: '' })
             loadRooms({ status: '', from: '', to: '' })
           }}>
@@ -521,7 +541,9 @@ export function DashboardClient() {
               onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
             />
           </label>
-          <button onClick={() => loadRooms()}>Aplicar filtros</button>
+          <button style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => loadRooms()}>
+            Aplicar filtros
+          </button>
         </div>
       </div>
 

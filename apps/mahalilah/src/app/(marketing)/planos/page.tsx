@@ -5,7 +5,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { PricingCards } from '@/components/marketing/sections/PricingCards'
+import { SingleSessionPrice } from '@/components/marketing/SingleSessionPrice'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { getPlanConfig } from '@/lib/mahalilah/plans'
 
 export const metadata: Metadata = {
   title: 'Planos',
@@ -36,7 +38,40 @@ const billingFaq = [
   }
 ]
 
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL'
+})
+
+const formatCurrency = (value: number) => currencyFormatter.format(value)
+
+const formatParticipantRange = (participants: number[]) => {
+  const sorted = [...participants].sort((a, b) => a - b)
+  if (sorted.length === 1) {
+    return `${sorted[0]} participante`
+  }
+  if (sorted.length === 2 && sorted[1] === sorted[0] + 1) {
+    return `${sorted[0]}–${sorted[1]} participantes`
+  }
+  return `${sorted.join(', ')} participantes`
+}
+
 export default function PlanosPage() {
+  const planConfig = getPlanConfig()
+  const singleSessionEntries = Object.entries(planConfig.singleSession.pricesByParticipants)
+    .map(([participants, price]) => ({ participants: Number(participants), price }))
+    .sort((a, b) => a.participants - b.participants)
+  const maxSingleParticipants = Math.max(...singleSessionEntries.map((entry) => entry.participants))
+  const groupedPrices = singleSessionEntries.reduce<Record<string, number[]>>((acc, entry) => {
+    const key = String(entry.price)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(entry.participants)
+    return acc
+  }, {})
+  const priceByParticipantsLabel = Object.entries(groupedPrices)
+    .map(([price, participants]) => `${formatParticipantRange(participants)}: ${formatCurrency(Number(price))}`)
+    .join(' · ')
+
   return (
     <div>
       <Hero
@@ -55,53 +90,59 @@ export default function PlanosPage() {
         plans={[
           {
             name: 'Sessão avulsa',
-            price: 'R$ 00,00',
+            price: (
+              <SingleSessionPrice pricesByParticipants={planConfig.singleSession.pricesByParticipants} />
+            ),
             description: 'Para experimentar ou facilitar uma sessão pontual.',
             forWho: 'Autoguiado, terapeutas iniciando ou grupos eventuais.',
             includes: [
               '1 sala ao vivo',
               'Convites por e-mail',
               'Deck randômico e modo terapia',
-              'Síntese por IA com limites do plano'
+              `Dicas de IA: ${planConfig.singleSession.tipsPerPlayer} por jogador/sessão`,
+              `Síntese final por IA: ${planConfig.singleSession.summaryLimit} por sessão`
             ],
             limits: [
-              'Participantes variáveis (conforme checkout)',
-              'Uso de IA limitado por jogador e sessão'
+              `Participantes por sessão: até ${maxSingleParticipants}`,
+              priceByParticipantsLabel
             ],
             cta: { label: 'Comprar sessão', href: '/checkout' }
           },
           {
             name: 'Mensal ilimitado',
-            price: 'R$ 00,00 / mês',
+            price: `${formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês`,
             description: 'Para quem facilita com frequência alta e precisa de flexibilidade.',
             forWho: 'Terapeutas e facilitadores com agenda ativa.',
             includes: [
               'Salas ilimitadas no mês',
+              `Até ${planConfig.subscriptionUnlimited.maxParticipants} participantes por sala`,
               'Histórico completo e export',
               'Relatórios e síntese por IA',
               'Suporte prioritário'
             ],
             limits: [
-              'Uso de IA limitado por jogador e sessão',
+              `Dicas de IA: ${planConfig.subscriptionUnlimited.tipsPerPlayer} por jogador/sessão`,
+              `Síntese final por IA: ${planConfig.subscriptionUnlimited.summaryLimit} por sessão`,
               'Políticas de uso justo'
             ],
             cta: { label: 'Assinar ilimitado', href: '/checkout' },
             highlight: true
           },
           {
-            name: 'Mensal X salas',
-            price: 'R$ 00,00 / mês',
+            name: `Mensal ${planConfig.subscriptionLimited.roomsPerMonth} salas`,
+            price: `${formatCurrency(planConfig.subscriptionLimited.monthlyPrice)} / mês`,
             description: 'Para ritmos regulares com previsibilidade de custos.',
             forWho: 'Profissionais com número fixo de grupos por mês.',
             includes: [
-              'X salas por mês',
+              `${planConfig.subscriptionLimited.roomsPerMonth} salas por mês`,
               'Convites por e-mail',
-              'Deck randômico + modo terapia',
-              'Síntese por IA com limites'
+              `Até ${planConfig.subscriptionLimited.maxParticipants} participantes por sala`,
+              'Deck randômico + modo terapia'
             ],
             limits: [
-              'Salas extras cobradas à parte',
-              'Uso de IA limitado por jogador e sessão'
+              `Dicas de IA: ${planConfig.subscriptionLimited.tipsPerPlayer} por jogador/sessão`,
+              `Síntese final por IA: ${planConfig.subscriptionLimited.summaryLimit} por sessão`,
+              'Salas extras cobradas à parte'
             ],
             cta: { label: 'Assinar plano', href: '/checkout' }
           }
@@ -118,11 +159,17 @@ export default function PlanosPage() {
             />
             <div className="rounded-2xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted">
               <p>
-                Cada jogador tem direito a um número configurável de dicas por sessão. O valor exato pode
-                variar conforme o plano contratado e é exibido no checkout.
+                Cada jogador tem direito a um número configurável de dicas por sessão, além de síntese final
+                dentro do limite de cada plano.
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.2em] text-ink-muted">
-                Exemplo: X dicas por jogador por sessão.
+                Sessão avulsa: {planConfig.singleSession.tipsPerPlayer} dicas/jogador · {planConfig.singleSession.summaryLimit} síntese.
+              </p>
+              <p className="mt-2 text-xs uppercase tracking-[0.2em] text-ink-muted">
+                Mensal ilimitado: {planConfig.subscriptionUnlimited.tipsPerPlayer} dicas/jogador · {planConfig.subscriptionUnlimited.summaryLimit} sínteses.
+              </p>
+              <p className="mt-2 text-xs uppercase tracking-[0.2em] text-ink-muted">
+                Mensal {planConfig.subscriptionLimited.roomsPerMonth} salas: {planConfig.subscriptionLimited.tipsPerPlayer} dicas/jogador · {planConfig.subscriptionLimited.summaryLimit} síntese.
               </p>
             </div>
             <p className="text-sm text-ink-muted">

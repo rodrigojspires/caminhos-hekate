@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
@@ -62,6 +63,12 @@ export function LoginForm() {
       <button type="submit" className="btn-primary w-fit" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
+      <p className="text-sm text-ink-muted">
+        Não tem conta?{' '}
+        <Link href="/register" className="text-gold hover:text-gold-soft">
+          Criar conta
+        </Link>
+      </p>
     </form>
   )
 }

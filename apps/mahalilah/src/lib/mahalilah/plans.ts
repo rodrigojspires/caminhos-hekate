@@ -2,25 +2,36 @@ import { z } from 'zod'
 
 export type PlanType = 'SINGLE_SESSION' | 'SUBSCRIPTION' | 'SUBSCRIPTION_LIMITED'
 
+const PositiveNumber = z.number().positive()
+const PositiveInt = z.number().int().min(1)
+const NonNegativeInt = z.number().int().min(0)
+
 const PlanConfigSchema = z.object({
   singleSession: z.object({
-    pricesByParticipants: z.record(z.string(), z.number()),
-    tipsPerPlayer: z.number(),
-    summaryLimit: z.number()
+    pricesByParticipants: z.record(z.string(), PositiveNumber),
+    tipsPerPlayer: NonNegativeInt,
+    summaryLimit: NonNegativeInt
   }),
   subscriptionUnlimited: z.object({
-    monthlyPrice: z.number(),
-    maxParticipants: z.number(),
-    tipsPerPlayer: z.number(),
-    summaryLimit: z.number()
+    monthlyPrice: PositiveNumber,
+    maxParticipants: PositiveInt,
+    tipsPerPlayer: NonNegativeInt,
+    summaryLimit: NonNegativeInt
   }),
   subscriptionLimited: z.object({
-    monthlyPrice: z.number(),
-    maxParticipants: z.number(),
-    roomsPerMonth: z.number(),
-    tipsPerPlayer: z.number(),
-    summaryLimit: z.number()
+    monthlyPrice: PositiveNumber,
+    maxParticipants: PositiveInt,
+    roomsPerMonth: PositiveInt,
+    tipsPerPlayer: NonNegativeInt,
+    summaryLimit: NonNegativeInt
   })
+}).superRefine((config, ctx) => {
+  if (!Object.keys(config.singleSession.pricesByParticipants).length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'pricesByParticipants não pode estar vazio.'
+    })
+  }
 })
 
 const DEFAULT_CONFIG = {

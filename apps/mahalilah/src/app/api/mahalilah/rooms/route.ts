@@ -36,6 +36,30 @@ function parseDateRange(from?: string | null, to?: string | null) {
   return range
 }
 
+function isExpired(expiresAt?: string | null) {
+  if (!expiresAt) return false
+  const d = new Date(expiresAt)
+  return Number.isNaN(d.getTime()) ? false : d.getTime() < Date.now()
+}
+
+async function hasActiveSubscription(userId: string) {
+  const orders = await prisma.order.findMany({
+    where: { userId, status: 'PAID' },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  for (const order of orders) {
+    const meta = (order.metadata as any)?.mahalilah
+    if (!meta || meta.active !== true) continue
+    if (isExpired(meta.expiresAt)) continue
+    if (meta.planType !== 'SUBSCRIPTION' && meta.planType !== 'SUBSCRIPTION_LIMITED') continue
+    if (meta.roomsLimit != null && meta.roomsUsed >= meta.roomsLimit) continue
+    return true
+  }
+
+  return false
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -80,7 +104,10 @@ export async function GET(request: Request) {
       }
     })
 
+    const canCreateRoom = await hasActiveSubscription(session.user.id)
+
     return NextResponse.json({
+      canCreateRoom,
       rooms: rooms.map((room) => {
         const rollsTotal = room.playerStates.reduce(
           (sum, state) => sum + (state.rollCountTotal || 0),
@@ -134,12 +161,6 @@ type Entitlement = {
   maxParticipants: number
   roomsLimit: number | null
   roomsUsed: number
-}
-
-function isExpired(expiresAt?: string | null) {
-  if (!expiresAt) return false
-  const d = new Date(expiresAt)
-  return Number.isNaN(d.getTime()) ? false : d.getTime() < Date.now()
 }
 
 async function findEntitlement(userId: string, requestedMax: number) {
