@@ -1,23 +1,17 @@
 import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
-import GoogleProvider from "next-auth/providers/google"
 import bcrypt from "bcryptjs"
 import { prisma, Role } from "@hekate/database"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        twoFactorCode: { label: "2FA Code", type: "text" }
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -34,10 +28,7 @@ export const authOptions: NextAuthOptions = {
             name: true,
             password: true,
             role: true,
-            emailVerified: true,
-            twoFactorEnabled: true,
-            twoFactorSecret: true,
-            twoFactorBackupCodes: true
+            emailVerified: true
           }
         })
 
@@ -58,35 +49,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error("EMAIL_NOT_VERIFIED")
         }
 
-        if (user.twoFactorEnabled && user.twoFactorSecret) {
-          if (!credentials.twoFactorCode) {
-            throw new Error("2FA_REQUIRED")
-          }
-
-          const { authenticator } = await import('otplib')
-          const isValidToken = authenticator.verify({
-            token: credentials.twoFactorCode,
-            secret: user.twoFactorSecret
-          })
-
-          if (!isValidToken) {
-            const backupCodes = Array.isArray(user.twoFactorBackupCodes)
-              ? user.twoFactorBackupCodes as string[]
-              : []
-            const upperToken = credentials.twoFactorCode.toUpperCase()
-
-            if (!backupCodes.includes(upperToken)) {
-              throw new Error("INVALID_2FA_CODE")
-            }
-
-            const updatedBackupCodes = backupCodes.filter(code => code !== upperToken)
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { twoFactorBackupCodes: updatedBackupCodes }
-            })
-          }
-        }
-
         return {
           id: user.id,
           email: user.email,
@@ -100,6 +62,11 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt"
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(baseUrl)) return url
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      return `${baseUrl}/dashboard`
+    },
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role

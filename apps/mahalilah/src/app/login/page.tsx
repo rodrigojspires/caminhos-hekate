@@ -6,10 +6,20 @@ import { useState } from 'react'
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const rawCallback = searchParams.get('callbackUrl')
+  const safeCallback = (() => {
+    if (!rawCallback) return '/dashboard'
+    if (rawCallback.startsWith('/')) return rawCallback
+    try {
+      const parsed = new URL(rawCallback)
+      if (parsed.origin === window.location.origin) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`
+      }
+    } catch {}
+    return '/dashboard'
+  })()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [twoFactorCode, setTwoFactorCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -21,8 +31,7 @@ export default function LoginPage() {
     const result = await signIn('credentials', {
       email,
       password,
-      twoFactorCode: twoFactorCode || undefined,
-      callbackUrl,
+      callbackUrl: safeCallback,
       redirect: false,
     })
 
@@ -35,7 +44,7 @@ export default function LoginPage() {
     if (result?.url) {
       window.location.href = result.url
     } else {
-      window.location.href = callbackUrl
+      window.location.href = safeCallback
     }
   }
 
@@ -62,19 +71,8 @@ export default function LoginPage() {
             <span>Senha</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span>Código 2FA (se aplicável)</span>
-            <input type="text" value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} />
-          </label>
           <button type="submit" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar'}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => signIn('google', { callbackUrl })}
-          >
-            Entrar com Google
           </button>
         </form>
       </div>
