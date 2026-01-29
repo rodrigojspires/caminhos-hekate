@@ -116,9 +116,15 @@ export function Navbar() {
               Entrar
             </Link>
           )}
-          <Link href="/planos" className="btn-primary">
-            Ver planos
-          </Link>
+          {session ? (
+            <Link href="/dashboard" className="btn-primary">
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/planos" className="btn-primary">
+              Ver planos
+            </Link>
+          )}
         </div>
       </div>
     </header>
