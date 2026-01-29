@@ -85,12 +85,22 @@ export default function AdminMahaLilahPage() {
   }, [])
 
   const handleCreateRoom = async () => {
+    const email = therapistEmail.trim()
+    if (!email) {
+      toast.error('Informe o e-mail do terapeuta.')
+      return
+    }
+    if (maxParticipants < 2 || maxParticipants > 12 || Number.isNaN(maxParticipants)) {
+      toast.error('Participantes deve estar entre 2 e 12.')
+      return
+    }
+
     setCreating(true)
     const res = await fetch('/api/admin/mahalilah/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        therapistEmail,
+        therapistEmail: email,
         maxParticipants,
         planType
       })
@@ -98,7 +108,8 @@ export default function AdminMahaLilahPage() {
 
     const payload = await res.json().catch(() => ({}))
     if (!res.ok) {
-      toast.error(payload.error || 'Erro ao criar sala')
+      const details = Array.isArray(payload.details) ? payload.details.map((d: any) => d.message).join(' • ') : ''
+      toast.error([payload.error || 'Erro ao criar sala', details].filter(Boolean).join(': '))
       setCreating(false)
       return
     }
@@ -152,9 +163,9 @@ export default function AdminMahaLilahPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleCreateRoom} disabled={creating || !therapistEmail}>
-              {creating ? 'Criando...' : 'Criar sala avulsa'}
-            </Button>
+          <Button onClick={handleCreateRoom} disabled={creating || !therapistEmail}>
+            {creating ? 'Criando...' : 'Criar sala avulsa'}
+          </Button>
           </div>
 
           <div className="flex items-center gap-3">

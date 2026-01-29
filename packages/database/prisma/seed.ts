@@ -62,26 +62,32 @@ async function main() {
     prisma.notificationPreference.deleteMany(),
     prisma.session.deleteMany(),
     prisma.account.deleteMany(),
-    prisma.user.deleteMany(),
     prisma.emailTemplate.deleteMany(),
     prisma.whatsAppTemplate.deleteMany(),
     prisma.setting.deleteMany(),
   ]);
 
   // Criar usuário admin
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'HekateAdmin#2024', 10);
-  const admin = await prisma.user.create({
-    data: {
-      email: process.env.ADMIN_EMAIL || 'admin@caminhosdehekate.com.br',
-      password: adminPassword,
-      name: 'Administrador',
-      role: 'ADMIN',
-      subscriptionTier: 'SACERDOCIO',
-      emailVerified: new Date(),
-    },
-  });
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@caminhosdehekate.com.br'
+  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } })
+  let admin = existingAdmin
 
-  console.log('✅ Usuário admin criado');
+  if (!admin) {
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'HekateAdmin#2024', 10)
+    admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        password: adminPassword,
+        name: 'Administrador',
+        role: 'ADMIN',
+        subscriptionTier: 'SACERDOCIO',
+        emailVerified: new Date(),
+      },
+    })
+    console.log('✅ Usuário admin criado')
+  } else {
+    console.log('✅ Usuário admin já existe, mantendo dados')
+  }
 
   // Criar planos de assinatura
   const plans = await Promise.all([

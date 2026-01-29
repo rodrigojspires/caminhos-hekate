@@ -7,7 +7,7 @@ import { customAlphabet } from 'nanoid'
 
 const CreateRoomSchema = z.object({
   therapistEmail: z.string().email(),
-  maxParticipants: z.number().int().min(2).max(12).default(4),
+  maxParticipants: z.coerce.number().int().min(2).max(12).default(4),
   planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']).optional()
 })
 

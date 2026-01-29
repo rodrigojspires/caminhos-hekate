@@ -72,13 +72,16 @@ export function SimpleLineChart({
     )
   }
 
-  const maxValue = Math.max(...data.map(d => d.value))
-  const minValue = Math.min(...data.map(d => d.value))
+  const safeValues = data.map((d) => (Number.isFinite(d.value) ? d.value : 0))
+  const maxValue = Math.max(...safeValues)
+  const minValue = Math.min(...safeValues)
   const range = maxValue - minValue || 1
+  const denom = data.length > 1 ? data.length - 1 : 1
 
   const points = data.map((item, index) => {
-    const x = (index / (data.length - 1)) * 100
-    const y = 100 - ((item.value - minValue) / range) * 100
+    const value = Number.isFinite(item.value) ? item.value : 0
+    const x = (index / denom) * 100
+    const y = 100 - ((value - minValue) / range) * 100
     return `${x},${y}`
   }).join(' ')
 
@@ -130,8 +133,9 @@ export function SimpleLineChart({
           
           {/* Points */}
           {data.map((item, index) => {
-            const x = (index / (data.length - 1)) * 100
-            const y = 100 - ((item.value - minValue) / range) * 100
+            const value = Number.isFinite(item.value) ? item.value : 0
+            const x = (index / denom) * 100
+            const y = 100 - ((value - minValue) / range) * 100
             return (
               <circle
                 key={index}
