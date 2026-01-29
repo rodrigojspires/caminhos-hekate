@@ -277,13 +277,13 @@ export function DashboardClient() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a href={`/rooms/${room.code}`}>
-              <button className="secondary">Abrir sala</button>
+            <a href={`/rooms/${room.code}`} className="btn-secondary">
+              Abrir sala
             </a>
-            <button className="secondary" onClick={() => handleCopyLink(room.code)}>
+            <button className="btn-secondary" onClick={() => handleCopyLink(room.code)}>
               Copiar link
             </button>
-            <button className="secondary" onClick={() => toggleRoom(room.id)}>
+            <button className="btn-secondary" onClick={() => toggleRoom(room.id)}>
               {isOpen ? 'Fechar detalhes' : 'Ver detalhes'}
             </button>
           </div>
@@ -312,8 +312,7 @@ export function DashboardClient() {
                   <span>{invite.email} • {invite.acceptedAt ? 'Aceito' : 'Pendente'}</span>
                   {!invite.acceptedAt && (
                     <button
-                      className="secondary"
-                      style={{ padding: '4px 10px', fontSize: 12 }}
+                      className="btn-secondary px-3 py-1 text-xs"
                       onClick={() => handleSendInvites(room.id, [invite.email])}
                     >
                       Reenviar
@@ -336,8 +335,7 @@ export function DashboardClient() {
                 </span>
                 {participant.role === 'PLAYER' && (
                   <button
-                    className="secondary"
-                    style={{ padding: '4px 10px', fontSize: 12 }}
+                    className="btn-secondary px-3 py-1 text-xs"
                     onClick={() => handleRemoveParticipant(room.id, participant.id)}
                   >
                     Remover
@@ -360,14 +358,16 @@ export function DashboardClient() {
               placeholder="jogador1@email.com, jogador2@email.com"
             />
           </label>
-          <button onClick={() => handleSendInvites(room.id)}>Enviar convites</button>
+          <button className="btn-primary w-fit" onClick={() => handleSendInvites(room.id)}>
+            Enviar convites
+          </button>
         </div>
 
         {isOpen && (
           <div className="grid" style={{ gap: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <strong>Timeline</strong>
-              <button className="secondary" onClick={() => loadTimeline(room.id)}>
+              <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
                 Atualizar timeline
               </button>
             </div>
@@ -442,10 +442,10 @@ export function DashboardClient() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="secondary" onClick={() => handleExport(room.id, 'json')}>
+              <button className="btn-secondary" onClick={() => handleExport(room.id, 'json')}>
                 Exportar JSON
               </button>
-              <button className="secondary" onClick={() => handleExport(room.id, 'txt')}>
+              <button className="btn-secondary" onClick={() => handleExport(room.id, 'txt')}>
                 Exportar TXT
               </button>
             </div>
@@ -468,18 +468,18 @@ export function DashboardClient() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ display: 'grid', gap: 6 }}>
               <span>Participantes máximos</span>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={maxParticipants}
-                onChange={(event) => setMaxParticipants(Number(event.target.value))}
-              />
-            </label>
-            <button onClick={handleCreateRoom} disabled={creating}>
-              {creating ? 'Criando...' : 'Criar sala'}
-            </button>
-          </div>
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={maxParticipants}
+              onChange={(event) => setMaxParticipants(Number(event.target.value))}
+            />
+          </label>
+          <button className="btn-primary" onClick={handleCreateRoom} disabled={creating}>
+            {creating ? 'Criando...' : 'Criar sala'}
+          </button>
+        </div>
           <p className="small-muted">
             O terapeuta já entra como participante automaticamente. Convites são enviados com link único.
           </p>
@@ -489,7 +489,7 @@ export function DashboardClient() {
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <h2 className="section-title">Filtros de sessão</h2>
-          <button className="secondary" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => {
+          <button className="btn-secondary" onClick={() => {
             setFilters({ status: '', from: '', to: '' })
             loadRooms({ status: '', from: '', to: '' })
           }}>
@@ -525,7 +525,7 @@ export function DashboardClient() {
               onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
             />
           </label>
-          <button style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => loadRooms()}>
+          <button className="btn-primary w-fit" onClick={() => loadRooms()}>
             Aplicar filtros
           </button>
         </div>
