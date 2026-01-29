@@ -4,17 +4,34 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0b0e13;
-  --surface: #111621;
-  --surface-2: #151c2a;
-  --ink: #f3efe7;
-  --ink-muted: #b8b1a6;
-  --gold: #d9a441;
-  --gold-soft: #f1d59a;
-  --teal: #6ad3b0;
-  --border: #273044;
-  --shadow: 0 24px 60px rgba(8, 12, 20, 0.55);
-  --ring: rgba(241, 213, 154, 0.45);
+  --temple-bg: 220 22% 6%;
+  --temple-surface-1: 220 16% 10%;
+  --temple-surface-2: 222 18% 13%;
+  --temple-surface-3: 28 32% 18%;
+  --temple-text-primary: 48 40% 92%;
+  --temple-text-secondary: 40 16% 68%;
+  --temple-border-subtle: 28 25% 28%;
+  --temple-accent-gold: 42 90% 58%;
+  --temple-accent-violet: 272 40% 52%;
+  --temple-accent-state: 144 24% 42%;
+  --temple-radius-md: 0.75rem;
+  --temple-radius-lg: 1rem;
+  --temple-shadow-soft: 0 18px 40px -28px rgba(0, 0, 0, 0.7);
+  --temple-shadow-lift: 0 24px 60px -30px rgba(0, 0, 0, 0.85);
+  --temple-glow-candle: 0 0 0.75rem rgba(234, 179, 8, 0.25);
+  --temple-noise-opacity: 0.08;
+
+  --bg: hsl(var(--temple-bg));
+  --surface: hsl(var(--temple-surface-1));
+  --surface-2: hsl(var(--temple-surface-2));
+  --ink: hsl(var(--temple-text-primary));
+  --ink-muted: hsl(var(--temple-text-secondary));
+  --gold: hsl(var(--temple-accent-gold));
+  --gold-soft: hsl(var(--temple-accent-gold) / 0.85);
+  --teal: hsl(var(--temple-accent-state));
+  --border: hsl(var(--temple-border-subtle));
+  --shadow: var(--temple-shadow-soft);
+  --ring: hsl(var(--temple-accent-gold) / 0.45);
   --text: var(--ink);
   --muted: var(--ink-muted);
   --accent: var(--gold);
@@ -35,9 +52,57 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  background: radial-gradient(1200px 800px at 15% 10%, rgba(217, 164, 65, 0.12) 0%, rgba(13, 17, 26, 0.95) 55%, #0b0e13 100%);
+  background:
+    radial-gradient(600px circle at 20% 15%, rgba(244, 209, 133, 0.15), transparent 60%),
+    radial-gradient(700px circle at 80% 0%, rgba(118, 77, 180, 0.12), transparent 55%),
+    linear-gradient(180deg, rgba(7, 10, 13, 0.96), rgba(10, 12, 15, 0.92));
+  background-attachment: fixed;
   color: var(--ink);
   line-height: 1.6;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+  opacity: var(--temple-noise-opacity);
+  mix-blend-mode: soft-light;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-size: clamp(2rem, 2.6vw, 2.8rem);
+  line-height: 1.15;
+  margin: 0;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+  line-height: 1.2;
+  margin: 0;
+}
+
+h3 {
+  font-size: clamp(1.2rem, 1.6vw, 1.6rem);
+  line-height: 1.25;
+  margin: 0;
+}
+
+p {
+  margin: 0;
 }
 
 a {
@@ -48,7 +113,7 @@ a {
 main {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 24px 80px;
+  padding: 56px 24px 96px;
 }
 
 button, input, select, textarea {
@@ -57,9 +122,17 @@ button, input, select, textarea {
 
 input, textarea {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: #0f141f;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+select {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--ink);
 }
 
@@ -68,15 +141,34 @@ button {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 10px 18px;
-  background: var(--gold);
+  background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
   color: #1a1307;
   font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 button.secondary {
-  background: transparent;
-  border-color: var(--gold);
-  color: var(--gold);
+  background: var(--surface-2);
+  border-color: rgba(217, 164, 65, 0.4);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.12) inset;
+}
+
+button:hover {
+  box-shadow: 0 0 1.2rem rgba(217, 164, 65, 0.35);
+  transform: translateY(-1px);
+}
+
+button.secondary:hover {
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 12px 30px rgba(217, 164, 65, 0.12);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
 }
 
 *:focus-visible {
@@ -85,16 +177,16 @@ button.secondary {
 }
 
 .card {
-  background: var(--surface);
-  border-radius: 18px;
+  background: linear-gradient(160deg, hsl(var(--temple-surface-2)) 0%, hsl(var(--temple-surface-1)) 100%);
+  border-radius: var(--temple-radius-lg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 24px;
 }
 
 .grid {
   display: grid;
-  gap: 20px;
+  gap: 24px;
 }
 
 .grid.two {
@@ -107,8 +199,8 @@ button.secondary {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(241, 213, 154, 0.16);
-  color: var(--gold-soft);
+  background: var(--gold);
+  color: #1b1405;
   font-size: 12px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -121,15 +213,16 @@ button.secondary {
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(17, 22, 33, 0.8);
+  background: hsl(var(--temple-surface-2));
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
 }
 
 .status-pill {
-  background: rgba(241, 213, 154, 0.18);
-  border-color: transparent;
+  background: hsl(var(--temple-surface-3));
+  border-color: rgba(217, 164, 65, 0.35);
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -149,21 +242,23 @@ button.secondary {
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
+  font-family: var(--font-serif);
+  letter-spacing: 0.02em;
   margin: 0;
 }
 
 .small-muted {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-muted);
 }
 
 .notice {
-  background: rgba(241, 213, 154, 0.16);
-  border: 1px solid rgba(241, 213, 154, 0.4);
+  background: hsl(var(--temple-surface-2));
+  border: 1px solid rgba(217, 164, 65, 0.35);
   padding: 12px 14px;
   border-radius: 12px;
-  color: var(--gold-soft);
+  color: var(--ink);
 }
 
 .notice.good {
@@ -174,16 +269,40 @@ button.secondary {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-gold px-5 py-2 text-sm font-semibold text-[#1a1307] shadow-glow transition hover:brightness-105;
+    @apply inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition;
+    background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
+    color: #1a1307;
+    box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-full border border-gold px-5 py-2 text-sm font-semibold text-gold transition hover:border-gold hover:text-gold-soft;
-    border-color: rgba(217, 164, 65, 0.7);
+    @apply inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition;
+    background: var(--surface-2);
+    color: var(--ink);
+    border-color: rgba(217, 164, 65, 0.4);
+    box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.12) inset;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-full border border-border px-5 py-2 text-sm font-semibold text-ink-muted transition hover:text-ink;
+    @apply inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition;
+    background: transparent;
+    color: var(--ink-muted);
     border-color: rgba(39, 48, 68, 0.7);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 1.2rem rgba(217, 164, 65, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:hover {
+    box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 12px 30px rgba(217, 164, 65, 0.12);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost:hover {
+    color: var(--ink);
+    background: rgba(17, 22, 33, 0.6);
+    border-color: rgba(217, 164, 65, 0.25);
   }
 }
