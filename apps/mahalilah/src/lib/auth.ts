@@ -4,6 +4,11 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma, Role } from "@hekate/database"
 
+// Garante que o NextAuth use a URL do Maha Lilah mesmo com .env compartilhado
+if (process.env.NEXTAUTH_URL_MAHALILAH) {
+  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL_MAHALILAH
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
