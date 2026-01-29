@@ -55,6 +55,50 @@ services:
       - private_uploads:/app/uploads
     restart: unless-stopped
 
+  mahalilah:
+    build:
+      context: .
+      dockerfile: Dockerfile.mahalilah
+      target: runner
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL_MAHALILAH: ${NEXTAUTH_URL_MAHALILAH}
+    ports:
+      - "127.0.0.1:3002:3000"
+    restart: unless-stopped
+
+  mahalilah-realtime:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      DATABASE_URL: ${DATABASE_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    working_dir: /app
+    command: ["sh","-lc","exec pnpm --filter @hekate/mahalilah-realtime start"]
+    ports:
+      - "127.0.0.1:4010:4010"
+    restart: unless-stopped
+
   worker-email:
     build:
       context: .

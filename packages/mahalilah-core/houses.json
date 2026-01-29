@@ -1,0 +1,362 @@
+[
+  {
+    "number": 1,
+    "title": "Princípio",
+    "description": "Inicio, começo, gênese"
+  },
+  {
+    "number": 2,
+    "title": "Ilusão",
+    "description": "Dualidade, separatividade, medo"
+  },
+  {
+    "number": 3,
+    "title": "Raiva",
+    "description": "Destruição, fogo, imposição"
+  },
+  {
+    "number": 4,
+    "title": "Ganância",
+    "description": "Vazio, acumulo, superficialidade"
+  },
+  {
+    "number": 5,
+    "title": "Sobrevivência",
+    "description": "Seguranca, realização material, proteção"
+  },
+  {
+    "number": 6,
+    "title": "Percepção limitada",
+    "description": "Apego, ideia fixa, visão limitada"
+  },
+  {
+    "number": 7,
+    "title": "Presunção",
+    "description": "Vaidade, imagem, necessidade de reconhecimento"
+  },
+  {
+    "number": 8,
+    "title": "Inveja",
+    "description": "Comparação, projeção, vitimismo"
+  },
+  {
+    "number": 9,
+    "title": "Desejos",
+    "description": "Movimento, desejo de experiências, curiosidade"
+  },
+  {
+    "number": 10,
+    "title": "Purificação",
+    "description": "Limpeza, purgação, apuração"
+  },
+  {
+    "number": 11,
+    "title": "Entretenimento",
+    "description": "Ritmo, alegria interior, leveza"
+  },
+  {
+    "number": 12,
+    "title": "Aversão",
+    "description": "Repulsa, inveja, repugnância"
+  },
+  {
+    "number": 13,
+    "title": "Nulidade",
+    "description": "Menos valia, baixa autoestima, pessimismo"
+  },
+  {
+    "number": 14,
+    "title": "Criatividade",
+    "description": "Imaginação, descobertas, possibilidades"
+  },
+  {
+    "number": 15,
+    "title": "Fantasia",
+    "description": "Castelos no ar, perda de energia, imaginação excessiva"
+  },
+  {
+    "number": 16,
+    "title": "Ciúme",
+    "description": "Insegurança, medo de perder, apego"
+  },
+  {
+    "number": 17,
+    "title": "Compaixão",
+    "description": "Empatia, benevolência, perdão"
+  },
+  {
+    "number": 18,
+    "title": "Alegria",
+    "description": "Expectativa positiva, presença, satisfação"
+  },
+  {
+    "number": 19,
+    "title": "Ação",
+    "description": "Realização, responsabilidade, poder"
+  },
+  {
+    "number": 20,
+    "title": "Caridade",
+    "description": "Compaixão, empatia, doação"
+  },
+  {
+    "number": 21,
+    "title": "Reparação",
+    "description": "Retificação, responsabilidades, correção"
+  },
+  {
+    "number": 22,
+    "title": "Virtude",
+    "description": "Autoexpressão, ser o que é, dharma"
+  },
+  {
+    "number": 23,
+    "title": "Poder Pessoal",
+    "description": "Ideais, confiança, desejo de realização"
+  },
+  {
+    "number": 24,
+    "title": "Más companhias",
+    "description": "Más influências identificação, reforço negativo"
+  },
+  {
+    "number": 25,
+    "title": "Boas Companhias",
+    "description": "Boas influencias, apoio, parceria"
+  },
+  {
+    "number": 26,
+    "title": "Tristeza",
+    "description": "Falta de vitalidade, descrença, perda"
+  },
+  {
+    "number": 27,
+    "title": "Altruismo",
+    "description": "Servico abnegado, desapego, bem comum"
+  },
+  {
+    "number": 28,
+    "title": "Alinhamento",
+    "description": "Alinhamento, confiança, expressão da alma"
+  },
+  {
+    "number": 29,
+    "title": "Desalinhamento",
+    "description": "Desalinhamento, engano, fe cega"
+  },
+  {
+    "number": 30,
+    "title": "Boas tendências",
+    "description": "Ritmo, bem estar, equilíbrio"
+  },
+  {
+    "number": 31,
+    "title": "Graça divina",
+    "description": "Sintonia, unidade, leveza"
+  },
+  {
+    "number": 32,
+    "title": "Portal do coração",
+    "description": "Equilíbrio, ternura, poesia"
+  },
+  {
+    "number": 33,
+    "title": "Sutilização dos aromas",
+    "description": "Cura pelos aromas, sensibilidade olfativa, harmonização"
+  },
+  {
+    "number": 34,
+    "title": "Sutilização dos sabores",
+    "description": "Bom gosto, nutrição com consciência, prazer"
+  },
+  {
+    "number": 35,
+    "title": "Purgatório",
+    "description": "Consequências, responsabilidade, consciência em ação"
+  },
+  {
+    "number": 36,
+    "title": "Transparência",
+    "description": "Pureza, clareza, purificação"
+  },
+  {
+    "number": 37,
+    "title": "Tomada de consciência",
+    "description": "Consciência, intuição, discernimento"
+  },
+  {
+    "number": 38,
+    "title": "Energia Vital",
+    "description": "Prana, respiração, energia"
+  },
+  {
+    "number": 39,
+    "title": "Eliminação",
+    "description": "Liberar, expeliar, limpar"
+  },
+  {
+    "number": 40,
+    "title": "Circulação",
+    "description": "Movimento, fluxo, transmutação"
+  },
+  {
+    "number": 41,
+    "title": "Expressão de si mesmo",
+    "description": "Sincronização, comunicação, intuição"
+  },
+  {
+    "number": 42,
+    "title": "Fogo interior",
+    "description": "Energia vital, transmutação, entusiasmo"
+  },
+  {
+    "number": 43,
+    "title": "Reorientação",
+    "description": "Presença, expressão de si mesmo, verdade"
+  },
+  {
+    "number": 44,
+    "title": "Ignorância",
+    "description": "Ilusão, teimosia, obstinação"
+  },
+  {
+    "number": 45,
+    "title": "Sabedoria",
+    "description": "Verdade, conhecimento correto, compreensão"
+  },
+  {
+    "number": 46,
+    "title": "Consciência",
+    "description": "Terceira visão, guia interior, inconsciente coletivo"
+  },
+  {
+    "number": 47,
+    "title": "Neutralidade",
+    "description": "Receptividade, arte, equilíbrio masculino-feminino"
+  },
+  {
+    "number": 48,
+    "title": "Energia solar criativa",
+    "description": "Sagrado masculino, foco, criação"
+  },
+  {
+    "number": 49,
+    "title": "Energia lunar receptiva",
+    "description": "Sagrado feminino, magnetismo, atração"
+  },
+  {
+    "number": 50,
+    "title": "Austeridade",
+    "description": "Trabalho sobre si mesmo, autoconhecimento, auto sacrifício"
+  },
+  {
+    "number": 51,
+    "title": "Terra",
+    "description": "Gaia, teia da vida, ecologia profunda"
+  },
+  {
+    "number": 52,
+    "title": "Violência",
+    "description": "Reforma, perseguição, imposição"
+  },
+  {
+    "number": 53,
+    "title": "Água",
+    "description": "Fluxo, emoções, serenidade"
+  },
+  {
+    "number": 54,
+    "title": "Devoção",
+    "description": "Confiança, entrega, abertura"
+  },
+  {
+    "number": 55,
+    "title": "Egocentrismo",
+    "description": "Resistência, autocentramento, desvio"
+  },
+  {
+    "number": 56,
+    "title": "Vibrações perfeitas",
+    "description": "Sons sagrados, mantras, orações"
+  },
+  {
+    "number": 57,
+    "title": "Ar",
+    "description": "Movimento, leveza, dissolução do ego"
+  },
+  {
+    "number": 58,
+    "title": "Radiância",
+    "description": "Brilho, luminosidade, energia"
+  },
+  {
+    "number": 59,
+    "title": "Verdade",
+    "description": "Ser o que se é, reconhecer o que se é, aceitar o que se é"
+  },
+  {
+    "number": 60,
+    "title": "Positividade",
+    "description": "Não resistência, aceitação, fluxo"
+  },
+  {
+    "number": 61,
+    "title": "Negatividade",
+    "description": "Resistência, negação, bloqueio"
+  },
+  {
+    "number": 62,
+    "title": "Felicidade",
+    "description": "Positividade, harmonia, abertura"
+  },
+  {
+    "number": 63,
+    "title": "Acomodação",
+    "description": "Resistência, negligencia, omissão"
+  },
+  {
+    "number": 64,
+    "title": "Energia criadora",
+    "description": "Síntese, sentido existencial, entrega"
+  },
+  {
+    "number": 65,
+    "title": "Unidade",
+    "description": "Espaço interior, abertura, integração com o todo"
+  },
+  {
+    "number": 66,
+    "title": "Bem-aventurança",
+    "description": "Ligação com a essência, verdade, jubilo"
+  },
+  {
+    "number": 67,
+    "title": "Transmutação",
+    "description": "Alquimia, transformação, destruição"
+  },
+  {
+    "number": 68,
+    "title": "Consciência cósmica",
+    "description": "Liberação, permanência, iluminação"
+  },
+  {
+    "number": 69,
+    "title": "Aspiração",
+    "description": "Desejo de criar, concepção, incubação"
+  },
+  {
+    "number": 70,
+    "title": "Síntese",
+    "description": "Integração de experiencias vividas, percepção de sua própria natureza, verdade"
+  },
+  {
+    "number": 71,
+    "title": "Abertura",
+    "description": "Movimento, preparação, abertura"
+  },
+  {
+    "number": 72,
+    "title": "Renascimento",
+    "description": "Novas oportunidades, novas experiencias, entrega"
+  }
+]

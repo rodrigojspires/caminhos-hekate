@@ -104,6 +104,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - web
+      - mahalilah
     networks:
       - hekate-network
 
@@ -135,6 +136,50 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - hekate-network
+
+  # Maha Lilah Next.js Application (Development)
+  mahalilah:
+    build:
+      context: .
+      dockerfile: Dockerfile.mahalilah
+    container_name: hekate-mahalilah
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://hekate:hekate123@postgres:5432/hekate_db?schema=public
+      REDIS_URL: redis://redis:6379
+      NEXTAUTH_URL_MAHALILAH: http://localhost:3002
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    ports:
+      - "3002:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hekate-network
+
+  # Maha Lilah Realtime (Socket.IO)
+  mahalilah-realtime:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: hekate-mahalilah-realtime
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://hekate:hekate123@postgres:5432/hekate_db?schema=public
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      MAHALILAH_REALTIME_PORT: 4010
+      NEXT_PUBLIC_MAHALILAH_URL: http://localhost:3002
+    ports:
+      - "4010:4010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh","-lc","exec pnpm --filter @hekate/mahalilah-realtime start"]
     networks:
       - hekate-network
 

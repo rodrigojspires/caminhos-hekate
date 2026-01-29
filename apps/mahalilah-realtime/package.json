@@ -1,0 +1,23 @@
+{
+  "name": "@hekate/mahalilah-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@hekate/database": "workspace:*",
+    "@hekate/mahalilah-core": "workspace:*",
+    "dotenv": "^17.2.2",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.11",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,67 @@
+# Production Dockerfile for Next.js (apps/mahalilah) with standalone output
+# Multi-stage build using pnpm workspaces
+
+# syntax = docker/dockerfile:1.4
+FROM node:20-alpine AS base
+ENV PNPM_HOME=/root/.pnpm-store \
+    NODE_ENV=production
+RUN apk add --no-cache libc6-compat openssl tzdata
+SHELL ["/bin/sh","-lc"]
+
+# --- Prune layer (Turbo) ---
+FROM base AS pruner
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
+COPY . .
+RUN pnpm dlx turbo@1.13.4 prune --scope=@hekate/mahalilah --docker
+
+# --- Dependencies layer (PRUNED) ---
+FROM base AS deps
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@8.14.1 --activate
+COPY --from=pruner /app/out/json/ ./
+# Cache pnpm store between builds
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --no-frozen-lockfile --prod=false
+
+# --- Build layer ---
+FROM deps AS build
+WORKDIR /app
+COPY --from=pruner /app/out/full/ ./
+# Copia configuracoes de raiz necessárias para o Next/TS
+COPY --from=pruner /app/tsconfig.json ./tsconfig.json
+COPY --from=pruner /app/turbo.json ./turbo.json
+ARG TURBO_TOKEN
+ARG TURBO_TEAM
+ENV TURBO_TOKEN=$TURBO_TOKEN
+ENV TURBO_TEAM=$TURBO_TEAM
+ENV NODE_ENV=production
+# Gera Prisma client antes do build do Next
+RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
+# Evita conexões externas durante o build do Next
+RUN SKIP_REDIS=1 pnpm -w build
+
+# --- Runtime layer ---
+FROM base AS runner
+WORKDIR /app
+
+# Copia o output standalone do Next e assets necessários
+COPY --from=build /app/apps/mahalilah/.next/standalone ./
+COPY --from=build /app/apps/mahalilah/.next/static ./apps/mahalilah/.next/static
+COPY --from=build /app/apps/mahalilah/public ./apps/mahalilah/public
+COPY --from=build /app/apps/mahalilah/scripts ./apps/mahalilah/scripts
+# Prisma schema (útil para tarefas de manutenção)
+COPY --from=build /app/packages/database/prisma ./packages/database/prisma
+
+# Instalar su-exec para alternar para usuário node no entrypoint
+RUN apk add --no-cache su-exec
+RUN chmod +x /app/apps/mahalilah/scripts/docker-entrypoint.sh
+
+ENV PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    NODE_ENV=production \
+    PRIVATE_UPLOAD_ROOT=/app/uploads
+
+EXPOSE 3000
+USER root
+ENTRYPOINT ["sh","-lc","/app/apps/mahalilah/scripts/docker-entrypoint.sh"]

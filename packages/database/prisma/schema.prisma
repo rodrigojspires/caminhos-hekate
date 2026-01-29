@@ -105,6 +105,10 @@ model User {
   pushSubscriptions             PushSubscription[]
   pushNotificationLogs          PushNotificationLog[]
   smsLogs                       SmsLog[]
+  // Maha Lilah relations
+  mahaLilahRoomsCreated         MahaLilahRoom[]       @relation("MahaLilahRoomCreator")
+  mahaLilahParticipants         MahaLilahParticipant[]
+  mahaLilahInvitesSent          MahaLilahInvite[]     @relation("MahaLilahInviteSender")
 }
 
 model Account {
@@ -2942,6 +2946,221 @@ model SmsLog {
   @@index([sentBy])
   @@index([status])
   @@map("sms_logs")
+}
+
+model MahaLilahRoom {
+  id                String               @id @default(cuid())
+  code              String               @unique
+  createdByUserId   String
+  createdAt         DateTime             @default(now())
+  closedAt          DateTime?
+  status            MahaLilahRoomStatus  @default(ACTIVE)
+  maxParticipants   Int
+  planType          MahaLilahPlanType    @default(SINGLE_SESSION)
+  orderId           String?
+  subscriptionId    String?
+  consentTextVersion String?
+
+  createdByUser User               @relation("MahaLilahRoomCreator", fields: [createdByUserId], references: [id])
+  order         Order?             @relation(fields: [orderId], references: [id])
+  subscription  Subscription?      @relation(fields: [subscriptionId], references: [id])
+  invites       MahaLilahInvite[]
+  participants  MahaLilahParticipant[]
+  gameState     MahaLilahGameState?
+  playerStates  MahaLilahPlayerState[]
+  moves         MahaLilahMove[]
+  therapyEntries MahaLilahTherapyEntry[]
+  cardDraws     MahaLilahCardDraw[]
+  aiUsages      MahaLilahAiUsage[]
+  aiReports     MahaLilahAiReport[]
+
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MahaLilahInvite {
+  id              String               @id @default(cuid())
+  roomId          String
+  email           String
+  role            MahaLilahInviteRole  @default(PLAYER)
+  token           String               @unique
+  sentAt          DateTime             @default(now())
+  acceptedAt      DateTime?
+  invitedByUserId String
+
+  room      MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  invitedBy User          @relation("MahaLilahInviteSender", fields: [invitedByUserId], references: [id])
+
+  @@unique([roomId, email])
+  @@index([roomId])
+  @@index([email])
+}
+
+model MahaLilahParticipant {
+  id                String                  @id @default(cuid())
+  roomId            String
+  role              MahaLilahParticipantRole
+  userId            String
+  displayName       String?
+  inviteId          String?
+  joinedAt          DateTime                @default(now())
+  consentAcceptedAt DateTime?
+
+  room         MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id])
+  invite       MahaLilahInvite? @relation(fields: [inviteId], references: [id])
+  playerState  MahaLilahPlayerState?
+  moves        MahaLilahMove[]
+  therapyEntries MahaLilahTherapyEntry[]
+  cardDraws    MahaLilahCardDraw[]
+  aiUsages     MahaLilahAiUsage[]
+  aiReports    MahaLilahAiReport[]
+
+  @@unique([roomId, userId])
+  @@index([role])
+  @@index([roomId])
+}
+
+model MahaLilahGameState {
+  roomId           String   @id
+  currentTurnIndex Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  room MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model MahaLilahPlayerState {
+  id                String   @id @default(cuid())
+  roomId            String
+  participantId     String
+  position          Int
+  hasStarted        Boolean  @default(false)
+  hasCompleted      Boolean  @default(false)
+  rollCountTotal    Int      @default(0)
+  rollCountUntilStart Int    @default(0)
+
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, participantId])
+  @@index([roomId])
+}
+
+model MahaLilahMove {
+  id             String   @id @default(cuid())
+  roomId         String
+  turnNumber     Int
+  participantId  String
+  diceValue      Int
+  fromPos        Int
+  toPos          Int
+  appliedJumpFrom Int?
+  appliedJumpTo   Int?
+  createdAt      DateTime @default(now())
+
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  therapyEntries MahaLilahTherapyEntry[]
+  cardDraws    MahaLilahCardDraw[]
+
+  @@index([roomId])
+  @@index([participantId])
+  @@index([createdAt])
+}
+
+model MahaLilahTherapyEntry {
+  id            String   @id @default(cuid())
+  roomId        String
+  moveId        String
+  participantId String
+  emotion       String?
+  intensity     Int?
+  insight       String?
+  body          String?
+  microAction   String?
+  createdAt     DateTime @default(now())
+
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  move        MahaLilahMove @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([participantId])
+  @@index([createdAt])
+}
+
+model MahaLilahCardDraw {
+  id                    String   @id @default(cuid())
+  roomId                String
+  moveId                String?
+  drawnByParticipantId  String
+  cards                 Int[]
+  createdAt             DateTime @default(now())
+
+  room       MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  move       MahaLilahMove? @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  drawnBy    MahaLilahParticipant @relation(fields: [drawnByParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([drawnByParticipantId])
+  @@index([createdAt])
+}
+
+model MahaLilahAiUsage {
+  id            String   @id @default(cuid())
+  roomId        String
+  participantId String
+  tipsUsed      Int      @default(0)
+  tipsLimit     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, participantId])
+  @@index([roomId])
+}
+
+model MahaLilahAiReport {
+  id            String             @id @default(cuid())
+  roomId        String
+  participantId String?
+  kind          MahaLilahAiReportKind @default(FINAL)
+  content       String
+  createdAt     DateTime           @default(now())
+
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant MahaLilahParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([roomId])
+  @@index([participantId])
+  @@index([createdAt])
+}
+
+enum MahaLilahRoomStatus {
+  ACTIVE
+  CLOSED
+  COMPLETED
+}
+
+enum MahaLilahPlanType {
+  SINGLE_SESSION
+  SUBSCRIPTION
+  SUBSCRIPTION_LIMITED
+}
+
+enum MahaLilahInviteRole {
+  PLAYER
+}
+
+enum MahaLilahParticipantRole {
+  THERAPIST
+  PLAYER
+}
+
+enum MahaLilahAiReportKind {
+  FINAL
 }
 
 enum EmailStatus {
