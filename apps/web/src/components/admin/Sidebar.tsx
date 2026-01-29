@@ -20,7 +20,8 @@ import {
   Ticket,
   UsersRound, // Replaced Handshake
   SlidersHorizontal,
-  View
+  View,
+  Dice6
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -44,6 +45,7 @@ const menuItems = [
   { title: "Faturas", href: "/admin/invoices", icon: Coins },
   { title: "Cupons", href: "/admin/coupons", icon: Ticket },
   { title: "Planos de Assinatura", href: "/admin/subscriptions/plans", icon: UsersRound }, // Replaced Handshake
+  { title: "Maha Lilah", href: "/admin/mahalilah", icon: Dice6 },
   { title: "Configurações", href: "/admin/settings", icon: SlidersHorizontal },
 ]
 

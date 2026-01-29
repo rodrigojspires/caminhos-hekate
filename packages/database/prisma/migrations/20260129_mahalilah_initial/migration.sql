@@ -144,12 +144,14 @@ CREATE INDEX "MahaLilahInvite_roomId_idx" ON "MahaLilahInvite"("roomId");
 CREATE INDEX "MahaLilahInvite_email_idx" ON "MahaLilahInvite"("email");
 
 CREATE UNIQUE INDEX "MahaLilahParticipant_roomId_userId_key" ON "MahaLilahParticipant"("roomId", "userId");
+CREATE UNIQUE INDEX "MahaLilahParticipant_inviteId_key" ON "MahaLilahParticipant"("inviteId");
 CREATE INDEX "MahaLilahParticipant_role_idx" ON "MahaLilahParticipant"("role");
 CREATE INDEX "MahaLilahParticipant_roomId_idx" ON "MahaLilahParticipant"("roomId");
 
 CREATE UNIQUE INDEX "MahaLilahGameState_roomId_key" ON "MahaLilahGameState"("roomId");
 
 CREATE UNIQUE INDEX "MahaLilahPlayerState_roomId_participantId_key" ON "MahaLilahPlayerState"("roomId", "participantId");
+CREATE UNIQUE INDEX "MahaLilahPlayerState_participantId_key" ON "MahaLilahPlayerState"("participantId");
 CREATE INDEX "MahaLilahPlayerState_roomId_idx" ON "MahaLilahPlayerState"("roomId");
 
 CREATE INDEX "MahaLilahMove_roomId_idx" ON "MahaLilahMove"("roomId");

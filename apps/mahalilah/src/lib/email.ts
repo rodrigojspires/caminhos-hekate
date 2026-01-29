@@ -1,14 +1,42 @@
-import { Resend } from 'resend'
+async function sendViaSmtp(params: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  fromEmail: string
+  fromName: string
+}) {
+  const host = process.env.SMTP_HOST
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD
+  const secure = String(port) === '465'
 
-let resendClient: Resend | null = null
-
-function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return null
-  if (!resendClient) {
-    resendClient = new Resend(apiKey)
+  if (!host || !user || !pass) {
+    console.warn('SMTP não configurado. Simulando envio de email.', {
+      to: params.to,
+      subject: params.subject
+    })
+    return { id: 'simulated', success: false }
   }
-  return resendClient
+
+  const { createTransport } = await import('nodemailer')
+  const transporter = createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass }
+  })
+
+  const info = await transporter.sendMail({
+    from: `${params.fromName} <${params.fromEmail}>`,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+    text: params.text
+  })
+
+  return { id: info.messageId || 'smtp', success: true }
 }
 
 export async function sendInviteEmail(params: {
@@ -17,8 +45,7 @@ export async function sendInviteEmail(params: {
   roomCode: string
   inviteUrl: string
 }) {
-  const client = getResendClient()
-  const fromEmail = process.env.DEFAULT_FROM_EMAIL || 'noreply@mahalilahonline.com.br'
+  const fromEmail = process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_FROM || 'noreply@mahalilahonline.com.br'
   const fromName = process.env.DEFAULT_FROM_NAME || 'Maha Lilah Online'
 
   const subject = `Convite para Maha Lilah — Sala ${params.roomCode}`
@@ -37,21 +64,11 @@ export async function sendInviteEmail(params: {
     </div>
   `
 
-  if (!client) {
-    console.warn('RESEND_API_KEY não configurado. Simulando envio de convite:', params)
-    return { id: 'simulated', success: false }
-  }
-
-  const result = await client.emails.send({
-    from: `${fromName} <${fromEmail}>`,
+  return sendViaSmtp({
     to: params.to,
     subject,
     html,
+    fromEmail,
+    fromName
   })
-
-  if (result.error) {
-    throw new Error(result.error.message)
-  }
-
-  return { id: result.data?.id || 'unknown', success: true }
 }

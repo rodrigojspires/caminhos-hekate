@@ -170,6 +170,7 @@ model Subscription {
   updatedAt     DateTime           @updatedAt
   payments      Payment[]
   user          User               @relation(fields: [userId], references: [id])
+  mahaLilahRooms MahaLilahRoom[]
 }
 
 model SubscriptionPlan {
@@ -302,6 +303,7 @@ model Order {
   payments            Payment[]
   paymentTransactions PaymentTransaction[]
   shipments           Shipment[]
+  mahaLilahRooms      MahaLilahRoom[]
 }
 
 model OrderItem {
@@ -2989,8 +2991,9 @@ model MahaLilahInvite {
   acceptedAt      DateTime?
   invitedByUserId String
 
-  room      MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  invitedBy User          @relation("MahaLilahInviteSender", fields: [invitedByUserId], references: [id])
+  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  invitedBy   User          @relation("MahaLilahInviteSender", fields: [invitedByUserId], references: [id])
+  participant MahaLilahParticipant?
 
   @@unique([roomId, email])
   @@index([roomId])
@@ -3003,7 +3006,7 @@ model MahaLilahParticipant {
   role              MahaLilahParticipantRole
   userId            String
   displayName       String?
-  inviteId          String?
+  inviteId          String?                 @unique
   joinedAt          DateTime                @default(now())
   consentAcceptedAt DateTime?
 
@@ -3033,7 +3036,7 @@ model MahaLilahGameState {
 model MahaLilahPlayerState {
   id                String   @id @default(cuid())
   roomId            String
-  participantId     String
+  participantId     String   @unique
   position          Int
   hasStarted        Boolean  @default(false)
   hasCompleted      Boolean  @default(false)
