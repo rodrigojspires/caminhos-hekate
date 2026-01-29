@@ -83,11 +83,10 @@ export function Navbar() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/50 bg-[#0f141f] text-xs font-bold text-gold">
                   {profileInitial}
                 </span>
-                <span className="hidden sm:inline">Perfil</span>
               </button>
               {profileOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 rounded-2xl border border-border/70 bg-surface/95 p-2 text-sm shadow-soft"
+                  className="absolute right-0 mt-2 w-56 rounded-2xl border border-border/70 bg-surface p-2 text-sm shadow-soft"
                   role="menu"
                 >
                   <div className="px-3 py-2">

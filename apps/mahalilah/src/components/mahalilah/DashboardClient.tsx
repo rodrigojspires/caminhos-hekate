@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-import { signOut } from 'next-auth/react'
 import { useCallback, useEffect, useState } from 'react'
 
 type RoomInvite = {
@@ -459,20 +457,6 @@ export function DashboardClient() {
 
   return (
     <div className="grid" style={{ gap: 24 }}>
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-        <div>
-          <div className="badge">Dashboard</div>
-          <div style={{ marginTop: 6, color: 'var(--muted)' }}>Acesso administrativo do terapeuta</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link href="/">
-            <button className="secondary">Site institucional</button>
-          </Link>
-          <button className="secondary" onClick={() => signOut({ callbackUrl: '/' })}>
-            Sair
-          </button>
-        </div>
-      </div>
       {notice && (
         <div className={`notice ${notice.variant === 'success' ? 'good' : ''}`}>
           {notice.message}
