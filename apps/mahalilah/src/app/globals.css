@@ -140,11 +140,11 @@ button {
   cursor: pointer;
   border: 1px solid transparent;
   border-radius: 12px;
-  padding: 8px 16px;
+  padding: 7px 14px;
   background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
   color: #1a1307;
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.2;
   box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
@@ -270,27 +270,27 @@ button:disabled {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition;
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-sm font-semibold transition;
     background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
     color: #1a1307;
-    line-height: 1.1;
+    line-height: 1.2;
     box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition;
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-1.5 text-sm font-semibold transition;
     background: var(--surface-2);
     color: var(--ink);
     border-color: rgba(217, 164, 65, 0.4);
-    line-height: 1.1;
+    line-height: 1.2;
     box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.12) inset;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition;
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-1.5 text-sm font-semibold transition;
     background: transparent;
     color: var(--ink-muted);
-    line-height: 1.1;
+    line-height: 1.2;
     border-color: rgba(39, 48, 68, 0.7);
   }
 

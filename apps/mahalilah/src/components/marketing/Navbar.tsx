@@ -80,7 +80,7 @@ export function Navbar() {
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/50 bg-[#0f141f] text-xs font-bold text-gold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/30 bg-[#0f141f] text-xs font-bold text-gold">
                   {profileInitial}
                 </span>
               </button>
