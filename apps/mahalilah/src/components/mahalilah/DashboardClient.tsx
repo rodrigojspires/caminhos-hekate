@@ -462,7 +462,7 @@ export function DashboardClient() {
             <span>Participantes máximos</span>
             <input
               type="number"
-              min={2}
+              min={1}
               max={12}
               value={maxParticipants}
               onChange={(event) => setMaxParticipants(Number(event.target.value))}

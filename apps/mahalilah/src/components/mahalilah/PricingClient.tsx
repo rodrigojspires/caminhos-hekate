@@ -62,10 +62,10 @@ export function PricingClient() {
           <h3 style={{ margin: 0 }}>Sessão avulsa</h3>
           <div className="small-muted">Escolha o número de participantes antes de pagar.</div>
           <label style={{ display: 'grid', gap: 6 }}>
-            <span>Participantes (2–8)</span>
+            <span>Participantes (1–8)</span>
             <input
               type="number"
-              min={2}
+              min={1}
               max={8}
               value={maxParticipants}
               onChange={(event) => setMaxParticipants(Number(event.target.value))}

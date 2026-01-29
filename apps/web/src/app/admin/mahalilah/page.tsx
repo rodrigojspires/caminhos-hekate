@@ -90,8 +90,8 @@ export default function AdminMahaLilahPage() {
       toast.error('Informe o e-mail do terapeuta.')
       return
     }
-    if (maxParticipants < 2 || maxParticipants > 12 || Number.isNaN(maxParticipants)) {
-      toast.error('Participantes deve estar entre 2 e 12.')
+    if (maxParticipants < 1 || maxParticipants > 12 || Number.isNaN(maxParticipants)) {
+      toast.error('Participantes deve estar entre 1 e 12.')
       return
     }
 
@@ -144,7 +144,7 @@ export default function AdminMahaLilahPage() {
               <label className="text-sm font-medium">Participantes</label>
               <Input
                 type="number"
-                min={2}
+                min={1}
                 max={12}
                 value={maxParticipants}
                 onChange={(event) => setMaxParticipants(Number(event.target.value))}

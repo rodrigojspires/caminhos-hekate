@@ -7,7 +7,7 @@ import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { RULES } from '@hekate/mahalilah-core'
 
 const CreateRoomSchema = z.object({
-  maxParticipants: z.number().int().min(2).max(12).default(4)
+  maxParticipants: z.number().int().min(1).max(12).default(4)
 })
 
 async function ensureUniqueCode() {
