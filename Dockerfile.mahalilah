@@ -36,6 +36,8 @@ ARG TURBO_TEAM
 ENV TURBO_TOKEN=$TURBO_TOKEN
 ENV TURBO_TEAM=$TURBO_TEAM
 ENV NODE_ENV=production
+# Reinstala deps no workspace pruned para evitar binários ausentes em build
+RUN pnpm install --no-frozen-lockfile --prod=false
 # Gera Prisma client antes do build do Next
 RUN pnpm -w db:generate || (cd packages/database && npx prisma generate)
 # Evita conexões externas durante o build do Next
