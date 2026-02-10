@@ -19,6 +19,7 @@ export function Navbar() {
   const { data: session, status } = useSession()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
+  const profileMenuItemClass = 'flex w-full items-center rounded-xl px-3 py-2 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink'
   const profileInitial = useMemo(() => {
     const label = session?.user?.name || session?.user?.email || 'U'
     const trimmed = label.trim()
@@ -75,12 +76,12 @@ export function Navbar() {
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full border border-border/70 bg-surface/70 px-3 py-2 text-sm font-semibold text-ink transition hover:border-gold/60"
+                className="flex items-center gap-2 rounded-full border border-border/70 bg-surface/70 px-3 py-2 text-sm font-semibold text-ink transition hover:border-border"
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/30 bg-[#0f141f] text-xs font-bold text-gold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-[#0f141f] text-xs font-bold text-ink">
                   {profileInitial}
                 </span>
               </button>
@@ -96,14 +97,14 @@ export function Navbar() {
                   <div className="my-2 h-px bg-border/70" />
                   <Link
                     href="/dashboard"
-                    className="block rounded-xl px-3 py-2 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                    className={profileMenuItemClass}
                     onClick={() => setProfileOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <button
                     type="button"
-                    className="mt-1 w-full rounded-xl px-3 py-2 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                    className={profileMenuItemClass}
                     onClick={() => signOut({ callbackUrl: '/' })}
                   >
                     Sair
