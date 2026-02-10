@@ -301,70 +301,70 @@ export function DashboardClient() {
           </div>
         </div>
 
-        <div className="grid" style={{ gap: 10 }}>
-          <strong>Convites</strong>
-          {room.invites.length === 0 ? (
-            <span className="small-muted">Nenhum convite enviado.</span>
-          ) : (
-            <div style={{ display: 'grid', gap: 6 }}>
-              {room.invites.map((invite) => (
-                <div key={invite.id} className="badge" style={{ justifyContent: 'space-between' }}>
-                  <span>{invite.email} • {invite.acceptedAt ? 'Aceito' : 'Pendente'}</span>
-                  {!invite.acceptedAt && (
-                    <button
-                      className="btn-secondary px-3 py-1 text-xs"
-                      onClick={() => handleSendInvites(room.id, [invite.email])}
-                    >
-                      Reenviar
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="grid" style={{ gap: 10 }}>
-          <strong>Participantes</strong>
-          <div style={{ display: 'grid', gap: 6 }}>
-            {room.participants.map((participant) => (
-              <div key={participant.id} className="badge" style={{ justifyContent: 'space-between' }}>
-                <span>
-                  {participant.user.name || participant.user.email} • {participant.role}
-                  {participant.consentAcceptedAt ? '' : ' • Consentimento pendente'}
-                </span>
-                {participant.role === 'PLAYER' && (
-                  <button
-                    className="btn-secondary px-3 py-1 text-xs"
-                    onClick={() => handleRemoveParticipant(room.id, participant.id)}
-                  >
-                    Remover
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gap: 8 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span>Enviar convites (separe por vírgula)</span>
-            <input
-              type="text"
-              value={inviteEmails[room.id] || ''}
-              onChange={(event) =>
-                setInviteEmails((prev) => ({ ...prev, [room.id]: event.target.value }))
-              }
-              placeholder="jogador1@email.com, jogador2@email.com"
-            />
-          </label>
-          <button className="btn-secondary w-fit" onClick={() => handleSendInvites(room.id)}>
-            Enviar convites
-          </button>
-        </div>
-
         {isOpen && (
           <div className="grid" style={{ gap: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+            <div className="grid" style={{ gap: 10 }}>
+              <strong>Convites</strong>
+              {room.invites.length === 0 ? (
+                <span className="small-muted">Nenhum convite enviado.</span>
+              ) : (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {room.invites.map((invite) => (
+                    <div key={invite.id} className="badge" style={{ justifyContent: 'space-between' }}>
+                      <span>{invite.email} • {invite.acceptedAt ? 'Aceito' : 'Pendente'}</span>
+                      {!invite.acceptedAt && (
+                        <button
+                          className="btn-secondary px-3 py-1 text-xs"
+                          onClick={() => handleSendInvites(room.id, [invite.email])}
+                        >
+                          Reenviar
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid" style={{ gap: 10 }}>
+              <strong>Participantes</strong>
+              <div style={{ display: 'grid', gap: 6 }}>
+                {room.participants.map((participant) => (
+                  <div key={participant.id} className="badge" style={{ justifyContent: 'space-between' }}>
+                    <span>
+                      {participant.user.name || participant.user.email} • {participant.role}
+                      {participant.consentAcceptedAt ? '' : ' • Consentimento pendente'}
+                    </span>
+                    {participant.role === 'PLAYER' && (
+                      <button
+                        className="btn-secondary px-3 py-1 text-xs"
+                        onClick={() => handleRemoveParticipant(room.id, participant.id)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Enviar convites (separe por vírgula)</span>
+                <input
+                  type="text"
+                  value={inviteEmails[room.id] || ''}
+                  onChange={(event) =>
+                    setInviteEmails((prev) => ({ ...prev, [room.id]: event.target.value }))
+                  }
+                  placeholder="jogador1@email.com, jogador2@email.com"
+                />
+              </label>
+              <button className="btn-secondary w-fit" onClick={() => handleSendInvites(room.id)}>
+                Enviar convites
+              </button>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <strong>Timeline</strong>
               <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
