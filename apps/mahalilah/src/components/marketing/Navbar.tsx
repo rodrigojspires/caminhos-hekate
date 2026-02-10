@@ -19,7 +19,7 @@ export function Navbar() {
   const { data: session, status } = useSession()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
-  const profileMenuItemClass = 'flex w-full items-center rounded-xl border border-transparent bg-transparent px-3 py-2 text-left text-ink-muted shadow-none transition hover:bg-surface-2 hover:text-ink'
+  const profileMenuItemClass = 'flex w-full items-center rounded-xl !border-transparent !bg-transparent px-3 py-2 text-left text-ink-muted !shadow-none transition hover:!bg-surface-2 hover:text-ink'
   const profileInitial = useMemo(() => {
     const label = session?.user?.name || session?.user?.email || 'U'
     const trimmed = label.trim()
@@ -76,7 +76,8 @@ export function Navbar() {
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full border border-border/70 bg-surface/70 px-3 py-2 text-sm font-semibold text-ink shadow-none transition hover:border-border hover:bg-surface/70"
+                className="flex items-center gap-2 rounded-full border border-border/70 !bg-surface/70 px-3 py-2 text-sm font-semibold text-ink !shadow-none transition hover:border-border hover:!bg-surface/70"
+                style={{ filter: 'none' }}
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
