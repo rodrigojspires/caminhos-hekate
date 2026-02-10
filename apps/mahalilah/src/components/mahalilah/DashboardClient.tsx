@@ -330,7 +330,19 @@ export function DashboardClient() {
               <strong>Participantes</strong>
               <div style={{ display: 'grid', gap: 6 }}>
                 {room.participants.map((participant) => (
-                  <div key={participant.id} className="badge" style={{ justifyContent: 'space-between' }}>
+                  <div
+                    key={participant.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: 'hsl(var(--temple-surface-2))'
+                    }}
+                  >
                     <span>
                       {participant.user.name || participant.user.email} • {participant.role}
                       {participant.consentAcceptedAt ? '' : ' • Consentimento pendente'}
@@ -378,7 +390,18 @@ export function DashboardClient() {
             ) : roomDetails?.moves.length ? (
               <div style={{ display: 'grid', gap: 8 }}>
                 {roomDetails.moves.map((move) => (
-                  <div key={move.id} className="badge" style={{ alignItems: 'flex-start' }}>
+                  <div
+                    key={move.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: 'hsl(var(--temple-surface-2))'
+                    }}
+                  >
                     <div>
                       <strong>{move.participant.user.name || move.participant.user.email}</strong>
                       <div className="small-muted">
@@ -407,7 +430,18 @@ export function DashboardClient() {
               {roomDetails?.cardDraws?.length ? (
                 <div style={{ display: 'grid', gap: 6 }}>
                   {roomDetails.cardDraws.map((draw) => (
-                    <div key={draw.id} className="badge" style={{ alignItems: 'flex-start' }}>
+                    <div
+                      key={draw.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: '1px solid var(--border)',
+                        background: 'hsl(var(--temple-surface-2))'
+                      }}
+                    >
                       <div>
                         <strong>{draw.drawnBy.user.name || draw.drawnBy.user.email}</strong>
                         <div className="small-muted">
