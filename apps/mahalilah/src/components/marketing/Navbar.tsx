@@ -19,7 +19,21 @@ export function Navbar() {
   const { data: session, status } = useSession()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
-  const profileMenuItemClass = 'flex w-full items-center rounded-xl !border-transparent !bg-transparent px-3 py-2 text-left text-ink-muted !shadow-none transition hover:!bg-surface-2 hover:text-ink'
+  const profileMenuItemClass = 'flex w-full items-center rounded-xl px-3 py-2 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink'
+  const neutralButtonStyle = {
+    background: 'var(--surface)',
+    borderColor: 'var(--border)',
+    boxShadow: 'none',
+    color: 'var(--ink)',
+    filter: 'none'
+  } as const
+  const neutralMenuItemStyle = {
+    background: 'transparent',
+    borderColor: 'transparent',
+    boxShadow: 'none',
+    color: 'var(--ink-muted)',
+    filter: 'none'
+  } as const
   const profileInitial = useMemo(() => {
     const label = session?.user?.name || session?.user?.email || 'U'
     const trimmed = label.trim()
@@ -76,13 +90,16 @@ export function Navbar() {
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full border border-border/70 !bg-surface/70 px-3 py-2 text-sm font-semibold text-ink !shadow-none transition hover:border-border hover:!bg-surface/70"
-                style={{ filter: 'none' }}
+                className="flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-ink transition"
+                style={neutralButtonStyle}
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-[#0f141f] text-xs font-bold text-ink">
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold"
+                  style={{ background: '#0f141f', borderColor: 'var(--border)', color: 'var(--ink)' }}
+                >
                   {profileInitial}
                 </span>
               </button>
@@ -99,6 +116,7 @@ export function Navbar() {
                   <Link
                     href="/dashboard"
                     className={profileMenuItemClass}
+                    style={neutralMenuItemStyle}
                     onClick={() => setProfileOpen(false)}
                   >
                     Dashboard
@@ -106,6 +124,7 @@ export function Navbar() {
                   <button
                     type="button"
                     className={profileMenuItemClass}
+                    style={neutralMenuItemStyle}
                     onClick={() => signOut({ callbackUrl: '/' })}
                   >
                     Sair
