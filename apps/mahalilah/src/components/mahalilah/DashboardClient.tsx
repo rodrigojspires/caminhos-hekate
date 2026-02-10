@@ -358,7 +358,7 @@ export function DashboardClient() {
               placeholder="jogador1@email.com, jogador2@email.com"
             />
           </label>
-          <button className="btn-primary w-fit" onClick={() => handleSendInvites(room.id)}>
+          <button className="btn-secondary w-fit" onClick={() => handleSendInvites(room.id)}>
             Enviar convites
           </button>
         </div>
@@ -525,7 +525,7 @@ export function DashboardClient() {
               onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
             />
           </label>
-          <button className="btn-primary w-fit" style={{ alignSelf: 'center' }} onClick={() => loadRooms()}>
+          <button className="btn-secondary w-fit" style={{ alignSelf: 'center' }} onClick={() => loadRooms()}>
             Aplicar filtros
           </button>
         </div>
