@@ -54,6 +54,7 @@ export default function AdminMahaLilahPage() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [therapistEmail, setTherapistEmail] = useState('')
   const [maxParticipants, setMaxParticipants] = useState(4)
@@ -118,6 +119,27 @@ export default function AdminMahaLilahPage() {
     setTherapistEmail('')
     await loadRooms()
     setCreating(false)
+  }
+
+  const handleDeleteRoom = async (room: Room) => {
+    const confirmed = window.confirm(`Excluir a sala ${room.code}? Esta ação não pode ser desfeita.`)
+    if (!confirmed) return
+
+    setDeletingRoomId(room.id)
+    const res = await fetch(`/api/admin/mahalilah/rooms/${room.id}`, {
+      method: 'DELETE'
+    })
+
+    const payload = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(payload.error || 'Erro ao excluir sala')
+      setDeletingRoomId(null)
+      return
+    }
+
+    toast.success(payload.message || 'Sala excluída com sucesso.')
+    await loadRooms()
+    setDeletingRoomId(null)
   }
 
   return (
@@ -202,12 +224,13 @@ export default function AdminMahaLilahPage() {
                   <TableHead>Convites</TableHead>
                   <TableHead>Jogadas</TableHead>
                   <TableHead>Pagamento</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rooms.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       Nenhuma sala encontrada.
                     </TableCell>
                   </TableRow>
@@ -236,6 +259,16 @@ export default function AdminMahaLilahPage() {
                       <TableCell>{room.invitesCount}</TableCell>
                       <TableCell>{room.stats.moves}</TableCell>
                       <TableCell>{room.orderId ? 'Pago' : 'Admin'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteRoom(room)}
+                          disabled={deletingRoomId === room.id}
+                        >
+                          {deletingRoomId === room.id ? 'Excluindo...' : 'Excluir'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

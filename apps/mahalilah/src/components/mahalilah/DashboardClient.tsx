@@ -272,6 +272,12 @@ export function DashboardClient() {
     return 'status-pill'
   }
 
+  const participantRoleLabel = (role: string) => {
+    if (role === 'THERAPIST') return 'Terapeuta'
+    if (role === 'PLAYER') return 'Jogador'
+    return role
+  }
+
   const roomCards = rooms.map((room) => {
     const isOpen = !!openRooms[room.id]
     const roomDetails = details[room.id]
@@ -387,7 +393,7 @@ export function DashboardClient() {
                     }}
                   >
                     <span>
-                      {participant.user.name || participant.user.email} • {participant.role}
+                      {participant.user.name || participant.user.email} • {participantRoleLabel(participant.role)}
                       {participant.consentAcceptedAt ? '' : ' • Consentimento pendente'}
                     </span>
                     {participant.role === 'PLAYER' && (
