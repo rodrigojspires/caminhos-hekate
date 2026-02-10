@@ -21,8 +21,8 @@ export function Navbar() {
   const profileRef = useRef<HTMLDivElement | null>(null)
   const profileMenuItemClass = 'flex w-full items-center rounded-xl px-3 py-2 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink'
   const neutralButtonStyle = {
-    background: 'var(--surface)',
-    borderColor: 'var(--border)',
+    background: 'transparent',
+    border: 'none',
     boxShadow: 'none',
     color: 'var(--ink)',
     filter: 'none'
@@ -90,7 +90,7 @@ export function Navbar() {
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold text-ink transition"
+                className="flex items-center justify-center rounded-full p-0 text-sm font-semibold text-ink transition"
                 style={neutralButtonStyle}
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-haspopup="menu"
