@@ -172,6 +172,10 @@ function ensureConsentAccepted(participant: { consentAcceptedAt: Date | null }) 
   }
 }
 
+function getTurnParticipants<T extends { id: string; role: string }>(participants: T[], therapistPlays: boolean) {
+  return participants.filter((participant) => therapistPlays || participant.role !== 'THERAPIST')
+}
+
 async function ensurePlayerStates(roomId: string, participantIds: string[]) {
   const existing = await prisma.mahaLilahPlayerState.findMany({
     where: { roomId, participantId: { in: participantIds } }
@@ -225,24 +229,25 @@ async function buildRoomState(roomId: string) {
 
   if (!room) return null
 
-  const participantIds = room.participants.map((p) => p.id)
-  await ensurePlayerStates(room.id, participantIds)
+  const turnParticipants = getTurnParticipants(room.participants, room.therapistPlays)
+  const turnParticipantIds = turnParticipants.map((participant) => participant.id)
+  await ensurePlayerStates(room.id, turnParticipantIds)
 
   const playerStates = await prisma.mahaLilahPlayerState.findMany({
-    where: { roomId: room.id, participantId: { in: participantIds } }
+    where: { roomId: room.id, participantId: { in: turnParticipantIds } }
   })
 
-  const stateMap = new Map(playerStates.map((state) => [state.participantId, state]))
-
   const currentTurnIndex = room.gameState?.currentTurnIndex ?? 0
-  const safeTurnIndex = room.participants.length ? Math.min(currentTurnIndex, room.participants.length - 1) : 0
+  const safeTurnIndex = turnParticipantIds.length ? currentTurnIndex % turnParticipantIds.length : 0
+  const turnParticipantId = turnParticipantIds.length ? turnParticipantIds[safeTurnIndex] : null
 
   return {
     room: {
       id: room.id,
       code: room.code,
       status: room.status,
-      currentTurnIndex: safeTurnIndex
+      currentTurnIndex: safeTurnIndex,
+      turnParticipantId
     },
     participants: room.participants.map((p) => ({
       id: p.id,
@@ -271,7 +276,7 @@ async function buildRoomState(roomId: string) {
   }
 }
 
-async function updateTurn(roomId: string, participantIds: string[], playerStates: Map<string, { hasCompleted: boolean }>, currentIndex: number) {
+async function updateTurn(participantIds: string[], playerStates: Map<string, { hasCompleted: boolean }>, currentIndex: number) {
   if (participantIds.length === 0) return currentIndex
   let nextIndex = currentIndex
   for (let step = 0; step < participantIds.length; step += 1) {
@@ -305,15 +310,20 @@ async function rollInRoom(roomId: string, userId: string) {
       throw new Error('Sala não está ativa')
     }
 
-    const participantIds = room.participants.map((p) => p.id)
-    await ensurePlayerStates(room.id, participantIds)
+    const turnParticipants = getTurnParticipants(room.participants, room.therapistPlays)
+    const turnParticipantIds = turnParticipants.map((participant) => participant.id)
+    if (turnParticipantIds.length === 0) {
+      throw new Error('Aguardando participantes jogadores para iniciar a sessão')
+    }
+    await ensurePlayerStates(room.id, turnParticipantIds)
 
     const playerStates = await tx.mahaLilahPlayerState.findMany({
-      where: { roomId: room.id, participantId: { in: participantIds } }
+      where: { roomId: room.id, participantId: { in: turnParticipantIds } }
     })
 
     const participantIndex = room.gameState?.currentTurnIndex ?? 0
-    const currentParticipant = room.participants[participantIndex]
+    const safeTurnIndex = participantIndex % turnParticipantIds.length
+    const currentParticipant = turnParticipants[safeTurnIndex]
     if (!currentParticipant || currentParticipant.userId !== userId) {
       throw new Error('Não é sua vez')
     }
@@ -359,15 +369,15 @@ async function rollInRoom(roomId: string, userId: string) {
     })
 
     const refreshedStates = await tx.mahaLilahPlayerState.findMany({
-      where: { roomId: room.id, participantId: { in: participantIds } }
+      where: { roomId: room.id, participantId: { in: turnParticipantIds } }
     })
     const stateMap = new Map(refreshedStates.map((state) => [state.participantId, state]))
 
-    const allCompleted = refreshedStates.length > 0 && refreshedStates.every((state) => state.hasCompleted)
+    const allCompleted = turnParticipantIds.length > 0 && refreshedStates.length > 0 && refreshedStates.every((state) => state.hasCompleted)
 
     const nextTurnIndex = allCompleted
-      ? participantIndex
-      : await updateTurn(room.id, participantIds, stateMap, participantIndex)
+      ? safeTurnIndex
+      : await updateTurn(turnParticipantIds, stateMap, safeTurnIndex)
 
     await tx.mahaLilahGameState.upsert({
       where: { roomId: room.id },
@@ -408,16 +418,20 @@ async function advanceTurnInRoom(roomId: string, userId: string) {
       throw new Error('Apenas o terapeuta pode avançar a vez')
     }
 
-    const participantIds = room.participants.map((p) => p.id)
-    await ensurePlayerStates(room.id, participantIds)
+    const turnParticipants = getTurnParticipants(room.participants, room.therapistPlays)
+    const turnParticipantIds = turnParticipants.map((participant) => participant.id)
+    if (turnParticipantIds.length === 0) {
+      throw new Error('Aguardando participantes jogadores para iniciar a sessão')
+    }
+    await ensurePlayerStates(room.id, turnParticipantIds)
 
     const playerStates = await tx.mahaLilahPlayerState.findMany({
-      where: { roomId: room.id, participantId: { in: participantIds } }
+      where: { roomId: room.id, participantId: { in: turnParticipantIds } }
     })
     const stateMap = new Map(playerStates.map((state) => [state.participantId, state]))
 
-    const currentIndex = room.gameState?.currentTurnIndex ?? 0
-    const nextTurnIndex = await updateTurn(room.id, participantIds, stateMap, currentIndex)
+    const currentIndex = (room.gameState?.currentTurnIndex ?? 0) % turnParticipantIds.length
+    const nextTurnIndex = await updateTurn(turnParticipantIds, stateMap, currentIndex)
 
     await tx.mahaLilahGameState.upsert({
       where: { roomId: room.id },

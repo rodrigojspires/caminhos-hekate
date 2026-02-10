@@ -2964,6 +2964,7 @@ model MahaLilahRoom {
   closedAt          DateTime?
   status            MahaLilahRoomStatus  @default(ACTIVE)
   maxParticipants   Int
+  therapistPlays    Boolean              @default(true)
   planType          MahaLilahPlanType    @default(SINGLE_SESSION)
   orderId           String?
   subscriptionId    String?

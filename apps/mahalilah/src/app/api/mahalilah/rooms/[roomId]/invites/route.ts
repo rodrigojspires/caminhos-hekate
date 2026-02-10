@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma, MahaLilahInviteRole } from '@hekate/database'
+import { prisma, MahaLilahInviteRole, MahaLilahParticipantRole } from '@hekate/database'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { sendInviteEmail } from '@/lib/email'
@@ -40,7 +40,10 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const normalizedEmails = data.emails.map((email) => email.toLowerCase())
 
-    const participantsCount = room.participants.length
+    const participantsCount = room.participants.filter((participant) => (
+      participant.role === MahaLilahParticipantRole.PLAYER ||
+      (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
+    )).length
     const availableSlots = room.maxParticipants - participantsCount
 
     if (availableSlots <= 0) {

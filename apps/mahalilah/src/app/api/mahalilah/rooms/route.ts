@@ -7,7 +7,8 @@ import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { RULES } from '@hekate/mahalilah-core'
 
 const CreateRoomSchema = z.object({
-  maxParticipants: z.number().int().min(1).max(12).default(4)
+  maxParticipants: z.number().int().min(1).max(12).default(4),
+  therapistPlays: z.boolean().default(true)
 })
 
 async function ensureUniqueCode() {
@@ -123,6 +124,7 @@ export async function GET(request: Request) {
           code: room.code,
           status: room.status,
           maxParticipants: room.maxParticipants,
+          therapistPlays: room.therapistPlays,
           createdAt: room.createdAt,
           invites: room.invites.map((invite) => ({
             id: invite.id,
@@ -136,7 +138,10 @@ export async function GET(request: Request) {
             consentAcceptedAt: participant.consentAcceptedAt,
             user: participant.user
           })),
-          participantsCount: room.participants.length,
+          participantsCount: room.participants.filter((participant) => (
+            participant.role === MahaLilahParticipantRole.PLAYER ||
+            (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
+          )).length,
           stats: {
             moves: room._count.moves,
             therapyEntries: room._count.therapyEntries,
@@ -214,6 +219,7 @@ export async function POST(request: Request) {
           createdByUserId: session.user.id,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
+          therapistPlays: data.therapistPlays,
           planType: entitlement.planType,
           orderId: entitlement.orderId,
           consentTextVersion

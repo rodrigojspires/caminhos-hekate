@@ -30,6 +30,7 @@ type Room = {
   code: string
   status: string
   maxParticipants: number
+  therapistPlays: boolean
   createdAt: string
   invites: RoomInvite[]
   participants: RoomParticipant[]
@@ -90,6 +91,7 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [maxParticipants, setMaxParticipants] = useState(4)
+  const [therapistPlays, setTherapistPlays] = useState(true)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [canCreateRoom, setCanCreateRoom] = useState(false)
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({})
@@ -137,7 +139,7 @@ export function DashboardClient() {
     const res = await fetch('/api/mahalilah/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maxParticipants })
+      body: JSON.stringify({ maxParticipants, therapistPlays })
     })
 
     if (!res.ok) {
@@ -322,7 +324,8 @@ export function DashboardClient() {
               <span className={`pill ${statusClass(room.status)}`}>{room.status}</span>
             </div>
             <div style={{ color: 'var(--muted)', marginTop: 6 }}>
-              {new Date(room.createdAt).toLocaleString('pt-BR')} • {room.participantsCount}/{room.maxParticipants} participantes
+              {new Date(room.createdAt).toLocaleString('pt-BR')} • {room.participantsCount}/{room.maxParticipants} jogadores
+              {' '}• {room.therapistPlays ? 'Terapeuta joga junto' : 'Terapeuta conduz sem jogar'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -626,21 +629,29 @@ export function DashboardClient() {
           <strong>Criar nova sala</strong>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ display: 'grid', gap: 6 }}>
-              <span>Participantes máximos</span>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={maxParticipants}
-              onChange={(event) => setMaxParticipants(Number(event.target.value))}
-            />
-          </label>
-          <button className="btn-primary" onClick={handleCreateRoom} disabled={creating}>
-            {creating ? 'Criando...' : 'Criar sala'}
-          </button>
-        </div>
+              <span>Jogadores máximos</span>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={maxParticipants}
+                onChange={(event) => setMaxParticipants(Number(event.target.value))}
+              />
+            </label>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 22 }}>
+              <input
+                type="checkbox"
+                checked={therapistPlays}
+                onChange={(event) => setTherapistPlays(event.target.checked)}
+              />
+              <span>Terapeuta joga junto</span>
+            </label>
+            <button className="btn-primary" onClick={handleCreateRoom} disabled={creating}>
+              {creating ? 'Criando...' : 'Criar sala'}
+            </button>
+          </div>
           <p className="small-muted">
-            O terapeuta já entra como participante automaticamente. Convites são enviados com link único.
+            Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1 vaga de jogador.
           </p>
         </div>
       )}

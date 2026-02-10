@@ -22,7 +22,13 @@ type PlayerState = {
 }
 
 type RoomState = {
-  room: { id: string; code: string; status: string; currentTurnIndex: number }
+  room: {
+    id: string
+    code: string
+    status: string
+    currentTurnIndex: number
+    turnParticipantId: string | null
+  }
   participants: Participant[]
   playerStates: PlayerState[]
   lastMove: {
@@ -105,6 +111,12 @@ export function RoomClient({ code }: { code: string }) {
 
   const currentParticipant = useMemo(() => {
     if (!state) return null
+    if (state.room.turnParticipantId === null) {
+      return null
+    }
+    if (typeof state.room.turnParticipantId === 'string') {
+      return state.participants.find((participant) => participant.id === state.room.turnParticipantId) || null
+    }
     return state.participants[state.room.currentTurnIndex] || null
   }, [state])
 
@@ -210,7 +222,7 @@ export function RoomClient({ code }: { code: string }) {
             <strong>Status</strong>: {state.room.status}
           </div>
           <div>
-            <strong>Vez de:</strong> {currentParticipant?.user.name || currentParticipant?.user.email}
+            <strong>Vez de:</strong> {currentParticipant ? (currentParticipant.user.name || currentParticipant.user.email) : 'Aguardando jogadores'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

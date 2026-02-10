@@ -1,0 +1,2 @@
+ALTER TABLE "MahaLilahRoom"
+ADD COLUMN "therapistPlays" BOOLEAN NOT NULL DEFAULT true;
