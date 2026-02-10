@@ -37,6 +37,14 @@ type Room = {
   stats: RoomStats
 }
 
+type TimelineCardDraw = {
+  id: string
+  cards: number[]
+  createdAt: string
+  moveId: string | null
+  drawnBy: { id: string; user: { name: string | null; email: string } }
+}
+
 type TimelineMove = {
   id: string
   turnNumber: number
@@ -46,9 +54,9 @@ type TimelineMove = {
   appliedJumpFrom: number | null
   appliedJumpTo: number | null
   createdAt: string
-  participant: { user: { name: string | null; email: string } }
+  participant: { id: string; user: { name: string | null; email: string } }
   therapyEntries: Array<{ id: string; emotion?: string | null; intensity?: number | null; insight?: string | null }>
-  cardDraws: Array<{ id: string; cards: number[] }>
+  cardDraws: TimelineCardDraw[]
 }
 
 type AiReport = {
@@ -56,14 +64,17 @@ type AiReport = {
   kind: string
   content: string
   createdAt: string
-  participant: { user: { name: string | null; email: string } } | null
+  participant: { id: string; user: { name: string | null; email: string } } | null
 }
 
-type StandaloneCardDraw = {
+type StandaloneCardDraw = TimelineCardDraw
+
+type DeckTimelineEntry = {
   id: string
   cards: number[]
   createdAt: string
-  drawnBy: { user: { name: string | null; email: string } }
+  turnNumber: number | null
+  drawnBy: { id: string; user: { name: string | null; email: string } }
 }
 
 type Notice = { message: string; variant: 'error' | 'success' }
@@ -83,6 +94,7 @@ export function DashboardClient() {
   const [canCreateRoom, setCanCreateRoom] = useState(false)
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({})
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({})
+  const [timelineParticipantFilters, setTimelineParticipantFilters] = useState<Record<string, string>>({})
   const [details, setDetails] = useState<Record<string, { loading: boolean; moves: TimelineMove[]; aiReports: AiReport[]; cardDraws: StandaloneCardDraw[]; error?: string }>>({})
   const [filters, setFilters] = useState<Filters>({ status: '', from: '', to: '' })
 
@@ -263,6 +275,37 @@ export function DashboardClient() {
   const roomCards = rooms.map((room) => {
     const isOpen = !!openRooms[room.id]
     const roomDetails = details[room.id]
+    const selectedParticipantId = timelineParticipantFilters[room.id] || ''
+
+    const filteredMoves = (roomDetails?.moves || []).filter((move) =>
+      selectedParticipantId ? move.participant.id === selectedParticipantId : true
+    )
+
+    const deckDrawsFromMoves: DeckTimelineEntry[] = (roomDetails?.moves || []).flatMap((move) =>
+      move.cardDraws.map((draw) => ({
+        id: draw.id,
+        cards: draw.cards,
+        createdAt: draw.createdAt,
+        turnNumber: move.turnNumber,
+        drawnBy: draw.drawnBy
+      }))
+    )
+
+    const standaloneDeckDraws: DeckTimelineEntry[] = (roomDetails?.cardDraws || []).map((draw) => ({
+      id: draw.id,
+      cards: draw.cards,
+      createdAt: draw.createdAt,
+      turnNumber: null,
+      drawnBy: draw.drawnBy
+    }))
+
+    const filteredDeckDraws = [...deckDrawsFromMoves, ...standaloneDeckDraws]
+      .filter((draw) => (selectedParticipantId ? draw.drawnBy.id === selectedParticipantId : true))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+    const filteredAiReports = (roomDetails?.aiReports || []).filter((report) =>
+      selectedParticipantId ? report.participant?.id === selectedParticipantId : true
+    )
 
     return (
       <div key={room.id} className="card" style={{ display: 'grid', gap: 14 }}>
@@ -379,17 +422,34 @@ export function DashboardClient() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <strong>Timeline</strong>
-              <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
-                Atualizar timeline
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {room.participants.length > 1 && (
+                  <select
+                    value={selectedParticipantId}
+                    onChange={(event) =>
+                      setTimelineParticipantFilters((prev) => ({ ...prev, [room.id]: event.target.value }))
+                    }
+                  >
+                    <option value="">Todos os jogadores</option>
+                    {room.participants.map((participant) => (
+                      <option key={participant.id} value={participant.id}>
+                        {participant.user.name || participant.user.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
+                  Atualizar timeline
+                </button>
+              </div>
             </div>
             {roomDetails?.loading ? (
               <span className="small-muted">Carregando timeline...</span>
             ) : roomDetails?.error ? (
               <span className="notice">{roomDetails.error}</span>
-            ) : roomDetails?.moves.length ? (
+            ) : filteredMoves.length ? (
               <div style={{ display: 'grid', gap: 8 }}>
-                {roomDetails.moves.map((move) => (
+                {filteredMoves.map((move) => (
                   <div
                     key={move.id}
                     style={{
@@ -405,7 +465,7 @@ export function DashboardClient() {
                     <div>
                       <strong>{move.participant.user.name || move.participant.user.email}</strong>
                       <div className="small-muted">
-                        {new Date(move.createdAt).toLocaleString('pt-BR')} • Dado {move.diceValue}
+                        Jogada #{move.turnNumber} • {new Date(move.createdAt).toLocaleString('pt-BR')} • Dado {move.diceValue}
                       </div>
                       <div className="small-muted">
                         {move.fromPos} → {move.toPos}
@@ -422,14 +482,16 @@ export function DashboardClient() {
                 ))}
               </div>
             ) : (
-              <span className="small-muted">Ainda não há jogadas.</span>
+              <span className="small-muted">
+                {selectedParticipantId ? 'Nenhuma jogada para o jogador selecionado.' : 'Ainda não há jogadas.'}
+              </span>
             )}
 
             <div className="grid" style={{ gap: 8 }}>
-              <strong>Deck randômico (sem jogada)</strong>
-              {roomDetails?.cardDraws?.length ? (
+              <strong>Deck randômico</strong>
+              {filteredDeckDraws.length ? (
                 <div style={{ display: 'grid', gap: 6 }}>
-                  {roomDetails.cardDraws.map((draw) => (
+                  {filteredDeckDraws.map((draw) => (
                     <div
                       key={draw.id}
                       style={{
@@ -445,22 +507,26 @@ export function DashboardClient() {
                       <div>
                         <strong>{draw.drawnBy.user.name || draw.drawnBy.user.email}</strong>
                         <div className="small-muted">
-                          {new Date(draw.createdAt).toLocaleString('pt-BR')} • {draw.cards.join(', ')}
+                          {new Date(draw.createdAt).toLocaleString('pt-BR')}
+                          {draw.turnNumber ? ` • Jogada #${draw.turnNumber}` : ' • Sem jogada'}
+                          {' '}• {draw.cards.join(', ')}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <span className="small-muted">Nenhuma carta avulsa registrada.</span>
+                <span className="small-muted">
+                  {selectedParticipantId ? 'Nenhuma tiragem para o jogador selecionado.' : 'Nenhuma tiragem registrada.'}
+                </span>
               )}
             </div>
 
             <div className="grid" style={{ gap: 8 }}>
               <strong>Relatórios IA</strong>
-              {roomDetails?.aiReports?.length ? (
+              {filteredAiReports.length ? (
                 <div style={{ display: 'grid', gap: 8 }}>
-                  {roomDetails.aiReports.map((report) => (
+                  {filteredAiReports.map((report) => (
                     <div key={report.id} className="card" style={{ padding: 12 }}>
                       <div className="small-muted">
                         {new Date(report.createdAt).toLocaleString('pt-BR')} • {report.kind}
@@ -471,7 +537,9 @@ export function DashboardClient() {
                   ))}
                 </div>
               ) : (
-                <span className="small-muted">Nenhum relatório ainda.</span>
+                <span className="small-muted">
+                  {selectedParticipantId ? 'Nenhum relatório para o jogador selecionado.' : 'Nenhum relatório ainda.'}
+                </span>
               )}
             </div>
 
