@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
         email: data.email,
         password: hashedPassword,
         role: 'MEMBER',
+        registrationPortal: 'MAHA_LILAH',
         emailVerified: new Date()
       },
       select: {

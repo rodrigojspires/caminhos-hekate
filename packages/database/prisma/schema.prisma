@@ -22,6 +22,7 @@ model User {
   phone                         String?
   document                      String?
   role                          Role                           @default(VISITOR)
+  registrationPortal            RegistrationPortal?
   subscriptionTier              SubscriptionTier               @default(FREE)
   twoFactorEnabled              Boolean                        @default(false)
   twoFactorSecret               String?
@@ -968,6 +969,11 @@ enum Role {
   EDITOR
   MEMBER
   VISITOR
+}
+
+enum RegistrationPortal {
+  CAMINHOS_DE_HEKATE
+  MAHA_LILAH
 }
 
 enum SubscriptionTier {

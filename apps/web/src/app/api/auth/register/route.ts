@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         role: "MEMBER",
+        registrationPortal: "CAMINHOS_DE_HEKATE",
       },
     })
 
