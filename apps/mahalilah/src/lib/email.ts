@@ -39,6 +39,15 @@ async function sendViaSmtp(params: {
   return { id: info.messageId || 'smtp', success: true }
 }
 
+function getMahaLilahBaseUrl() {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_MAHALILAH_URL ||
+    process.env.NEXTAUTH_URL_MAHALILAH ||
+    process.env.NEXTAUTH_URL ||
+    'https://mahalilahonline.com.br'
+  return baseUrl.replace(/\/$/, '')
+}
+
 export async function sendInviteEmail(params: {
   to: string
   therapistName: string
@@ -68,6 +77,49 @@ export async function sendInviteEmail(params: {
     to: params.to,
     subject,
     html,
+    fromEmail,
+    fromName
+  })
+}
+
+export async function sendPasswordResetEmail(params: { to: string; resetToken: string }) {
+  const fromEmail = process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_FROM || 'noreply@mahalilahonline.com.br'
+  const fromName = process.env.DEFAULT_FROM_NAME || 'Maha Lilah Online'
+  const resetUrl = `${getMahaLilahBaseUrl()}/reset-password?token=${encodeURIComponent(params.resetToken)}`
+
+  const subject = 'Redefinir sua senha - Maha Lilah Online'
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+      <h2>Redefinir senha</h2>
+      <p>Recebemos uma solicitação para redefinir sua senha.</p>
+      <p>Clique no botão abaixo para criar uma nova senha:</p>
+      <p>
+        <a href="${resetUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+          Redefinir senha
+        </a>
+      </p>
+      <p>Este link expira em 1 hora.</p>
+      <p style="font-size:12px;color:#5d6b75;">Se você não solicitou essa ação, ignore este email.</p>
+    </div>
+  `
+
+  const text = `
+Redefinir senha - Maha Lilah Online
+
+Recebemos uma solicitação para redefinir sua senha.
+Use o link abaixo para criar uma nova senha:
+${resetUrl}
+
+Este link expira em 1 hora.
+
+Se você não solicitou essa ação, ignore este email.
+  `
+
+  return sendViaSmtp({
+    to: params.to,
+    subject,
+    html,
+    text,
     fromEmail,
     fromName
   })

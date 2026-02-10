@@ -26,7 +26,7 @@ const faqItems = [
   },
   {
     question: 'Esqueci minha senha. O que faço?',
-    answer: 'Use o fluxo de recuperação do Caminhos de Hekate ou fale com nosso suporte.'
+    answer: 'Clique em "Esqueci minha senha" na tela de login para receber o link de redefinição.'
   }
 ]
 

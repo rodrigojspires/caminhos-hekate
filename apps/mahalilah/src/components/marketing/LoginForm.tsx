@@ -5,15 +5,25 @@ import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 
+const authErrorMessage = (code: string | null) => {
+  if (!code) return null
+  if (code === 'CredentialsSignin') return 'Email ou senha incorretos.'
+  if (code === 'EMAIL_NOT_VERIFIED') return 'Seu email ainda nao foi verificado.'
+  if (code === 'AccessDenied') return 'Acesso negado.'
+  if (code === 'SessionRequired') return 'Faça login para continuar.'
+  return 'Nao foi possivel autenticar. Tente novamente.'
+}
+
 export function LoginForm() {
   const searchParams = useSearchParams()
   const rawCallback = searchParams.get('callbackUrl')
+  const queryError = searchParams.get('error')
   const safeCallback = (() => {
     if (!rawCallback) return '/dashboard'
     if (rawCallback.startsWith('/')) return rawCallback
     try {
       const parsed = new URL(rawCallback)
-      if (parsed.origin === window.location.origin) {
+      if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
         return `${parsed.pathname}${parsed.search}${parsed.hash}`
       }
     } catch {}
@@ -37,7 +47,7 @@ export function LoginForm() {
     })
 
     if (result?.error) {
-      setError(result.error)
+      setError(authErrorMessage(result.error))
       setLoading(false)
       return
     }
@@ -60,9 +70,19 @@ export function LoginForm() {
           {error}
         </div>
       )}
+      {!error && queryError && (
+        <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
+          {authErrorMessage(queryError)}
+        </div>
+      )}
       <button type="submit" className="btn-primary w-fit" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
+      <p className="text-sm text-ink-muted">
+        <Link href="/forgot-password" className="text-gold hover:text-gold-soft">
+          Esqueci minha senha
+        </Link>
+      </p>
       <p className="text-sm text-ink-muted">
         Não tem conta?{' '}
         <Link href="/register" className="text-gold hover:text-gold-soft">
