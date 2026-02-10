@@ -14,6 +14,7 @@ interface User {
   email: string
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
+  registrationPortal: 'CAMINHOS_DE_HEKATE' | 'MAHA_LILAH' | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -45,6 +46,7 @@ interface UserFilters {
   search: string
   role: string
   subscriptionTier: string
+  registrationPortal: string
   sortBy: string
   sortOrder: 'asc' | 'desc'
 }
@@ -59,6 +61,7 @@ export default function UsersPage() {
     search: '',
     role: '',
     subscriptionTier: '',
+    registrationPortal: '',
     sortBy: 'createdAt',
     sortOrder: 'desc'
   })

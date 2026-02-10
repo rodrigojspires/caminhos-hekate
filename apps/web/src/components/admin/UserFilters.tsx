@@ -6,6 +6,7 @@ interface Filters {
   search: string
   role: string
   subscriptionTier: string
+  registrationPortal: string
   sortBy: string
   sortOrder: 'asc' | 'desc'
 }
@@ -22,13 +23,14 @@ export function UserFilters({ filters, onFiltersChange }: UserFiltersProps) {
       search: '',
       role: '',
       subscriptionTier: '',
+      registrationPortal: '',
       sortBy: 'createdAt',
       sortOrder: 'desc'
     })
   }
 
   // Verificar se há filtros ativos
-  const hasActiveFilters = filters.role || filters.subscriptionTier
+  const hasActiveFilters = filters.role || filters.subscriptionTier || filters.registrationPortal
 
   return (
     <div className="space-y-4">
@@ -67,6 +69,22 @@ export function UserFilters({ filters, onFiltersChange }: UserFiltersProps) {
             <option value="INICIADO">Iniciado</option>
             <option value="ADEPTO">Adepto</option>
             <option value="SACERDOCIO">Sacerdócio</option>
+          </select>
+        </div>
+
+        {/* Filtro por Portal */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Portal de cadastro
+          </label>
+          <select
+            value={filters.registrationPortal}
+            onChange={(e) => onFiltersChange({ registrationPortal: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          >
+            <option value="">Todos os portais</option>
+            <option value="CAMINHOS_DE_HEKATE">Caminhos de Hekate</option>
+            <option value="MAHA_LILAH">Maha Lilah</option>
           </select>
         </div>
 
@@ -122,6 +140,18 @@ export function UserFilters({ filters, onFiltersChange }: UserFiltersProps) {
                 Assinatura: {filters.subscriptionTier}
                 <button
                   onClick={() => onFiltersChange({ subscriptionTier: '' })}
+                  className="hover:bg-purple-200 rounded-full p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {filters.registrationPortal && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                Portal: {filters.registrationPortal === 'CAMINHOS_DE_HEKATE' ? 'Caminhos de Hekate' : 'Maha Lilah'}
+                <button
+                  onClick={() => onFiltersChange({ registrationPortal: '' })}
                   className="hover:bg-purple-200 rounded-full p-0.5"
                 >
                   <X className="w-3 h-3" />

@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const role = searchParams.get('role')
     const subscriptionTier = searchParams.get('subscriptionTier')
+    const registrationPortal = searchParams.get('registrationPortal')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
     
     if (role) where.role = role
     if (subscriptionTier) where.subscriptionTier = subscriptionTier
+    if (registrationPortal) where.registrationPortal = registrationPortal
 
     // Buscar usuários
     const [users, total] = await Promise.all([
@@ -73,6 +75,7 @@ export async function GET(request: NextRequest) {
           email: true,
           role: true,
           subscriptionTier: true,
+          registrationPortal: true,
           createdAt: true,
           updatedAt: true,
           _count: {

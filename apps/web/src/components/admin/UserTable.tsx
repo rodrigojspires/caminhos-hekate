@@ -23,6 +23,7 @@ interface User {
   email: string
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
+  registrationPortal: 'CAMINHOS_DE_HEKATE' | 'MAHA_LILAH' | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -119,6 +120,29 @@ export function UserTable({
     )
   }
 
+  const renderPortalBadge = (portal: User['registrationPortal']) => {
+    const configMap: Record<string, { className: string; label: string }> = {
+      CAMINHOS_DE_HEKATE: { className: 'bg-emerald-100 text-emerald-800', label: 'Caminhos de Hekate' },
+      MAHA_LILAH: { className: 'bg-sky-100 text-sky-800', label: 'Maha Lilah' },
+    }
+
+    if (!portal) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+          -
+        </span>
+      )
+    }
+
+    const config = configMap[portal]
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+        {config.label}
+      </span>
+    )
+  }
+
   // Status removido (não existe no modelo atual)
 
   // Selecionar/deselecionar usuário
@@ -181,7 +205,10 @@ export function UserTable({
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Assinatura</span>
               </th>
 
-              
+              <th className="px-4 py-3 text-left">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Portal</span>
+              </th>
+
               <th className="px-4 py-3 text-left">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Atividade</span>
               </th>
@@ -238,7 +265,11 @@ export function UserTable({
                 <td className="px-4 py-4">
                   {renderSubscriptionBadge(user.subscriptionTier)}
                 </td>
-                
+
+                <td className="px-4 py-4">
+                  {renderPortalBadge(user.registrationPortal)}
+                </td>
+
                 <td className="px-4 py-4">
                   <div className="text-sm text-gray-900 dark:text-gray-100">
                     <div>{user._count.orders} pedidos</div>

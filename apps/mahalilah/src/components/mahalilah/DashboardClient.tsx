@@ -266,7 +266,7 @@ export function DashboardClient() {
 
     return (
       <div key={room.id} className="card" style={{ display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <div className="badge">Sala {room.code}</div>
@@ -276,7 +276,7 @@ export function DashboardClient() {
               {new Date(room.createdAt).toLocaleString('pt-BR')} • {room.participantsCount}/{room.maxParticipants} participantes
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <a href={`/rooms/${room.code}`} className="btn-secondary">
               Abrir sala
             </a>
@@ -496,7 +496,7 @@ export function DashboardClient() {
             Limpar filtros
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label style={{ display: 'grid', gap: 6 }}>
             <span>Status</span>
             <select
@@ -525,7 +525,7 @@ export function DashboardClient() {
               onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
             />
           </label>
-          <button className="btn-primary w-fit" onClick={() => loadRooms()}>
+          <button className="btn-primary w-fit" style={{ alignSelf: 'center' }} onClick={() => loadRooms()}>
             Aplicar filtros
           </button>
         </div>
