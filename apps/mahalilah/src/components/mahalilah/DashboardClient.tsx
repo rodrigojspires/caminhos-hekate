@@ -359,16 +359,46 @@ export function DashboardClient() {
               ) : (
                 <div style={{ display: 'grid', gap: 6 }}>
                   {room.invites.map((invite) => (
-                    <div key={invite.id} className="badge" style={{ justifyContent: 'space-between' }}>
-                      <span>{invite.email} • {invite.acceptedAt ? 'Aceito' : 'Pendente'}</span>
-                      {!invite.acceptedAt && (
-                        <button
-                          className="btn-secondary px-3 py-1 text-xs"
-                          onClick={() => handleSendInvites(room.id, [invite.email])}
+                    <div
+                      key={invite.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: '1px solid var(--border)',
+                        background: 'hsl(var(--temple-surface-2))'
+                      }}
+                    >
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <strong style={{ fontSize: 13 }}>{invite.email}</strong>
+                        <span className="small-muted">
+                          Enviado em {new Date(invite.sentAt).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span
+                          className="pill"
+                          style={
+                            invite.acceptedAt
+                              ? { background: 'rgba(106, 211, 176, 0.18)', borderColor: 'rgba(106, 211, 176, 0.4)', color: '#9fe6cc' }
+                              : { background: 'rgba(241, 213, 154, 0.2)', borderColor: 'rgba(217, 164, 65, 0.45)', color: '#f1d59a' }
+                          }
                         >
-                          Reenviar
-                        </button>
-                      )}
+                          {invite.acceptedAt ? 'Aceito' : 'Pendente'}
+                        </span>
+                        {!invite.acceptedAt && (
+                          <button
+                            className="btn-secondary px-3 py-1 text-xs"
+                            onClick={() => handleSendInvites(room.id, [invite.email])}
+                          >
+                            Reenviar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -378,34 +408,55 @@ export function DashboardClient() {
             <div className="grid" style={{ gap: 10 }}>
               <strong>Participantes</strong>
               <div style={{ display: 'grid', gap: 6 }}>
-                {room.participants.map((participant) => (
-                  <div
-                    key={participant.id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      background: 'hsl(var(--temple-surface-2))'
-                    }}
-                  >
-                    <span>
-                      {participant.user.name || participant.user.email} • {participantRoleLabel(participant.role)}
-                      {participant.consentAcceptedAt ? '' : ' • Consentimento pendente'}
-                    </span>
-                    {participant.role === 'PLAYER' && (
-                      <button
-                        className="btn-secondary px-3 py-1 text-xs"
-                        onClick={() => handleRemoveParticipant(room.id, participant.id)}
-                      >
-                        Remover
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {room.participants.map((participant) => {
+                  const isTherapist = participant.role === 'THERAPIST'
+
+                  return (
+                    <div
+                      key={participant.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: isTherapist ? '1px solid rgba(217, 164, 65, 0.45)' : '1px solid var(--border)',
+                        background: isTherapist
+                          ? 'linear-gradient(160deg, rgba(217, 164, 65, 0.12) 0%, hsl(var(--temple-surface-2)) 80%)'
+                          : 'hsl(var(--temple-surface-2))'
+                      }}
+                    >
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <strong>{participant.user.name || participant.user.email}</strong>
+                          {isTherapist ? (
+                            <span
+                              className="pill"
+                              style={{ background: 'rgba(217, 164, 65, 0.2)', borderColor: 'rgba(217, 164, 65, 0.5)', color: '#f1d59a' }}
+                            >
+                              Terapeuta
+                            </span>
+                          ) : (
+                            <span className="small-muted">{participantRoleLabel(participant.role)}</span>
+                          )}
+                        </div>
+                        {!participant.consentAcceptedAt && (
+                          <span className="small-muted">Consentimento pendente</span>
+                        )}
+                      </div>
+                      {participant.role === 'PLAYER' && (
+                        <button
+                          className="btn-secondary px-3 py-1 text-xs"
+                          onClick={() => handleRemoveParticipant(room.id, participant.id)}
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
