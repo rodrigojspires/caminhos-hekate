@@ -67,11 +67,19 @@ type TimelineMove = {
   appliedJumpTo: number | null;
   createdAt: string;
   participant: { id: string; user: { name: string | null; email: string } };
-  therapyEntries: Array<{ id: string }>;
+  therapyEntries: Array<{
+    id: string;
+    emotion: string | null;
+    intensity: number | null;
+    insight: string | null;
+    body: string | null;
+    microAction: string | null;
+    createdAt: string;
+  }>;
   cardDraws: Array<{ id: string; cards: number[] }>;
 };
 
-type ActionPanel = "house" | "deck" | "therapy" | "ai";
+type ActionPanel = "house" | "deck" | "therapy" | "ai" | "summary";
 type ToastKind = "info" | "success" | "warning" | "error";
 
 type ToastMessage = {
@@ -104,6 +112,12 @@ const ACTION_ITEMS: Array<{
     shortLabel: "Registro",
   },
   { key: "ai", label: "IA Terapêutica", icon: "✦", shortLabel: "IA" },
+  {
+    key: "summary",
+    label: "Resumo do Jogador",
+    icon: "▣",
+    shortLabel: "Resumo",
+  },
 ];
 
 export function RoomClient({ code }: { code: string }) {
@@ -132,6 +146,7 @@ export function RoomClient({ code }: { code: string }) {
   const [timelineMoves, setTimelineMoves] = useState<TimelineMove[]>([]);
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
+  const [summaryParticipantId, setSummaryParticipantId] = useState("");
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -343,12 +358,75 @@ export function RoomClient({ code }: { code: string }) {
     setTimelineTargetParticipantId(myParticipant.id);
   }, [state, myParticipant]);
 
+  useEffect(() => {
+    if (!state || !myParticipant) return;
+
+    if (myParticipant.role === "THERAPIST") {
+      const preferredPlayer = state.participants.find(
+        (participant) => participant.role === "PLAYER",
+      );
+      const fallbackParticipant = state.participants[0];
+      const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
+      setSummaryParticipantId((prev) => prev || targetId);
+      return;
+    }
+
+    setSummaryParticipantId(myParticipant.id);
+  }, [state, myParticipant]);
+
   const filteredTimelineMoves = useMemo(() => {
     if (!timelineTargetParticipantId) return timelineMoves;
     return timelineMoves.filter(
       (move) => move.participant.id === timelineTargetParticipantId,
     );
   }, [timelineMoves, timelineTargetParticipantId]);
+
+  const summaryParticipant = useMemo(() => {
+    if (!summaryParticipantId) return null;
+    return (
+      state?.participants.find(
+        (participant) => participant.id === summaryParticipantId,
+      ) || null
+    );
+  }, [state?.participants, summaryParticipantId]);
+
+  const summaryPlayerState = summaryParticipant
+    ? playerStateMap.get(summaryParticipant.id)
+    : undefined;
+
+  const summaryMoves = useMemo(() => {
+    if (!summaryParticipantId) return [];
+    return timelineMoves.filter(
+      (move) => move.participant.id === summaryParticipantId,
+    );
+  }, [timelineMoves, summaryParticipantId]);
+
+  const summaryPath = useMemo(
+    () => summaryMoves.map((move) => move.toPos),
+    [summaryMoves],
+  );
+
+  const summaryTopHouses = useMemo(() => {
+    const frequency = new Map<number, number>();
+    summaryPath.forEach((house) => {
+      frequency.set(house, (frequency.get(house) || 0) + 1);
+    });
+    return [...frequency.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [summaryPath]);
+
+  const summaryTherapyEntries = useMemo(() => {
+    return summaryMoves
+      .flatMap((move) =>
+        move.therapyEntries.map((entry) => ({
+          ...entry,
+          move,
+        })),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+  }, [summaryMoves]);
 
   const showSocketError = (fallback: string, resp: any) => {
     pushToast(resp?.error || fallback, "error");
@@ -422,6 +500,35 @@ export function RoomClient({ code }: { code: string }) {
     );
   };
 
+  const loadTimelineData = useCallback(
+    async (showSuccessToast = false) => {
+      if (!state) return false;
+
+      setTimelineLoading(true);
+      setTimelineError(null);
+
+      const res = await fetch(`/api/mahalilah/rooms/${state.room.id}/timeline`);
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const message =
+          payload.error || "Não foi possível carregar a timeline do jogador.";
+        setTimelineError(message);
+        setTimelineLoading(false);
+        pushToast(message, "error");
+        return false;
+      }
+
+      setTimelineMoves(payload.moves || []);
+      setTimelineLoading(false);
+      if (showSuccessToast) {
+        pushToast("Timeline carregada.", "success");
+      }
+      return true;
+    },
+    [state, pushToast],
+  );
+
   const handleLoadPlayerTimeline = async () => {
     if (!state) return;
 
@@ -431,26 +538,32 @@ export function RoomClient({ code }: { code: string }) {
     }
 
     setTimelineOpen(true);
-
-    setTimelineLoading(true);
-    setTimelineError(null);
-
-    const res = await fetch(`/api/mahalilah/rooms/${state.room.id}/timeline`);
-    const payload = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const message =
-        payload.error || "Não foi possível carregar a timeline do jogador.";
-      setTimelineError(message);
-      setTimelineLoading(false);
-      pushToast(message, "error");
-      return;
-    }
-
-    setTimelineMoves(payload.moves || []);
-    setTimelineLoading(false);
-    pushToast("Timeline carregada.", "success");
+    await loadTimelineData(true);
   };
+
+  useEffect(() => {
+    if (activePanel !== "summary") return;
+    if (timelineLoading) return;
+    if (timelineMoves.length > 0) return;
+    void loadTimelineData();
+  }, [activePanel, timelineLoading, timelineMoves.length, loadTimelineData]);
+
+  const summaryStatus = summaryPlayerState
+    ? summaryPlayerState.hasCompleted
+      ? "Concluiu (retornou à casa 68)"
+      : summaryPlayerState.hasStarted
+        ? "Em andamento"
+        : "Aguardando 6"
+    : "Sem dados";
+
+  const summaryPathText = summaryPath.length
+    ? summaryPath
+        .map((house) => {
+          const houseTitle = getHouseByNumber(house)?.title || "";
+          return `${house}${houseTitle ? ` (${houseTitle})` : ""}`;
+        })
+        .join(" → ")
+    : "—";
 
   if (loading) {
     return <div className="card">Carregando sala...</div>;
@@ -691,9 +804,15 @@ export function RoomClient({ code }: { code: string }) {
 
       <div
         className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]"
-        style={{ opacity: actionsBlockedByConsent ? 0.6 : 1 }}
+        style={{
+          opacity: actionsBlockedByConsent ? 0.6 : 1,
+          alignItems: "start",
+        }}
       >
-        <div className="card" style={{ display: "grid", gap: 10 }}>
+        <div
+          className="card"
+          style={{ display: "grid", gap: 10, minWidth: 0, overflow: "hidden" }}
+        >
           <div
             style={{
               display: "grid",
@@ -701,6 +820,8 @@ export function RoomClient({ code }: { code: string }) {
               gridTemplateRows: `repeat(${BOARD_ROWS}, minmax(0, 1fr))`,
               gap: 4,
               aspectRatio: "9 / 10",
+              width: "100%",
+              maxWidth: "100%",
               borderRadius: 16,
               padding: 6,
               border: "1px solid rgba(217, 164, 65, 0.25)",
@@ -776,7 +897,8 @@ export function RoomClient({ code }: { code: string }) {
                         }}
                         title={`Atalho ${cell.houseNumber} para ${jumpTarget}`}
                       >
-                        {jumpTarget > cell.houseNumber ? "↗" : "↘"}
+                        {jumpTarget > cell.houseNumber ? "↗" : "↘"}{" "}
+                        {jumpTarget}
                       </span>
                     )}
                   </div>
@@ -821,12 +943,12 @@ export function RoomClient({ code }: { code: string }) {
 
         <div
           className="card"
-          style={{ display: "grid", gap: 10, alignSelf: "start" }}
+          style={{ display: "grid", gap: 10, alignSelf: "start", minWidth: 0 }}
         >
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
               gap: 8,
             }}
           >
@@ -1124,6 +1246,186 @@ export function RoomClient({ code }: { code: string }) {
             </div>
           )}
 
+          {activePanel === "summary" && (
+            <div className="grid" style={{ gap: 8 }}>
+              <strong>Resumo do jogador</strong>
+
+              {timelineParticipants.length > 1 && (
+                <select
+                  value={summaryParticipantId}
+                  onChange={(event) =>
+                    setSummaryParticipantId(event.target.value)
+                  }
+                >
+                  {timelineParticipants.map((participant) => (
+                    <option key={participant.id} value={participant.id}>
+                      {participant.user.name || participant.user.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {timelineLoading && timelineMoves.length === 0 ? (
+                <span className="small-muted">Carregando resumo...</span>
+              ) : timelineError && timelineMoves.length === 0 ? (
+                <span className="small-muted">{timelineError}</span>
+              ) : !summaryParticipant ? (
+                <span className="small-muted">
+                  Nenhum jogador disponível para resumo.
+                </span>
+              ) : (
+                <>
+                  <div className="notice" style={{ display: "grid", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span className="pill">
+                        Jogador:{" "}
+                        <strong>
+                          {summaryParticipant.user.name ||
+                            summaryParticipant.user.email}
+                        </strong>
+                      </span>
+                      <span className="pill">
+                        Status: <strong>{summaryStatus}</strong>
+                      </span>
+                      <span className="pill">
+                        Jogadas:{" "}
+                        <strong>
+                          {summaryPlayerState?.rollCountTotal || 0}
+                        </strong>
+                      </span>
+                      <span className="pill">
+                        Até iniciar:{" "}
+                        <strong>
+                          {summaryPlayerState?.rollCountUntilStart || 0}
+                        </strong>
+                      </span>
+                      <span className="pill">
+                        Casas: <strong>{summaryPath.length}</strong>
+                      </span>
+                      <span className="pill">
+                        Registros:{" "}
+                        <strong>{summaryTherapyEntries.length}</strong>
+                      </span>
+                    </div>
+                    <div className="small-muted">
+                      <strong>Caminho:</strong> {summaryPathText}
+                    </div>
+                  </div>
+
+                  <div className="notice" style={{ display: "grid", gap: 8 }}>
+                    <strong>Casas mais recorrentes</strong>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {summaryTopHouses.length === 0 ? (
+                        <span className="small-muted">(sem dados)</span>
+                      ) : (
+                        summaryTopHouses.map(([house, count]) => {
+                          const houseTitle =
+                            getHouseByNumber(house)?.title || "";
+                          return (
+                            <span key={`${house}-${count}`} className="pill">
+                              {house}
+                              {houseTitle ? ` • ${houseTitle}` : ""} ({count}x)
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
+                    <div className="small-muted">
+                      Repetição costuma apontar para um tema que pede
+                      integração.
+                    </div>
+                  </div>
+
+                  <div className="notice" style={{ display: "grid", gap: 6 }}>
+                    <strong>Síntese terapêutica (3 linhas)</strong>
+                    <span className="small-muted">
+                      1) <strong>Padrão dominante:</strong>{" "}
+                      {summaryTopHouses[0]
+                        ? `Casa ${summaryTopHouses[0][0]} (${getHouseByNumber(summaryTopHouses[0][0])?.title || ""})`
+                        : "—"}
+                    </span>
+                    <span className="small-muted">
+                      2) <strong>Pedido do corpo:</strong> escolha 1 sensação
+                      recorrente e cuide dela por 7 dias.
+                    </span>
+                    <span className="small-muted">
+                      3) <strong>Micro-ação mestra:</strong> uma atitude simples
+                      para sustentar diariamente.
+                    </span>
+                  </div>
+
+                  <div
+                    className="notice"
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      maxHeight: 240,
+                      overflow: "auto",
+                      paddingRight: 2,
+                    }}
+                  >
+                    <strong>Registros (modo terapia)</strong>
+                    {summaryTherapyEntries.length === 0 ? (
+                      <span className="small-muted">(sem registros)</span>
+                    ) : (
+                      summaryTherapyEntries.map((entry) => {
+                        const house = entry.move.toPos;
+                        const houseTitle = getHouseByNumber(house)?.title || "";
+                        return (
+                          <div
+                            key={entry.id}
+                            style={{
+                              display: "grid",
+                              gap: 4,
+                              paddingBottom: 6,
+                              borderBottom: "1px solid rgba(255,255,255,0.08)",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 6,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <span className="pill">
+                                Casa {house}
+                                {houseTitle ? ` • ${houseTitle}` : ""}
+                              </span>
+                              {entry.emotion && (
+                                <span className="pill">
+                                  {entry.emotion}
+                                  {entry.intensity
+                                    ? ` (${entry.intensity}/10)`
+                                    : ""}
+                                </span>
+                              )}
+                            </div>
+                            {entry.insight && (
+                              <span className="small-muted">
+                                <strong>Insight:</strong> {entry.insight}
+                              </span>
+                            )}
+                            {entry.body && (
+                              <span className="small-muted">
+                                <strong>Corpo:</strong> {entry.body}
+                              </span>
+                            )}
+                            {entry.microAction && (
+                              <span className="small-muted">
+                                <strong>Micro-ação:</strong> {entry.microAction}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="divider" />
 
           <button className="btn-secondary" onClick={handleLoadPlayerTimeline}>
@@ -1178,7 +1480,13 @@ export function RoomClient({ code }: { code: string }) {
                         {move.participant.user.name ||
                           move.participant.user.email}
                       </strong>
-                      <span className="small-muted">
+                      <span
+                        className="small-muted"
+                        style={{
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
+                        }}
+                      >
                         {(() => {
                           const hasJump =
                             move.appliedJumpFrom !== null &&
@@ -1194,7 +1502,13 @@ export function RoomClient({ code }: { code: string }) {
                           return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${jumpLabel}): ${move.appliedJumpTo}`;
                         })()}
                       </span>
-                      <span className="small-muted">
+                      <span
+                        className="small-muted"
+                        style={{
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
+                        }}
+                      >
                         {new Date(move.createdAt).toLocaleString("pt-BR")}
                       </span>
                       {move.cardDraws.length > 0 && (
