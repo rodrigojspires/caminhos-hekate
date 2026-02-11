@@ -445,7 +445,7 @@ export function RoomClient({ code }: { code: string }) {
   }
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid" style={{ gap: 14 }}>
       <div
         style={{
           position: "fixed",
@@ -543,45 +543,38 @@ export function RoomClient({ code }: { code: string }) {
         className="card"
         style={{
           display: "grid",
-          gap: 12,
+          gap: 8,
+          padding: "14px 16px",
           opacity: actionsBlockedByConsent ? 0.6 : 1,
         }}
       >
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 10,
+            alignItems: "center",
+            gap: 8,
+            overflowX: "auto",
+            flexWrap: "nowrap",
+            paddingBottom: 2,
           }}
         >
-          <span className="badge">Sala {state.room.code}</span>
+          <span className="badge" style={{ flex: "0 0 auto" }}>
+            Sala {state.room.code}
+          </span>
           <span
             className={`pill status-pill ${state.room.status === "ACTIVE" ? "active" : state.room.status === "COMPLETED" ? "completed" : "closed"}`}
+            style={{ flex: "0 0 auto" }}
           >
             {state.room.status}
           </span>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 10,
-          }}
-        >
-          <div>
-            <strong>Vez de:</strong>{" "}
-            {currentParticipant
-              ? currentParticipant.user.name || currentParticipant.user.email
-              : "Aguardando jogadores"}
-          </div>
-          <div className="small-muted">
-            Terapeuta {state.room.therapistOnline ? "online" : "offline"}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <span className="pill" style={{ flex: "0 0 auto" }}>
+            Vez:{" "}
+            <strong>
+              {currentParticipant
+                ? currentParticipant.user.name || currentParticipant.user.email
+                : "Aguardando jogadores"}
+            </strong>
+          </span>
           <span className="pill">
             Rolagens: <strong>{indicatorState?.rollCountTotal || 0}</strong>
           </span>
@@ -593,16 +586,26 @@ export function RoomClient({ code }: { code: string }) {
             Casa Atual: <strong>{indicatorHouseNumber}</strong>
             {indicatorHouse ? ` • ${indicatorHouse.title}` : ""}
           </span>
+          <span className="pill" style={{ flex: "0 0 auto" }}>
+            Terapeuta:{" "}
+            <strong>{state.room.therapistOnline ? "online" : "offline"}</strong>
+          </span>
         </div>
 
-        {!state.room.therapistOnline && (
-          <div className="small-muted">
-            Rolagem pausada: terapeuta fora da sala.
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={handleRoll} disabled={!canRoll}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            overflowX: "auto",
+            flexWrap: "nowrap",
+            paddingBottom: 2,
+          }}
+        >
+          <button
+            onClick={handleRoll}
+            disabled={!canRoll}
+            style={{ flex: "0 0 auto" }}
+          >
             {!state.room.therapistOnline
               ? "Aguardando terapeuta"
               : isMyTurn
@@ -610,7 +613,11 @@ export function RoomClient({ code }: { code: string }) {
                 : "Aguardando sua vez"}
           </button>
           {canCloseRoom && (
-            <Link href="/dashboard" className="btn-secondary">
+            <Link
+              href="/dashboard"
+              className="btn-secondary"
+              style={{ flex: "0 0 auto" }}
+            >
               Voltar ao dashboard
             </Link>
           )}
@@ -626,6 +633,7 @@ export function RoomClient({ code }: { code: string }) {
               disabled={
                 state.room.status !== "ACTIVE" || actionsBlockedByConsent
               }
+              style={{ flex: "0 0 auto" }}
             >
               Encerrar sala
             </button>
@@ -641,6 +649,7 @@ export function RoomClient({ code }: { code: string }) {
               disabled={
                 state.room.status !== "ACTIVE" || actionsBlockedByConsent
               }
+              style={{ flex: "0 0 auto" }}
             >
               Avançar vez
             </button>
@@ -653,9 +662,6 @@ export function RoomClient({ code }: { code: string }) {
         style={{ opacity: actionsBlockedByConsent ? 0.6 : 1 }}
       >
         <div className="card" style={{ display: "grid", gap: 10 }}>
-          <div className="small-muted">
-            Clique em uma casa para ver significado e pergunta terapêutica.
-          </div>
           <div
             style={{
               display: "grid",
