@@ -44,7 +44,10 @@ type RoomState = {
     participantId: string;
     turnNumber: number;
     diceValue: number;
+    fromPos: number;
     toPos: number;
+    appliedJumpFrom: number | null;
+    appliedJumpTo: number | null;
   } | null;
   deckHistory: Array<{
     id: string;
@@ -288,6 +291,17 @@ export function RoomClient({ code }: { code: string }) {
   const lastHouse = state?.lastMove
     ? getHouseByNumber(state.lastMove.toPos)
     : null;
+  const lastMoveJump =
+    state?.lastMove?.appliedJumpFrom !== null &&
+    state?.lastMove?.appliedJumpFrom !== undefined &&
+    state?.lastMove?.appliedJumpTo !== null &&
+    state?.lastMove?.appliedJumpTo !== undefined
+      ? {
+          from: state.lastMove.appliedJumpFrom,
+          to: state.lastMove.appliedJumpTo,
+          isUp: state.lastMove.appliedJumpTo > state.lastMove.appliedJumpFrom,
+        }
+      : null;
 
   const needsConsent = Boolean(
     myParticipant && !myParticipant.consentAcceptedAt,
@@ -586,6 +600,15 @@ export function RoomClient({ code }: { code: string }) {
             Casa Atual: <strong>{indicatorHouseNumber}</strong>
             {indicatorHouse ? ` • ${indicatorHouse.title}` : ""}
           </span>
+          {lastMoveJump && indicatorHouseNumber === lastMoveJump.to && (
+            <span className="pill" style={{ flex: "0 0 auto" }}>
+              Veio de atalho:{" "}
+              <strong>
+                {lastMoveJump.from} {lastMoveJump.isUp ? "↗" : "↘"}{" "}
+                {lastMoveJump.to}
+              </strong>
+            </span>
+          )}
           <span className="pill" style={{ flex: "0 0 auto" }}>
             Terapeuta:{" "}
             <strong>{state.room.therapistOnline ? "online" : "offline"}</strong>
@@ -844,6 +867,13 @@ export function RoomClient({ code }: { code: string }) {
                     <span className="small-muted">
                       Última jogada: casa {lastHouse.number} • dado{" "}
                       {state.lastMove?.diceValue}
+                    </span>
+                  )}
+                  {lastMoveJump && selectedHouse.number === lastMoveJump.to && (
+                    <span className="small-muted">
+                      Chegou por atalho: casa {lastMoveJump.from}{" "}
+                      {lastMoveJump.isUp ? "↗" : "↘"} casa {lastMoveJump.to} (
+                      {lastMoveJump.isUp ? "subida" : "descida"}).
                     </span>
                   )}
                 </>
