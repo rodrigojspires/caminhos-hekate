@@ -39,6 +39,11 @@ type RoomState = {
   };
   participants: Participant[];
   playerStates: PlayerState[];
+  aiUsage?: Array<{
+    participantId: string;
+    tipsUsed: number;
+    tipsLimit: number;
+  }>;
   lastMove: {
     id: string;
     participantId: string;
@@ -138,6 +143,12 @@ export function RoomClient({ code }: { code: string }) {
   const [aiTip, setAiTip] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiIntention, setAiIntention] = useState("");
+  const [aiTipLoading, setAiTipLoading] = useState(false);
+  const [aiTipUsage, setAiTipUsage] = useState<{
+    used: number;
+    limit: number;
+  } | null>(null);
+  const [aiIntentionSavedLabel, setAiIntentionSavedLabel] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [timelineOpen, setTimelineOpen] = useState(false);
@@ -406,6 +417,26 @@ export function RoomClient({ code }: { code: string }) {
     [summaryMoves],
   );
 
+  const aiIntentionStorageKey = useMemo(() => {
+    if (!state?.room.id || !session?.user?.id) return null;
+    return `mahalilah:intention:${state.room.id}:${session.user.id}`;
+  }, [state?.room.id, session?.user?.id]);
+
+  useEffect(() => {
+    if (!aiIntentionStorageKey) return;
+    const saved = window.localStorage.getItem(aiIntentionStorageKey) || "";
+    setAiIntention(saved);
+    setAiIntentionSavedLabel(
+      saved ? "Intenção carregada automaticamente." : "",
+    );
+  }, [aiIntentionStorageKey]);
+
+  const persistAiIntention = () => {
+    if (!aiIntentionStorageKey) return;
+    window.localStorage.setItem(aiIntentionStorageKey, aiIntention.trim());
+    setAiIntentionSavedLabel("Intenção salva automaticamente.");
+  };
+
   const summaryTopHouses = useMemo(() => {
     const frequency = new Map<number, number>();
     summaryPath.forEach((house) => {
@@ -427,6 +458,20 @@ export function RoomClient({ code }: { code: string }) {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   }, [summaryMoves]);
+
+  const myAiUsage = useMemo(() => {
+    if (!state || !myParticipant) return null;
+    return (
+      (state.aiUsage || []).find(
+        (usage) => usage.participantId === myParticipant.id,
+      ) || null
+    );
+  }, [state, myParticipant]);
+
+  useEffect(() => {
+    if (!myAiUsage) return;
+    setAiTipUsage({ used: myAiUsage.tipsUsed, limit: myAiUsage.tipsLimit });
+  }, [myAiUsage?.tipsUsed, myAiUsage?.tipsLimit]);
 
   const showSocketError = (fallback: string, resp: any) => {
     pushToast(resp?.error || fallback, "error");
@@ -564,6 +609,8 @@ export function RoomClient({ code }: { code: string }) {
         })
         .join(" → ")
     : "—";
+  const roomIsActive = state.room.status === "ACTIVE";
+  const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
 
   if (loading) {
     return <div className="card">Carregando sala...</div>;
@@ -687,14 +734,30 @@ export function RoomClient({ code }: { code: string }) {
             paddingBottom: 2,
           }}
         >
-          <span className="badge" style={{ flex: "0 0 auto" }}>
-            Sala {state.room.code}
-          </span>
           <span
-            className={`pill status-pill ${state.room.status === "ACTIVE" ? "active" : state.room.status === "COMPLETED" ? "completed" : "closed"}`}
-            style={{ flex: "0 0 auto" }}
+            className="pill"
+            style={{
+              flex: "0 0 auto",
+              borderColor: roomIsActive
+                ? "rgba(106, 211, 176, 0.6)"
+                : "rgba(255, 107, 107, 0.6)",
+              background: roomIsActive
+                ? "rgba(106, 211, 176, 0.15)"
+                : "rgba(255, 107, 107, 0.15)",
+            }}
           >
-            {state.room.status}
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: roomIsActive ? "#6ad3b0" : "#ff6b6b",
+                boxShadow: roomIsActive
+                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+              }}
+            />
+            <strong>Status:</strong> {roomStatusLabel}
           </span>
           <span className="pill" style={{ flex: "0 0 auto" }}>
             Vez:{" "}
@@ -725,8 +788,18 @@ export function RoomClient({ code }: { code: string }) {
             </span>
           )}
           <span className="pill" style={{ flex: "0 0 auto" }}>
-            Terapeuta:{" "}
-            <strong>{state.room.therapistOnline ? "online" : "offline"}</strong>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: state.room.therapistOnline ? "#6ad3b0" : "#ff6b6b",
+                boxShadow: state.room.therapistOnline
+                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+              }}
+            />
+            <strong>Terapeuta</strong>
           </span>
         </div>
 
@@ -945,6 +1018,23 @@ export function RoomClient({ code }: { code: string }) {
           className="card"
           style={{ display: "grid", gap: 10, alignSelf: "start", minWidth: 0 }}
         >
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Intenção da sessão (opcional)</span>
+            <input
+              value={aiIntention}
+              onChange={(event) => {
+                setAiIntention(event.target.value);
+                setAiIntentionSavedLabel("");
+              }}
+              onBlur={persistAiIntention}
+              placeholder="Ex.: clareza sobre limites e comunicação"
+            />
+            <span className="small-muted">
+              {aiIntentionSavedLabel ||
+                "Salva automaticamente ao sair do campo."}
+            </span>
+          </label>
+
           <div
             style={{
               display: "grid",
@@ -1100,8 +1190,8 @@ export function RoomClient({ code }: { code: string }) {
               )}
 
               <label style={{ display: "grid", gap: 4 }}>
-                <span>Emoção</span>
-                <input
+                <span>Emoção principal</span>
+                <select
                   value={therapy.emotion}
                   onChange={(event) =>
                     setTherapy((prev) => ({
@@ -1109,14 +1199,27 @@ export function RoomClient({ code }: { code: string }) {
                       emotion: event.target.value,
                     }))
                   }
-                />
+                >
+                  <option value="">—</option>
+                  <option value="Calma">Calma</option>
+                  <option value="Ansiedade">Ansiedade</option>
+                  <option value="Medo">Medo</option>
+                  <option value="Tristeza">Tristeza</option>
+                  <option value="Raiva">Raiva</option>
+                  <option value="Vergonha">Vergonha</option>
+                  <option value="Culpa">Culpa</option>
+                  <option value="Alívio">Alívio</option>
+                  <option value="Gratidão">Gratidão</option>
+                  <option value="Esperança">Esperança</option>
+                  <option value="Confusão">Confusão</option>
+                </select>
               </label>
 
               <label style={{ display: "grid", gap: 4 }}>
-                <span>Intensidade (0-10)</span>
+                <span>Intensidade (1-10)</span>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   max={10}
                   value={therapy.intensity}
                   onChange={(event) =>
@@ -1129,8 +1232,9 @@ export function RoomClient({ code }: { code: string }) {
               </label>
 
               <label style={{ display: "grid", gap: 4 }}>
-                <span>Insight</span>
+                <span>O que isso ativa em mim agora? (insight)</span>
                 <textarea
+                  placeholder="Escreva com sinceridade e simplicidade..."
                   value={therapy.insight}
                   onChange={(event) =>
                     setTherapy((prev) => ({
@@ -1142,8 +1246,9 @@ export function RoomClient({ code }: { code: string }) {
               </label>
 
               <label style={{ display: "grid", gap: 4 }}>
-                <span>Corpo</span>
+                <span>Onde isso aparece no corpo? (sensação)</span>
                 <textarea
+                  placeholder="Ex.: aperto no peito, mandíbula tensa, respiração curta..."
                   value={therapy.body}
                   onChange={(event) =>
                     setTherapy((prev) => ({
@@ -1155,8 +1260,9 @@ export function RoomClient({ code }: { code: string }) {
               </label>
 
               <label style={{ display: "grid", gap: 4 }}>
-                <span>Micro-ação</span>
+                <span>Ação</span>
                 <textarea
+                  placeholder="Ex.: 3 respirações profundas + 1 mensagem honesta + 1 limite claro..."
                   value={therapy.microAction}
                   onChange={(event) =>
                     setTherapy((prev) => ({
@@ -1181,35 +1287,53 @@ export function RoomClient({ code }: { code: string }) {
           {activePanel === "ai" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>IA terapêutica</strong>
-
-              <label style={{ display: "grid", gap: 4 }}>
-                <span>Intenção da sessão (opcional)</span>
-                <input
-                  value={aiIntention}
-                  onChange={(event) => setAiIntention(event.target.value)}
-                />
-              </label>
+              <span className="small-muted">
+                Ajudas usadas:{" "}
+                <strong>
+                  {aiTipUsage?.used ?? 0}/{aiTipUsage?.limit ?? "—"}
+                </strong>
+              </span>
 
               <button
                 className="secondary"
+                disabled={actionsBlockedByConsent || aiTipLoading}
                 onClick={() =>
-                  socket?.emit(
-                    "ai:tip",
-                    { intention: aiIntention },
-                    (resp: any) => {
-                      if (!resp?.ok)
-                        showSocketError("Erro ao gerar dica", resp);
-                      else {
-                        setAiTip(resp.content);
-                        pushToast("Dica da IA gerada.", "success");
-                      }
-                    },
-                  )
+                  (() => {
+                    if (!socket) return;
+                    setAiTipLoading(true);
+                    socket.emit(
+                      "ai:tip",
+                      { intention: aiIntention },
+                      (resp: any) => {
+                        setAiTipLoading(false);
+                        if (!resp?.ok) {
+                          showSocketError("Erro ao gerar dica", resp);
+                        } else {
+                          setAiTip(resp.content);
+                          if (
+                            typeof resp.tipsUsed === "number" &&
+                            typeof resp.tipsLimit === "number"
+                          ) {
+                            setAiTipUsage({
+                              used: resp.tipsUsed,
+                              limit: resp.tipsLimit,
+                            });
+                          }
+                          pushToast("Dica da IA gerada.", "success");
+                        }
+                      },
+                    );
+                  })()
                 }
-                disabled={actionsBlockedByConsent}
               >
-                IA: me ajuda agora
+                {aiTipLoading ? "Processando ajuda..." : "IA: me ajuda agora"}
               </button>
+
+              {aiTipLoading && (
+                <span className="small-muted">
+                  Gerando orientação da IA, aguarde...
+                </span>
+              )}
 
               {aiTip && (
                 <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
@@ -1334,92 +1458,6 @@ export function RoomClient({ code }: { code: string }) {
                       Repetição costuma apontar para um tema que pede
                       integração.
                     </div>
-                  </div>
-
-                  <div className="notice" style={{ display: "grid", gap: 6 }}>
-                    <strong>Síntese terapêutica (3 linhas)</strong>
-                    <span className="small-muted">
-                      1) <strong>Padrão dominante:</strong>{" "}
-                      {summaryTopHouses[0]
-                        ? `Casa ${summaryTopHouses[0][0]} (${getHouseByNumber(summaryTopHouses[0][0])?.title || ""})`
-                        : "—"}
-                    </span>
-                    <span className="small-muted">
-                      2) <strong>Pedido do corpo:</strong> escolha 1 sensação
-                      recorrente e cuide dela por 7 dias.
-                    </span>
-                    <span className="small-muted">
-                      3) <strong>Micro-ação mestra:</strong> uma atitude simples
-                      para sustentar diariamente.
-                    </span>
-                  </div>
-
-                  <div
-                    className="notice"
-                    style={{
-                      display: "grid",
-                      gap: 6,
-                      maxHeight: 240,
-                      overflow: "auto",
-                      paddingRight: 2,
-                    }}
-                  >
-                    <strong>Registros (modo terapia)</strong>
-                    {summaryTherapyEntries.length === 0 ? (
-                      <span className="small-muted">(sem registros)</span>
-                    ) : (
-                      summaryTherapyEntries.map((entry) => {
-                        const house = entry.move.toPos;
-                        const houseTitle = getHouseByNumber(house)?.title || "";
-                        return (
-                          <div
-                            key={entry.id}
-                            style={{
-                              display: "grid",
-                              gap: 4,
-                              paddingBottom: 6,
-                              borderBottom: "1px solid rgba(255,255,255,0.08)",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 6,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <span className="pill">
-                                Casa {house}
-                                {houseTitle ? ` • ${houseTitle}` : ""}
-                              </span>
-                              {entry.emotion && (
-                                <span className="pill">
-                                  {entry.emotion}
-                                  {entry.intensity
-                                    ? ` (${entry.intensity}/10)`
-                                    : ""}
-                                </span>
-                              )}
-                            </div>
-                            {entry.insight && (
-                              <span className="small-muted">
-                                <strong>Insight:</strong> {entry.insight}
-                              </span>
-                            )}
-                            {entry.body && (
-                              <span className="small-muted">
-                                <strong>Corpo:</strong> {entry.body}
-                              </span>
-                            )}
-                            {entry.microAction && (
-                              <span className="small-muted">
-                                <strong>Micro-ação:</strong> {entry.microAction}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
                   </div>
                 </>
               )}
