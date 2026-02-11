@@ -65,33 +65,43 @@ export function RoomClient({ code }: { code: string }) {
   useEffect(() => {
     if (!session?.user?.id) return
 
-    let active = true
+    let cancelled = false
+    let currentSocket: Socket | null = null
+
     const connect = async () => {
       setLoading(true)
       const res = await fetch('/api/mahalilah/realtime/token')
       if (!res.ok) {
-        setError('Não foi possível autenticar no realtime.')
-        setLoading(false)
+        if (!cancelled) {
+          setError('Não foi possível autenticar no realtime.')
+          setLoading(false)
+        }
         return
       }
       const { token, wsUrl } = await res.json()
-      if (!active) return
+      if (cancelled) return
 
       const s = io(wsUrl, {
         transports: ['websocket'],
         auth: { token }
       })
+      currentSocket = s
 
       s.on('connect_error', (err) => {
-        setError(err.message)
+        if (!cancelled) {
+          setError(err.message)
+        }
       })
 
       s.on('room:state', (payload: RoomState) => {
-        setState(payload)
-        setLoading(false)
+        if (!cancelled) {
+          setState(payload)
+          setLoading(false)
+        }
       })
 
       s.emit('room:join', { code }, (resp: any) => {
+        if (cancelled) return
         if (!resp?.ok) {
           setError(resp?.error || 'Não foi possível entrar na sala.')
           setLoading(false)
@@ -106,10 +116,13 @@ export function RoomClient({ code }: { code: string }) {
 
     connect()
     return () => {
-      active = false
-      socket?.disconnect()
+      cancelled = true
+      if (currentSocket) {
+        currentSocket.removeAllListeners()
+        currentSocket.disconnect()
+      }
     }
-  }, [session?.user?.id])
+  }, [session?.user?.id, code])
 
   const currentParticipant = useMemo(() => {
     if (!state) return null
