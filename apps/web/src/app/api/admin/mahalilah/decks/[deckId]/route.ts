@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@hekate/database";
-import { ensureAdminSession } from "../_lib";
+import { rm } from "fs/promises";
+import { ensureAdminSession, resolveDeckDirectoryPath } from "../_lib";
+
+export const runtime = "nodejs";
 
 interface RouteParams {
   params: { deckId: string };
@@ -10,7 +13,6 @@ interface RouteParams {
 const UpdateDeckSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
-    imageDirectory: z.string().trim().min(1).max(500).optional(),
     imageExtension: z
       .string()
       .trim()
@@ -79,7 +81,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const deck = await prisma.cardDeck.update({
       where: { id: params.deckId },
-      data,
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.imageExtension !== undefined
+          ? { imageExtension: data.imageExtension }
+          : {}),
+        ...(data.useInMahaLilah !== undefined
+          ? { useInMahaLilah: data.useInMahaLilah }
+          : {}),
+      },
     });
 
     return NextResponse.json({ deck });
@@ -105,7 +115,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     const deck = await prisma.cardDeck.findUnique({
       where: { id: params.deckId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, imageDirectory: true },
     });
     if (!deck) {
       return NextResponse.json(
@@ -114,7 +124,14 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const directory = deck.imageDirectory;
     await prisma.cardDeck.delete({ where: { id: deck.id } });
+    try {
+      const fullPath = resolveDeckDirectoryPath(directory);
+      await rm(fullPath, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors to avoid blocking deck deletion.
+    }
     return NextResponse.json({
       message: `Baralho ${deck.name} excluído com sucesso.`,
     });

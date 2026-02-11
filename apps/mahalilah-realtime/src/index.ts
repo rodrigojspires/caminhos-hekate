@@ -84,13 +84,12 @@ function randomDice() {
 }
 
 function buildCardImageUrl(
-  imageDirectory: string,
+  deckId: string,
   imageExtension: string,
   cardNumber: number,
 ) {
-  const normalizedDirectory = imageDirectory.replace(/\/+$/, "");
   const normalizedExtension = imageExtension.replace(/^\./, "");
-  return `${normalizedDirectory}/${cardNumber}.${normalizedExtension}`;
+  return `/api/mahalilah/decks/${deckId}/images/${cardNumber}.${normalizedExtension}`;
 }
 
 function addRoomConnection(roomId: string, userId: string) {
@@ -404,7 +403,7 @@ async function buildRoomState(roomId: string) {
               keywords: draw.card.keywords,
               observation: draw.card.observation,
               imageUrl: buildCardImageUrl(
-                draw.card.deck.imageDirectory,
+                draw.card.deck.id,
                 draw.card.deck.imageExtension,
                 draw.card.cardNumber,
               ),
@@ -841,7 +840,7 @@ io.on("connection", (socket: AuthedSocket) => {
             keywords: selectedCard.keywords,
             observation: selectedCard.observation,
             imageUrl: buildCardImageUrl(
-              selectedCard.deck.imageDirectory,
+              selectedCard.deck.id,
               selectedCard.deck.imageExtension,
               selectedCard.cardNumber,
             ),

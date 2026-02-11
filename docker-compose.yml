@@ -127,10 +127,12 @@ services:
       S3_BUCKET: hekate-media
       EVOLUTION_API_URL: http://evolution:8080
       PRIVATE_UPLOAD_ROOT: /app/uploads
+      DECK_IMAGES_ROOT: /app/deck-images
     ports:
       - "3000:3000"
     volumes:
       - private_uploads_dev:/app/uploads
+      - deck_images:/app/deck-images
     depends_on:
       postgres:
         condition: service_healthy
@@ -151,8 +153,11 @@ services:
       REDIS_URL: redis://redis:6379
       NEXTAUTH_URL_MAHALILAH: http://localhost:3002
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      DECK_IMAGES_ROOT: /app/deck-images
     ports:
       - "3002:3000"
+    volumes:
+      - deck_images:/app/deck-images
     depends_on:
       postgres:
         condition: service_healthy
@@ -179,7 +184,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["sh","-lc","exec pnpm --filter @hekate/mahalilah-realtime start"]
+    command:
+      ["sh", "-lc", "exec pnpm --filter @hekate/mahalilah-realtime start"]
     networks:
       - hekate-network
 
@@ -193,3 +199,4 @@ volumes:
   minio_data:
   evolution_mongo_data:
   private_uploads_dev:
+  deck_images:

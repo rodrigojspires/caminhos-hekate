@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@hekate/database";
-import { ensureAdminSession } from "./_lib";
+import { createDeckDirectoryForName, ensureAdminSession } from "./_lib";
+
+export const runtime = "nodejs";
 
 const CreateDeckSchema = z.object({
   name: z.string().trim().min(2).max(120),
-  imageDirectory: z.string().trim().min(1).max(500),
   imageExtension: z
     .string()
     .trim()
@@ -58,11 +59,12 @@ export async function POST(request: NextRequest) {
 
     const payload = await request.json();
     const data = CreateDeckSchema.parse(payload);
+    const directory = await createDeckDirectoryForName(data.name);
 
     const deck = await prisma.cardDeck.create({
       data: {
         name: data.name,
-        imageDirectory: data.imageDirectory,
+        imageDirectory: directory,
         imageExtension: data.imageExtension,
         useInMahaLilah: data.useInMahaLilah,
         createdByUserId: auth.session.user.id,

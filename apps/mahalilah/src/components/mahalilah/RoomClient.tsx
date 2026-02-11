@@ -150,6 +150,13 @@ type ParsedTip = {
   intention: string | null;
 };
 
+type TutorialStep = {
+  title: string;
+  description: string;
+};
+
+type RoomTutorialRole = "THERAPIST" | "PLAYER";
+
 const COLORS = [
   "#2f7f6f",
   "#b44c4c",
@@ -193,6 +200,128 @@ const ACTION_ITEMS: Array<{
     shortLabel: "Resumo",
   },
 ];
+
+const HOUSE_SANSKRIT_NAMES: string[] = [
+  "Janma",
+  "Maya",
+  "Krodh",
+  "Lobh",
+  "Bhu Loka",
+  "Moha",
+  "Mada",
+  "Matsarya",
+  "Kama Loka",
+  "Shuddhi",
+  "Gandharvas",
+  "Eirsha",
+  "Antariksha",
+  "Bhuvar Loka",
+  "Naga Loka",
+  "Dvesh",
+  "Daya",
+  "Harsha Loka",
+  "Karma Loka",
+  "Daan",
+  "Saman Papa",
+  "Dharma Loka",
+  "Svarga Loka",
+  "Ku Sang Loka",
+  "Su Sang Loka",
+  "Dukh",
+  "Parmarth",
+  "Sudharma",
+  "Adharma",
+  "Uttam Gati",
+  "Yarksha Loka",
+  "Mahar Loka",
+  "Gandha Loka",
+  "Rasa Loka",
+  "Narka Loka",
+  "Swatch",
+  "Jnana",
+  "Prana Loka",
+  "Apana Loka",
+  "Vyana Loka",
+  "Jana Loka",
+  "Agni Loka",
+  "Manushya Janma",
+  "Avidya",
+  "Suvidya",
+  "Vivek",
+  "Saraswati",
+  "Yamuna",
+  "Ganga",
+  "Tapa Loka",
+  "Prithvi",
+  "Himsa Loka",
+  "Jala Loka",
+  "Bhakti Loka",
+  "Ahamkara",
+  "Omkar",
+  "Vayu Loka",
+  "Teja Loka",
+  "Satya Loka",
+  "Subuddhi",
+  "Durbuddhi",
+  "Sukh",
+  "Tamas",
+  "Prakriti Loka",
+  "Uranta Loka",
+  "Ananda Loka",
+  "Rudra Loka",
+  "Vaikuntha Loka",
+  "Brahma Loka",
+  "Satoguna",
+  "Rajoguna",
+  "Tamoguna",
+];
+
+const ROOM_TUTORIAL_STEPS: Record<RoomTutorialRole, TutorialStep[]> = {
+  THERAPIST: [
+    {
+      title: "Visão geral da sala",
+      description:
+        "No topo você acompanha turno, rolagens, casa atual e status do terapeuta/sala.",
+    },
+    {
+      title: "Controles principais",
+      description:
+        "Use os botões para rolar dado, avançar vez, encerrar sala e voltar ao dashboard.",
+    },
+    {
+      title: "Tabuleiro e leitura",
+      description:
+        "O tabuleiro mostra pinos por jogador e atalhos. Use 'Mostrar nomes' para exibir sânscrito e português nas casas.",
+    },
+    {
+      title: "Painel lateral",
+      description:
+        "Nas abas você acessa significado da casa, cartas, registro terapêutico, IA, jogadores, timeline e resumo.",
+    },
+  ],
+  PLAYER: [
+    {
+      title: "Turno e indicadores",
+      description:
+        "No topo você vê de quem é a vez, suas rolagens e a casa atual durante a partida.",
+    },
+    {
+      title: "Jogar na sua vez",
+      description:
+        "Quando for sua vez, use 'Rolar dado'. Se houver atalho, a movimentação será exibida automaticamente.",
+    },
+    {
+      title: "Recursos da jogada",
+      description:
+        "Após rolar, use as abas para tirar carta, salvar registro terapêutico e pedir ajuda da IA.",
+    },
+    {
+      title: "Acompanhamento",
+      description:
+        "Use Timeline e Resumo do Jogador para revisar jogadas, cartas, registros e orientações da IA.",
+    },
+  ],
+};
 
 function parseTipReportContent(content: string): ParsedTip {
   try {
@@ -259,6 +388,19 @@ export function RoomClient({ code }: { code: string }) {
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
+  const [showBoardNames, setShowBoardNames] = useState(false);
+  const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  const [showRoomTutorial, setShowRoomTutorial] = useState(false);
+  const [roomTutorialStep, setRoomTutorialStep] = useState(0);
+  const [roomTutorialRole, setRoomTutorialRole] =
+    useState<RoomTutorialRole | null>(null);
+  const [roomTutorialInitializedRole, setRoomTutorialInitializedRole] =
+    useState<RoomTutorialRole | null>(null);
+  const [roomOnboardingLoaded, setRoomOnboardingLoaded] = useState(false);
+  const [roomOnboardingSeen, setRoomOnboardingSeen] = useState({
+    therapist: false,
+    player: false,
+  });
   const [therapyModalEntries, setTherapyModalEntries] = useState<
     Array<
       TimelineMove["therapyEntries"][number] & {
@@ -283,6 +425,44 @@ export function RoomClient({ code }: { code: string }) {
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    let cancelled = false;
+
+    const loadOnboarding = async () => {
+      try {
+        const res = await fetch("/api/mahalilah/onboarding", {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("onboarding-fetch-failed");
+        const payload = await res.json().catch(() => ({}));
+        if (cancelled) return;
+
+        setRoomOnboardingSeen({
+          therapist: Boolean(payload.roomTherapistSeen),
+          player: Boolean(payload.roomPlayerSeen),
+        });
+      } catch {
+        if (cancelled) return;
+        setRoomOnboardingSeen({
+          therapist: true,
+          player: true,
+        });
+      } finally {
+        if (!cancelled) {
+          setRoomOnboardingLoaded(true);
+        }
+      }
+    };
+
+    void loadOnboarding();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -652,6 +832,52 @@ export function RoomClient({ code }: { code: string }) {
     setAiTipUsage({ used: myAiUsage.tipsUsed, limit: myAiUsage.tipsLimit });
   }, [myAiUsage?.tipsUsed, myAiUsage?.tipsLimit]);
 
+  useEffect(() => {
+    if (!myParticipant || !roomOnboardingLoaded) return;
+    const role = myParticipant.role === "THERAPIST" ? "THERAPIST" : "PLAYER";
+    if (roomTutorialInitializedRole === role) return;
+
+    const alreadySeen =
+      role === "THERAPIST"
+        ? roomOnboardingSeen.therapist
+        : roomOnboardingSeen.player;
+    if (alreadySeen) return;
+
+    setRoomTutorialInitializedRole(role);
+    setRoomTutorialRole(role);
+    setRoomTutorialStep(0);
+    setShowRoomTutorial(true);
+  }, [
+    myParticipant,
+    roomOnboardingLoaded,
+    roomOnboardingSeen.player,
+    roomOnboardingSeen.therapist,
+    roomTutorialInitializedRole,
+  ]);
+
+  const finishRoomTutorial = async () => {
+    if (!roomTutorialRole) {
+      setShowRoomTutorial(false);
+      return;
+    }
+
+    if (roomTutorialRole === "THERAPIST") {
+      setRoomOnboardingSeen((prev) => ({ ...prev, therapist: true }));
+    } else {
+      setRoomOnboardingSeen((prev) => ({ ...prev, player: true }));
+    }
+
+    setShowRoomTutorial(false);
+
+    const scope =
+      roomTutorialRole === "THERAPIST" ? "room_therapist" : "room_player";
+    await fetch("/api/mahalilah/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope }),
+    }).catch(() => null);
+  };
+
   const showSocketError = (fallback: string, resp: any) => {
     pushToast(resp?.error || fallback, "error");
   };
@@ -839,6 +1065,10 @@ export function RoomClient({ code }: { code: string }) {
 
   const roomIsActive = state.room.status === "ACTIVE";
   const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
+  const roomTutorialSteps = roomTutorialRole
+    ? ROOM_TUTORIAL_STEPS[roomTutorialRole]
+    : [];
+  const currentRoomTutorialStep = roomTutorialSteps[roomTutorialStep] || null;
 
   return (
     <div className="grid" style={{ gap: 14 }}>
@@ -1076,6 +1306,20 @@ export function RoomClient({ code }: { code: string }) {
               Encerrar sala
             </button>
           )}
+          <button
+            className="secondary"
+            onClick={() => setShowBoardNames((prev) => !prev)}
+            style={{ flex: "0 0 auto" }}
+          >
+            {showBoardNames ? "Ocultar nomes" : "Mostrar nomes"}
+          </button>
+          <button
+            className="secondary"
+            onClick={() => setRulesModalOpen(true)}
+            style={{ flex: "0 0 auto" }}
+          >
+            Regras do jogo
+          </button>
           {canCloseRoom && (
             <Link
               href="/dashboard"
@@ -1126,6 +1370,9 @@ export function RoomClient({ code }: { code: string }) {
               const house = getHouseByNumber(cell.houseNumber);
               const jumpTarget = jumpMap.get(cell.houseNumber);
               const isSelected = indicatorHouseNumber === cell.houseNumber;
+              const sanskritName =
+                HOUSE_SANSKRIT_NAMES[cell.houseNumber - 1] || "";
+              const portugueseName = house?.title || `Casa ${cell.houseNumber}`;
               const tokens = state.participants
                 .map((participant, participantIndex) => ({
                   participant,
@@ -1158,7 +1405,9 @@ export function RoomClient({ code }: { code: string }) {
                       : "rgba(12, 19, 30, 0.48)",
                     padding: 6,
                     display: "grid",
-                    alignContent: "space-between",
+                    gridTemplateRows: showBoardNames
+                      ? "auto auto 1fr auto"
+                      : "auto 1fr",
                     gap: 4,
                     textAlign: "left",
                     cursor: "default",
@@ -1191,7 +1440,30 @@ export function RoomClient({ code }: { code: string }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {showBoardNames && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        lineHeight: 1.05,
+                        fontWeight: 600,
+                        color: "rgba(223, 233, 247, 0.92)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={sanskritName}
+                    >
+                      {sanskritName}
+                    </span>
+                  )}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 4,
+                      flexWrap: "wrap",
+                      alignSelf: showBoardNames ? "center" : "end",
+                    }}
+                  >
                     {tokens.map((token, tokenIndex) => {
                       const isCurrentTurnToken =
                         token.participant.id === currentParticipant?.id;
@@ -1224,6 +1496,22 @@ export function RoomClient({ code }: { code: string }) {
                       );
                     })}
                   </div>
+                  {showBoardNames && (
+                    <span
+                      className="small-muted"
+                      style={{
+                        fontSize: 9,
+                        lineHeight: 1.05,
+                        color: "rgba(192, 205, 225, 0.95)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={portugueseName}
+                    >
+                      {portugueseName}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -2127,6 +2415,167 @@ export function RoomClient({ code }: { code: string }) {
             </div>
             <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
               {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rulesModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setRulesModalOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <strong>Resumo das regras do Maha Lilah</strong>
+              <button
+                className="btn-secondary"
+                onClick={() => setRulesModalOpen(false)}
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="notice" style={{ display: "grid", gap: 8 }}>
+              <span className="small-muted">
+                <strong>1.</strong> Todos começam na casa <strong>68</strong>.
+              </span>
+              <span className="small-muted">
+                <strong>2.</strong> Para iniciar o jogo, precisa rolar{" "}
+                <strong>6</strong>; ao iniciar, vai para a casa{" "}
+                <strong>6</strong>.
+              </span>
+              <span className="small-muted">
+                <strong>3.</strong> A rolagem do dado so fica ativa com o{" "}
+                <strong>terapeuta online</strong> na sala.
+              </span>
+              <span className="small-muted">
+                <strong>4.</strong> Atalhos podem subir (↗) ou descer (↘),
+                conforme a casa onde o jogador caiu.
+              </span>
+              <span className="small-muted">
+                <strong>5.</strong> A sala conclui quando o jogador retorna a{" "}
+                casa <strong>68</strong> apos ja ter iniciado.
+              </span>
+              <span className="small-muted">
+                <strong>6.</strong> Cada jogada permite tirar ate{" "}
+                <strong>3 cartas</strong>.
+              </span>
+              <span className="small-muted">
+                <strong>7.</strong> Registro terapeutico e ajudas de IA ficam
+                salvos na timeline do jogador.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRoomTutorial && roomTutorialRole && currentRoomTutorialStep && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={finishRoomTutorial}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.72)",
+            zIndex: 11000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(740px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "grid", gap: 4 }}>
+              <strong>
+                Tutorial da sala •{" "}
+                {roomTutorialRole === "THERAPIST" ? "Terapeuta" : "Jogador"} (
+                {roomTutorialStep + 1}/{roomTutorialSteps.length})
+              </strong>
+              <span className="small-muted">
+                Esse guia aparece automaticamente apenas no primeiro acesso da
+                sala para este perfil.
+              </span>
+            </div>
+
+            <div className="notice" style={{ display: "grid", gap: 8 }}>
+              <strong>{currentRoomTutorialStep.title}</strong>
+              <span className="small-muted">
+                {currentRoomTutorialStep.description}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-secondary"
+                onClick={() =>
+                  setRoomTutorialStep((prev) => Math.max(0, prev - 1))
+                }
+                disabled={roomTutorialStep === 0}
+              >
+                Voltar
+              </button>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn-secondary" onClick={finishRoomTutorial}>
+                  Pular tutorial
+                </button>
+                <button
+                  onClick={() => {
+                    if (roomTutorialStep >= roomTutorialSteps.length - 1) {
+                      finishRoomTutorial();
+                      return;
+                    }
+                    setRoomTutorialStep((prev) => prev + 1);
+                  }}
+                >
+                  {roomTutorialStep >= roomTutorialSteps.length - 1
+                    ? "Concluir"
+                    : "Próximo"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

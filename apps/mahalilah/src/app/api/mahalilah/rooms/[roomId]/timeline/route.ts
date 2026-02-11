@@ -8,13 +8,12 @@ interface RouteParams {
 }
 
 function buildCardImageUrl(
-  imageDirectory: string,
+  deckId: string,
   imageExtension: string,
   cardNumber: number,
 ) {
-  const normalizedDirectory = imageDirectory.replace(/\/+$/, "");
   const normalizedExtension = imageExtension.replace(/^\./, "");
-  return `${normalizedDirectory}/${cardNumber}.${normalizedExtension}`;
+  return `/api/mahalilah/decks/${deckId}/images/${cardNumber}.${normalizedExtension}`;
 }
 
 export async function GET(request: Request, { params }: RouteParams) {
@@ -125,7 +124,7 @@ export async function GET(request: Request, { params }: RouteParams) {
             keywords: draw.card.keywords,
             observation: draw.card.observation,
             imageUrl: buildCardImageUrl(
-              draw.card.deck.imageDirectory,
+              draw.card.deck.id,
               draw.card.deck.imageExtension,
               draw.card.cardNumber,
             ),

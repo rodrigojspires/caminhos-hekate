@@ -9,7 +9,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-hekate} -d $${POSTGRES_DB:-hekate_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-hekate} -d $${POSTGRES_DB:-hekate_db}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,12 +51,14 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       PRIVATE_UPLOAD_ROOT: /app/uploads
+      DECK_IMAGES_ROOT: /app/deck-images
       # SMTP & others should be provided in .env
     ports:
       - "127.0.0.1:3001:3000"
     volumes:
       - course_uploads:/app/apps/web/public/uploads
       - private_uploads:/app/uploads
+      - deck_images:/app/deck-images
     restart: unless-stopped
 
   mahalilah:
@@ -74,8 +80,11 @@ services:
       REDIS_URL: redis://redis:6379
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL_MAHALILAH: ${NEXTAUTH_URL_MAHALILAH}
+      DECK_IMAGES_ROOT: /app/deck-images
     ports:
       - "127.0.0.1:3002:3000"
+    volumes:
+      - deck_images:/app/deck-images
     restart: unless-stopped
 
   mahalilah-realtime:
@@ -94,7 +103,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     working_dir: /app
-    command: ["sh","-lc","exec pnpm --filter @hekate/mahalilah-realtime start"]
+    command:
+      ["sh", "-lc", "exec pnpm --filter @hekate/mahalilah-realtime start"]
     ports:
       - "127.0.0.1:4010:4010"
     restart: unless-stopped
@@ -103,7 +113,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: worker        # <<< usa a nova stage
+      target: worker # <<< usa a nova stage
     user: "root"
     depends_on:
       postgres:
@@ -119,7 +129,12 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-email-processor.ts"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "exec pnpm exec tsx /app/apps/web/scripts/start-email-processor.ts",
+      ]
     restart: unless-stopped
 
   worker-reminders:
@@ -142,7 +157,12 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","exec pnpm exec tsx --tsconfig /app/apps/web/tsconfig.json /app/apps/web/src/lib/background/reminder-processor.ts"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "exec pnpm exec tsx --tsconfig /app/apps/web/tsconfig.json /app/apps/web/src/lib/background/reminder-processor.ts",
+      ]
     restart: unless-stopped
 
   worker-subscriptions:
@@ -164,7 +184,12 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379
     working_dir: /app
-    command: ["sh","-lc","exec pnpm exec tsx /app/apps/web/scripts/start-subscription-billing.ts"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "exec pnpm exec tsx /app/apps/web/scripts/start-subscription-billing.ts",
+      ]
     restart: unless-stopped
 
   community-ws:
@@ -183,7 +208,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     working_dir: /app
-    command: ["sh","-lc","exec node /app/apps/web/scripts/start-community-ws.js"]
+    command:
+      ["sh", "-lc", "exec node /app/apps/web/scripts/start-community-ws.js"]
     ports:
       - "127.0.0.1:8082:8082"
     restart: unless-stopped
@@ -206,9 +232,9 @@ services:
     command: ["--filter", "@hekate/database", "db:seed"]
     # Run only on demand: `docker compose -f docker-compose.prod.yml run --rm dbtools`
 
-
 volumes:
   postgres_data:
   redis_data:
   course_uploads:
   private_uploads:
+  deck_images:

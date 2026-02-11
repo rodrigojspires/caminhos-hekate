@@ -56,7 +56,7 @@ const menuItems = [
   }, // Replaced Handshake
   { title: "Maha Lilah", href: "/admin/mahalilah", icon: Dice6 },
   {
-    title: "Baralhos Maha Lilah",
+    title: "Baralhos",
     href: "/admin/mahalilah/baralhos",
     icon: Layers3,
   },
