@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RoomInvite = {
   id: string;
@@ -101,38 +101,109 @@ type RoomDetailsTab =
   | "deck"
   | "aiReports";
 
+type DashboardTutorialTarget =
+  | "create-room"
+  | "filters"
+  | "sessions-list"
+  | "room-actions"
+  | "room-tab-invites"
+  | "room-tab-participants"
+  | "room-tab-timeline"
+  | "room-tab-deck"
+  | "room-tab-aiReports";
+
 type TutorialStep = {
   title: string;
   description: string;
-  target: "create-room" | "filters" | "room-actions" | "room-details";
+  target: DashboardTutorialTarget;
 };
 
-const DASHBOARD_TUTORIAL_STEPS: TutorialStep[] = [
-  {
-    title: "Criar sala",
+const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
+  Record<DashboardTutorialTarget, RoomDetailsTab>
+> = {
+  "room-tab-invites": "invites",
+  "room-tab-participants": "participants",
+  "room-tab-timeline": "timeline",
+  "room-tab-deck": "deck",
+  "room-tab-aiReports": "aiReports",
+};
+
+function getDashboardTutorialSteps({
+  canCreateRoom,
+  hasRooms,
+}: {
+  canCreateRoom: boolean;
+  hasRooms: boolean;
+}): TutorialStep[] {
+  const steps: TutorialStep[] = [];
+
+  if (canCreateRoom) {
+    steps.push({
+      title: "Criar sala",
+      description:
+        'Defina "Jogadores maximos", marque se o terapeuta joga junto e use "Criar sala" para iniciar uma nova sessao.',
+      target: "create-room",
+    });
+  }
+
+  steps.push({
+    title: "Filtros de sessao",
     description:
-      'Use "Criar nova sala" para definir quantidade de jogadores e se o terapeuta joga junto.',
-    target: "create-room",
-  },
-  {
-    title: "Filtros de sessão",
-    description:
-      "Filtre por status e periodo para localizar salas ativas, encerradas ou concluidas.",
+      'Use "Status", periodo "De/Ate" e "Aplicar filtros" para encontrar rapidamente as sessoes que deseja acompanhar.',
     target: "filters",
-  },
-  {
-    title: "Acoes da sala",
-    description:
-      "Em cada sala use: Abrir sala, Copiar link e Ver detalhes para acessar o acompanhamento completo.",
-    target: "room-actions",
-  },
-  {
-    title: "Detalhes e acompanhamento",
-    description:
-      "Dentro de detalhes voce tem abas de Convites, Participantes, Timeline, Deck e Relatorios IA.",
-    target: "room-details",
-  },
-];
+  });
+
+  if (!hasRooms) {
+    steps.push({
+      title: "Minhas sessoes",
+      description:
+        "Quando a primeira sala for criada, aqui voce acompanha indicadores e acessa as abas de detalhes (convites, participantes, timeline, deck e IA).",
+      target: "sessions-list",
+    });
+    return steps;
+  }
+
+  steps.push(
+    {
+      title: "Acoes rapidas da sala",
+      description:
+        '"Abrir sala" entra na partida, "Copiar link" compartilha acesso com jogadores e "Ver detalhes" abre toda a gestao da sessao.',
+      target: "room-actions",
+    },
+    {
+      title: "Aba Convites",
+      description:
+        "Envie novos convites por e-mail, acompanhe quem esta pendente/aceito e use reenviar quando necessario.",
+      target: "room-tab-invites",
+    },
+    {
+      title: "Aba Participantes",
+      description:
+        "Veja terapeuta e jogadores da sala, confira consentimento e remova participantes quando precisar ajustar a turma.",
+      target: "room-tab-participants",
+    },
+    {
+      title: "Aba Timeline",
+      description:
+        "Revise jogadas por ordem cronologica, com dado, casa, atalhos e registros terapeuticos por participante.",
+      target: "room-tab-timeline",
+    },
+    {
+      title: "Aba Deck randomico",
+      description:
+        "Acompanhe todas as cartas tiradas na sessao e filtre por jogador para leitura individual do percurso.",
+      target: "room-tab-deck",
+    },
+    {
+      title: "Aba Relatorios IA",
+      description:
+        "Consulte as ajudas e sinteses geradas pela IA durante a sessao para apoiar supervisao e fechamento terapeutico.",
+      target: "room-tab-aiReports",
+    },
+  );
+
+  return steps;
+}
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -250,6 +321,14 @@ export function DashboardClient() {
   const [dashboardTutorialStep, setDashboardTutorialStep] = useState(0);
   const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
     useState<DOMRect | null>(null);
+  const dashboardTutorialSteps = useMemo(
+    () =>
+      getDashboardTutorialSteps({
+        canCreateRoom,
+        hasRooms: rooms.length > 0,
+      }),
+    [canCreateRoom, rooms.length],
+  );
 
   const showNotice = (
     message: string,
@@ -324,7 +403,8 @@ export function DashboardClient() {
 
   useEffect(() => {
     if (!showDashboardTutorial) return;
-    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
+    const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
+    if (!currentStep) return;
     const selector = `[data-tour-dashboard="${currentStep.target}"]`;
     const targetEl = document.querySelector<HTMLElement>(selector);
     if (!targetEl) return;
@@ -334,7 +414,12 @@ export function DashboardClient() {
       inline: "nearest",
       behavior: "smooth",
     });
-  }, [showDashboardTutorial, dashboardTutorialStep, openRooms]);
+  }, [
+    showDashboardTutorial,
+    dashboardTutorialStep,
+    dashboardTutorialSteps,
+    openRooms,
+  ]);
 
   useEffect(() => {
     if (!showDashboardTutorial) {
@@ -342,7 +427,11 @@ export function DashboardClient() {
       return;
     }
 
-    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
+    const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
+    if (!currentStep) {
+      setDashboardTutorialTargetRect(null);
+      return;
+    }
     const selector = `[data-tour-dashboard="${currentStep.target}"]`;
 
     const updateTargetRect = () => {
@@ -369,7 +458,21 @@ export function DashboardClient() {
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", handleViewportChange, true);
     };
-  }, [showDashboardTutorial, dashboardTutorialStep, rooms.length, openRooms]);
+  }, [
+    showDashboardTutorial,
+    dashboardTutorialStep,
+    dashboardTutorialSteps,
+    rooms.length,
+    openRooms,
+  ]);
+
+  useEffect(() => {
+    if (!showDashboardTutorial) return;
+    if (dashboardTutorialSteps.length === 0) return;
+    setDashboardTutorialStep((prev) =>
+      Math.min(prev, dashboardTutorialSteps.length - 1),
+    );
+  }, [showDashboardTutorial, dashboardTutorialSteps.length]);
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
@@ -531,25 +634,31 @@ export function DashboardClient() {
 
   useEffect(() => {
     if (!showDashboardTutorial) return;
-    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
-    if (currentStep.target !== "room-details") return;
+    const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
+    if (!currentStep) return;
+
+    const targetTab = DETAIL_TAB_BY_TUTORIAL_TARGET[currentStep.target];
+    if (!targetTab) return;
 
     const firstRoomId = rooms[0]?.id;
     if (!firstRoomId) return;
-    if (openRooms[firstRoomId]) return;
 
-    setOpenRooms((prev) => ({ ...prev, [firstRoomId]: true }));
-    setActiveDetailTabs((prev) =>
-      prev[firstRoomId] ? prev : { ...prev, [firstRoomId]: "invites" },
-    );
+    if (!openRooms[firstRoomId]) {
+      setOpenRooms((prev) => ({ ...prev, [firstRoomId]: true }));
+    }
+    if (activeDetailTabs[firstRoomId] !== targetTab) {
+      setActiveDetailTabs((prev) => ({ ...prev, [firstRoomId]: targetTab }));
+    }
     if (!details[firstRoomId]) {
       void loadTimeline(firstRoomId);
     }
   }, [
     showDashboardTutorial,
     dashboardTutorialStep,
+    dashboardTutorialSteps,
     rooms,
     openRooms,
+    activeDetailTabs,
     details,
     loadTimeline,
   ]);
@@ -713,7 +822,6 @@ export function DashboardClient() {
               borderTop: "1px solid var(--border)",
               paddingTop: 12,
             }}
-            data-tour-dashboard={index === 0 ? "room-details" : undefined}
           >
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
@@ -725,6 +833,9 @@ export function DashboardClient() {
                     ...prev,
                     [room.id]: "invites",
                   }))
+                }
+                data-tour-dashboard={
+                  index === 0 ? "room-tab-invites" : undefined
                 }
               >
                 Convites
@@ -739,6 +850,9 @@ export function DashboardClient() {
                     [room.id]: "participants",
                   }))
                 }
+                data-tour-dashboard={
+                  index === 0 ? "room-tab-participants" : undefined
+                }
               >
                 Participantes
               </button>
@@ -751,6 +865,9 @@ export function DashboardClient() {
                     ...prev,
                     [room.id]: "timeline",
                   }))
+                }
+                data-tour-dashboard={
+                  index === 0 ? "room-tab-timeline" : undefined
                 }
               >
                 Timeline
@@ -765,6 +882,9 @@ export function DashboardClient() {
                     [room.id]: "deck",
                   }))
                 }
+                data-tour-dashboard={
+                  index === 0 ? "room-tab-deck" : undefined
+                }
               >
                 Deck randômico
               </button>
@@ -777,6 +897,9 @@ export function DashboardClient() {
                     ...prev,
                     [room.id]: "aiReports",
                   }))
+                }
+                data-tour-dashboard={
+                  index === 0 ? "room-tab-aiReports" : undefined
                 }
               >
                 Relatórios IA
@@ -1396,13 +1519,15 @@ export function DashboardClient() {
       <div className="grid" style={{ gap: 16 }}>
         <h2 className="section-title">Minhas sessões</h2>
         {loading ? (
-          <div className="card">Carregando...</div>
+          <div className="card" data-tour-dashboard="sessions-list">
+            Carregando...
+          </div>
         ) : rooms.length === 0 ? (
-          <div className="card">
+          <div className="card" data-tour-dashboard="sessions-list">
             Nenhuma sala encontrada com os filtros atuais.
           </div>
         ) : (
-          roomCards
+          <div data-tour-dashboard="sessions-list">{roomCards}</div>
         )}
       </div>
 
@@ -1512,7 +1637,7 @@ export function DashboardClient() {
             <div style={{ display: "grid", gap: 4 }}>
               <strong>
                 Tutorial do dashboard ({dashboardTutorialStep + 1}/
-                {DASHBOARD_TUTORIAL_STEPS.length})
+                {dashboardTutorialSteps.length})
               </strong>
               <span className="small-muted">
                 Esse guia aparece automaticamente apenas no primeiro acesso.
@@ -1521,10 +1646,10 @@ export function DashboardClient() {
 
             <div className="notice" style={{ display: "grid", gap: 8 }}>
               <strong>
-                {DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep]?.title}
+                {dashboardTutorialSteps[dashboardTutorialStep]?.title}
               </strong>
               <span className="small-muted">
-                {DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep]?.description}
+                {dashboardTutorialSteps[dashboardTutorialStep]?.description}
               </span>
             </div>
 
@@ -1557,7 +1682,7 @@ export function DashboardClient() {
                   onClick={() => {
                     if (
                       dashboardTutorialStep >=
-                      DASHBOARD_TUTORIAL_STEPS.length - 1
+                      dashboardTutorialSteps.length - 1
                     ) {
                       finishDashboardTutorial();
                       return;
@@ -1565,7 +1690,7 @@ export function DashboardClient() {
                     setDashboardTutorialStep((prev) => prev + 1);
                   }}
                 >
-                  {dashboardTutorialStep >= DASHBOARD_TUTORIAL_STEPS.length - 1
+                  {dashboardTutorialStep >= dashboardTutorialSteps.length - 1
                     ? "Concluir"
                     : "Próximo"}
                 </button>
