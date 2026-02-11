@@ -609,8 +609,6 @@ export function RoomClient({ code }: { code: string }) {
         })
         .join(" → ")
     : "—";
-  const roomIsActive = state.room.status === "ACTIVE";
-  const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
 
   if (loading) {
     return <div className="card">Carregando sala...</div>;
@@ -619,6 +617,9 @@ export function RoomClient({ code }: { code: string }) {
   if (!state) {
     return <div className="card">{fatalError || "Sala indisponível."}</div>;
   }
+
+  const roomIsActive = state.room.status === "ACTIVE";
+  const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
 
   return (
     <div className="grid" style={{ gap: 14 }}>
