@@ -11,6 +11,7 @@ import {
   getHouseByNumber,
   getHousePrompt,
 } from "@hekate/mahalilah-core";
+import { HOUSE_POLARITIES } from "@/lib/mahalilah/house-polarities";
 
 type Participant = {
   id: string;
@@ -276,6 +277,45 @@ const HOUSE_SANSKRIT_NAMES: string[] = [
   "Rajoguna",
   "Tamoguna",
 ];
+
+type HouseDisplayInfo = {
+  number: number;
+  sanskrit: string;
+  portuguese: string;
+  description: string;
+  keywords: string[];
+  polarity: {
+    lightKeywords: string;
+    lightSummary: string;
+    shadowKeywords: string;
+    shadowSummary: string;
+  } | null;
+};
+
+function parseHouseKeywords(description: string | null | undefined) {
+  if (!description) return [];
+  return description
+    .split(/[,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function getHouseDisplayInfo(houseNumber: number | null | undefined) {
+  if (typeof houseNumber !== "number" || houseNumber < 1) return null;
+  const house = getHouseByNumber(houseNumber);
+  return {
+    number: houseNumber,
+    sanskrit: HOUSE_SANSKRIT_NAMES[houseNumber - 1] || "",
+    portuguese: house?.title || `Casa ${houseNumber}`,
+    description: house?.description || "",
+    keywords: parseHouseKeywords(house?.description),
+    polarity: HOUSE_POLARITIES[houseNumber] || null,
+  } satisfies HouseDisplayInfo;
+}
+
+function stripTherapeuticPromptPrefix(prompt: string) {
+  return prompt.replace(/^Pergunta terapêutica:\s*/i, "").trim();
+}
 
 const ROOM_TUTORIAL_STEPS: Record<RoomTutorialRole, TutorialStep[]> = {
   THERAPIST: [
@@ -705,8 +745,14 @@ export function RoomClient({ code }: { code: string }) {
   const selectedHouse =
     getHouseByNumber(selectedHouseNumber) ||
     getHouseByNumber(indicatorHouseNumber);
-  const lastHouse = state?.lastMove
-    ? getHouseByNumber(state.lastMove.toPos)
+  const selectedHouseInfo = selectedHouse
+    ? getHouseDisplayInfo(selectedHouse.number)
+    : null;
+  const selectedHouseQuestion = selectedHouse
+    ? stripTherapeuticPromptPrefix(getHousePrompt(selectedHouse.number))
+    : "";
+  const lastMoveHouseInfo = state?.lastMove
+    ? getHouseDisplayInfo(state.lastMove.toPos)
     : null;
   const lastMoveJump =
     state?.lastMove?.appliedJumpFrom !== null &&
@@ -719,6 +765,12 @@ export function RoomClient({ code }: { code: string }) {
           isUp: state.lastMove.appliedJumpTo > state.lastMove.appliedJumpFrom,
         }
       : null;
+  const lastMoveJumpFromInfo = lastMoveJump
+    ? getHouseDisplayInfo(lastMoveJump.from)
+    : null;
+  const lastMoveJumpToInfo = lastMoveJump
+    ? getHouseDisplayInfo(lastMoveJump.to)
+    : null;
 
   const needsConsent = Boolean(
     myParticipant && !myParticipant.consentAcceptedAt,
@@ -1481,12 +1533,27 @@ export function RoomClient({ code }: { code: string }) {
           )}
         </div>
 
-        {lastHouse && state.lastMove && (
+        {lastMoveHouseInfo && state.lastMove && (
           <div className="small-muted">
-            Última jogada: casa {lastHouse.number} • dado{" "}
-            {state.lastMove.diceValue}
+            Última jogada: casa {lastMoveHouseInfo.number},{" "}
+            {lastMoveHouseInfo.sanskrit || "—"},{" "}
+            {lastMoveHouseInfo.portuguese} * dado {state.lastMove.diceValue}
           </div>
         )}
+        {lastMoveJump &&
+          lastMoveJumpFromInfo &&
+          lastMoveJumpToInfo &&
+          state.lastMove && (
+            <div className="small-muted">
+              Chegou por atalho: casa {lastMoveJumpFromInfo.number} (
+              {lastMoveJumpFromInfo.sanskrit || "—"} •{" "}
+              {lastMoveJumpFromInfo.portuguese}){" "}
+              {lastMoveJump.isUp ? "↗" : "↘"} casa {lastMoveJumpToInfo.number} (
+              {lastMoveJumpToInfo.sanskrit || "—"} •{" "}
+              {lastMoveJumpToInfo.portuguese}) (
+              {lastMoveJump.isUp ? "subida" : "descida"}).
+            </div>
+          )}
       </div>
 
       <div
@@ -1730,26 +1797,43 @@ export function RoomClient({ code }: { code: string }) {
                 <>
                   <div>
                     <strong>
-                      Casa {selectedHouse.number} - {selectedHouse.title}
+                      Casa {selectedHouse.number} •{" "}
+                      {selectedHouseInfo?.sanskrit || "—"} •{" "}
+                      {selectedHouseInfo?.portuguese || selectedHouse.title}
                     </strong>
                   </div>
-                  <p className="small-muted">{selectedHouse.description}</p>
-                  <div className="notice">
-                    {getHousePrompt(selectedHouse.number)}
+                  <div className="notice" style={{ display: "grid", gap: 6 }}>
+                    <span>
+                      <strong>Significado:</strong>{" "}
+                      {selectedHouseInfo?.description || selectedHouse.title}
+                    </span>
+                    <span>
+                      <strong>Palavras-chave:</strong>{" "}
+                      {selectedHouseInfo?.keywords.length
+                        ? selectedHouseInfo.keywords.join(" • ")
+                        : selectedHouseInfo?.description || "—"}
+                    </span>
+                    <span>
+                      <strong>Lado luz (palavras-chave):</strong>{" "}
+                      {selectedHouseInfo?.polarity?.lightKeywords || "—"}
+                    </span>
+                    <span>
+                      <strong>Resumo luz:</strong>{" "}
+                      {selectedHouseInfo?.polarity?.lightSummary || "—"}
+                    </span>
+                    <span>
+                      <strong>Lado sombra (palavras-chave):</strong>{" "}
+                      {selectedHouseInfo?.polarity?.shadowKeywords || "—"}
+                    </span>
+                    <span>
+                      <strong>Resumo sombra:</strong>{" "}
+                      {selectedHouseInfo?.polarity?.shadowSummary || "—"}
+                    </span>
+                    <span>
+                      <strong>Pergunta terapêutica:</strong>{" "}
+                      {selectedHouseQuestion}
+                    </span>
                   </div>
-                  {lastHouse && (
-                    <span className="small-muted">
-                      Última jogada: casa {lastHouse.number} • dado{" "}
-                      {state.lastMove?.diceValue}
-                    </span>
-                  )}
-                  {lastMoveJump && selectedHouse.number === lastMoveJump.to && (
-                    <span className="small-muted">
-                      Chegou por atalho: casa {lastMoveJump.from}{" "}
-                      {lastMoveJump.isUp ? "↗" : "↘"} casa {lastMoveJump.to} (
-                      {lastMoveJump.isUp ? "subida" : "descida"}).
-                    </span>
-                  )}
                 </>
               ) : (
                 <span className="small-muted">

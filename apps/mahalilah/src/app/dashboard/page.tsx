@@ -22,10 +22,6 @@ export default async function DashboardPage() {
             <h1 style={{ fontSize: 34, marginBottom: 6 }}>
               Minhas sessões Maha Lilah
             </h1>
-            <p style={{ color: "var(--muted)" }}>
-              Início canônico: casa {RULES.start.house} • necessário rolar 6
-              para iniciar.
-            </p>
           </header>
           <DashboardClient />
         </section>
