@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 import {
@@ -622,8 +622,13 @@ export function RoomClient({ code }: { code: string }) {
     content: string;
     subtitle?: string;
   } | null>(null);
+  const [finalReportPrompt, setFinalReportPrompt] = useState<{
+    mode: "close" | "completed";
+  } | null>(null);
+  const [finalReportLoading, setFinalReportLoading] = useState(false);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
+  const completionPromptedStatusRef = useRef<string>("");
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -1006,10 +1011,25 @@ export function RoomClient({ code }: { code: string }) {
     );
   }, [timelineMoves, summaryParticipantId]);
 
-  const summaryPath = useMemo(
-    () => summaryMoves.map((move) => move.toPos),
-    [summaryMoves],
-  );
+  const summaryPath = useMemo(() => {
+    const path: number[] = [];
+
+    summaryMoves.forEach((move) => {
+      const jumpFrom = move.appliedJumpFrom;
+      const jumpTo = move.appliedJumpTo;
+      if (jumpFrom === null || jumpTo === null) {
+        path.push(move.toPos);
+        return;
+      }
+
+      path.push(jumpFrom);
+      if (jumpTo !== jumpFrom) {
+        path.push(jumpTo);
+      }
+    });
+
+    return path;
+  }, [summaryMoves]);
 
   const aiIntentionStorageKey = useMemo(() => {
     if (!state?.room.id || !session?.user?.id) return null;
@@ -1034,6 +1054,7 @@ export function RoomClient({ code }: { code: string }) {
   const summaryTopHouses = useMemo(() => {
     const frequency = new Map<number, number>();
     summaryPath.forEach((house) => {
+      if (house === 68) return;
       frequency.set(house, (frequency.get(house) || 0) + 1);
     });
     return [...frequency.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -1199,9 +1220,12 @@ export function RoomClient({ code }: { code: string }) {
     }).catch(() => null);
   };
 
-  const showSocketError = (fallback: string, resp: any) => {
-    pushToast(resp?.error || fallback, "error");
-  };
+  const showSocketError = useCallback(
+    (fallback: string, resp: any) => {
+      pushToast(resp?.error || fallback, "error");
+    },
+    [pushToast],
+  );
 
   const handleRoll = () => {
     if (!socket) return;
@@ -1318,7 +1342,9 @@ export function RoomClient({ code }: { code: string }) {
 
   const loadTimelineData = useCallback(
     async (showSuccessToast = false) => {
-      if (!state) return false;
+      if (!state) {
+        return { ok: false as const, aiReports: [] as TimelineAiReport[] };
+      }
 
       setTimelineLoading(true);
       setTimelineError(null);
@@ -1332,7 +1358,7 @@ export function RoomClient({ code }: { code: string }) {
         setTimelineError(message);
         setTimelineLoading(false);
         pushToast(message, "error");
-        return false;
+        return { ok: false as const, aiReports: [] as TimelineAiReport[] };
       }
 
       setTimelineMoves(payload.moves || []);
@@ -1341,10 +1367,97 @@ export function RoomClient({ code }: { code: string }) {
       if (showSuccessToast) {
         pushToast("Timeline carregada.", "success");
       }
-      return true;
+      return {
+        ok: true as const,
+        aiReports: (payload.aiReports || []) as TimelineAiReport[],
+      };
     },
     [state, pushToast],
   );
+
+  const closeRoom = useCallback(() => {
+    if (!socket) return;
+    socket.emit("room:close", {}, (resp: any) => {
+      if (!resp?.ok) {
+        showSocketError("Erro ao encerrar sala", resp);
+        return;
+      }
+      pushToast("Sala encerrada com sucesso.", "success");
+    });
+  }, [socket, showSocketError, pushToast]);
+
+  const requestFinalReport = useCallback(async () => {
+    if (!socket) return false;
+
+    setFinalReportLoading(true);
+    try {
+      const resp = await new Promise<any>((resolve) => {
+        socket.emit("ai:finalReport", { intention: aiIntention }, resolve);
+      });
+
+      if (!resp?.ok) {
+        showSocketError("Erro ao gerar resumo", resp);
+        return false;
+      }
+
+      setAiSummary(resp.content);
+      pushToast("Resumo final gerado.", "success");
+      await loadTimelineData();
+      return true;
+    } finally {
+      setFinalReportLoading(false);
+    }
+  }, [socket, aiIntention, showSocketError, pushToast, loadTimelineData]);
+
+  const hasFinalReportInTimeline = useCallback(
+    (reports: TimelineAiReport[]) => {
+      return reports.some((report) => report.kind === "FINAL");
+    },
+    [],
+  );
+
+  const shouldPromptForFinalReport = useCallback(async () => {
+    const loaded = await loadTimelineData();
+    const reports = loaded.ok ? loaded.aiReports : timelineReports;
+    return !hasFinalReportInTimeline(reports);
+  }, [loadTimelineData, timelineReports, hasFinalReportInTimeline]);
+
+  const handleCloseRoom = useCallback(async () => {
+    if (!canCloseRoom || !state) return;
+    if (state.room.status !== "ACTIVE" || actionsBlockedByConsent) return;
+
+    const needsPrompt = await shouldPromptForFinalReport();
+    if (needsPrompt) {
+      setFinalReportPrompt({ mode: "close" });
+      return;
+    }
+
+    closeRoom();
+  }, [
+    canCloseRoom,
+    state,
+    actionsBlockedByConsent,
+    shouldPromptForFinalReport,
+    closeRoom,
+  ]);
+
+  useEffect(() => {
+    if (!state || !canCloseRoom) return;
+    if (state.room.status !== "COMPLETED") return;
+
+    const completionKey = `${state.room.id}:${state.room.status}`;
+    if (completionPromptedStatusRef.current === completionKey) return;
+    completionPromptedStatusRef.current = completionKey;
+
+    const promptIfNeeded = async () => {
+      const needsPrompt = await shouldPromptForFinalReport();
+      if (needsPrompt) {
+        setFinalReportPrompt({ mode: "completed" });
+      }
+    };
+
+    void promptIfNeeded();
+  }, [state, canCloseRoom, shouldPromptForFinalReport]);
 
   useEffect(() => {
     if (!["summary", "timeline", "ai"].includes(activePanel)) return;
@@ -1615,14 +1728,11 @@ export function RoomClient({ code }: { code: string }) {
           {canCloseRoom && (
             <button
               className="secondary"
-              onClick={() =>
-                socket?.emit("room:close", {}, (resp: any) => {
-                  if (!resp?.ok) showSocketError("Erro ao encerrar sala", resp);
-                  else pushToast("Sala encerrada com sucesso.", "success");
-                })
-              }
+              onClick={() => void handleCloseRoom()}
               disabled={
-                state.room.status !== "ACTIVE" || actionsBlockedByConsent
+                state.room.status !== "ACTIVE" ||
+                actionsBlockedByConsent ||
+                finalReportLoading
               }
               style={{ flex: "0 0 auto" }}
             >
@@ -2371,23 +2481,12 @@ export function RoomClient({ code }: { code: string }) {
 
               <button
                 className="secondary"
-                onClick={() =>
-                  socket?.emit(
-                    "ai:finalReport",
-                    { intention: aiIntention },
-                    (resp: any) => {
-                      if (!resp?.ok)
-                        showSocketError("Erro ao gerar resumo", resp);
-                      else {
-                        setAiSummary(resp.content);
-                        pushToast("Resumo final gerado.", "success");
-                      }
-                    },
-                  )
-                }
-                disabled={actionsBlockedByConsent}
+                onClick={() => void requestFinalReport()}
+                disabled={actionsBlockedByConsent || finalReportLoading}
               >
-                Gerar resumo final
+                {finalReportLoading
+                  ? "Gerando resumo final..."
+                  : "Gerar resumo final"}
               </button>
 
               {aiSummary && (
@@ -3063,6 +3162,94 @@ export function RoomClient({ code }: { code: string }) {
                 <strong>7.</strong> Registro terapeutico e ajudas de IA ficam
                 salvos na timeline do jogador.
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {finalReportPrompt && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (!finalReportLoading) setFinalReportPrompt(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(560px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <strong>
+              {finalReportPrompt.mode === "close"
+                ? "Gerar resumo final da IA antes de encerrar?"
+                : "Jogo concluído. Deseja gerar o resumo final da IA?"}
+            </strong>
+            <span className="small-muted">
+              Esse resumo final ficará registrado na timeline da sala.
+            </span>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-secondary"
+                disabled={finalReportLoading}
+                onClick={() => setFinalReportPrompt(null)}
+              >
+                {finalReportPrompt.mode === "close" ? "Cancelar" : "Agora não"}
+              </button>
+
+              {finalReportPrompt.mode === "close" && (
+                <button
+                  className="btn-secondary"
+                  disabled={finalReportLoading}
+                  onClick={() => {
+                    setFinalReportPrompt(null);
+                    closeRoom();
+                  }}
+                >
+                  Encerrar sem gerar
+                </button>
+              )}
+
+              <button
+                disabled={finalReportLoading}
+                onClick={async () => {
+                  const ok = await requestFinalReport();
+                  if (!ok) return;
+                  if (finalReportPrompt.mode === "close") {
+                    closeRoom();
+                  }
+                  setFinalReportPrompt(null);
+                }}
+              >
+                {finalReportLoading
+                  ? "Gerando..."
+                  : finalReportPrompt.mode === "close"
+                    ? "Gerar e encerrar"
+                    : "Gerar agora"}
+              </button>
             </div>
           </div>
         </div>
