@@ -1895,6 +1895,14 @@ export function RoomClient({ code }: { code: string }) {
                     </span>
                   </div>
                   <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Palavras-chave gerais</strong>
+                    <span className="small-muted">
+                      {selectedHouseInfo?.keywords.length
+                        ? selectedHouseInfo.keywords.join(" • ")
+                        : selectedHouseInfo?.description || "—"}
+                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
                     <strong>Lado Luz</strong>
                     <span className="small-muted">
                       {selectedHouseInfo?.polarity
