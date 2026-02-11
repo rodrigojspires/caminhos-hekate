@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/admin/LoadingSpinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +53,33 @@ const emptyCardForm: CardForm = {
   keywords: "",
   observation: "",
 };
+
+const CARD_IMPORT_JSON_TEMPLATE = JSON.stringify(
+  {
+    cards: [
+      {
+        cardNumber: 1,
+        description: "Descritivo da carta",
+        keywords: "palavra-chave 1; palavra-chave 2",
+        observation: "Observacao opcional",
+      },
+      {
+        cardNumber: 2,
+        description: "Outro descritivo da carta",
+        keywords: "palavra-chave 3; palavra-chave 4",
+        observation: "",
+      },
+    ],
+  },
+  null,
+  2,
+);
+
+const CARD_IMPORT_CSV_TEMPLATE = [
+  "cardNumber,description,keywords,observation",
+  '1,"Descritivo da carta","palavra-chave 1; palavra-chave 2","Observacao opcional"',
+  '2,"Outro descritivo da carta","palavra-chave 3; palavra-chave 4",""',
+].join("\n");
 
 export default function DeckEditPage({ params }: DeckEditPageProps) {
   const router = useRouter();
@@ -344,6 +371,28 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleDownloadImportTemplate = (format: "json" | "csv") => {
+    const content =
+      format === "json" ? CARD_IMPORT_JSON_TEMPLATE : CARD_IMPORT_CSV_TEMPLATE;
+    const blob = new Blob([content], {
+      type:
+        format === "json"
+          ? "application/json;charset=utf-8"
+          : "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeName = (deck?.name || "baralho")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    link.href = url;
+    link.download = `modelo-cartas-${safeName || "baralho"}.${format}`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleUploadDeckImages = async () => {
@@ -731,6 +780,32 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
         <TabsContent value="import">
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">
             <h2 className="font-semibold">Importar cartas (JSON/CSV)</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Baixe um modelo, preencha as cartas e importe o arquivo.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleDownloadImportTemplate("json")}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Download className="w-4 h-4" />
+                Baixar modelo JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadImportTemplate("csv")}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Download className="w-4 h-4" />
+                Baixar modelo CSV
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Colunas esperadas:{" "}
+              <code>cardNumber,description,keywords,observation</code>
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end">
               <div className="space-y-2">

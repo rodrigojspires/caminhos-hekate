@@ -153,6 +153,7 @@ type ParsedTip = {
 type TutorialStep = {
   title: string;
   description: string;
+  target: "room-header" | "room-controls" | "room-board" | "room-menu";
 };
 
 type RoomTutorialRole = "THERAPIST" | "PLAYER";
@@ -282,21 +283,25 @@ const ROOM_TUTORIAL_STEPS: Record<RoomTutorialRole, TutorialStep[]> = {
       title: "Visão geral da sala",
       description:
         "No topo você acompanha turno, rolagens, casa atual e status do terapeuta/sala.",
+      target: "room-header",
     },
     {
       title: "Controles principais",
       description:
         "Use os botões para rolar dado, avançar vez, encerrar sala e voltar ao dashboard.",
+      target: "room-controls",
     },
     {
       title: "Tabuleiro e leitura",
       description:
         "O tabuleiro mostra pinos por jogador e atalhos. Use 'Mostrar nomes' para exibir sânscrito e português nas casas.",
+      target: "room-board",
     },
     {
       title: "Painel lateral",
       description:
         "Nas abas você acessa significado da casa, cartas, registro terapêutico, IA, jogadores, timeline e resumo.",
+      target: "room-menu",
     },
   ],
   PLAYER: [
@@ -304,24 +309,113 @@ const ROOM_TUTORIAL_STEPS: Record<RoomTutorialRole, TutorialStep[]> = {
       title: "Turno e indicadores",
       description:
         "No topo você vê de quem é a vez, suas rolagens e a casa atual durante a partida.",
+      target: "room-header",
     },
     {
       title: "Jogar na sua vez",
       description:
         "Quando for sua vez, use 'Rolar dado'. Se houver atalho, a movimentação será exibida automaticamente.",
+      target: "room-controls",
     },
     {
       title: "Recursos da jogada",
       description:
         "Após rolar, use as abas para tirar carta, salvar registro terapêutico e pedir ajuda da IA.",
+      target: "room-menu",
     },
     {
       title: "Acompanhamento",
       description:
         "Use Timeline e Resumo do Jogador para revisar jogadas, cartas, registros e orientações da IA.",
+      target: "room-board",
     },
   ],
 };
+
+function clampTutorialNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+type RoomTutorialPopoverPosition = {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+  placement: "right" | "left" | "bottom" | "top";
+  arrowOffset: number;
+};
+
+function getRoomTutorialPopoverPosition(targetRect: DOMRect | null) {
+  if (!targetRect || typeof window === "undefined") return null;
+
+  const margin = 14;
+  const gap = 14;
+  const cardWidth = Math.min(430, window.innerWidth - margin * 2);
+  const cardHeight = 300;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const canRight =
+    targetRect.right + gap + cardWidth <= viewportWidth - margin;
+  const canLeft = targetRect.left - gap - cardWidth >= margin;
+  const canBottom =
+    targetRect.bottom + gap + cardHeight <= viewportHeight - margin;
+
+  let left = (viewportWidth - cardWidth) / 2;
+  let top = (viewportHeight - cardHeight) / 2;
+  let placement: RoomTutorialPopoverPosition["placement"] = "right";
+
+  if (canRight) {
+    placement = "right";
+    left = targetRect.right + gap;
+    top = targetRect.top + targetRect.height / 2 - cardHeight / 2;
+  } else if (canLeft) {
+    placement = "left";
+    left = targetRect.left - cardWidth - gap;
+    top = targetRect.top + targetRect.height / 2 - cardHeight / 2;
+  } else if (canBottom) {
+    placement = "bottom";
+    left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+    top = targetRect.bottom + gap;
+  } else {
+    placement = "top";
+    left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+    top = targetRect.top - cardHeight - gap;
+  }
+
+  const clampedLeft = clampTutorialNumber(
+    left,
+    margin,
+    viewportWidth - cardWidth - margin,
+  );
+  const clampedTop = clampTutorialNumber(
+    top,
+    margin,
+    viewportHeight - cardHeight - margin,
+  );
+
+  const arrowOffset =
+    placement === "right" || placement === "left"
+      ? clampTutorialNumber(
+          targetRect.top + targetRect.height / 2 - clampedTop,
+          20,
+          cardHeight - 20,
+        )
+      : clampTutorialNumber(
+          targetRect.left + targetRect.width / 2 - clampedLeft,
+          20,
+          cardWidth - 20,
+        );
+
+  return {
+    width: cardWidth,
+    height: cardHeight,
+    left: clampedLeft,
+    top: clampedTop,
+    placement,
+    arrowOffset,
+  } satisfies RoomTutorialPopoverPosition;
+}
 
 function parseTipReportContent(content: string): ParsedTip {
   try {
@@ -394,6 +488,8 @@ export function RoomClient({ code }: { code: string }) {
   const [roomTutorialStep, setRoomTutorialStep] = useState(0);
   const [roomTutorialRole, setRoomTutorialRole] =
     useState<RoomTutorialRole | null>(null);
+  const [roomTutorialTargetRect, setRoomTutorialTargetRect] =
+    useState<DOMRect | null>(null);
   const [roomTutorialInitializedRole, setRoomTutorialInitializedRole] =
     useState<RoomTutorialRole | null>(null);
   const [roomOnboardingLoaded, setRoomOnboardingLoaded] = useState(false);
@@ -855,6 +951,55 @@ export function RoomClient({ code }: { code: string }) {
     roomTutorialInitializedRole,
   ]);
 
+  useEffect(() => {
+    if (!showRoomTutorial || !roomTutorialRole) return;
+
+    const step = ROOM_TUTORIAL_STEPS[roomTutorialRole][roomTutorialStep];
+    const selector = `[data-tour-room="${step.target}"]`;
+    const targetEl = document.querySelector<HTMLElement>(selector);
+    if (!targetEl) return;
+
+    targetEl.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  }, [showRoomTutorial, roomTutorialRole, roomTutorialStep]);
+
+  useEffect(() => {
+    if (!showRoomTutorial || !roomTutorialRole) {
+      setRoomTutorialTargetRect(null);
+      return;
+    }
+
+    const step = ROOM_TUTORIAL_STEPS[roomTutorialRole][roomTutorialStep];
+    const selector = `[data-tour-room="${step.target}"]`;
+
+    const updateTargetRect = () => {
+      const targetEl = document.querySelector<HTMLElement>(selector);
+      if (!targetEl) {
+        setRoomTutorialTargetRect(null);
+        return;
+      }
+      setRoomTutorialTargetRect(targetEl.getBoundingClientRect());
+    };
+
+    let rafId = window.requestAnimationFrame(updateTargetRect);
+    const handleViewportChange = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(updateTargetRect);
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [showRoomTutorial, roomTutorialRole, roomTutorialStep, activePanel]);
+
   const finishRoomTutorial = async () => {
     if (!roomTutorialRole) {
       setShowRoomTutorial(false);
@@ -1069,6 +1214,9 @@ export function RoomClient({ code }: { code: string }) {
     ? ROOM_TUTORIAL_STEPS[roomTutorialRole]
     : [];
   const currentRoomTutorialStep = roomTutorialSteps[roomTutorialStep] || null;
+  const roomTutorialPopover = getRoomTutorialPopoverPosition(
+    roomTutorialTargetRect,
+  );
 
   return (
     <div className="grid" style={{ gap: 14 }}>
@@ -1183,6 +1331,7 @@ export function RoomClient({ code }: { code: string }) {
             flexWrap: "nowrap",
             paddingBottom: 2,
           }}
+          data-tour-room="room-header"
         >
           <span className="pill" style={{ flex: "0 0 auto" }}>
             Vez:{" "}
@@ -1261,6 +1410,7 @@ export function RoomClient({ code }: { code: string }) {
             flexWrap: "nowrap",
             paddingBottom: 2,
           }}
+          data-tour-room="room-controls"
         >
           <button
             onClick={handleRoll}
@@ -1349,6 +1499,7 @@ export function RoomClient({ code }: { code: string }) {
         <div
           className="card"
           style={{ display: "grid", gap: 10, minWidth: 0, overflow: "hidden" }}
+          data-tour-room="room-board"
         >
           <div
             style={{
@@ -1545,6 +1696,7 @@ export function RoomClient({ code }: { code: string }) {
               gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
               gap: 8,
             }}
+            data-tour-room="room-menu"
           >
             {ACTION_ITEMS.map((item) => {
               const isActive = activePanel === item.key;
@@ -2499,26 +2651,100 @@ export function RoomClient({ code }: { code: string }) {
         <div
           role="dialog"
           aria-modal="true"
-          onClick={finishRoomTutorial}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.72)",
+            background: roomTutorialTargetRect
+              ? "transparent"
+              : "rgba(3, 6, 10, 0.72)",
             zIndex: 11000,
-            display: "grid",
-            placeItems: "center",
-            padding: 18,
           }}
         >
+          {roomTutorialTargetRect && (
+            <div
+              style={{
+                position: "fixed",
+                top: roomTutorialTargetRect.top - 8,
+                left: roomTutorialTargetRect.left - 8,
+                width: roomTutorialTargetRect.width + 16,
+                height: roomTutorialTargetRect.height + 16,
+                borderRadius: 14,
+                border: "2px solid rgba(217, 164, 65, 0.92)",
+                boxShadow:
+                  "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
+                pointerEvents: "none",
+                zIndex: 11001,
+              }}
+            />
+          )}
+          {roomTutorialPopover && (
+            <div
+              style={{
+                position: "fixed",
+                width: 14,
+                height: 14,
+                background: "hsl(var(--temple-surface-2))",
+                transform: "rotate(45deg)",
+                zIndex: 11002,
+                ...(roomTutorialPopover.placement === "right"
+                  ? {
+                      left: roomTutorialPopover.left - 7,
+                      top:
+                        roomTutorialPopover.top +
+                        roomTutorialPopover.arrowOffset -
+                        7,
+                      borderLeft: "1px solid rgba(217, 164, 65, 0.55)",
+                      borderTop: "1px solid rgba(217, 164, 65, 0.55)",
+                    }
+                  : roomTutorialPopover.placement === "left"
+                    ? {
+                        left: roomTutorialPopover.left + roomTutorialPopover.width - 7,
+                        top:
+                          roomTutorialPopover.top +
+                          roomTutorialPopover.arrowOffset -
+                          7,
+                        borderRight: "1px solid rgba(217, 164, 65, 0.55)",
+                        borderBottom: "1px solid rgba(217, 164, 65, 0.55)",
+                      }
+                    : roomTutorialPopover.placement === "bottom"
+                      ? {
+                          left:
+                            roomTutorialPopover.left +
+                            roomTutorialPopover.arrowOffset -
+                            7,
+                          top: roomTutorialPopover.top - 7,
+                          borderLeft: "1px solid rgba(217, 164, 65, 0.55)",
+                          borderTop: "1px solid rgba(217, 164, 65, 0.55)",
+                        }
+                      : {
+                          left:
+                            roomTutorialPopover.left +
+                            roomTutorialPopover.arrowOffset -
+                            7,
+                          top:
+                            roomTutorialPopover.top +
+                            roomTutorialPopover.height -
+                            7,
+                          borderRight: "1px solid rgba(217, 164, 65, 0.55)",
+                          borderBottom: "1px solid rgba(217, 164, 65, 0.55)",
+                        }),
+              }}
+            />
+          )}
           <div
             className="card"
             onClick={(event) => event.stopPropagation()}
             style={{
-              width: "min(740px, 96vw)",
+              width: roomTutorialPopover?.width || "min(430px, 94vw)",
               maxHeight: "82vh",
               overflow: "auto",
               display: "grid",
               gap: 12,
+              position: "fixed",
+              top: roomTutorialPopover?.top || "50%",
+              left: roomTutorialPopover?.left || "50%",
+              transform: roomTutorialPopover ? "none" : "translate(-50%, -50%)",
+              zIndex: 11002,
             }}
           >
             <div style={{ display: "grid", gap: 4 }}>

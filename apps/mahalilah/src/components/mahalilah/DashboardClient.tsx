@@ -104,6 +104,7 @@ type RoomDetailsTab =
 type TutorialStep = {
   title: string;
   description: string;
+  target: "create-room" | "filters" | "room-actions" | "room-details";
 };
 
 const DASHBOARD_TUTORIAL_STEPS: TutorialStep[] = [
@@ -111,23 +112,106 @@ const DASHBOARD_TUTORIAL_STEPS: TutorialStep[] = [
     title: "Criar sala",
     description:
       'Use "Criar nova sala" para definir quantidade de jogadores e se o terapeuta joga junto.',
+    target: "create-room",
   },
   {
     title: "Filtros de sessão",
     description:
       "Filtre por status e periodo para localizar salas ativas, encerradas ou concluidas.",
+    target: "filters",
   },
   {
     title: "Acoes da sala",
     description:
       "Em cada sala use: Abrir sala, Copiar link e Ver detalhes para acessar o acompanhamento completo.",
+    target: "room-actions",
   },
   {
     title: "Detalhes e acompanhamento",
     description:
       "Dentro de detalhes voce tem abas de Convites, Participantes, Timeline, Deck e Relatorios IA.",
+    target: "room-details",
   },
 ];
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+type TutorialPopoverPosition = {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+  placement: "right" | "left" | "bottom" | "top";
+  arrowOffset: number;
+};
+
+function getTutorialPopoverPosition(targetRect: DOMRect | null) {
+  if (!targetRect || typeof window === "undefined") {
+    return null;
+  }
+
+  const margin = 14;
+  const gap = 14;
+  const cardWidth = Math.min(420, window.innerWidth - margin * 2);
+  const cardHeight = 300;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const canRight =
+    targetRect.right + gap + cardWidth <= viewportWidth - margin;
+  const canLeft = targetRect.left - gap - cardWidth >= margin;
+  const canBottom =
+    targetRect.bottom + gap + cardHeight <= viewportHeight - margin;
+
+  let left = (viewportWidth - cardWidth) / 2;
+  let top = (viewportHeight - cardHeight) / 2;
+  let placement: TutorialPopoverPosition["placement"] = "right";
+
+  if (canRight) {
+    placement = "right";
+    left = targetRect.right + gap;
+    top = targetRect.top + targetRect.height / 2 - cardHeight / 2;
+  } else if (canLeft) {
+    placement = "left";
+    left = targetRect.left - cardWidth - gap;
+    top = targetRect.top + targetRect.height / 2 - cardHeight / 2;
+  } else if (canBottom) {
+    placement = "bottom";
+    left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+    top = targetRect.bottom + gap;
+  } else {
+    placement = "top";
+    left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+    top = targetRect.top - cardHeight - gap;
+  }
+
+  const clampedLeft = clampNumber(left, margin, viewportWidth - cardWidth - margin);
+  const clampedTop = clampNumber(top, margin, viewportHeight - cardHeight - margin);
+
+  const arrowOffset =
+    placement === "right" || placement === "left"
+      ? clampNumber(
+          targetRect.top + targetRect.height / 2 - clampedTop,
+          20,
+          cardHeight - 20,
+        )
+      : clampNumber(
+          targetRect.left + targetRect.width / 2 - clampedLeft,
+          20,
+          cardWidth - 20,
+        );
+
+  return {
+    width: cardWidth,
+    height: cardHeight,
+    left: clampedLeft,
+    top: clampedTop,
+    placement,
+    arrowOffset,
+  } satisfies TutorialPopoverPosition;
+}
 
 export function DashboardClient() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -164,6 +248,8 @@ export function DashboardClient() {
   });
   const [showDashboardTutorial, setShowDashboardTutorial] = useState(false);
   const [dashboardTutorialStep, setDashboardTutorialStep] = useState(0);
+  const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
+    useState<DOMRect | null>(null);
 
   const showNotice = (
     message: string,
@@ -235,6 +321,55 @@ export function DashboardClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showDashboardTutorial) return;
+    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
+    const selector = `[data-tour-dashboard="${currentStep.target}"]`;
+    const targetEl = document.querySelector<HTMLElement>(selector);
+    if (!targetEl) return;
+
+    targetEl.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  }, [showDashboardTutorial, dashboardTutorialStep, openRooms]);
+
+  useEffect(() => {
+    if (!showDashboardTutorial) {
+      setDashboardTutorialTargetRect(null);
+      return;
+    }
+
+    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
+    const selector = `[data-tour-dashboard="${currentStep.target}"]`;
+
+    const updateTargetRect = () => {
+      const targetEl = document.querySelector<HTMLElement>(selector);
+      if (!targetEl) {
+        setDashboardTutorialTargetRect(null);
+        return;
+      }
+
+      setDashboardTutorialTargetRect(targetEl.getBoundingClientRect());
+    };
+
+    let rafId = window.requestAnimationFrame(updateTargetRect);
+    const handleViewportChange = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(updateTargetRect);
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [showDashboardTutorial, dashboardTutorialStep, rooms.length, openRooms]);
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
@@ -355,7 +490,7 @@ export function DashboardClient() {
     URL.revokeObjectURL(url);
   };
 
-  const loadTimeline = async (roomId: string) => {
+  const loadTimeline = useCallback(async (roomId: string) => {
     setDetails((prev) => ({
       ...prev,
       [roomId]: {
@@ -392,13 +527,38 @@ export function DashboardClient() {
         cardDraws: data.cardDraws || [],
       },
     }));
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!showDashboardTutorial) return;
+    const currentStep = DASHBOARD_TUTORIAL_STEPS[dashboardTutorialStep];
+    if (currentStep.target !== "room-details") return;
+
+    const firstRoomId = rooms[0]?.id;
+    if (!firstRoomId) return;
+    if (openRooms[firstRoomId]) return;
+
+    setOpenRooms((prev) => ({ ...prev, [firstRoomId]: true }));
+    setActiveDetailTabs((prev) =>
+      prev[firstRoomId] ? prev : { ...prev, [firstRoomId]: "invites" },
+    );
+    if (!details[firstRoomId]) {
+      void loadTimeline(firstRoomId);
+    }
+  }, [
+    showDashboardTutorial,
+    dashboardTutorialStep,
+    rooms,
+    openRooms,
+    details,
+    loadTimeline,
+  ]);
 
   const toggleRoom = (roomId: string) => {
     setOpenRooms((prev) => {
       const nextOpen = !prev[roomId];
       if (nextOpen && !details[roomId]) {
-        loadTimeline(roomId);
+        void loadTimeline(roomId);
       }
       return { ...prev, [roomId]: nextOpen };
     });
@@ -420,7 +580,7 @@ export function DashboardClient() {
     return role;
   };
 
-  const roomCards = rooms.map((room) => {
+  const roomCards = rooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
     const activeTab = activeDetailTabs[room.id] || "invites";
     const roomDetails = details[room.id];
@@ -511,6 +671,7 @@ export function DashboardClient() {
               flexWrap: "wrap",
               alignItems: "center",
             }}
+            data-tour-dashboard={index === 0 ? "room-actions" : undefined}
           >
             <a href={`/rooms/${room.code}`} className="btn-secondary">
               Abrir sala
@@ -552,6 +713,7 @@ export function DashboardClient() {
               borderTop: "1px solid var(--border)",
               paddingTop: 12,
             }}
+            data-tour-dashboard={index === 0 ? "room-details" : undefined}
           >
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
@@ -1087,6 +1249,10 @@ export function DashboardClient() {
     );
   });
 
+  const dashboardTutorialPopover = getTutorialPopoverPosition(
+    dashboardTutorialTargetRect,
+  );
+
   return (
     <div className="grid" style={{ gap: 24 }}>
       {notice && (
@@ -1095,7 +1261,11 @@ export function DashboardClient() {
         </div>
       )}
       {canCreateRoom && (
-        <div className="card" style={{ display: "grid", gap: 12 }}>
+        <div
+          className="card"
+          style={{ display: "grid", gap: 12 }}
+          data-tour-dashboard="create-room"
+        >
           <strong>Criar nova sala</strong>
           <div
             style={{
@@ -1147,7 +1317,11 @@ export function DashboardClient() {
         </div>
       )}
 
-      <div className="card" style={{ display: "grid", gap: 12 }}>
+      <div
+        className="card"
+        style={{ display: "grid", gap: 12 }}
+        data-tour-dashboard="filters"
+      >
         <div
           style={{
             display: "flex",
@@ -1236,26 +1410,103 @@ export function DashboardClient() {
         <div
           role="dialog"
           aria-modal="true"
-          onClick={finishDashboardTutorial}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: dashboardTutorialTargetRect
+              ? "transparent"
+              : "rgba(3, 6, 10, 0.72)",
             zIndex: 10000,
-            display: "grid",
-            placeItems: "center",
-            padding: 18,
           }}
         >
+          {dashboardTutorialTargetRect && (
+            <div
+              style={{
+                position: "fixed",
+                top: dashboardTutorialTargetRect.top - 8,
+                left: dashboardTutorialTargetRect.left - 8,
+                width: dashboardTutorialTargetRect.width + 16,
+                height: dashboardTutorialTargetRect.height + 16,
+                borderRadius: 14,
+                border: "2px solid rgba(217, 164, 65, 0.92)",
+                boxShadow:
+                  "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
+                pointerEvents: "none",
+                zIndex: 10001,
+              }}
+            />
+          )}
+          {dashboardTutorialPopover && (
+            <div
+              style={{
+                position: "fixed",
+                width: 14,
+                height: 14,
+                background: "hsl(var(--temple-surface-2))",
+                transform: "rotate(45deg)",
+                zIndex: 10002,
+                ...(dashboardTutorialPopover.placement === "right"
+                  ? {
+                      left: dashboardTutorialPopover.left - 7,
+                      top:
+                        dashboardTutorialPopover.top +
+                        dashboardTutorialPopover.arrowOffset -
+                        7,
+                      borderLeft: "1px solid rgba(217, 164, 65, 0.55)",
+                      borderTop: "1px solid rgba(217, 164, 65, 0.55)",
+                    }
+                  : dashboardTutorialPopover.placement === "left"
+                    ? {
+                        left:
+                          dashboardTutorialPopover.left +
+                          dashboardTutorialPopover.width -
+                          7,
+                        top:
+                          dashboardTutorialPopover.top +
+                          dashboardTutorialPopover.arrowOffset -
+                          7,
+                        borderRight: "1px solid rgba(217, 164, 65, 0.55)",
+                        borderBottom: "1px solid rgba(217, 164, 65, 0.55)",
+                      }
+                    : dashboardTutorialPopover.placement === "bottom"
+                      ? {
+                          left:
+                            dashboardTutorialPopover.left +
+                            dashboardTutorialPopover.arrowOffset -
+                            7,
+                          top: dashboardTutorialPopover.top - 7,
+                          borderLeft: "1px solid rgba(217, 164, 65, 0.55)",
+                          borderTop: "1px solid rgba(217, 164, 65, 0.55)",
+                        }
+                      : {
+                          left:
+                            dashboardTutorialPopover.left +
+                            dashboardTutorialPopover.arrowOffset -
+                            7,
+                          top:
+                            dashboardTutorialPopover.top +
+                            dashboardTutorialPopover.height -
+                            7,
+                          borderRight: "1px solid rgba(217, 164, 65, 0.55)",
+                          borderBottom: "1px solid rgba(217, 164, 65, 0.55)",
+                        }),
+              }}
+            />
+          )}
           <div
             className="card"
             onClick={(event) => event.stopPropagation()}
             style={{
-              width: "min(700px, 96vw)",
+              width: dashboardTutorialPopover?.width || "min(420px, 94vw)",
               maxHeight: "82vh",
               overflow: "auto",
               display: "grid",
               gap: 12,
+              position: "fixed",
+              top: dashboardTutorialPopover?.top || "50%",
+              left: dashboardTutorialPopover?.left || "50%",
+              transform: dashboardTutorialPopover ? "none" : "translate(-50%, -50%)",
+              zIndex: 10002,
             }}
           >
             <div style={{ display: "grid", gap: 4 }}>

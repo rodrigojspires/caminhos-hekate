@@ -48,14 +48,22 @@ function getMahaLilahBaseUrl() {
   return baseUrl.replace(/\/$/, '')
 }
 
+function getMahaLilahFromAddress() {
+  return {
+    fromEmail:
+      process.env.MAHALILAH_FROM_EMAIL ||
+      'mahalilahonline@caminhosdehekate.com.br',
+    fromName: process.env.MAHALILAH_FROM_NAME || 'Maha Lilah Online'
+  }
+}
+
 export async function sendInviteEmail(params: {
   to: string
   therapistName: string
   roomCode: string
   inviteUrl: string
 }) {
-  const fromEmail = process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_FROM || 'noreply@mahalilahonline.com.br'
-  const fromName = process.env.DEFAULT_FROM_NAME || 'Maha Lilah Online'
+  const { fromEmail, fromName } = getMahaLilahFromAddress()
 
   const subject = `Convite para Maha Lilah — Sala ${params.roomCode}`
   const html = `
@@ -83,8 +91,7 @@ export async function sendInviteEmail(params: {
 }
 
 export async function sendPasswordResetEmail(params: { to: string; resetToken: string }) {
-  const fromEmail = process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_FROM || 'noreply@mahalilahonline.com.br'
-  const fromName = process.env.DEFAULT_FROM_NAME || 'Maha Lilah Online'
+  const { fromEmail, fromName } = getMahaLilahFromAddress()
   const resetUrl = `${getMahaLilahBaseUrl()}/reset-password?token=${encodeURIComponent(params.resetToken)}`
 
   const subject = 'Redefinir sua senha - Maha Lilah Online'

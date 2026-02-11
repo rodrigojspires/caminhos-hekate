@@ -80,6 +80,8 @@ services:
       REDIS_URL: redis://redis:6379
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL_MAHALILAH: ${NEXTAUTH_URL_MAHALILAH}
+      MAHALILAH_FROM_EMAIL: "${MAHALILAH_FROM_EMAIL:-mahalilahonline@caminhosdehekate.com.br}"
+      MAHALILAH_FROM_NAME: "${MAHALILAH_FROM_NAME:-Maha Lilah Online}"
       DECK_IMAGES_ROOT: /app/deck-images
     ports:
       - "127.0.0.1:3002:3000"
