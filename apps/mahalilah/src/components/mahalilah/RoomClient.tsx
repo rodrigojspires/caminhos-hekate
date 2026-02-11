@@ -735,31 +735,6 @@ export function RoomClient({ code }: { code: string }) {
             paddingBottom: 2,
           }}
         >
-          <span
-            className="pill"
-            style={{
-              flex: "0 0 auto",
-              borderColor: roomIsActive
-                ? "rgba(106, 211, 176, 0.6)"
-                : "rgba(255, 107, 107, 0.6)",
-              background: roomIsActive
-                ? "rgba(106, 211, 176, 0.15)"
-                : "rgba(255, 107, 107, 0.15)",
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: roomIsActive ? "#6ad3b0" : "#ff6b6b",
-                boxShadow: roomIsActive
-                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
-                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
-              }}
-            />
-            <strong>Status:</strong> {roomStatusLabel}
-          </span>
           <span className="pill" style={{ flex: "0 0 auto" }}>
             Vez:{" "}
             <strong>
@@ -801,6 +776,31 @@ export function RoomClient({ code }: { code: string }) {
               }}
             />
             <strong>Terapeuta</strong>
+          </span>
+          <span
+            className="pill"
+            style={{
+              flex: "0 0 auto",
+              borderColor: roomIsActive
+                ? "rgba(106, 211, 176, 0.6)"
+                : "rgba(255, 107, 107, 0.6)",
+              background: roomIsActive
+                ? "rgba(106, 211, 176, 0.15)"
+                : "rgba(255, 107, 107, 0.15)",
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: roomIsActive ? "#6ad3b0" : "#ff6b6b",
+                boxShadow: roomIsActive
+                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+              }}
+            />
+            <strong>Status:</strong> {roomStatusLabel}
           </span>
         </div>
 
