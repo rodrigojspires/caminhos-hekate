@@ -496,6 +496,26 @@ export function RoomClient({ code }: { code: string }) {
     );
   }, [timelineReports, timelineTargetParticipantId]);
 
+  const timelineTipsByMoveKey = useMemo(() => {
+    const tipsByKey = new Map<
+      string,
+      Array<{ report: TimelineAiReport; parsed: ParsedTip }>
+    >();
+
+    filteredTimelineReports.forEach((report) => {
+      if (report.kind !== "TIP" || !report.participant?.id) return;
+      const parsed = parseTipReportContent(report.content);
+      if (parsed.turnNumber !== null) {
+        const key = `${report.participant.id}:${parsed.turnNumber}`;
+        const existing = tipsByKey.get(key) || [];
+        existing.push({ report, parsed });
+        tipsByKey.set(key, existing);
+      }
+    });
+
+    return tipsByKey;
+  }, [filteredTimelineReports]);
+
   const aiTipHistory = useMemo(() => {
     if (!aiHistoryParticipantId) return [];
     return timelineReports
@@ -1019,7 +1039,7 @@ export function RoomClient({ code }: { code: string }) {
             {boardCells.map((cell) => {
               const house = getHouseByNumber(cell.houseNumber);
               const jumpTarget = jumpMap.get(cell.houseNumber);
-              const isSelected = selectedHouseNumber === cell.houseNumber;
+              const isSelected = indicatorHouseNumber === cell.houseNumber;
               const tokens = state.participants
                 .map((participant, participantIndex) => ({
                   participant,
@@ -1032,13 +1052,8 @@ export function RoomClient({ code }: { code: string }) {
                 );
 
               return (
-                <button
+                <div
                   key={`${cell.row}-${cell.col}-${cell.houseNumber}`}
-                  type="button"
-                  onClick={() => {
-                    setSelectedHouseNumber(cell.houseNumber);
-                    setActivePanel("house");
-                  }}
                   title={
                     house
                       ? `Casa ${house.number} - ${house.title}`
@@ -1060,6 +1075,7 @@ export function RoomClient({ code }: { code: string }) {
                     alignContent: "space-between",
                     gap: 4,
                     textAlign: "left",
+                    cursor: "default",
                   }}
                 >
                   <div
@@ -1122,7 +1138,7 @@ export function RoomClient({ code }: { code: string }) {
                       );
                     })}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -1152,7 +1168,7 @@ export function RoomClient({ code }: { code: string }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
               gap: 8,
             }}
           >
@@ -1167,22 +1183,12 @@ export function RoomClient({ code }: { code: string }) {
                   style={{
                     display: "grid",
                     justifyItems: "center",
-                    gap: 4,
-                    minHeight: 62,
-                    padding: "8px 6px",
+                    minHeight: 38,
+                    padding: "6px 4px",
                   }}
                 >
                   <span style={{ fontSize: 18, lineHeight: 1 }}>
                     {item.icon}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      lineHeight: 1.2,
-                      textAlign: "center",
-                    }}
-                  >
-                    {item.shortLabel}
                   </span>
                 </button>
               );
@@ -1221,7 +1227,7 @@ export function RoomClient({ code }: { code: string }) {
                 </>
               ) : (
                 <span className="small-muted">
-                  Selecione uma casa no tabuleiro para ver os detalhes.
+                  Sem dados de casa disponíveis no momento.
                 </span>
               )}
             </div>
@@ -1574,16 +1580,23 @@ export function RoomClient({ code }: { code: string }) {
                           display: "flex",
                           gap: 6,
                           alignItems: "center",
+                          flexWrap: "wrap",
                         }}
                       >
-                        <strong>
+                        <strong style={{ fontSize: 13 }}>
                           {participant.user.name || participant.user.email}
                         </strong>
-                        <span className="pill" style={{ padding: "3px 8px" }}>
+                        <span
+                          className="pill"
+                          style={{ padding: "2px 7px", fontSize: 11 }}
+                        >
                           {isTherapist ? "Terapeuta" : "Jogador"}
                         </span>
                         {isCurrent && (
-                          <span className="pill" style={{ padding: "3px 8px" }}>
+                          <span
+                            className="pill"
+                            style={{ padding: "2px 7px", fontSize: 11 }}
+                          >
                             Vez atual
                           </span>
                         )}
@@ -1694,67 +1707,32 @@ export function RoomClient({ code }: { code: string }) {
                               Ver registro ({move.therapyEntries.length})
                             </button>
                           )}
+                          {(() => {
+                            const moveTips =
+                              timelineTipsByMoveKey.get(
+                                `${move.participant.id}:${move.turnNumber}`,
+                              ) || [];
+                            if (moveTips.length === 0) return null;
+                            return (
+                              <button
+                                className="btn-secondary"
+                                style={{ justifyContent: "flex-start" }}
+                                onClick={() =>
+                                  setAiContentModal({
+                                    title: "Ajuda da IA",
+                                    subtitle: `Jogada #${move.turnNumber} • ${new Date(moveTips[moveTips.length - 1]?.report.createdAt).toLocaleString("pt-BR")}`,
+                                    content: moveTips
+                                      .map((tip) => tip.parsed.text)
+                                      .join("\n\n"),
+                                  })
+                                }
+                              >
+                                Ver ajuda IA ({moveTips.length})
+                              </button>
+                            );
+                          })()}
                         </div>
                       ))
-                    )}
-                  </div>
-
-                  <div className="divider" />
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: 6,
-                      maxHeight: 220,
-                      overflow: "auto",
-                      paddingRight: 2,
-                    }}
-                  >
-                    <strong>Ajudas da IA na timeline</strong>
-                    {filteredTimelineReports.filter(
-                      (report) => report.kind === "TIP",
-                    ).length === 0 ? (
-                      <span className="small-muted">
-                        Nenhuma ajuda de IA registrada.
-                      </span>
-                    ) : (
-                      filteredTimelineReports
-                        .filter((report) => report.kind === "TIP")
-                        .map((report) => {
-                          const parsed = parseTipReportContent(report.content);
-                          return (
-                            <button
-                              key={report.id}
-                              className="btn-secondary"
-                              style={{
-                                justifyContent: "flex-start",
-                                textAlign: "left",
-                                whiteSpace: "normal",
-                                height: "auto",
-                                padding: "8px 10px",
-                              }}
-                              onClick={() =>
-                                setAiContentModal({
-                                  title: "Ajuda da IA",
-                                  subtitle: `Gerada em ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
-                                  content: parsed.text,
-                                })
-                              }
-                            >
-                              <span className="small-muted">
-                                {report.participant?.user.name ||
-                                  report.participant?.user.email ||
-                                  "Participante"}
-                                {parsed.turnNumber !== null
-                                  ? ` • Jogada #${parsed.turnNumber}`
-                                  : ""}
-                                {parsed.houseNumber !== null
-                                  ? ` • Casa ${parsed.houseNumber}`
-                                  : ""}
-                              </span>
-                            </button>
-                          );
-                        })
                     )}
                   </div>
                 </>
