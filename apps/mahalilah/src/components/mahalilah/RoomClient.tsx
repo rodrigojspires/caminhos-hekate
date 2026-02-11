@@ -11,6 +11,7 @@ import {
   getHouseByNumber,
   getHousePrompt,
 } from "@hekate/mahalilah-core";
+import { HOUSE_MEANINGS } from "@/lib/mahalilah/house-meanings";
 import { HOUSE_POLARITIES } from "@/lib/mahalilah/house-polarities";
 
 type Participant = {
@@ -151,10 +152,22 @@ type ParsedTip = {
   intention: string | null;
 };
 
+type RoomTutorialTarget =
+  | "room-header"
+  | "room-controls"
+  | "room-board"
+  | "room-menu-house"
+  | "room-menu-deck"
+  | "room-menu-therapy"
+  | "room-menu-ai"
+  | "room-menu-players"
+  | "room-menu-timeline"
+  | "room-menu-summary";
+
 type TutorialStep = {
   title: string;
   description: string;
-  target: "room-header" | "room-controls" | "room-board" | "room-menu";
+  target: RoomTutorialTarget;
 };
 
 type RoomTutorialRole = "THERAPIST" | "PLAYER";
@@ -282,6 +295,7 @@ type HouseDisplayInfo = {
   number: number;
   sanskrit: string;
   portuguese: string;
+  meaning: string;
   description: string;
   keywords: string[];
   polarity: {
@@ -307,6 +321,7 @@ function getHouseDisplayInfo(houseNumber: number | null | undefined) {
     number: houseNumber,
     sanskrit: HOUSE_SANSKRIT_NAMES[houseNumber - 1] || "",
     portuguese: house?.title || `Casa ${houseNumber}`,
+    meaning: HOUSE_MEANINGS[houseNumber] || house?.description || "",
     description: house?.description || "",
     keywords: parseHouseKeywords(house?.description),
     polarity: HOUSE_POLARITIES[houseNumber] || null,
@@ -317,60 +332,102 @@ function stripTherapeuticPromptPrefix(prompt: string) {
   return prompt.replace(/^Pergunta terapêutica:\s*/i, "").trim();
 }
 
-const ROOM_TUTORIAL_STEPS: Record<RoomTutorialRole, TutorialStep[]> = {
-  THERAPIST: [
-    {
-      title: "Visão geral da sala",
-      description:
-        "No topo você acompanha turno, rolagens, casa atual e status do terapeuta/sala.",
-      target: "room-header",
-    },
-    {
-      title: "Controles principais",
-      description:
-        "Use os botões para rolar dado, avançar vez, encerrar sala e voltar ao dashboard.",
-      target: "room-controls",
-    },
-    {
-      title: "Tabuleiro e leitura",
-      description:
-        "O tabuleiro mostra pinos por jogador e atalhos. Use 'Mostrar nomes' para exibir sânscrito e português nas casas.",
-      target: "room-board",
-    },
-    {
-      title: "Painel lateral",
-      description:
-        "Nas abas você acessa significado da casa, cartas, registro terapêutico, IA, jogadores, timeline e resumo.",
-      target: "room-menu",
-    },
-  ],
-  PLAYER: [
-    {
-      title: "Turno e indicadores",
-      description:
-        "No topo você vê de quem é a vez, suas rolagens e a casa atual durante a partida.",
-      target: "room-header",
-    },
-    {
-      title: "Jogar na sua vez",
-      description:
-        "Quando for sua vez, use 'Rolar dado'. Se houver atalho, a movimentação será exibida automaticamente.",
-      target: "room-controls",
-    },
-    {
-      title: "Recursos da jogada",
-      description:
-        "Após rolar, use as abas para tirar carta, salvar registro terapêutico e pedir ajuda da IA.",
-      target: "room-menu",
-    },
-    {
-      title: "Acompanhamento",
-      description:
-        "Use Timeline e Resumo do Jogador para revisar jogadas, cartas, registros e orientações da IA.",
-      target: "room-board",
-    },
-  ],
+const ROOM_TUTORIAL_PANEL_BY_TARGET: Partial<
+  Record<RoomTutorialTarget, ActionPanel>
+> = {
+  "room-menu-house": "house",
+  "room-menu-deck": "deck",
+  "room-menu-therapy": "therapy",
+  "room-menu-ai": "ai",
+  "room-menu-players": "players",
+  "room-menu-timeline": "timeline",
+  "room-menu-summary": "summary",
 };
+
+const TOUR_TARGET_BY_ACTION_PANEL: Record<ActionPanel, RoomTutorialTarget> = {
+  house: "room-menu-house",
+  deck: "room-menu-deck",
+  therapy: "room-menu-therapy",
+  ai: "room-menu-ai",
+  players: "room-menu-players",
+  timeline: "room-menu-timeline",
+  summary: "room-menu-summary",
+};
+
+function getRoomTutorialSteps({
+  role,
+}: {
+  role: RoomTutorialRole | null;
+}): TutorialStep[] {
+  if (!role) return [];
+
+  const controlDescription =
+    role === "THERAPIST"
+      ? 'Use "Rolar dado" para jogar a vez atual, "Avancar vez" para passar ao proximo participante e "Encerrar sala" para finalizar a sessao. "Mostrar nomes" exibe sanscrito/portugues no tabuleiro e "Regras do jogo" abre o resumo.'
+      : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde. O botao muda de status automaticamente conforme a vez e conexao do terapeuta.';
+
+  return [
+    {
+      title: "Indicadores da sala",
+      description:
+        "No topo voce acompanha vez atual, rolagens, casa atual, status do terapeuta e status da sala em tempo real.",
+      target: "room-header",
+    },
+    {
+      title: "Controles da partida",
+      description: controlDescription,
+      target: "room-controls",
+    },
+    {
+      title: "Leitura do tabuleiro",
+      description:
+        "Aqui ficam os pinos dos jogadores, atalhos de subida/descida e destaque visual de quem esta na vez.",
+      target: "room-board",
+    },
+    {
+      title: "Menu Casa",
+      description:
+        "No icone Casa voce consulta significado, palavras-chave, lado luz/sombra e pergunta terapeutica da casa selecionada.",
+      target: "room-menu-house",
+    },
+    {
+      title: "Menu Carta",
+      description:
+        "No icone Carta o jogador da vez tira cartas do deck (ate 3 por jogada), com imagem e registro automatico na timeline.",
+      target: "room-menu-deck",
+    },
+    {
+      title: "Menu Registro",
+      description:
+        "No icone Registro voce salva emocao, insight, corpo e acao da jogada atual para acompanhamento terapeutico.",
+      target: "room-menu-therapy",
+    },
+    {
+      title: "Menu IA",
+      description:
+        "No icone IA voce pede ajuda contextual, acompanha limite de uso e gera o resumo final da sessao.",
+      target: "room-menu-ai",
+    },
+    {
+      title: "Menu Jogadores",
+      description:
+        "No icone Jogadores voce visualiza terapeuta e participantes, com destaque de quem esta com a vez.",
+      target: "room-menu-players",
+    },
+    {
+      title: "Menu Timeline",
+      description:
+        "No icone Timeline voce revisa jogadas, atalhos, cartas, registros terapeuticos e ajudas de IA por participante.",
+      target: "room-menu-timeline",
+    },
+    {
+      title: "Menu Resumo",
+      description:
+        "No icone Resumo voce consolida caminho no tabuleiro, casas recorrentes, registros e uso de IA por jogador.",
+      target: "room-menu-summary",
+    },
+  ];
+}
 
 function clampTutorialNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -528,6 +585,10 @@ export function RoomClient({ code }: { code: string }) {
   const [roomTutorialStep, setRoomTutorialStep] = useState(0);
   const [roomTutorialRole, setRoomTutorialRole] =
     useState<RoomTutorialRole | null>(null);
+  const roomTutorialSteps = useMemo(
+    () => getRoomTutorialSteps({ role: roomTutorialRole }),
+    [roomTutorialRole],
+  );
   const [roomTutorialTargetRect, setRoomTutorialTargetRect] =
     useState<DOMRect | null>(null);
   const [roomTutorialInitializedRole, setRoomTutorialInitializedRole] =
@@ -1006,7 +1067,8 @@ export function RoomClient({ code }: { code: string }) {
   useEffect(() => {
     if (!showRoomTutorial || !roomTutorialRole) return;
 
-    const step = ROOM_TUTORIAL_STEPS[roomTutorialRole][roomTutorialStep];
+    const step = roomTutorialSteps[roomTutorialStep];
+    if (!step) return;
     const selector = `[data-tour-room="${step.target}"]`;
     const targetEl = document.querySelector<HTMLElement>(selector);
     if (!targetEl) return;
@@ -1016,7 +1078,7 @@ export function RoomClient({ code }: { code: string }) {
       inline: "nearest",
       behavior: "smooth",
     });
-  }, [showRoomTutorial, roomTutorialRole, roomTutorialStep]);
+  }, [showRoomTutorial, roomTutorialRole, roomTutorialStep, roomTutorialSteps]);
 
   useEffect(() => {
     if (!showRoomTutorial || !roomTutorialRole) {
@@ -1024,7 +1086,11 @@ export function RoomClient({ code }: { code: string }) {
       return;
     }
 
-    const step = ROOM_TUTORIAL_STEPS[roomTutorialRole][roomTutorialStep];
+    const step = roomTutorialSteps[roomTutorialStep];
+    if (!step) {
+      setRoomTutorialTargetRect(null);
+      return;
+    }
     const selector = `[data-tour-room="${step.target}"]`;
 
     const updateTargetRect = () => {
@@ -1050,7 +1116,30 @@ export function RoomClient({ code }: { code: string }) {
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", handleViewportChange, true);
     };
-  }, [showRoomTutorial, roomTutorialRole, roomTutorialStep, activePanel]);
+  }, [
+    showRoomTutorial,
+    roomTutorialRole,
+    roomTutorialStep,
+    roomTutorialSteps,
+    activePanel,
+  ]);
+
+  useEffect(() => {
+    if (!showRoomTutorial) return;
+    if (roomTutorialSteps.length === 0) return;
+    setRoomTutorialStep((prev) => Math.min(prev, roomTutorialSteps.length - 1));
+  }, [showRoomTutorial, roomTutorialSteps.length]);
+
+  useEffect(() => {
+    if (!showRoomTutorial) return;
+    const step = roomTutorialSteps[roomTutorialStep];
+    if (!step) return;
+    const targetPanel = ROOM_TUTORIAL_PANEL_BY_TARGET[step.target];
+    if (!targetPanel) return;
+    if (activePanel !== targetPanel) {
+      setActivePanel(targetPanel);
+    }
+  }, [showRoomTutorial, roomTutorialStep, roomTutorialSteps, activePanel]);
 
   const finishRoomTutorial = async () => {
     if (!roomTutorialRole) {
@@ -1262,9 +1351,6 @@ export function RoomClient({ code }: { code: string }) {
 
   const roomIsActive = state.room.status === "ACTIVE";
   const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
-  const roomTutorialSteps = roomTutorialRole
-    ? ROOM_TUTORIAL_STEPS[roomTutorialRole]
-    : [];
   const currentRoomTutorialStep = roomTutorialSteps[roomTutorialStep] || null;
   const roomTutorialPopover = getRoomTutorialPopoverPosition(
     roomTutorialTargetRect,
@@ -1763,7 +1849,6 @@ export function RoomClient({ code }: { code: string }) {
               gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
               gap: 8,
             }}
-            data-tour-room="room-menu"
           >
             {ACTION_ITEMS.map((item) => {
               const isActive = activePanel === item.key;
@@ -1773,6 +1858,7 @@ export function RoomClient({ code }: { code: string }) {
                   className={isActive ? "btn-primary" : "btn-secondary"}
                   onClick={() => setActivePanel(item.key)}
                   title={item.label}
+                  data-tour-room={TOUR_TARGET_BY_ACTION_PANEL[item.key]}
                   style={{
                     display: "grid",
                     justifyItems: "center",
@@ -1802,37 +1888,31 @@ export function RoomClient({ code }: { code: string }) {
                       {selectedHouseInfo?.portuguese || selectedHouse.title}
                     </strong>
                   </div>
-                  <div className="notice" style={{ display: "grid", gap: 6 }}>
-                    <span>
-                      <strong>Significado:</strong>{" "}
-                      {selectedHouseInfo?.description || selectedHouse.title}
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Significado</strong>
+                    <span className="small-muted">
+                      {selectedHouseInfo?.meaning || selectedHouse.title}
                     </span>
-                    <span>
-                      <strong>Palavras-chave:</strong>{" "}
-                      {selectedHouseInfo?.keywords.length
-                        ? selectedHouseInfo.keywords.join(" • ")
-                        : selectedHouseInfo?.description || "—"}
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Lado Luz</strong>
+                    <span className="small-muted">
+                      {selectedHouseInfo?.polarity
+                        ? `Palavras-chave: ${selectedHouseInfo.polarity.lightKeywords}. ${selectedHouseInfo.polarity.lightSummary}`
+                        : "—"}
                     </span>
-                    <span>
-                      <strong>Lado luz (palavras-chave):</strong>{" "}
-                      {selectedHouseInfo?.polarity?.lightKeywords || "—"}
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Lado Sombra</strong>
+                    <span className="small-muted">
+                      {selectedHouseInfo?.polarity
+                        ? `Palavras-chave: ${selectedHouseInfo.polarity.shadowKeywords}. ${selectedHouseInfo.polarity.shadowSummary}`
+                        : "—"}
                     </span>
-                    <span>
-                      <strong>Resumo luz:</strong>{" "}
-                      {selectedHouseInfo?.polarity?.lightSummary || "—"}
-                    </span>
-                    <span>
-                      <strong>Lado sombra (palavras-chave):</strong>{" "}
-                      {selectedHouseInfo?.polarity?.shadowKeywords || "—"}
-                    </span>
-                    <span>
-                      <strong>Resumo sombra:</strong>{" "}
-                      {selectedHouseInfo?.polarity?.shadowSummary || "—"}
-                    </span>
-                    <span>
-                      <strong>Pergunta terapêutica:</strong>{" "}
-                      {selectedHouseQuestion}
-                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Pergunta Terapêutica</strong>
+                    <span className="small-muted">{selectedHouseQuestion}</span>
                   </div>
                 </>
               ) : (
