@@ -741,8 +741,13 @@ export function DashboardClient() {
     );
 
     return (
-      <div key={room.id} className="card" style={{ display: "grid", gap: 14 }}>
+      <div
+        key={room.id}
+        className="card dashboard-room-card"
+        style={{ display: "grid", gap: 14 }}
+      >
         <div
+          className="dashboard-room-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -774,6 +779,7 @@ export function DashboardClient() {
             </div>
           </div>
           <div
+            className="dashboard-room-actions"
             style={{
               display: "flex",
               gap: 8,
@@ -800,9 +806,9 @@ export function DashboardClient() {
           </div>
         </div>
 
-        <div className="grid" style={{ gap: 8 }}>
+        <div className="grid dashboard-room-indicators" style={{ gap: 8 }}>
           <strong>Indicadores</strong>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="dashboard-room-pill-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <span className="pill">Jogadas: {room.stats.moves}</span>
             <span className="pill">Rolagens: {room.stats.rollsTotal}</span>
             <span className="pill">
@@ -816,14 +822,17 @@ export function DashboardClient() {
 
         {isOpen && (
           <div
-            className="grid"
+            className="grid dashboard-room-details"
             style={{
               gap: 12,
               borderTop: "1px solid var(--border)",
               paddingTop: 12,
             }}
           >
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div
+              className="dashboard-room-tabs"
+              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+            >
               <button
                 className={
                   activeTab === "invites" ? "btn-primary" : "btn-secondary"
@@ -1377,7 +1386,7 @@ export function DashboardClient() {
   );
 
   return (
-    <div className="grid" style={{ gap: 24 }}>
+    <div className="grid dashboard-root" style={{ gap: 24 }}>
       {notice && (
         <div className={`notice ${notice.variant === "success" ? "good" : ""}`}>
           {notice.message}
@@ -1385,12 +1394,13 @@ export function DashboardClient() {
       )}
       {canCreateRoom && (
         <div
-          className="card"
+          className="card dashboard-create-card"
           style={{ display: "grid", gap: 12 }}
           data-tour-dashboard="create-room"
         >
           <strong>Criar nova sala</strong>
           <div
+            className="dashboard-create-row"
             style={{
               display: "flex",
               gap: 12,
@@ -1441,11 +1451,12 @@ export function DashboardClient() {
       )}
 
       <div
-        className="card"
+        className="card dashboard-filters-card"
         style={{ display: "grid", gap: 12 }}
         data-tour-dashboard="filters"
       >
         <div
+          className="dashboard-filters-head"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1465,6 +1476,7 @@ export function DashboardClient() {
           </button>
         </div>
         <div
+          className="dashboard-filters-row"
           style={{
             display: "flex",
             gap: 12,
@@ -1516,7 +1528,7 @@ export function DashboardClient() {
         </div>
       </div>
 
-      <div className="grid" style={{ gap: 16 }}>
+      <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
         <h2 className="section-title">Minhas sessões</h2>
         {loading ? (
           <div className="card" data-tour-dashboard="sessions-list">
@@ -1527,7 +1539,9 @@ export function DashboardClient() {
             Nenhuma sala encontrada com os filtros atuais.
           </div>
         ) : (
-          <div data-tour-dashboard="sessions-list">{roomCards}</div>
+          <div className="dashboard-sessions-list" data-tour-dashboard="sessions-list">
+            {roomCards}
+          </div>
         )}
       </div>
 

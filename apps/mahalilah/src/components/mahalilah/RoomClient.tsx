@@ -628,6 +628,8 @@ export function RoomClient({ code }: { code: string }) {
   const [finalReportLoading, setFinalReportLoading] = useState(false);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
   const completionPromptedStatusRef = useRef<string>("");
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
@@ -679,6 +681,27 @@ export function RoomClient({ code }: { code: string }) {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+
+    const syncViewport = () => {
+      const isMobile = mediaQuery.matches;
+      setIsMobileViewport(isMobile);
+      if (!isMobile) {
+        setMobileActionPanelOpen(false);
+      }
+    };
+
+    syncViewport();
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -1197,6 +1220,12 @@ export function RoomClient({ code }: { code: string }) {
     }
   }, [showRoomTutorial, roomTutorialStep, roomTutorialSteps, activePanel]);
 
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    if (!showRoomTutorial) return;
+    setMobileActionPanelOpen(true);
+  }, [isMobileViewport, showRoomTutorial, roomTutorialStep]);
+
   const finishRoomTutorial = async () => {
     if (!roomTutorialRole) {
       setShowRoomTutorial(false);
@@ -1225,6 +1254,16 @@ export function RoomClient({ code }: { code: string }) {
       pushToast(resp?.error || fallback, "error");
     },
     [pushToast],
+  );
+
+  const handleSelectActionPanel = useCallback(
+    (panel: ActionPanel) => {
+      setActivePanel(panel);
+      if (isMobileViewport) {
+        setMobileActionPanelOpen(true);
+      }
+    },
+    [isMobileViewport],
   );
 
   const handleRoll = () => {
@@ -1505,7 +1544,7 @@ export function RoomClient({ code }: { code: string }) {
   );
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid room-shell" style={{ gap: 14 }}>
       <div
         style={{
           position: "fixed",
@@ -1600,7 +1639,7 @@ export function RoomClient({ code }: { code: string }) {
       )}
 
       <div
-        className="card"
+        className="card room-header-card"
         style={{
           display: "grid",
           gap: 8,
@@ -1609,6 +1648,7 @@ export function RoomClient({ code }: { code: string }) {
         }}
       >
         <div
+          className="room-header-pills"
           style={{
             display: "flex",
             alignItems: "center",
@@ -1689,6 +1729,7 @@ export function RoomClient({ code }: { code: string }) {
         </div>
 
         <div
+          className="room-controls-row"
           style={{
             display: "flex",
             gap: 8,
@@ -1788,18 +1829,19 @@ export function RoomClient({ code }: { code: string }) {
       </div>
 
       <div
-        className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]"
+        className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] room-main-grid"
         style={{
           opacity: actionsBlockedByConsent ? 0.6 : 1,
           alignItems: "start",
         }}
       >
         <div
-          className="card"
+          className="card room-board-card"
           style={{ display: "grid", gap: 10, minWidth: 0, overflow: "hidden" }}
           data-tour-room="room-board"
         >
           <div
+            className="room-board-grid"
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${BOARD_COLS}, minmax(0, 1fr))`,
@@ -1968,9 +2010,20 @@ export function RoomClient({ code }: { code: string }) {
         </div>
 
         <div
-          className="card"
+          className="card room-side-panel"
+          data-open={mobileActionPanelOpen}
           style={{ display: "grid", gap: 10, alignSelf: "start", minWidth: 0 }}
         >
+          <div className="room-mobile-panel-header">
+            <strong>Ações da sala</strong>
+            <button
+              className="btn-secondary"
+              onClick={() => setMobileActionPanelOpen(false)}
+            >
+              Fechar
+            </button>
+          </div>
+
           <label style={{ display: "grid", gap: 4 }}>
             <span>Intenção da sessão (opcional)</span>
             <input
@@ -1989,6 +2042,7 @@ export function RoomClient({ code }: { code: string }) {
           </label>
 
           <div
+            className="room-desktop-action-nav"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
@@ -2001,9 +2055,13 @@ export function RoomClient({ code }: { code: string }) {
                 <button
                   key={item.key}
                   className={isActive ? "btn-primary" : "btn-secondary"}
-                  onClick={() => setActivePanel(item.key)}
+                  onClick={() => handleSelectActionPanel(item.key)}
                   title={item.label}
-                  data-tour-room={TOUR_TARGET_BY_ACTION_PANEL[item.key]}
+                  data-tour-room={
+                    isMobileViewport
+                      ? undefined
+                      : TOUR_TARGET_BY_ACTION_PANEL[item.key]
+                  }
                   style={{
                     display: "grid",
                     justifyItems: "center",
@@ -2808,6 +2866,33 @@ export function RoomClient({ code }: { code: string }) {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="room-mobile-actionbar">
+        {ACTION_ITEMS.map((item) => {
+          const isActive = activePanel === item.key;
+          return (
+            <button
+              key={`mobile-${item.key}`}
+              className={isActive ? "btn-primary" : "btn-secondary"}
+              onClick={() => handleSelectActionPanel(item.key)}
+              title={item.label}
+              data-tour-room={
+                isMobileViewport
+                  ? TOUR_TARGET_BY_ACTION_PANEL[item.key]
+                  : undefined
+              }
+              style={{
+                display: "grid",
+                justifyItems: "center",
+                minHeight: 40,
+                padding: "6px 4px",
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+            </button>
+          );
+        })}
       </div>
 
       {therapyModalEntries.length > 0 && (
