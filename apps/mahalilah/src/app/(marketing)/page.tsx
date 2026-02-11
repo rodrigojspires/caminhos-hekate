@@ -82,7 +82,7 @@ export default function HomePage() {
           title="O que torna diferente"
           subtitle="Tudo pensado para experiência segura, acolhedora e consistente."
         />
-        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted sm:grid-cols-2">
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
             'Tempo real com sala online compartilhada',
             'Login obrigatório para participar',

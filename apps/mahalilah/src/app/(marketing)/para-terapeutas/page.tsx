@@ -126,7 +126,7 @@ export default function ParaTerapeutasPage() {
           title="Aplicações comuns"
           subtitle="Cinco exemplos recorrentes em acompanhamento terapêutico."
         />
-        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted sm:grid-cols-2">
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
             'Travas recorrentes e padrões de comportamento',
             'Decisões que precisam de clareza emocional',

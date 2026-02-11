@@ -75,7 +75,7 @@ export function LoginForm() {
           {authErrorMessage(queryError)}
         </div>
       )}
-      <button type="submit" className="btn-primary w-fit" disabled={loading}>
+      <button type="submit" className="btn-primary w-full sm:w-fit" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
       <p className="text-sm text-ink-muted">

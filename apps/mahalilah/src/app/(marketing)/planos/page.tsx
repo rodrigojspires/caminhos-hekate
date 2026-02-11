@@ -189,7 +189,7 @@ export default function PlanosPage() {
       />
 
       <SectionShell>
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted">
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
           <p>
             Ao assinar, você concorda com nossos <Link className="text-gold" href="/termos">Termos de uso</Link>
             {' '}e com a <Link className="text-gold" href="/privacidade">Política de privacidade</Link>.

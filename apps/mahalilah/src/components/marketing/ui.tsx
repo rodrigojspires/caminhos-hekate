@@ -8,7 +8,7 @@ export type Cta = {
 
 export function SectionShell({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`px-6 py-16 sm:px-8 ${className}`}>
+    <section className={`px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16 ${className}`}>
       <div className="mx-auto flex w-full max-w-content flex-col gap-10">
         {children}
       </div>
@@ -35,8 +35,8 @@ export function SectionHeader({
           {eyebrow}
         </span>
       )}
-      <h2 className="font-serif text-3xl text-ink sm:text-4xl">{title}</h2>
-      {subtitle && <p className="max-w-2xl text-base text-ink-muted sm:text-lg">{subtitle}</p>}
+      <h2 className="font-serif text-2xl text-ink sm:text-3xl lg:text-4xl">{title}</h2>
+      {subtitle && <p className="max-w-2xl text-sm text-ink-muted sm:text-base lg:text-lg">{subtitle}</p>}
     </header>
   )
 }

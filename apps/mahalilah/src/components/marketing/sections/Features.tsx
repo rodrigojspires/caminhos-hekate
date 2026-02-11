@@ -21,7 +21,7 @@ export function Features({
       <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
       <div className="grid gap-6 md:grid-cols-2">
         {items.map((item) => (
-          <div key={item.title} className="rounded-2xl border border-border/70 bg-surface/70 p-6">
+          <div key={item.title} className="rounded-2xl border border-border/70 bg-surface/70 p-5 sm:p-6">
             <h3 className="font-serif text-xl text-ink">{item.title}</h3>
             <p className="mt-3 text-sm text-ink-muted">{item.description}</p>
           </div>

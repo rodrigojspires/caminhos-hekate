@@ -154,7 +154,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
       {success && <div className="notice good">{success}</div>}
 
-      <button type="submit" className="btn-primary w-fit" disabled={loading}>
+      <button type="submit" className="btn-primary w-full sm:w-fit" disabled={loading}>
         {loading ? 'Redefinindo...' : 'Redefinir senha'}
       </button>
 

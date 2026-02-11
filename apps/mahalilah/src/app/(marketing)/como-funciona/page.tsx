@@ -80,7 +80,7 @@ export default function ComoFuncionaPage() {
           title="O que fica salvo"
           subtitle="Tudo o que acontece na sala fica organizado para revisão e acompanhamento."
         />
-        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted sm:grid-cols-2">
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
             'Jogadas, caminhos e rolagens',
             'Cartas puxadas do deck randômico',

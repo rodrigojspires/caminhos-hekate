@@ -67,7 +67,7 @@ export default function TermosPage() {
           title="Compromissos e limites"
           subtitle="O uso deve ser ético, respeitoso e alinhado com a segurança emocional do grupo."
         />
-        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted sm:grid-cols-2">
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
             'Não substitui terapia ou atendimento médico.',
             'Usuários são responsáveis por suas decisões e registros.',

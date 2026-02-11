@@ -21,7 +21,7 @@ export function Steps({
       <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
       <div className="grid gap-6 md:grid-cols-3">
         {steps.map((step, index) => (
-          <div key={step.title} className="rounded-2xl border border-border/70 bg-surface/70 p-6">
+          <div key={step.title} className="rounded-2xl border border-border/70 bg-surface/70 p-5 sm:p-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/60 bg-surface text-sm font-semibold text-gold">
               {index + 1}
             </div>

@@ -60,7 +60,7 @@ export default function CookiesPage() {
       </SectionShell>
 
       <SectionShell>
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted">
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
           <p className="text-ink">Exemplo de banner de cookies (simples)</p>
           <div className="mt-4 rounded-2xl border border-border/70 bg-[#0b0e13]/70 p-4">
             <p>

@@ -20,7 +20,7 @@ export function Hero({
   note?: string
 }) {
   return (
-    <SectionShell className="pt-20">
+    <SectionShell className="pt-14 sm:pt-16 lg:pt-20">
       <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col gap-6">
           {eyebrow && (
@@ -28,8 +28,8 @@ export function Hero({
               {eyebrow}
             </span>
           )}
-          <h1 className="font-serif text-4xl text-ink sm:text-5xl">{title}</h1>
-          <p className="text-base text-ink-muted sm:text-lg">{subtitle}</p>
+          <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl lg:text-5xl">{title}</h1>
+          <p className="text-sm text-ink-muted sm:text-base lg:text-lg">{subtitle}</p>
           <div className="flex flex-wrap gap-3">
             <LinkButton cta={primaryCta} variant="primary" />
             {secondaryCta && <LinkButton cta={secondaryCta} variant="secondary" />}

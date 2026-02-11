@@ -81,7 +81,7 @@ export default function SegurancaPrivacidadePage() {
       </SectionShell>
 
       <SectionShell>
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-8 text-sm text-ink-muted">
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
           <p>
             Para mais detalhes, consulte nossa <Link className="text-gold" href="/privacidade">Política de Privacidade</Link>,
             {' '}os <Link className="text-gold" href="/termos">Termos de Uso</Link> e a página de

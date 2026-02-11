@@ -33,7 +33,7 @@ export function PricingCards({
             key={plan.name}
             className={`flex h-full flex-col gap-6 rounded-3xl border ${
               plan.highlight ? 'border-gold/70 bg-surface' : 'border-border/70 bg-surface/70'
-            } p-8 shadow-soft`}
+            } p-6 shadow-soft sm:p-8`}
           >
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.3em] text-ink-muted">{plan.name}</span>

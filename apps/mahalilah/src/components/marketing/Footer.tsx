@@ -42,8 +42,8 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-border/60 bg-[#0b0e13]/90">
-      <div className="mx-auto flex w-full max-w-content flex-col gap-10 px-6 py-16 sm:px-8">
-        <div className="grid gap-8 md:grid-cols-[1.4fr_repeat(4,_1fr)]">
+      <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-4 py-12 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,_1fr)]">
           <div className="flex flex-col gap-4">
             <span className="font-serif text-2xl text-ink">Maha Lilah Online</span>
             <p className="text-sm text-ink-muted">

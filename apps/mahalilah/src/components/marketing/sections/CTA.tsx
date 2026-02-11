@@ -13,12 +13,12 @@ export function CTA({
   secondaryCta?: Cta
 }) {
   return (
-    <SectionShell className="pb-20">
-      <div className="rounded-3xl border border-border/70 bg-surface/70 p-10 shadow-soft">
+    <SectionShell className="pb-16 sm:pb-18 lg:pb-20">
+      <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 shadow-soft sm:p-8 lg:p-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-4">
-            <h2 className="font-serif text-3xl text-ink">{title}</h2>
-            <p className="max-w-2xl text-base text-ink-muted">{subtitle}</p>
+            <h2 className="font-serif text-2xl text-ink sm:text-3xl">{title}</h2>
+            <p className="max-w-2xl text-sm text-ink-muted sm:text-base">{subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <LinkButton cta={primaryCta} variant="primary" />
