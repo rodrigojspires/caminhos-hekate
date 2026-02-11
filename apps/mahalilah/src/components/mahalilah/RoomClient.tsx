@@ -84,13 +84,38 @@ type TimelineMove = {
   cardDraws: Array<{ id: string; cards: number[] }>;
 };
 
-type ActionPanel = "house" | "deck" | "therapy" | "ai" | "summary";
+type ActionPanel =
+  | "house"
+  | "deck"
+  | "therapy"
+  | "ai"
+  | "players"
+  | "timeline"
+  | "summary";
 type ToastKind = "info" | "success" | "warning" | "error";
 
 type ToastMessage = {
   id: number;
   message: string;
   kind: ToastKind;
+};
+
+type TimelineAiReport = {
+  id: string;
+  kind: "TIP" | "FINAL";
+  content: string;
+  createdAt: string;
+  participant: {
+    id: string;
+    user: { name: string | null; email: string };
+  } | null;
+};
+
+type ParsedTip = {
+  text: string;
+  turnNumber: number | null;
+  houseNumber: number | null;
+  intention: string | null;
 };
 
 const COLORS = [
@@ -118,12 +143,53 @@ const ACTION_ITEMS: Array<{
   },
   { key: "ai", label: "IA Terapêutica", icon: "✦", shortLabel: "IA" },
   {
+    key: "players",
+    label: "Jogadores",
+    icon: "◉",
+    shortLabel: "Jogadores",
+  },
+  {
+    key: "timeline",
+    label: "Timeline",
+    icon: "☰",
+    shortLabel: "Timeline",
+  },
+  {
     key: "summary",
     label: "Resumo do Jogador",
     icon: "▣",
     shortLabel: "Resumo",
   },
 ];
+
+function parseTipReportContent(content: string): ParsedTip {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        text: parsed.text,
+        turnNumber:
+          typeof parsed.turnNumber === "number" ? parsed.turnNumber : null,
+        houseNumber:
+          typeof parsed.houseNumber === "number" ? parsed.houseNumber : null,
+        intention:
+          typeof parsed.intention === "string" ? parsed.intention : null,
+      };
+    }
+  } catch {
+    // Backward compatibility with old plain-text payloads.
+  }
+  return {
+    text: content,
+    turnNumber: null,
+    houseNumber: null,
+    intention: null,
+  };
+}
 
 export function RoomClient({ code }: { code: string }) {
   const { data: session } = useSession();
@@ -151,13 +217,28 @@ export function RoomClient({ code }: { code: string }) {
   const [aiIntentionSavedLabel, setAiIntentionSavedLabel] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [timelineOpen, setTimelineOpen] = useState(false);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [timelineMoves, setTimelineMoves] = useState<TimelineMove[]>([]);
+  const [timelineReports, setTimelineReports] = useState<TimelineAiReport[]>(
+    [],
+  );
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
+  const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
+  const [therapyModalEntries, setTherapyModalEntries] = useState<
+    Array<
+      TimelineMove["therapyEntries"][number] & {
+        move: TimelineMove;
+      }
+    >
+  >([]);
+  const [aiContentModal, setAiContentModal] = useState<{
+    title: string;
+    content: string;
+    subtitle?: string;
+  } | null>(null);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -385,12 +466,49 @@ export function RoomClient({ code }: { code: string }) {
     setSummaryParticipantId(myParticipant.id);
   }, [state, myParticipant]);
 
+  useEffect(() => {
+    if (!state || !myParticipant) return;
+
+    if (myParticipant.role === "THERAPIST") {
+      const preferredPlayer = state.participants.find(
+        (participant) => participant.role === "PLAYER",
+      );
+      const fallbackParticipant = state.participants[0];
+      const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
+      setAiHistoryParticipantId((prev) => prev || targetId);
+      return;
+    }
+
+    setAiHistoryParticipantId(myParticipant.id);
+  }, [state, myParticipant]);
+
   const filteredTimelineMoves = useMemo(() => {
     if (!timelineTargetParticipantId) return timelineMoves;
     return timelineMoves.filter(
       (move) => move.participant.id === timelineTargetParticipantId,
     );
   }, [timelineMoves, timelineTargetParticipantId]);
+
+  const filteredTimelineReports = useMemo(() => {
+    if (!timelineTargetParticipantId) return timelineReports;
+    return timelineReports.filter(
+      (report) => report.participant?.id === timelineTargetParticipantId,
+    );
+  }, [timelineReports, timelineTargetParticipantId]);
+
+  const aiTipHistory = useMemo(() => {
+    if (!aiHistoryParticipantId) return [];
+    return timelineReports
+      .filter(
+        (report) =>
+          report.kind === "TIP" &&
+          report.participant?.id === aiHistoryParticipantId,
+      )
+      .map((report) => ({
+        report,
+        parsed: parseTipReportContent(report.content),
+      }));
+  }, [timelineReports, aiHistoryParticipantId]);
 
   const summaryParticipant = useMemo(() => {
     if (!summaryParticipantId) return null;
@@ -565,6 +683,7 @@ export function RoomClient({ code }: { code: string }) {
       }
 
       setTimelineMoves(payload.moves || []);
+      setTimelineReports(payload.aiReports || []);
       setTimelineLoading(false);
       if (showSuccessToast) {
         pushToast("Timeline carregada.", "success");
@@ -574,24 +693,18 @@ export function RoomClient({ code }: { code: string }) {
     [state, pushToast],
   );
 
-  const handleLoadPlayerTimeline = async () => {
-    if (!state) return;
-
-    if (timelineOpen) {
-      setTimelineOpen(false);
-      return;
-    }
-
-    setTimelineOpen(true);
-    await loadTimelineData(true);
-  };
-
   useEffect(() => {
-    if (activePanel !== "summary") return;
+    if (!["summary", "timeline", "ai"].includes(activePanel)) return;
     if (timelineLoading) return;
-    if (timelineMoves.length > 0) return;
+    if (timelineMoves.length > 0 || timelineReports.length > 0) return;
     void loadTimelineData();
-  }, [activePanel, timelineLoading, timelineMoves.length, loadTimelineData]);
+  }, [
+    activePanel,
+    timelineLoading,
+    timelineMoves.length,
+    timelineReports.length,
+    loadTimelineData,
+  ]);
 
   const summaryStatus = summaryPlayerState
     ? summaryPlayerState.hasCompleted
@@ -825,13 +938,20 @@ export function RoomClient({ code }: { code: string }) {
                 : "Aguardando sua vez"}
           </button>
           {canCloseRoom && (
-            <Link
-              href="/dashboard"
-              className="btn-secondary"
+            <button
+              className="secondary"
+              onClick={() =>
+                socket?.emit("game:nextTurn", {}, (resp: any) => {
+                  if (!resp?.ok) showSocketError("Erro ao avançar vez", resp);
+                })
+              }
+              disabled={
+                state.room.status !== "ACTIVE" || actionsBlockedByConsent
+              }
               style={{ flex: "0 0 auto" }}
             >
-              Voltar ao dashboard
-            </Link>
+              Avançar vez
+            </button>
           )}
           {canCloseRoom && (
             <button
@@ -851,20 +971,13 @@ export function RoomClient({ code }: { code: string }) {
             </button>
           )}
           {canCloseRoom && (
-            <button
-              className="secondary"
-              onClick={() =>
-                socket?.emit("game:nextTurn", {}, (resp: any) => {
-                  if (!resp?.ok) showSocketError("Erro ao avançar vez", resp);
-                })
-              }
-              disabled={
-                state.room.status !== "ACTIVE" || actionsBlockedByConsent
-              }
+            <Link
+              href="/dashboard"
+              className="btn-secondary"
               style={{ flex: "0 0 auto" }}
             >
-              Avançar vez
-            </button>
+              Voltar ao dashboard
+            </Link>
           )}
         </div>
 
@@ -1039,7 +1152,7 @@ export function RoomClient({ code }: { code: string }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
               gap: 8,
             }}
           >
@@ -1342,6 +1455,69 @@ export function RoomClient({ code }: { code: string }) {
                 </div>
               )}
 
+              <div className="notice" style={{ display: "grid", gap: 6 }}>
+                <strong>Histórico de ajudas da IA</strong>
+                {timelineParticipants.length > 1 && (
+                  <select
+                    value={aiHistoryParticipantId}
+                    onChange={(event) =>
+                      setAiHistoryParticipantId(event.target.value)
+                    }
+                  >
+                    {timelineParticipants.map((participant) => (
+                      <option key={participant.id} value={participant.id}>
+                        {participant.user.name || participant.user.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {timelineLoading && aiTipHistory.length === 0 ? (
+                  <span className="small-muted">Carregando histórico...</span>
+                ) : aiTipHistory.length === 0 ? (
+                  <span className="small-muted">Nenhuma ajuda registrada.</span>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      maxHeight: 220,
+                      overflow: "auto",
+                      paddingRight: 2,
+                    }}
+                  >
+                    {aiTipHistory.map(({ report, parsed }) => (
+                      <button
+                        key={report.id}
+                        className="btn-secondary"
+                        style={{
+                          justifyContent: "flex-start",
+                          textAlign: "left",
+                          whiteSpace: "normal",
+                          height: "auto",
+                          padding: "8px 10px",
+                        }}
+                        onClick={() =>
+                          setAiContentModal({
+                            title: "Ajuda da IA",
+                            subtitle: `Gerada em ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                            content: parsed.text,
+                          })
+                        }
+                      >
+                        <span className="small-muted">
+                          {parsed.turnNumber !== null
+                            ? `Jogada #${parsed.turnNumber}`
+                            : "Jogada não identificada"}
+                          {parsed.houseNumber !== null
+                            ? ` • Casa ${parsed.houseNumber}`
+                            : ""}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 className="secondary"
                 onClick={() =>
@@ -1367,6 +1543,221 @@ export function RoomClient({ code }: { code: string }) {
                 <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
                   {aiSummary}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activePanel === "players" && (
+            <div className="grid" style={{ gap: 8 }}>
+              <strong>Jogadores</strong>
+              <div style={{ display: "grid", gap: 6 }}>
+                {state.participants.map((participant) => {
+                  const isCurrent = participant.id === currentParticipant?.id;
+                  const isTherapist = participant.role === "THERAPIST";
+                  return (
+                    <div
+                      key={participant.id}
+                      className="notice"
+                      style={{
+                        display: "grid",
+                        gap: 4,
+                        borderColor: isCurrent
+                          ? "rgba(106, 211, 176, 0.6)"
+                          : "rgba(217, 164, 65, 0.35)",
+                        background: isCurrent
+                          ? "rgba(106, 211, 176, 0.12)"
+                          : "hsl(var(--temple-surface-2))",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <strong>
+                          {participant.user.name || participant.user.email}
+                        </strong>
+                        <span className="pill" style={{ padding: "3px 8px" }}>
+                          {isTherapist ? "Terapeuta" : "Jogador"}
+                        </span>
+                        {isCurrent && (
+                          <span className="pill" style={{ padding: "3px 8px" }}>
+                            Vez atual
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activePanel === "timeline" && (
+            <div className="grid" style={{ gap: 8 }}>
+              <strong>Timeline</strong>
+
+              {timelineParticipants.length > 1 && (
+                <select
+                  value={timelineTargetParticipantId}
+                  onChange={(event) =>
+                    setTimelineTargetParticipantId(event.target.value)
+                  }
+                >
+                  <option value="">Todos os jogadores</option>
+                  {timelineParticipants.map((participant) => (
+                    <option key={participant.id} value={participant.id}>
+                      {participant.user.name || participant.user.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {timelineLoading ? (
+                <span className="small-muted">Carregando timeline...</span>
+              ) : timelineError ? (
+                <span className="small-muted">{timelineError}</span>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      maxHeight: 280,
+                      overflow: "auto",
+                      paddingRight: 2,
+                    }}
+                  >
+                    {filteredTimelineMoves.length === 0 ? (
+                      <span className="small-muted">
+                        Nenhuma jogada para o jogador selecionado.
+                      </span>
+                    ) : (
+                      filteredTimelineMoves.map((move) => (
+                        <div
+                          key={move.id}
+                          className="notice"
+                          style={{ display: "grid", gap: 4 }}
+                        >
+                          <strong style={{ fontSize: 12 }}>
+                            {move.participant.user.name ||
+                              move.participant.user.email}
+                          </strong>
+                          <span
+                            className="small-muted"
+                            style={{
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {(() => {
+                              const hasJump =
+                                move.appliedJumpFrom !== null &&
+                                move.appliedJumpTo !== null;
+                              if (!hasJump) {
+                                return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.toPos}`;
+                              }
+
+                              const jumpLabel =
+                                move.appliedJumpTo > move.appliedJumpFrom
+                                  ? "subida"
+                                  : "descida";
+                              return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${jumpLabel}): ${move.appliedJumpTo}`;
+                            })()}
+                          </span>
+                          <span className="small-muted">
+                            {new Date(move.createdAt).toLocaleString("pt-BR")}
+                          </span>
+                          {move.cardDraws.length > 0 && (
+                            <span className="small-muted">
+                              Cartas:{" "}
+                              {move.cardDraws
+                                .map((draw) => draw.cards.join(","))
+                                .join(" | ")}
+                            </span>
+                          )}
+                          {move.therapyEntries.length > 0 && (
+                            <button
+                              className="btn-secondary"
+                              style={{ justifyContent: "flex-start" }}
+                              onClick={() =>
+                                setTherapyModalEntries(
+                                  move.therapyEntries.map((entry) => ({
+                                    ...entry,
+                                    move,
+                                  })),
+                                )
+                              }
+                            >
+                              Ver registro ({move.therapyEntries.length})
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="divider" />
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      maxHeight: 220,
+                      overflow: "auto",
+                      paddingRight: 2,
+                    }}
+                  >
+                    <strong>Ajudas da IA na timeline</strong>
+                    {filteredTimelineReports.filter(
+                      (report) => report.kind === "TIP",
+                    ).length === 0 ? (
+                      <span className="small-muted">
+                        Nenhuma ajuda de IA registrada.
+                      </span>
+                    ) : (
+                      filteredTimelineReports
+                        .filter((report) => report.kind === "TIP")
+                        .map((report) => {
+                          const parsed = parseTipReportContent(report.content);
+                          return (
+                            <button
+                              key={report.id}
+                              className="btn-secondary"
+                              style={{
+                                justifyContent: "flex-start",
+                                textAlign: "left",
+                                whiteSpace: "normal",
+                                height: "auto",
+                                padding: "8px 10px",
+                              }}
+                              onClick={() =>
+                                setAiContentModal({
+                                  title: "Ajuda da IA",
+                                  subtitle: `Gerada em ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                                  content: parsed.text,
+                                })
+                              }
+                            >
+                              <span className="small-muted">
+                                {report.participant?.user.name ||
+                                  report.participant?.user.email ||
+                                  "Participante"}
+                                {parsed.turnNumber !== null
+                                  ? ` • Jogada #${parsed.turnNumber}`
+                                  : ""}
+                                {parsed.houseNumber !== null
+                                  ? ` • Casa ${parsed.houseNumber}`
+                                  : ""}
+                              </span>
+                            </button>
+                          );
+                        })
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1464,113 +1855,139 @@ export function RoomClient({ code }: { code: string }) {
               )}
             </div>
           )}
-
-          <div className="divider" />
-
-          <button className="btn-secondary" onClick={handleLoadPlayerTimeline}>
-            {timelineOpen
-              ? "Ocultar timeline do jogador"
-              : "Timeline do jogador"}
-          </button>
-
-          {timelineOpen && (
-            <div className="grid" style={{ gap: 8 }}>
-              {timelineParticipants.length > 1 && (
-                <select
-                  value={timelineTargetParticipantId}
-                  onChange={(event) =>
-                    setTimelineTargetParticipantId(event.target.value)
-                  }
-                >
-                  <option value="">Todos os jogadores</option>
-                  {timelineParticipants.map((participant) => (
-                    <option key={participant.id} value={participant.id}>
-                      {participant.user.name || participant.user.email}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {timelineLoading ? (
-                <span className="small-muted">Carregando timeline...</span>
-              ) : timelineError ? (
-                <span className="small-muted">{timelineError}</span>
-              ) : filteredTimelineMoves.length === 0 ? (
-                <span className="small-muted">
-                  Nenhuma jogada para o jogador selecionado.
-                </span>
-              ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gap: 6,
-                    maxHeight: 280,
-                    overflow: "auto",
-                    paddingRight: 2,
-                  }}
-                >
-                  {filteredTimelineMoves.map((move) => (
-                    <div
-                      key={move.id}
-                      className="notice"
-                      style={{ display: "grid", gap: 4 }}
-                    >
-                      <strong style={{ fontSize: 12 }}>
-                        {move.participant.user.name ||
-                          move.participant.user.email}
-                      </strong>
-                      <span
-                        className="small-muted"
-                        style={{
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {(() => {
-                          const hasJump =
-                            move.appliedJumpFrom !== null &&
-                            move.appliedJumpTo !== null;
-                          if (!hasJump) {
-                            return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.toPos}`;
-                          }
-
-                          const jumpLabel =
-                            move.appliedJumpTo > move.appliedJumpFrom
-                              ? "subida"
-                              : "descida";
-                          return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${jumpLabel}): ${move.appliedJumpTo}`;
-                        })()}
-                      </span>
-                      <span
-                        className="small-muted"
-                        style={{
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {new Date(move.createdAt).toLocaleString("pt-BR")}
-                      </span>
-                      {move.cardDraws.length > 0 && (
-                        <span className="small-muted">
-                          Cartas:{" "}
-                          {move.cardDraws
-                            .map((draw) => draw.cards.join(","))
-                            .join(" | ")}
-                        </span>
-                      )}
-                      {move.therapyEntries.length > 0 && (
-                        <span className="small-muted">
-                          Registros: {move.therapyEntries.length}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
+
+      {therapyModalEntries.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setTherapyModalEntries([])}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(680px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <strong>Registro terapêutico</strong>
+              <button
+                className="btn-secondary"
+                onClick={() => setTherapyModalEntries([])}
+              >
+                Fechar
+              </button>
+            </div>
+            {therapyModalEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className="notice"
+                style={{ display: "grid", gap: 6 }}
+              >
+                <span className="small-muted">
+                  Jogada #{entry.move.turnNumber} • Casa {entry.move.toPos} •{" "}
+                  {new Date(entry.createdAt).toLocaleString("pt-BR")}
+                </span>
+                {entry.emotion && (
+                  <span className="small-muted">
+                    <strong>Emoção:</strong> {entry.emotion}
+                    {entry.intensity ? ` (${entry.intensity}/10)` : ""}
+                  </span>
+                )}
+                {entry.insight && (
+                  <span className="small-muted">
+                    <strong>Insight:</strong> {entry.insight}
+                  </span>
+                )}
+                {entry.body && (
+                  <span className="small-muted">
+                    <strong>Corpo:</strong> {entry.body}
+                  </span>
+                )}
+                {entry.microAction && (
+                  <span className="small-muted">
+                    <strong>Ação:</strong> {entry.microAction}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {aiContentModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setAiContentModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <strong>{aiContentModal.title}</strong>
+                {aiContentModal.subtitle && (
+                  <span className="small-muted">{aiContentModal.subtitle}</span>
+                )}
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setAiContentModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
+              {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

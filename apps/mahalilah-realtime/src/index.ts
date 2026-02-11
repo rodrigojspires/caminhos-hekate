@@ -876,6 +876,30 @@ io.on("connection", (socket: AuthedSocket) => {
         const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${intention || "não informada"}\n\nGere: perguntas terapêuticas, hipótese de padrão, micro-intervenção corporal e micro-ação. Seja direto e prático.`;
 
         const content = await callOpenAI(prompt);
+        const lastMove = await prisma.mahaLilahMove.findFirst({
+          where: { roomId: room.id, participantId: participant.id },
+          orderBy: { createdAt: "desc" },
+          select: { turnNumber: true, toPos: true },
+        });
+        const houseNumber =
+          context.currentHouse &&
+          typeof context.currentHouse.number === "number"
+            ? context.currentHouse.number
+            : (lastMove?.toPos ?? null);
+
+        await prisma.mahaLilahAiReport.create({
+          data: {
+            roomId: room.id,
+            participantId: participant.id,
+            kind: "TIP",
+            content: JSON.stringify({
+              text: content,
+              intention: intention || null,
+              turnNumber: lastMove?.turnNumber ?? null,
+              houseNumber,
+            }),
+          },
+        });
 
         const updatedUsage = await prisma.mahaLilahAiUsage.update({
           where: { id: usage.id },
@@ -931,7 +955,11 @@ io.on("connection", (socket: AuthedSocket) => {
         }
 
         const existingReports = await prisma.mahaLilahAiReport.count({
-          where: { roomId: room.id, participantId: participant.id },
+          where: {
+            roomId: room.id,
+            participantId: participant.id,
+            kind: "FINAL",
+          },
         });
 
         if (existingReports >= finalLimit) {

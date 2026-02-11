@@ -1,0 +1,1 @@
+ALTER TYPE "MahaLilahAiReportKind" ADD VALUE IF NOT EXISTS 'TIP';
