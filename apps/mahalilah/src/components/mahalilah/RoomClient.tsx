@@ -678,6 +678,13 @@ export function RoomClient({ code }: { code: string }) {
             </button>
           )}
         </div>
+
+        {lastHouse && state.lastMove && (
+          <div className="small-muted">
+            Última jogada: casa {lastHouse.number} • dado{" "}
+            {state.lastMove.diceValue}
+          </div>
+        )}
       </div>
 
       <div
