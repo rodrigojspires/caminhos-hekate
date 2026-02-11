@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ type Room = {
   status: string
   planType: string
   maxParticipants: number
+  therapistPlays: boolean
   createdAt: string
   createdBy: { id: string; name: string | null; email: string }
   orderId: string | null
@@ -59,6 +61,7 @@ export default function AdminMahaLilahPage() {
   const [therapistEmail, setTherapistEmail] = useState('')
   const [maxParticipants, setMaxParticipants] = useState(4)
   const [planType, setPlanType] = useState('SINGLE_SESSION')
+  const [therapistPlays, setTherapistPlays] = useState(true)
 
   const baseUrl = useMemo(() => {
     if (typeof window === 'undefined') return 'https://mahalilahonline.com.br'
@@ -92,7 +95,7 @@ export default function AdminMahaLilahPage() {
       return
     }
     if (maxParticipants < 1 || maxParticipants > 12 || Number.isNaN(maxParticipants)) {
-      toast.error('Participantes deve estar entre 1 e 12.')
+      toast.error('Jogadores devem estar entre 1 e 12.')
       return
     }
 
@@ -103,7 +106,8 @@ export default function AdminMahaLilahPage() {
       body: JSON.stringify({
         therapistEmail: email,
         maxParticipants,
-        planType
+        planType,
+        therapistPlays
       })
     })
 
@@ -117,6 +121,7 @@ export default function AdminMahaLilahPage() {
 
     toast.success('Sala criada com sucesso.')
     setTherapistEmail('')
+    setTherapistPlays(true)
     await loadRooms()
     setCreating(false)
   }
@@ -152,7 +157,7 @@ export default function AdminMahaLilahPage() {
           <CardDescription>Visão global das salas e criação manual sem pagamento.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_auto] items-end">
+          <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium">Email do terapeuta</label>
               <Input
@@ -163,7 +168,7 @@ export default function AdminMahaLilahPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Participantes</label>
+              <label className="text-sm font-medium">Jogadores</label>
               <Input
                 type="number"
                 min={1}
@@ -185,9 +190,18 @@ export default function AdminMahaLilahPage() {
                 </SelectContent>
               </Select>
             </div>
-          <Button onClick={handleCreateRoom} disabled={creating || !therapistEmail}>
-            {creating ? 'Criando...' : 'Criar sala avulsa'}
-          </Button>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Terapeuta joga</label>
+              <div className="flex h-10 items-center gap-3 rounded-md border px-3">
+                <Switch checked={therapistPlays} onCheckedChange={setTherapistPlays} />
+                <span className="text-sm text-muted-foreground">
+                  {therapistPlays ? 'Sim, joga junto' : 'Não, só conduz'}
+                </span>
+              </div>
+            </div>
+            <Button onClick={handleCreateRoom} disabled={creating || !therapistEmail}>
+              {creating ? 'Criando...' : 'Criar sala avulsa'}
+            </Button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -220,7 +234,7 @@ export default function AdminMahaLilahPage() {
                   <TableHead>Terapeuta</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Plano</TableHead>
-                  <TableHead>Participantes</TableHead>
+                  <TableHead>Jogadores</TableHead>
                   <TableHead>Convites</TableHead>
                   <TableHead>Jogadas</TableHead>
                   <TableHead>Pagamento</TableHead>
@@ -255,6 +269,9 @@ export default function AdminMahaLilahPage() {
                       <TableCell>{planLabel[room.planType] || room.planType}</TableCell>
                       <TableCell>
                         {room.participantsCount}/{room.maxParticipants}
+                        <div className="text-xs text-muted-foreground">
+                          {room.therapistPlays ? 'Terapeuta joga junto' : 'Terapeuta não joga'}
+                        </div>
                       </TableCell>
                       <TableCell>{room.invitesCount}</TableCell>
                       <TableCell>{room.stats.moves}</TableCell>

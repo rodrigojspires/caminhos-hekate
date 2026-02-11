@@ -9,7 +9,8 @@ import { resendEmailService } from '@/lib/resend-email'
 const CreateRoomSchema = z.object({
   therapistEmail: z.string().email(),
   maxParticipants: z.coerce.number().int().min(1).max(12).default(4),
-  planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']).optional()
+  planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']).optional(),
+  therapistPlays: z.boolean().default(true)
 })
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -63,10 +64,14 @@ export async function GET(request: NextRequest) {
         status: room.status,
         planType: room.planType,
         maxParticipants: room.maxParticipants,
+        therapistPlays: room.therapistPlays,
         createdAt: room.createdAt,
         createdBy: room.createdByUser,
         orderId: room.orderId,
-        participantsCount: room.participants.length,
+        participantsCount: room.participants.filter((participant) => (
+          participant.role === MahaLilahParticipantRole.PLAYER ||
+          (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
+        )).length,
         invitesCount: room.invites.length,
         stats: room._count
       }))
@@ -106,6 +111,7 @@ export async function POST(request: NextRequest) {
           createdByUserId: therapist.id,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
+          therapistPlays: data.therapistPlays,
           planType,
           consentTextVersion
         }
