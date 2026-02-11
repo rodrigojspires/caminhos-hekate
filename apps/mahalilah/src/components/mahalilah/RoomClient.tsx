@@ -36,6 +36,8 @@ type RoomState = {
     id: string;
     code: string;
     status: string;
+    planType?: string;
+    isTrial?: boolean;
     currentTurnIndex: number;
     turnParticipantId: string | null;
     therapistOnline: boolean;
@@ -192,6 +194,7 @@ const COLORS = [
   "#7a5aa5",
   "#d5a439",
 ];
+const TRIAL_POST_START_MOVE_LIMIT = 5;
 
 const ACTION_ITEMS: Array<{
   key: ActionPanel;
@@ -625,12 +628,14 @@ export function RoomClient({ code }: { code: string }) {
   const [finalReportPrompt, setFinalReportPrompt] = useState<{
     mode: "close" | "completed";
   } | null>(null);
+  const [trialLimitModalOpen, setTrialLimitModalOpen] = useState(false);
   const [finalReportLoading, setFinalReportLoading] = useState(false);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
   const completionPromptedStatusRef = useRef<string>("");
+  const trialModalPromptedRef = useRef(false);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -900,6 +905,17 @@ export function RoomClient({ code }: { code: string }) {
     myParticipant && !myParticipant.consentAcceptedAt,
   );
   const actionsBlockedByConsent = needsConsent && !consentAccepted;
+  const isTrialRoom = Boolean(state?.room.isTrial);
+  const myPostStartMovesUsed = myPlayerState
+    ? Math.max(0, myPlayerState.rollCountTotal - myPlayerState.rollCountUntilStart)
+    : 0;
+  const trialMovesRemaining = Math.max(
+    0,
+    TRIAL_POST_START_MOVE_LIMIT - myPostStartMovesUsed,
+  );
+  const trialLimitReached = Boolean(
+    isTrialRoom && myPlayerState?.hasStarted && myPostStartMovesUsed >= TRIAL_POST_START_MOVE_LIMIT,
+  );
   const isMyTurn = currentParticipant?.user.id === session?.user?.id;
   const canLogTherapy = Boolean(
     state?.lastMove &&
@@ -911,6 +927,7 @@ export function RoomClient({ code }: { code: string }) {
     isMyTurn &&
       state?.room.status === "ACTIVE" &&
       !actionsBlockedByConsent &&
+      !trialLimitReached &&
       state?.room.therapistOnline,
   );
 
@@ -1270,6 +1287,9 @@ export function RoomClient({ code }: { code: string }) {
     if (!socket) return;
     socket.emit("game:roll", {}, (resp: any) => {
       if (!resp?.ok) {
+        if (resp?.code === "TRIAL_LIMIT_REACHED") {
+          setTrialLimitModalOpen(true);
+        }
         showSocketError("Erro ao rolar dado", resp);
       }
     });
@@ -1511,6 +1531,22 @@ export function RoomClient({ code }: { code: string }) {
     loadTimelineData,
   ]);
 
+  useEffect(() => {
+    if (!trialLimitReached) {
+      trialModalPromptedRef.current = false;
+      return;
+    }
+    if (trialModalPromptedRef.current) return;
+    trialModalPromptedRef.current = true;
+    setTrialLimitModalOpen(true);
+  }, [trialLimitReached]);
+
+  useEffect(() => {
+    if (!isTrialRoom) return;
+    if (activePanel !== "ai") return;
+    setActivePanel("house");
+  }, [isTrialRoom, activePanel]);
+
   const summaryStatus = summaryPlayerState
     ? summaryPlayerState.hasCompleted
       ? "Concluiu (retornou à casa 68)"
@@ -1726,6 +1762,21 @@ export function RoomClient({ code }: { code: string }) {
             />
             <strong>Status:</strong> {roomStatusLabel}
           </span>
+          {isTrialRoom && (
+            <span
+              className="pill"
+              style={{
+                flex: "0 0 auto",
+                borderColor: "rgba(241, 213, 154, 0.55)",
+                background: "rgba(241, 213, 154, 0.14)",
+              }}
+            >
+              <strong>Trial:</strong>{" "}
+              {myPlayerState?.hasStarted
+                ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
+                : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
+            </span>
+          )}
         </div>
 
         <div
@@ -1744,7 +1795,9 @@ export function RoomClient({ code }: { code: string }) {
             disabled={!canRoll}
             style={{ flex: "0 0 auto" }}
           >
-            {!state.room.therapistOnline
+            {trialLimitReached
+              ? "Trial bloqueada"
+              : !state.room.therapistOnline
               ? "Aguardando terapeuta"
               : isMyTurn
                 ? "Rolar dado"
@@ -1804,6 +1857,22 @@ export function RoomClient({ code }: { code: string }) {
             </Link>
           )}
         </div>
+
+        {isTrialRoom && trialLimitReached && (
+          <div className="notice" style={{ display: "grid", gap: 6 }}>
+            <span className="small-muted">
+              Você atingiu o limite da sala trial ({TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da casa 68).
+            </span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className="btn-secondary"
+                onClick={() => setTrialLimitModalOpen(true)}
+              >
+                Liberar continuidade
+              </button>
+            </div>
+          </div>
+        )}
 
         {lastMoveHouseInfo && state.lastMove && (
           <div className="small-muted">
@@ -2051,12 +2120,20 @@ export function RoomClient({ code }: { code: string }) {
           >
             {ACTION_ITEMS.map((item) => {
               const isActive = activePanel === item.key;
+              const isTrialAiDisabled = isTrialRoom && item.key === "ai";
               return (
                 <button
                   key={item.key}
                   className={isActive ? "btn-primary" : "btn-secondary"}
-                  onClick={() => handleSelectActionPanel(item.key)}
+                  onClick={() => {
+                    if (isTrialAiDisabled) {
+                      setTrialLimitModalOpen(true);
+                      return;
+                    }
+                    handleSelectActionPanel(item.key);
+                  }}
                   title={item.label}
+                  disabled={isTrialAiDisabled}
                   data-tour-room={
                     isMobileViewport
                       ? undefined
@@ -2420,6 +2497,22 @@ export function RoomClient({ code }: { code: string }) {
           {activePanel === "ai" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>IA terapêutica</strong>
+              {isTrialRoom ? (
+                <div className="notice" style={{ display: "grid", gap: 8 }}>
+                  <span className="small-muted">
+                    A IA fica indisponível na sala trial.
+                  </span>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <a href="/pricing" className="btn-secondary">
+                      Assinar plano
+                    </a>
+                    <a href="/pricing" className="btn-secondary">
+                      Comprar sala avulsa
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <>
               <span className="small-muted">
                 Ajudas usadas:{" "}
                 <strong>
@@ -2551,6 +2644,8 @@ export function RoomClient({ code }: { code: string }) {
                 <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
                   {aiSummary}
                 </div>
+              )}
+                </>
               )}
             </div>
           )}
@@ -2871,12 +2966,20 @@ export function RoomClient({ code }: { code: string }) {
       <div className="room-mobile-actionbar">
         {ACTION_ITEMS.map((item) => {
           const isActive = activePanel === item.key;
+          const isTrialAiDisabled = isTrialRoom && item.key === "ai";
           return (
             <button
               key={`mobile-${item.key}`}
               className={isActive ? "btn-primary" : "btn-secondary"}
-              onClick={() => handleSelectActionPanel(item.key)}
+              onClick={() => {
+                if (isTrialAiDisabled) {
+                  setTrialLimitModalOpen(true);
+                  return;
+                }
+                handleSelectActionPanel(item.key);
+              }}
               title={item.label}
+              disabled={isTrialAiDisabled}
               data-tour-room={
                 isMobileViewport
                   ? TOUR_TARGET_BY_ACTION_PANEL[item.key]
@@ -3335,6 +3438,63 @@ export function RoomClient({ code }: { code: string }) {
                     ? "Gerar e encerrar"
                     : "Gerar agora"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {trialLimitModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setTrialLimitModalOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(560px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <strong>Sua experiência trial terminou</strong>
+            <span className="small-muted">
+              Você usou as {TRIAL_POST_START_MOVE_LIMIT} jogadas da sala trial após sair da casa 68.
+              Para continuar com IA, histórico completo e sessões sem limite de trial, escolha uma opção:
+            </span>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-secondary"
+                onClick={() => setTrialLimitModalOpen(false)}
+              >
+                Depois
+              </button>
+              <a href="/pricing" className="btn-secondary">
+                Comprar sala avulsa
+              </a>
+              <a href="/pricing" className="btn-primary">
+                Assinar plano
+              </a>
             </div>
           </div>
         </div>

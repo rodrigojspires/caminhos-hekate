@@ -31,6 +31,7 @@ type Room = {
   status: string;
   maxParticipants: number;
   therapistPlays: boolean;
+  isTrial?: boolean;
   createdAt: string;
   invites: RoomInvite[];
   participants: RoomParticipant[];
@@ -288,6 +289,7 @@ export function DashboardClient() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [creatingTrial, setCreatingTrial] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -500,6 +502,32 @@ export function DashboardClient() {
 
     await loadRooms();
     setCreating(false);
+  };
+
+  const handleCreateTrialRoom = async () => {
+    setCreatingTrial(true);
+    const res = await fetch("/api/mahalilah/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trial: true }),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      showNotice(payload.error || "Erro ao criar sala trial.");
+      setCreatingTrial(false);
+      return;
+    }
+
+    const payload = await res.json().catch(() => ({}));
+    const roomCode = payload?.room?.code;
+    if (roomCode) {
+      window.location.href = `/rooms/${roomCode}`;
+      return;
+    }
+
+    await loadRooms();
+    setCreatingTrial(false);
   };
 
   const handleSendInvites = async (
@@ -766,6 +794,7 @@ export function DashboardClient() {
               }}
             >
               <div className="badge">Sala {room.code}</div>
+              {room.isTrial && <span className="pill">Trial</span>}
               <span className={`pill ${statusClass(room.status)}`}>
                 {room.status}
               </span>
@@ -1392,6 +1421,28 @@ export function DashboardClient() {
           {notice.message}
         </div>
       )}
+      <div
+        className="card dashboard-create-card"
+        style={{ display: "grid", gap: 12 }}
+      >
+        <strong>Sala trial</strong>
+        <p className="small-muted" style={{ margin: 0 }}>
+          Experimente agora com 1 jogador. Sem IA e com limite de 5 jogadas
+          após sair da casa 68.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            className="btn-primary"
+            onClick={handleCreateTrialRoom}
+            disabled={creatingTrial}
+          >
+            {creatingTrial ? "Criando trial..." : "Experimente já"}
+          </button>
+          <a href="/pricing" className="btn-secondary">
+            Ver planos
+          </a>
+        </div>
+      </div>
       {canCreateRoom && (
         <div
           className="card dashboard-create-card"

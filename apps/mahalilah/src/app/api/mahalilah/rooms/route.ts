@@ -8,7 +8,8 @@ import { RULES } from '@hekate/mahalilah-core'
 
 const CreateRoomSchema = z.object({
   maxParticipants: z.number().int().min(1).max(12).default(4),
-  therapistPlays: z.boolean().default(true)
+  therapistPlays: z.boolean().default(true),
+  trial: z.boolean().default(false)
 })
 
 async function ensureUniqueCode() {
@@ -125,6 +126,10 @@ export async function GET(request: Request) {
           status: room.status,
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
+          isTrial:
+            room.planType === MahaLilahPlanType.SINGLE_SESSION &&
+            !room.orderId &&
+            !room.subscriptionId,
           createdAt: room.createdAt,
           invites: room.invites.map((invite) => ({
             id: invite.id,
@@ -204,13 +209,46 @@ export async function POST(request: Request) {
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
 
+    const code = await ensureUniqueCode()
+    const consentTextVersion = process.env.MAHALILAH_CONSENT_VERSION || 'v1'
+
+    if (data.trial) {
+      const trialRoom = await prisma.$transaction(async (tx) => {
+        const created = await tx.mahaLilahRoom.create({
+          data: {
+            code,
+            createdByUserId: session.user.id,
+            status: MahaLilahRoomStatus.ACTIVE,
+            maxParticipants: 1,
+            therapistPlays: true,
+            planType: MahaLilahPlanType.SINGLE_SESSION,
+            consentTextVersion
+          }
+        })
+
+        await tx.mahaLilahParticipant.create({
+          data: {
+            roomId: created.id,
+            userId: session.user.id,
+            role: MahaLilahParticipantRole.THERAPIST,
+            displayName: session.user.name || null
+          }
+        })
+
+        await tx.mahaLilahGameState.create({
+          data: { roomId: created.id }
+        })
+
+        return created
+      })
+
+      return NextResponse.json({ room: trialRoom })
+    }
+
     const entitlement = await findEntitlement(session.user.id, data.maxParticipants)
     if (!entitlement) {
       return NextResponse.json({ error: 'Sem plano ativo. Finalize a compra para criar a sala.' }, { status: 402 })
     }
-
-    const code = await ensureUniqueCode()
-    const consentTextVersion = process.env.MAHALILAH_CONSENT_VERSION || 'v1'
 
     const room = await prisma.$transaction(async (tx) => {
       const created = await tx.mahaLilahRoom.create({

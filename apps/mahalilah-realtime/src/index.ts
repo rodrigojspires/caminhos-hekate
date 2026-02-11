@@ -45,6 +45,9 @@ const AI_TIPS_LIMITS: Record<string, number> = {
 };
 
 const AI_FINAL_LIMIT = Number(process.env.MAHALILAH_FINAL_LIMIT || 1);
+const TRIAL_POST_START_MOVE_LIMIT = Number(
+  process.env.MAHALILAH_TRIAL_POST_START_MOVE_LIMIT || 5,
+);
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -236,6 +239,16 @@ function getTipsLimitForPlan(planType: string) {
   return AI_TIPS_LIMITS[planType] ?? AI_TIPS_LIMITS.SINGLE_SESSION;
 }
 
+function isTrialRoom(room: {
+  planType: string;
+  orderId: string | null;
+  subscriptionId: string | null;
+}) {
+  return (
+    room.planType === "SINGLE_SESSION" && !room.orderId && !room.subscriptionId
+  );
+}
+
 function ensureConsentAccepted(participant: {
   consentAcceptedAt: Date | null;
 }) {
@@ -359,6 +372,8 @@ async function buildRoomState(roomId: string) {
       id: room.id,
       code: room.code,
       status: room.status,
+      planType: room.planType,
+      isTrial: isTrialRoom(room),
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,
       therapistOnline,
@@ -490,6 +505,18 @@ async function rollInRoom(roomId: string, userId: string) {
     );
     if (!currentState) {
       throw new Error("Estado do jogador não encontrado");
+    }
+
+    if (isTrialRoom(room) && currentState.hasStarted) {
+      const postStartMovesUsed =
+        currentState.rollCountTotal - currentState.rollCountUntilStart;
+      if (postStartMovesUsed >= TRIAL_POST_START_MOVE_LIMIT) {
+        const error = new Error(
+          "Limite de 5 jogadas da sala trial atingido. Escolha um plano ou sessão avulsa para continuar.",
+        ) as Error & { code?: string };
+        error.code = "TRIAL_LIMIT_REACHED";
+        throw error;
+      }
     }
 
     const dice = randomDice();
@@ -732,7 +759,11 @@ io.on("connection", (socket: AuthedSocket) => {
         if (state) io.to(socket.data.roomId).emit("room:state", state);
         callback?.({ ok: true });
       } catch (error: any) {
-        callback?.({ ok: false, error: error.message });
+        callback?.({
+          ok: false,
+          error: error.message,
+          code: error?.code || null,
+        });
       }
     },
   );
@@ -931,6 +962,11 @@ io.on("connection", (socket: AuthedSocket) => {
         });
         if (!room) throw new Error("Sala não encontrada");
         if (room.status !== "ACTIVE") throw new Error("Sala não está ativa");
+        if (isTrialRoom(room)) {
+          throw new Error(
+            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
+          );
+        }
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
           where: { roomId: room.id, userId: socket.data.user.id },
@@ -1032,6 +1068,11 @@ io.on("connection", (socket: AuthedSocket) => {
           where: { id: socket.data.roomId },
         });
         if (!room) throw new Error("Sala não encontrada");
+        if (isTrialRoom(room)) {
+          throw new Error(
+            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
+          );
+        }
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
           where: { roomId: room.id, userId: socket.data.user.id },
