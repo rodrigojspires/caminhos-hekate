@@ -44,7 +44,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   padding: 0;
   margin: 0;
   min-height: 100%;
@@ -53,8 +54,16 @@ html, body {
 body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(600px circle at 20% 15%, rgba(244, 209, 133, 0.15), transparent 60%),
-    radial-gradient(700px circle at 80% 0%, rgba(118, 77, 180, 0.12), transparent 55%),
+    radial-gradient(
+      600px circle at 20% 15%,
+      rgba(244, 209, 133, 0.15),
+      transparent 60%
+    ),
+    radial-gradient(
+      700px circle at 80% 0%,
+      rgba(118, 77, 180, 0.12),
+      transparent 55%
+    ),
     linear-gradient(180deg, rgba(7, 10, 13, 0.96), rgba(10, 12, 15, 0.92));
   background-attachment: fixed;
   color: var(--ink);
@@ -78,7 +87,12 @@ body > * {
   z-index: 1;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-serif);
   letter-spacing: 0.01em;
 }
@@ -116,11 +130,15 @@ main {
   padding: 56px 24px 96px;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
 }
 
-input, textarea {
+input,
+textarea {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -141,12 +159,21 @@ button {
   border: 1px solid transparent;
   border-radius: 12px;
   padding: 7px 14px;
-  background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
+  background: linear-gradient(
+    135deg,
+    rgba(241, 213, 154, 0.95),
+    rgba(217, 164, 65, 0.95)
+  );
   color: #1a1307;
   font-weight: 600;
   line-height: 1.2;
-  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow:
+    0 0 0 1px rgba(217, 164, 65, 0.2),
+    0 16px 40px rgba(217, 164, 65, 0.18);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
 button.secondary {
@@ -162,7 +189,9 @@ button:hover {
 }
 
 button.secondary:hover {
-  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 12px 30px rgba(217, 164, 65, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(217, 164, 65, 0.2),
+    0 12px 30px rgba(217, 164, 65, 0.12);
 }
 
 button:disabled {
@@ -178,7 +207,11 @@ button:disabled {
 }
 
 .card {
-  background: linear-gradient(160deg, hsl(var(--temple-surface-2)) 0%, hsl(var(--temple-surface-1)) 100%);
+  background: linear-gradient(
+    160deg,
+    hsl(var(--temple-surface-2)) 0%,
+    hsl(var(--temple-surface-1)) 100%
+  );
   border-radius: var(--temple-radius-lg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -268,13 +301,40 @@ button:disabled {
   color: #b7f1dc;
 }
 
+@keyframes mahalilah-token-pulse {
+  0% {
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, 0.45),
+      0 0 0 2px rgba(0, 0, 0, 0.65),
+      0 0 0 6px rgba(255, 45, 45, 0.18);
+  }
+  60% {
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, 0.45),
+      0 0 0 2px rgba(0, 0, 0, 0.65),
+      0 0 0 12px rgba(255, 45, 45, 0.3);
+  }
+  100% {
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, 0.45),
+      0 0 0 2px rgba(0, 0, 0, 0.65),
+      0 0 0 6px rgba(255, 45, 45, 0.18);
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-sm font-semibold transition;
-    background: linear-gradient(135deg, rgba(241, 213, 154, 0.95), rgba(217, 164, 65, 0.95));
+    background: linear-gradient(
+      135deg,
+      rgba(241, 213, 154, 0.95),
+      rgba(217, 164, 65, 0.95)
+    );
     color: #1a1307;
     line-height: 1.2;
-    box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 16px 40px rgba(217, 164, 65, 0.18);
+    box-shadow:
+      0 0 0 1px rgba(217, 164, 65, 0.2),
+      0 16px 40px rgba(217, 164, 65, 0.18);
   }
 
   .btn-secondary {
@@ -300,7 +360,9 @@ button:disabled {
   }
 
   .btn-secondary:hover {
-    box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.2), 0 12px 30px rgba(217, 164, 65, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(217, 164, 65, 0.2),
+      0 12px 30px rgba(217, 164, 65, 0.12);
     transform: translateY(-1px);
   }
 

@@ -63,6 +63,8 @@ type TimelineMove = {
   diceValue: number;
   fromPos: number;
   toPos: number;
+  appliedJumpFrom: number | null;
+  appliedJumpTo: number | null;
   createdAt: string;
   participant: { id: string; user: { name: string | null; email: string } };
   therapyEntries: Array<{ id: string }>;
@@ -779,30 +781,37 @@ export function RoomClient({ code }: { code: string }) {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {tokens.map((token, tokenIndex) => (
-                      <span
-                        key={`${token.participant.id}-${tokenIndex}`}
-                        title={
-                          token.participant.user.name ||
-                          token.participant.user.email
-                        }
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 999,
-                          border:
-                            token.participant.id === currentParticipant?.id
-                              ? "2px solid #ff6b6b"
-                              : "1px solid rgba(255,255,255,0.65)",
-                          boxShadow:
-                            token.participant.id === currentParticipant?.id
-                              ? "0 0 0 2px rgba(255, 107, 107, 0.25)"
+                    {tokens.map((token, tokenIndex) => {
+                      const isCurrentTurnToken =
+                        token.participant.id === currentParticipant?.id;
+
+                      return (
+                        <span
+                          key={`${token.participant.id}-${tokenIndex}`}
+                          title={
+                            token.participant.user.name ||
+                            token.participant.user.email
+                          }
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 999,
+                            border: isCurrentTurnToken
+                              ? "2px solid rgba(255,45,45,0.95)"
+                              : "1px solid rgba(255,255,255,0.72)",
+                            boxShadow: isCurrentTurnToken
+                              ? "0 3px 12px rgba(0,0,0,.45), 0 0 0 2px rgba(0,0,0,.65), 0 0 0 6px rgba(255,45,45,.18)"
+                              : "0 3px 10px rgba(0,0,0,.35), 0 0 0 2px rgba(0,0,0,.45)",
+                            animation: isCurrentTurnToken
+                              ? "mahalilah-token-pulse 1.2s ease-in-out infinite"
                               : "none",
-                          background: token.color,
-                          display: "inline-block",
-                        }}
-                      />
-                    ))}
+                            transform: "translateZ(0)",
+                            background: token.color,
+                            display: "inline-block",
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 </button>
               );
@@ -1170,8 +1179,20 @@ export function RoomClient({ code }: { code: string }) {
                           move.participant.user.email}
                       </strong>
                       <span className="small-muted">
-                        Jogada #{move.turnNumber} • Dado {move.diceValue} •{" "}
-                        {move.fromPos} → {move.toPos}
+                        {(() => {
+                          const hasJump =
+                            move.appliedJumpFrom !== null &&
+                            move.appliedJumpTo !== null;
+                          if (!hasJump) {
+                            return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.toPos}`;
+                          }
+
+                          const jumpLabel =
+                            move.appliedJumpTo > move.appliedJumpFrom
+                              ? "subida"
+                              : "descida";
+                          return `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${jumpLabel}): ${move.appliedJumpTo}`;
+                        })()}
                       </span>
                       <span className="small-muted">
                         {new Date(move.createdAt).toLocaleString("pt-BR")}
