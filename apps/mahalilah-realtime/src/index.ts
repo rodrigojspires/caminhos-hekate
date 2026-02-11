@@ -83,6 +83,16 @@ function randomDice() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+function buildCardImageUrl(
+  imageDirectory: string,
+  imageExtension: string,
+  cardNumber: number,
+) {
+  const normalizedDirectory = imageDirectory.replace(/\/+$/, "");
+  const normalizedExtension = imageExtension.replace(/^\./, "");
+  return `${normalizedDirectory}/${cardNumber}.${normalizedExtension}`;
+}
+
 function addRoomConnection(roomId: string, userId: string) {
   const users = roomUserConnections.get(roomId) || new Map<string, number>();
   users.set(userId, (users.get(userId) || 0) + 1);
@@ -294,6 +304,11 @@ async function buildRoomState(roomId: string) {
       cardDraws: {
         orderBy: { createdAt: "desc" },
         include: {
+          card: {
+            include: {
+              deck: true,
+            },
+          },
           drawnBy: {
             include: {
               user: { select: { id: true, name: true, email: true } },
@@ -377,9 +392,30 @@ async function buildRoomState(roomId: string) {
       .reverse()
       .map((draw) => ({
         id: draw.id,
+        moveId: draw.moveId,
         cards: draw.cards,
         createdAt: draw.createdAt,
         drawnBy: draw.drawnBy,
+        card: draw.card
+          ? {
+              id: draw.card.id,
+              cardNumber: draw.card.cardNumber,
+              description: draw.card.description,
+              keywords: draw.card.keywords,
+              observation: draw.card.observation,
+              imageUrl: buildCardImageUrl(
+                draw.card.deck.imageDirectory,
+                draw.card.deck.imageExtension,
+                draw.card.cardNumber,
+              ),
+              deck: {
+                id: draw.card.deck.id,
+                name: draw.card.deck.name,
+                imageDirectory: draw.card.deck.imageDirectory,
+                imageExtension: draw.card.deck.imageExtension,
+              },
+            }
+          : null,
       })),
   };
 }
@@ -705,7 +741,7 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "deck:draw",
     async (
-      { count, moveId }: { count: number; moveId?: string },
+      { moveId }: { moveId?: string },
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -728,37 +764,97 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
 
-        const drawCount = Math.min(Math.max(count || 1, 1), 3);
-        const cards = Array.from(
-          { length: drawCount },
-          () => Math.floor(Math.random() * 72) + 1,
-        );
-        let safeMoveId: string | null = null;
-
-        if (moveId) {
-          const move = await prisma.mahaLilahMove.findUnique({
-            where: { id: moveId },
-          });
-          if (!move || move.roomId !== room.id)
-            throw new Error("Jogada inválida");
-          if (move.participantId !== participant.id) {
-            throw new Error("Jogada não pertence ao participante");
-          }
-          safeMoveId = move.id;
+        if (!moveId) {
+          throw new Error("Faça uma jogada antes de tirar carta");
         }
+
+        const move = await prisma.mahaLilahMove.findUnique({
+          where: { id: moveId },
+        });
+        if (!move || move.roomId !== room.id)
+          throw new Error("Jogada inválida");
+        if (move.participantId !== participant.id) {
+          throw new Error("Jogada não pertence ao participante");
+        }
+
+        const existingDraws = await prisma.mahaLilahCardDraw.findMany({
+          where: {
+            roomId: room.id,
+            moveId: move.id,
+            drawnByParticipantId: participant.id,
+          },
+          select: {
+            cards: true,
+            cardId: true,
+          },
+        });
+
+        const alreadyDrawnInMove = existingDraws.reduce((sum, draw) => {
+          if (draw.cards.length > 0) return sum + draw.cards.length;
+          if (draw.cardId) return sum + 1;
+          return sum;
+        }, 0);
+
+        if (alreadyDrawnInMove >= 3) {
+          throw new Error("Limite de 3 cartas por jogada atingido");
+        }
+
+        const availableCards = await prisma.cardDeckCard.findMany({
+          where: {
+            deck: {
+              useInMahaLilah: true,
+            },
+          },
+          include: {
+            deck: true,
+          },
+        });
+
+        if (availableCards.length === 0) {
+          throw new Error(
+            "Nenhuma carta disponível para Maha Lilah. Cadastre um baralho no admin.",
+          );
+        }
+
+        const selectedCard =
+          availableCards[Math.floor(Math.random() * availableCards.length)];
 
         await prisma.mahaLilahCardDraw.create({
           data: {
             roomId: room.id,
-            moveId: safeMoveId,
+            moveId: move.id,
             drawnByParticipantId: participant.id,
-            cards,
+            cards: [selectedCard.cardNumber],
+            deckId: selectedCard.deckId,
+            cardId: selectedCard.id,
           },
         });
 
         const state = await buildRoomState(room.id);
         if (state) io.to(room.id).emit("room:state", state);
-        callback?.({ ok: true, cards });
+        callback?.({
+          ok: true,
+          card: {
+            id: selectedCard.id,
+            cardNumber: selectedCard.cardNumber,
+            description: selectedCard.description,
+            keywords: selectedCard.keywords,
+            observation: selectedCard.observation,
+            imageUrl: buildCardImageUrl(
+              selectedCard.deck.imageDirectory,
+              selectedCard.deck.imageExtension,
+              selectedCard.cardNumber,
+            ),
+            deck: {
+              id: selectedCard.deck.id,
+              name: selectedCard.deck.name,
+              imageDirectory: selectedCard.deck.imageDirectory,
+              imageExtension: selectedCard.deck.imageExtension,
+            },
+          },
+          drawCountInMove: alreadyDrawnInMove + 1,
+          drawLimitInMove: 3,
+        });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
       }

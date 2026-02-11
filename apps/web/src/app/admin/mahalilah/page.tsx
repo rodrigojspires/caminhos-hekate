@@ -1,160 +1,195 @@
-'use client'
+"use client";
 
-import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
-} from '@/components/ui/table'
-import { Breadcrumbs } from '@/components/admin/Breadcrumbs'
+  TableRow,
+} from "@/components/ui/table";
+import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
 
 type Room = {
-  id: string
-  code: string
-  status: string
-  planType: string
-  maxParticipants: number
-  therapistPlays: boolean
-  createdAt: string
-  createdBy: { id: string; name: string | null; email: string }
-  orderId: string | null
-  participantsCount: number
-  invitesCount: number
-  stats: { moves: number; therapyEntries: number; cardDraws: number }
-}
+  id: string;
+  code: string;
+  status: string;
+  planType: string;
+  maxParticipants: number;
+  therapistPlays: boolean;
+  createdAt: string;
+  createdBy: { id: string; name: string | null; email: string };
+  orderId: string | null;
+  participantsCount: number;
+  invitesCount: number;
+  stats: { moves: number; therapyEntries: number; cardDraws: number };
+};
 
 const statusBadge: Record<string, string> = {
-  ACTIVE: 'bg-emerald-100 text-emerald-800',
-  CLOSED: 'bg-slate-100 text-slate-800',
-  COMPLETED: 'bg-purple-100 text-purple-800'
-}
+  ACTIVE: "bg-emerald-100 text-emerald-800",
+  CLOSED: "bg-slate-100 text-slate-800",
+  COMPLETED: "bg-purple-100 text-purple-800",
+};
 
 const planLabel: Record<string, string> = {
-  SINGLE_SESSION: 'Avulsa',
-  SUBSCRIPTION: 'Assinatura',
-  SUBSCRIPTION_LIMITED: 'Assinatura limitada'
-}
+  SINGLE_SESSION: "Avulsa",
+  SUBSCRIPTION: "Assinatura",
+  SUBSCRIPTION_LIMITED: "Assinatura limitada",
+};
 
 export default function AdminMahaLilahPage() {
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [therapistEmail, setTherapistEmail] = useState('')
-  const [maxParticipants, setMaxParticipants] = useState(4)
-  const [planType, setPlanType] = useState('SINGLE_SESSION')
-  const [therapistPlays, setTherapistPlays] = useState(true)
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [therapistEmail, setTherapistEmail] = useState("");
+  const [maxParticipants, setMaxParticipants] = useState(4);
+  const [planType, setPlanType] = useState("SINGLE_SESSION");
+  const [therapistPlays, setTherapistPlays] = useState(true);
 
   const baseUrl = useMemo(() => {
-    if (typeof window === 'undefined') return 'https://mahalilahonline.com.br'
-    return process.env.NEXT_PUBLIC_MAHALILAH_URL || 'https://mahalilahonline.com.br'
-  }, [])
+    if (typeof window === "undefined") return "https://mahalilahonline.com.br";
+    return (
+      process.env.NEXT_PUBLIC_MAHALILAH_URL || "https://mahalilahonline.com.br"
+    );
+  }, []);
 
-  const loadRooms = async (status?: string) => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    const activeStatus = status ?? filterStatus
-    if (activeStatus && activeStatus !== 'all') params.set('status', activeStatus)
-    const res = await fetch(`/api/admin/mahalilah/rooms${params.toString() ? `?${params.toString()}` : ''}`)
-    if (!res.ok) {
-      toast.error('Erro ao carregar salas')
-      setLoading(false)
-      return
-    }
-    const data = await res.json()
-    setRooms(data.rooms || [])
-    setLoading(false)
-  }
+  const loadRooms = useCallback(
+    async (status?: string) => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      const activeStatus = status ?? filterStatus;
+      if (activeStatus && activeStatus !== "all")
+        params.set("status", activeStatus);
+      const res = await fetch(
+        `/api/admin/mahalilah/rooms${params.toString() ? `?${params.toString()}` : ""}`,
+      );
+      if (!res.ok) {
+        toast.error("Erro ao carregar salas");
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      setRooms(data.rooms || []);
+      setLoading(false);
+    },
+    [filterStatus],
+  );
 
   useEffect(() => {
-    loadRooms()
-  }, [])
+    loadRooms();
+  }, [loadRooms]);
 
   const handleCreateRoom = async () => {
-    const email = therapistEmail.trim()
+    const email = therapistEmail.trim();
     if (!email) {
-      toast.error('Informe o e-mail do terapeuta.')
-      return
+      toast.error("Informe o e-mail do terapeuta.");
+      return;
     }
-    if (maxParticipants < 1 || maxParticipants > 12 || Number.isNaN(maxParticipants)) {
-      toast.error('Jogadores devem estar entre 1 e 12.')
-      return
+    if (
+      maxParticipants < 1 ||
+      maxParticipants > 12 ||
+      Number.isNaN(maxParticipants)
+    ) {
+      toast.error("Jogadores devem estar entre 1 e 12.");
+      return;
     }
 
-    setCreating(true)
-    const res = await fetch('/api/admin/mahalilah/rooms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    setCreating(true);
+    const res = await fetch("/api/admin/mahalilah/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         therapistEmail: email,
         maxParticipants,
         planType,
-        therapistPlays
-      })
-    })
+        therapistPlays,
+      }),
+    });
 
-    const payload = await res.json().catch(() => ({}))
+    const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const details = Array.isArray(payload.details) ? payload.details.map((d: any) => d.message).join(' • ') : ''
-      toast.error([payload.error || 'Erro ao criar sala', details].filter(Boolean).join(': '))
-      setCreating(false)
-      return
+      const details = Array.isArray(payload.details)
+        ? payload.details.map((d: any) => d.message).join(" • ")
+        : "";
+      toast.error(
+        [payload.error || "Erro ao criar sala", details]
+          .filter(Boolean)
+          .join(": "),
+      );
+      setCreating(false);
+      return;
     }
 
-    toast.success('Sala criada com sucesso.')
-    setTherapistEmail('')
-    setTherapistPlays(true)
-    await loadRooms()
-    setCreating(false)
-  }
+    toast.success("Sala criada com sucesso.");
+    setTherapistEmail("");
+    setTherapistPlays(true);
+    await loadRooms();
+    setCreating(false);
+  };
 
   const handleDeleteRoom = async (room: Room) => {
-    const confirmed = window.confirm(`Excluir a sala ${room.code}? Esta ação não pode ser desfeita.`)
-    if (!confirmed) return
+    const confirmed = window.confirm(
+      `Excluir a sala ${room.code}? Esta ação não pode ser desfeita.`,
+    );
+    if (!confirmed) return;
 
-    setDeletingRoomId(room.id)
+    setDeletingRoomId(room.id);
     const res = await fetch(`/api/admin/mahalilah/rooms/${room.id}`, {
-      method: 'DELETE'
-    })
+      method: "DELETE",
+    });
 
-    const payload = await res.json().catch(() => ({}))
+    const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast.error(payload.error || 'Erro ao excluir sala')
-      setDeletingRoomId(null)
-      return
+      toast.error(payload.error || "Erro ao excluir sala");
+      setDeletingRoomId(null);
+      return;
     }
 
-    toast.success(payload.message || 'Sala excluída com sucesso.')
-    await loadRooms()
-    setDeletingRoomId(null)
-  }
+    toast.success(payload.message || "Sala excluída com sucesso.");
+    await loadRooms();
+    setDeletingRoomId(null);
+  };
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs items={[{ label: 'Maha Lilah', current: true }]} />
+      <Breadcrumbs items={[{ label: "Maha Lilah", current: true }]} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Salas Maha Lilah</CardTitle>
-          <CardDescription>Visão global das salas e criação manual sem pagamento.</CardDescription>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <CardTitle>Salas Maha Lilah</CardTitle>
+              <CardDescription>
+                Visão global das salas e criação manual sem pagamento.
+              </CardDescription>
+            </div>
+            <Button variant="secondary" asChild>
+              <Link href="/admin/mahalilah/baralhos">Gerenciar baralhos</Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-end">
@@ -174,7 +209,9 @@ export default function AdminMahaLilahPage() {
                 min={1}
                 max={12}
                 value={maxParticipants}
-                onChange={(event) => setMaxParticipants(Number(event.target.value))}
+                onChange={(event) =>
+                  setMaxParticipants(Number(event.target.value))
+                }
               />
             </div>
             <div className="space-y-2">
@@ -184,31 +221,44 @@ export default function AdminMahaLilahPage() {
                   <SelectValue placeholder="Plano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SINGLE_SESSION">Avulsa (sem pagamento)</SelectItem>
+                  <SelectItem value="SINGLE_SESSION">
+                    Avulsa (sem pagamento)
+                  </SelectItem>
                   <SelectItem value="SUBSCRIPTION">Assinatura</SelectItem>
-                  <SelectItem value="SUBSCRIPTION_LIMITED">Assinatura limitada</SelectItem>
+                  <SelectItem value="SUBSCRIPTION_LIMITED">
+                    Assinatura limitada
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Terapeuta joga</label>
               <div className="flex h-10 items-center gap-3 rounded-md border px-3">
-                <Switch checked={therapistPlays} onCheckedChange={setTherapistPlays} />
+                <Switch
+                  checked={therapistPlays}
+                  onCheckedChange={setTherapistPlays}
+                />
                 <span className="text-sm text-muted-foreground">
-                  {therapistPlays ? 'Sim, joga junto' : 'Não, só conduz'}
+                  {therapistPlays ? "Sim, joga junto" : "Não, só conduz"}
                 </span>
               </div>
             </div>
-            <Button onClick={handleCreateRoom} disabled={creating || !therapistEmail}>
-              {creating ? 'Criando...' : 'Criar sala avulsa'}
+            <Button
+              onClick={handleCreateRoom}
+              disabled={creating || !therapistEmail}
+            >
+              {creating ? "Criando..." : "Criar sala avulsa"}
             </Button>
           </div>
 
           <div className="flex items-center gap-3">
-            <Select value={filterStatus} onValueChange={(value) => {
-              setFilterStatus(value)
-              loadRooms(value)
-            }}>
+            <Select
+              value={filterStatus}
+              onValueChange={(value) => {
+                setFilterStatus(value);
+                loadRooms(value);
+              }}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -225,7 +275,9 @@ export default function AdminMahaLilahPage() {
           </div>
 
           {loading ? (
-            <div className="text-sm text-muted-foreground">Carregando salas...</div>
+            <div className="text-sm text-muted-foreground">
+              Carregando salas...
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -244,7 +296,10 @@ export default function AdminMahaLilahPage() {
               <TableBody>
                 {rooms.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={9}
+                      className="text-center text-muted-foreground"
+                    >
                       Nenhuma sala encontrada.
                     </TableCell>
                   </TableRow>
@@ -253,29 +308,45 @@ export default function AdminMahaLilahPage() {
                     <TableRow key={room.id}>
                       <TableCell>
                         <div className="font-medium">{room.code}</div>
-                        <Link href={`${baseUrl}/rooms/${room.code}`} className="text-xs text-purple-500 hover:underline">
+                        <Link
+                          href={`${baseUrl}/rooms/${room.code}`}
+                          className="text-xs text-purple-500 hover:underline"
+                        >
                           Abrir sala
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{room.createdBy.name || room.createdBy.email}</div>
-                        <div className="text-xs text-muted-foreground">{room.createdBy.email}</div>
+                        <div className="font-medium">
+                          {room.createdBy.name || room.createdBy.email}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {room.createdBy.email}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={statusBadge[room.status] || 'bg-slate-100 text-slate-800'}>
+                        <Badge
+                          className={
+                            statusBadge[room.status] ||
+                            "bg-slate-100 text-slate-800"
+                          }
+                        >
                           {room.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{planLabel[room.planType] || room.planType}</TableCell>
+                      <TableCell>
+                        {planLabel[room.planType] || room.planType}
+                      </TableCell>
                       <TableCell>
                         {room.participantsCount}/{room.maxParticipants}
                         <div className="text-xs text-muted-foreground">
-                          {room.therapistPlays ? 'Terapeuta joga junto' : 'Terapeuta não joga'}
+                          {room.therapistPlays
+                            ? "Terapeuta joga junto"
+                            : "Terapeuta não joga"}
                         </div>
                       </TableCell>
                       <TableCell>{room.invitesCount}</TableCell>
                       <TableCell>{room.stats.moves}</TableCell>
-                      <TableCell>{room.orderId ? 'Pago' : 'Admin'}</TableCell>
+                      <TableCell>{room.orderId ? "Pago" : "Admin"}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="destructive"
@@ -283,7 +354,9 @@ export default function AdminMahaLilahPage() {
                           onClick={() => handleDeleteRoom(room)}
                           disabled={deletingRoomId === room.id}
                         >
-                          {deletingRoomId === room.id ? 'Excluindo...' : 'Excluir'}
+                          {deletingRoomId === room.id
+                            ? "Excluindo..."
+                            : "Excluir"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -295,5 +368,5 @@ export default function AdminMahaLilahPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

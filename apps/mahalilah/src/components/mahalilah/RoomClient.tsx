@@ -56,9 +56,24 @@ type RoomState = {
   } | null;
   deckHistory: Array<{
     id: string;
+    moveId: string | null;
     cards: number[];
     createdAt: string;
-    drawnBy: { user: { name: string | null; email: string } };
+    drawnBy: { id: string; user: { name: string | null; email: string } };
+    card: {
+      id: string;
+      cardNumber: number;
+      description: string;
+      keywords: string;
+      observation: string | null;
+      imageUrl: string;
+      deck: {
+        id: string;
+        name: string;
+        imageDirectory: string;
+        imageExtension: string;
+      };
+    } | null;
   }>;
 };
 
@@ -81,7 +96,24 @@ type TimelineMove = {
     microAction: string | null;
     createdAt: string;
   }>;
-  cardDraws: Array<{ id: string; cards: number[] }>;
+  cardDraws: Array<{
+    id: string;
+    cards: number[];
+    card: {
+      id: string;
+      cardNumber: number;
+      description: string;
+      keywords: string;
+      observation: string | null;
+      imageUrl: string;
+      deck: {
+        id: string;
+        name: string;
+        imageDirectory: string;
+        imageExtension: string;
+      };
+    } | null;
+  }>;
 };
 
 type ActionPanel =
@@ -134,7 +166,7 @@ const ACTION_ITEMS: Array<{
   shortLabel: string;
 }> = [
   { key: "house", label: "Significado da Casa", icon: "⌂", shortLabel: "Casa" },
-  { key: "deck", label: "Puxar Cartas", icon: "♢", shortLabel: "Cartas" },
+  { key: "deck", label: "Tirar carta", icon: "♢", shortLabel: "Carta" },
   {
     key: "therapy",
     label: "Registro Terapêutico",
@@ -597,6 +629,15 @@ export function RoomClient({ code }: { code: string }) {
       );
   }, [summaryMoves]);
 
+  const summaryAiTipsCount = useMemo(() => {
+    if (!summaryParticipantId) return 0;
+    return timelineReports.filter(
+      (report) =>
+        report.kind === "TIP" &&
+        report.participant?.id === summaryParticipantId,
+    ).length;
+  }, [timelineReports, summaryParticipantId]);
+
   const myAiUsage = useMemo(() => {
     if (!state || !myParticipant) return null;
     return (
@@ -624,23 +665,68 @@ export function RoomClient({ code }: { code: string }) {
     });
   };
 
-  const handleDraw = (count: number) => {
-    if (!socket || !state) return;
-    const payload: { count: number; moveId?: string } = { count };
+  const cardsDrawnInCurrentMove = useMemo(() => {
+    if (!state?.lastMove || !myParticipant) return 0;
+    if (state.lastMove.participantId !== myParticipant.id) return 0;
 
-    if (
-      state.lastMove &&
+    return state.deckHistory
+      .filter(
+        (draw) =>
+          draw.moveId === state.lastMove?.id &&
+          draw.drawnBy.id === myParticipant.id,
+      )
+      .reduce((sum, draw) => {
+        if (draw.cards.length > 0) return sum + draw.cards.length;
+        if (draw.card) return sum + 1;
+        return sum;
+      }, 0);
+  }, [state?.deckHistory, state?.lastMove, myParticipant]);
+
+  const remainingDrawsInCurrentMove = Math.max(0, 3 - cardsDrawnInCurrentMove);
+
+  const canDrawCard = Boolean(
+    state?.lastMove &&
       myParticipant &&
-      state.lastMove.participantId === myParticipant.id
-    ) {
-      payload.moveId = state.lastMove.id;
+      state.lastMove.participantId === myParticipant.id &&
+      remainingDrawsInCurrentMove > 0 &&
+      !actionsBlockedByConsent,
+  );
+
+  const latestDrawnCard = useMemo(() => {
+    if (!myParticipant || !state?.deckHistory?.length) return null;
+    const mine = state.deckHistory
+      .filter((draw) => draw.drawnBy.id === myParticipant.id && draw.card)
+      .slice(-1)[0];
+    return mine?.card || null;
+  }, [myParticipant, state?.deckHistory]);
+
+  const handleDraw = () => {
+    if (!socket || !state || !myParticipant) return;
+    if (!state.lastMove || state.lastMove.participantId !== myParticipant.id) {
+      pushToast(
+        "Você precisa fazer uma jogada antes de tirar carta.",
+        "warning",
+      );
+      return;
     }
 
-    socket.emit("deck:draw", payload, (resp: any) => {
+    socket.emit("deck:draw", { moveId: state.lastMove.id }, (resp: any) => {
       if (!resp?.ok) {
-        showSocketError("Erro ao puxar carta", resp);
+        showSocketError("Erro ao tirar carta", resp);
       } else {
-        pushToast("Cartas puxadas com sucesso.", "success");
+        const cardNumber = resp?.card?.cardNumber;
+        const counter =
+          typeof resp?.drawCountInMove === "number"
+            ? `${resp.drawCountInMove}/3`
+            : null;
+        if (cardNumber) {
+          pushToast(
+            `Carta #${cardNumber} tirada${counter ? ` (${counter})` : ""}.`,
+            "success",
+          );
+        } else {
+          pushToast("Carta tirada com sucesso.", "success");
+        }
       }
     });
   };
@@ -1235,30 +1321,65 @@ export function RoomClient({ code }: { code: string }) {
 
           {activePanel === "deck" && (
             <div className="grid" style={{ gap: 8 }}>
-              <strong>Puxar cartas</strong>
+              <strong>Tirar carta</strong>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   className="secondary"
-                  onClick={() => handleDraw(1)}
-                  disabled={actionsBlockedByConsent}
+                  onClick={handleDraw}
+                  disabled={!canDrawCard}
                 >
-                  Puxar 1
+                  Tirar carta
                 </button>
-                <button
-                  className="secondary"
-                  onClick={() => handleDraw(2)}
-                  disabled={actionsBlockedByConsent}
-                >
-                  Puxar 2
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() => handleDraw(3)}
-                  disabled={actionsBlockedByConsent}
-                >
-                  Puxar 3
-                </button>
+                <span className="small-muted">
+                  Nesta jogada: <strong>{cardsDrawnInCurrentMove}/3</strong>
+                </span>
               </div>
+              {!canDrawCard && (
+                <span className="small-muted">
+                  A tiragem fica disponível para o jogador que acabou de rolar.
+                </span>
+              )}
+
+              {latestDrawnCard && (
+                <div
+                  className="notice"
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    gridTemplateColumns: "68px minmax(0, 1fr)",
+                    alignItems: "start",
+                  }}
+                >
+                  <img
+                    src={latestDrawnCard.imageUrl}
+                    alt={`Carta ${latestDrawnCard.cardNumber}`}
+                    style={{
+                      width: 68,
+                      height: 92,
+                      objectFit: "cover",
+                      borderRadius: 10,
+                      border: "1px solid rgba(217, 164, 65, 0.35)",
+                      background: "rgba(9, 15, 24, 0.7)",
+                    }}
+                  />
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <strong style={{ fontSize: 13 }}>
+                      Carta #{latestDrawnCard.cardNumber}
+                    </strong>
+                    <span className="small-muted">
+                      {latestDrawnCard.description}
+                    </span>
+                    <span className="small-muted">
+                      Palavras-chave: {latestDrawnCard.keywords}
+                    </span>
+                    {latestDrawnCard.observation && (
+                      <span className="small-muted">
+                        Observação: {latestDrawnCard.observation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div
                 style={{
@@ -1286,9 +1407,47 @@ export function RoomClient({ code }: { code: string }) {
                       <span className="small-muted">
                         {new Date(draw.createdAt).toLocaleString("pt-BR")}
                       </span>
-                      <span className="small-muted">
-                        {draw.cards.join(", ")}
-                      </span>
+                      {draw.moveId && (
+                        <span className="small-muted">Jogada vinculada</span>
+                      )}
+                      {draw.card ? (
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: 6,
+                            gridTemplateColumns: "54px minmax(0, 1fr)",
+                            alignItems: "start",
+                          }}
+                        >
+                          <img
+                            src={draw.card.imageUrl}
+                            alt={`Carta ${draw.card.cardNumber}`}
+                            style={{
+                              width: 54,
+                              height: 72,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              border: "1px solid rgba(217, 164, 65, 0.3)",
+                              background: "rgba(9, 15, 24, 0.7)",
+                            }}
+                          />
+                          <div style={{ display: "grid", gap: 3 }}>
+                            <span className="small-muted">
+                              Carta #{draw.card.cardNumber}
+                            </span>
+                            <span className="small-muted">
+                              {draw.card.description}
+                            </span>
+                            <span className="small-muted">
+                              Palavras-chave: {draw.card.keywords}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="small-muted">
+                          Carta(s): {draw.cards.join(", ")}
+                        </span>
+                      )}
                     </div>
                   ))
                 )}
@@ -1684,12 +1843,15 @@ export function RoomClient({ code }: { code: string }) {
                             {new Date(move.createdAt).toLocaleString("pt-BR")}
                           </span>
                           {move.cardDraws.length > 0 && (
-                            <span className="small-muted">
-                              Cartas:{" "}
-                              {move.cardDraws
-                                .map((draw) => draw.cards.join(","))
-                                .join(" | ")}
-                            </span>
+                            <div style={{ display: "grid", gap: 2 }}>
+                              {move.cardDraws.map((draw) => (
+                                <span key={draw.id} className="small-muted">
+                                  {draw.card
+                                    ? `Carta #${draw.card.cardNumber} • ${draw.card.keywords}`
+                                    : `Carta(s): ${draw.cards.join(", ")}`}
+                                </span>
+                              ))}
+                            </div>
                           )}
                           {move.therapyEntries.length > 0 && (
                             <button
@@ -1797,8 +1959,11 @@ export function RoomClient({ code }: { code: string }) {
                         Casas: <strong>{summaryPath.length}</strong>
                       </span>
                       <span className="pill">
-                        Registros:{" "}
+                        Registros terapêuticos:{" "}
                         <strong>{summaryTherapyEntries.length}</strong>
+                      </span>
+                      <span className="pill">
+                        Ajudas da IA: <strong>{summaryAiTipsCount}</strong>
                       </span>
                     </div>
                     <div className="small-muted">

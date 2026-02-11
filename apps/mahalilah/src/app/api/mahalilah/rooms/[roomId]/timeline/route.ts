@@ -7,6 +7,16 @@ interface RouteParams {
   params: { roomId: string };
 }
 
+function buildCardImageUrl(
+  imageDirectory: string,
+  imageExtension: string,
+  cardNumber: number,
+) {
+  const normalizedDirectory = imageDirectory.replace(/\/+$/, "");
+  const normalizedExtension = imageExtension.replace(/^\./, "");
+  return `${normalizedDirectory}/${cardNumber}.${normalizedExtension}`;
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -62,6 +72,11 @@ export async function GET(request: Request, { params }: RouteParams) {
           },
           cardDraws: {
             include: {
+              card: {
+                include: {
+                  deck: true,
+                },
+              },
               drawnBy: {
                 include: {
                   user: { select: { id: true, name: true, email: true } },
@@ -86,6 +101,11 @@ export async function GET(request: Request, { params }: RouteParams) {
         where: { roomId: room.id, moveId: null },
         orderBy: { createdAt: "asc" },
         include: {
+          card: {
+            include: {
+              deck: true,
+            },
+          },
           drawnBy: {
             include: {
               user: { select: { id: true, name: true, email: true } },
@@ -95,11 +115,38 @@ export async function GET(request: Request, { params }: RouteParams) {
       }),
     ]);
 
+    const mapDrawWithCard = (draw: any) => ({
+      ...draw,
+      card: draw.card
+        ? {
+            id: draw.card.id,
+            cardNumber: draw.card.cardNumber,
+            description: draw.card.description,
+            keywords: draw.card.keywords,
+            observation: draw.card.observation,
+            imageUrl: buildCardImageUrl(
+              draw.card.deck.imageDirectory,
+              draw.card.deck.imageExtension,
+              draw.card.cardNumber,
+            ),
+            deck: {
+              id: draw.card.deck.id,
+              name: draw.card.deck.name,
+              imageDirectory: draw.card.deck.imageDirectory,
+              imageExtension: draw.card.deck.imageExtension,
+            },
+          }
+        : null,
+    });
+
     return NextResponse.json({
       room: { id: room.id, code: room.code },
-      moves,
+      moves: moves.map((move) => ({
+        ...move,
+        cardDraws: move.cardDraws.map(mapDrawWithCard),
+      })),
       aiReports,
-      cardDraws: standaloneDraws,
+      cardDraws: standaloneDraws.map(mapDrawWithCard),
     });
   } catch (error) {
     console.error("Erro ao carregar timeline Maha Lilah:", error);

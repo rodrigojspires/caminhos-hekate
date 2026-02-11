@@ -33,8 +33,8 @@ model User {
   addresses                     Address[]
   auditLogs                     AuditLog[]
   certificates                  Certificate[]
-  certificateTemplatesCreated   CertificateTemplate[] @relation("CertificateTemplateCreator")
-  certificateTemplatesUpdated   CertificateTemplate[] @relation("CertificateTemplateUpdater")
+  certificateTemplatesCreated   CertificateTemplate[]          @relation("CertificateTemplateCreator")
+  certificateTemplatesUpdated   CertificateTemplate[]          @relation("CertificateTemplateUpdater")
   comments                      Comment[]
   topicComments                 TopicComment[]
   communityMessages             CommunityMessage[]
@@ -107,9 +107,10 @@ model User {
   pushNotificationLogs          PushNotificationLog[]
   smsLogs                       SmsLog[]
   // Maha Lilah relations
-  mahaLilahRoomsCreated         MahaLilahRoom[]       @relation("MahaLilahRoomCreator")
+  mahaLilahRoomsCreated         MahaLilahRoom[]                @relation("MahaLilahRoomCreator")
   mahaLilahParticipants         MahaLilahParticipant[]
-  mahaLilahInvitesSent          MahaLilahInvite[]     @relation("MahaLilahInviteSender")
+  mahaLilahInvitesSent          MahaLilahInvite[]              @relation("MahaLilahInviteSender")
+  createdCardDecks              CardDeck[]
 }
 
 model Account {
@@ -157,20 +158,20 @@ model PasswordResetToken {
 }
 
 model Subscription {
-  id            String             @id @default(cuid())
-  userId        String
-  tier          SubscriptionTier
-  status        SubscriptionStatus @default(PENDING)
-  startDate     DateTime
-  endDate       DateTime
-  autoRenew     Boolean            @default(true)
-  paymentMethod String?
-  mercadoPagoId String?            @unique
-  cancelledAt   DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  payments      Payment[]
-  user          User               @relation(fields: [userId], references: [id])
+  id             String             @id @default(cuid())
+  userId         String
+  tier           SubscriptionTier
+  status         SubscriptionStatus @default(PENDING)
+  startDate      DateTime
+  endDate        DateTime
+  autoRenew      Boolean            @default(true)
+  paymentMethod  String?
+  mercadoPagoId  String?            @unique
+  cancelledAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  payments       Payment[]
+  user           User               @relation(fields: [userId], references: [id])
   mahaLilahRooms MahaLilahRoom[]
 }
 
@@ -446,22 +447,22 @@ model Download {
 }
 
 model Community {
-  id           String                 @id @default(cuid())
-  name         String
-  slug         String                 @unique
-  description  String?
-  accessModels CommunityAccessModel[] @default([])
-  tier         SubscriptionTier       @default(FREE)
-  price        Decimal?               @db.Decimal(10, 2)
-  isActive     Boolean                @default(true)
-  metadata     Json?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  topics       Topic[]
-  posts        Post[]
-  groups       Group[]
-  memberships  CommunityMembership[]
-  files        CommunityFile[]
+  id                String                 @id @default(cuid())
+  name              String
+  slug              String                 @unique
+  description       String?
+  accessModels      CommunityAccessModel[] @default([])
+  tier              SubscriptionTier       @default(FREE)
+  price             Decimal?               @db.Decimal(10, 2)
+  isActive          Boolean                @default(true)
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  topics            Topic[]
+  posts             Post[]
+  groups            Group[]
+  memberships       CommunityMembership[]
+  files             CommunityFile[]
   communityMessages CommunityMessage[]
 
   @@index([isActive])
@@ -470,19 +471,19 @@ model Community {
 }
 
 model CommunityMembership {
-  id          String              @id @default(cuid())
-  communityId String
-  userId      String
-  status      String              @default("active")
-  role        CommunityMemberRole @default(MEMBER)
-  joinedAt    DateTime            @default(now())
-  paidUntil   DateTime?
-  cancelledAt DateTime?
+  id             String              @id @default(cuid())
+  communityId    String
+  userId         String
+  status         String              @default("active")
+  role           CommunityMemberRole @default(MEMBER)
+  joinedAt       DateTime            @default(now())
+  paidUntil      DateTime?
+  cancelledAt    DateTime?
   lastChatReadAt DateTime?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  user        User                @relation(fields: [userId], references: [id])
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  community      Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id])
 
   @@unique([communityId, userId])
   @@index([communityId])
@@ -508,12 +509,12 @@ model CommunityFile {
 }
 
 model CommunityMessage {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   communityId String
   authorId    String
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  content     String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
@@ -524,19 +525,19 @@ model CommunityMessage {
 }
 
 model Topic {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  icon        String?
-  color       String?
-  order       Int      @default(0)
-  communityId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  posts       Post[]
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  description   String?
+  icon          String?
+  color         String?
+  order         Int            @default(0)
+  communityId   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  posts         Post[]
   topicComments TopicComment[]
-  community   Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  community     Community?     @relation(fields: [communityId], references: [id], onDelete: SetNull)
 
   @@index([communityId])
 }
@@ -588,17 +589,17 @@ model Comment {
 }
 
 model TopicComment {
-  id        String        @id @default(cuid())
+  id        String         @id @default(cuid())
   content   String
   topicId   String
   authorId  String
   parentId  String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent    TopicComment? @relation("TopicCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    TopicComment?  @relation("TopicCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   TopicComment[] @relation("TopicCommentReplies")
-  topic     Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic     Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
   @@index([authorId])
@@ -652,37 +653,37 @@ model Report {
 }
 
 model Course {
-  id               String           @id @default(cuid())
-  title            String
-  slug             String           @unique
-  description      String
-  shortDescription String?
-  featuredImage    String?
-  introVideo       String?
-  price            Decimal?         @db.Decimal(10, 2)
-  comparePrice     Decimal?         @db.Decimal(10, 2)
-  categoryId       String?
-  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  tier             SubscriptionTier  @default(FREE)
-  accessModels     CourseAccessModel[] @default([])
-  status           CourseStatus     @default(DRAFT)
-  duration         Int?
-  level            CourseLevel?     @default(BEGINNER)
-  featured         Boolean          @default(false)
-  maxStudents      Int?
-  tags             Json?
-  metaTitle        String?
-  metaDescription  String?
-  objectives       Json?
-  requirements     Json?
-  targetAudience   Json?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  publishedAt      DateTime?
-  certificates     Certificate[]
+  id                   String                @id @default(cuid())
+  title                String
+  slug                 String                @unique
+  description          String
+  shortDescription     String?
+  featuredImage        String?
+  introVideo           String?
+  price                Decimal?              @db.Decimal(10, 2)
+  comparePrice         Decimal?              @db.Decimal(10, 2)
+  categoryId           String?
+  category             Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tier                 SubscriptionTier      @default(FREE)
+  accessModels         CourseAccessModel[]   @default([])
+  status               CourseStatus          @default(DRAFT)
+  duration             Int?
+  level                CourseLevel?          @default(BEGINNER)
+  featured             Boolean               @default(false)
+  maxStudents          Int?
+  tags                 Json?
+  metaTitle            String?
+  metaDescription      String?
+  objectives           Json?
+  requirements         Json?
+  targetAudience       Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  publishedAt          DateTime?
+  certificates         Certificate[]
   certificateTemplates CertificateTemplate[]
-  enrollments      Enrollment[]
-  modules          Module[]
+  enrollments          Enrollment[]
+  modules              Module[]
 }
 
 model Module {
@@ -698,23 +699,23 @@ model Module {
 }
 
 model Lesson {
-  id            String     @id @default(cuid())
-  moduleId      String
-  title         String
-  description   String?
-  content       String?
-  videoUrl      String?
-  videoDuration Int?
-  videoStorage   Json?
-  order         Int
-  isFree        Boolean    @default(false)
+  id               String     @id @default(cuid())
+  moduleId         String
+  title            String
+  description      String?
+  content          String?
+  videoUrl         String?
+  videoDuration    Int?
+  videoStorage     Json?
+  order            Int
+  isFree           Boolean    @default(false)
   releaseAfterDays Int?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  assets        Asset[]
-  module        Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress      Progress[]
-  quizzes       Quiz[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  assets           Asset[]
+  module           Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress         Progress[]
+  quizzes          Quiz[]
 }
 
 model Asset {
@@ -760,38 +761,38 @@ model Progress {
 }
 
 model Certificate {
-  id                String   @id @default(cuid())
+  id                String               @id @default(cuid())
   userId            String
   courseId          String
-  certificateNumber String   @unique
-  issuedAt          DateTime @default(now())
+  certificateNumber String               @unique
+  issuedAt          DateTime             @default(now())
   templateId        String?
   pdfUrl            String?
   metadata          Json?
-  course            Course   @relation(fields: [courseId], references: [id])
-  user              User     @relation(fields: [userId], references: [id])
+  course            Course               @relation(fields: [courseId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
   template          CertificateTemplate? @relation(fields: [templateId], references: [id])
 
   @@unique([userId, courseId])
 }
 
 model CertificateTemplate {
-  id                  String      @id @default(cuid())
-  name                String
-  description         String?
-  courseId            String?
-  backgroundImageUrl  String?
-  layout              Json?
-  isDefault           Boolean     @default(false)
-  isActive            Boolean     @default(true)
-  createdById         String?
-  updatedById         String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
-  course              Course?     @relation(fields: [courseId], references: [id])
-  createdBy           User?       @relation("CertificateTemplateCreator", fields: [createdById], references: [id])
-  updatedBy           User?       @relation("CertificateTemplateUpdater", fields: [updatedById], references: [id])
-  certificates        Certificate[]
+  id                 String        @id @default(cuid())
+  name               String
+  description        String?
+  courseId           String?
+  backgroundImageUrl String?
+  layout             Json?
+  isDefault          Boolean       @default(false)
+  isActive           Boolean       @default(true)
+  createdById        String?
+  updatedById        String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  course             Course?       @relation(fields: [courseId], references: [id])
+  createdBy          User?         @relation("CertificateTemplateCreator", fields: [createdById], references: [id])
+  updatedBy          User?         @relation("CertificateTemplateUpdater", fields: [updatedById], references: [id])
+  certificates       Certificate[]
 
   @@index([courseId])
   @@index([isActive])
@@ -1649,22 +1650,22 @@ model AchievementCategory {
 }
 
 model Achievement {
-  id               String              @id @default(cuid())
-  name             String
-  description      String
-  icon             String?
-  categoryId       String
-  rarity           AchievementRarity   @default(COMMON)
-  points           Int                 @default(0)
-  isActive         Boolean             @default(true)
-  criteria         Json // Critérios para desbloquear a conquista
-  metadata         Json?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  category         AchievementCategory @relation(fields: [categoryId], references: [id])
-  userAchievements UserAchievement[]
-  rewards          AchievementReward[]
-  userRewards      UserReward[]
+  id                String              @id @default(cuid())
+  name              String
+  description       String
+  icon              String?
+  categoryId        String
+  rarity            AchievementRarity   @default(COMMON)
+  points            Int                 @default(0)
+  isActive          Boolean             @default(true)
+  criteria          Json // Critérios para desbloquear a conquista
+  metadata          Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  category          AchievementCategory @relation(fields: [categoryId], references: [id])
+  userAchievements  UserAchievement[]
+  rewards           AchievementReward[]
+  userRewards       UserReward[]
   gamificationGoals GamificationGoal[]
 
   @@index([categoryId])
@@ -1729,22 +1730,22 @@ model PointTransaction {
 }
 
 model GamificationGoal {
-  id            String                 @id @default(cuid())
+  id            String                     @id @default(cuid())
   title         String
   description   String?
-  goalType      GamificationGoalType  @map("goal_type")
+  goalType      GamificationGoalType       @map("goal_type")
   metric        GamificationGoalMetric
-  targetValue   Int                    @map("target_value")
-  startDate     DateTime               @map("start_date")
-  endDate       DateTime               @map("end_date")
+  targetValue   Int                        @map("target_value")
+  startDate     DateTime                   @map("start_date")
+  endDate       DateTime                   @map("end_date")
   rewardMode    GamificationGoalRewardMode @default(BOTH) @map("reward_mode")
-  points        Int                    @default(0)
-  achievementId String?                @map("achievement_id")
-  isActive      Boolean                @default(true) @map("is_active")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  points        Int                        @default(0)
+  achievementId String?                    @map("achievement_id")
+  isActive      Boolean                    @default(true) @map("is_active")
+  createdAt     DateTime                   @default(now()) @map("created_at")
+  updatedAt     DateTime                   @updatedAt @map("updated_at")
 
-  achievement Achievement?           @relation(fields: [achievementId], references: [id], onDelete: SetNull)
+  achievement Achievement?               @relation(fields: [achievementId], references: [id], onDelete: SetNull)
   progress    GamificationGoalProgress[]
 
   @@index([goalType])
@@ -1755,14 +1756,14 @@ model GamificationGoal {
 }
 
 model GamificationGoalProgress {
-  id              String           @id @default(cuid())
-  goalId          String           @map("goal_id")
-  userId          String           @map("user_id")
-  currentValue    Int              @default(0) @map("current_value")
-  completedAt     DateTime?        @map("completed_at")
-  lastEvaluatedAt DateTime?        @map("last_evaluated_at")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  id              String    @id @default(cuid())
+  goalId          String    @map("goal_id")
+  userId          String    @map("user_id")
+  currentValue    Int       @default(0) @map("current_value")
+  completedAt     DateTime? @map("completed_at")
+  lastEvaluatedAt DateTime? @map("last_evaluated_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   goal GamificationGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
   user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2031,20 +2032,20 @@ model Event {
 }
 
 model EventRegistration {
-  id           String                  @id @default(cuid())
-  eventId      String
+  id                   String                  @id @default(cuid())
+  eventId              String
   recurrenceInstanceId String
-  userId       String?
-  guestEmail   String?
-  guestName    String?
-  status       EventRegistrationStatus @default(REGISTERED)
-  attendedAt   DateTime?
-  registeredAt DateTime? // Registration timestamp
-  metadata     Json?
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
-  event        Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user         User?                   @relation(fields: [userId], references: [id])
+  userId               String?
+  guestEmail           String?
+  guestName            String?
+  status               EventRegistrationStatus @default(REGISTERED)
+  attendedAt           DateTime?
+  registeredAt         DateTime? // Registration timestamp
+  metadata             Json?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  event                Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user                 User?                   @relation(fields: [userId], references: [id])
 
   @@unique([eventId, userId, recurrenceInstanceId])
   @@unique([eventId, guestEmail, recurrenceInstanceId])
@@ -2938,6 +2939,43 @@ model PushNotificationLog {
   @@map("push_notification_logs")
 }
 
+model CardDeck {
+  id              String   @id @default(cuid())
+  name            String
+  imageDirectory  String
+  imageExtension  String   @default("jpg")
+  useInMahaLilah  Boolean  @default(false)
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy          User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  cards              CardDeckCard[]
+  mahaLilahCardDraws MahaLilahCardDraw[]
+
+  @@unique([name])
+  @@index([useInMahaLilah])
+  @@index([createdByUserId])
+}
+
+model CardDeckCard {
+  id          String   @id @default(cuid())
+  deckId      String
+  cardNumber  Int
+  description String
+  keywords    String
+  observation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deck               CardDeck            @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  mahaLilahCardDraws MahaLilahCardDraw[]
+
+  @@unique([deckId, cardNumber])
+  @@index([deckId])
+  @@index([cardNumber])
+}
+
 model SmsLog {
   id        String             @id @default(cuid())
   to        String
@@ -2957,31 +2995,31 @@ model SmsLog {
 }
 
 model MahaLilahRoom {
-  id                String               @id @default(cuid())
-  code              String               @unique
-  createdByUserId   String
-  createdAt         DateTime             @default(now())
-  closedAt          DateTime?
-  status            MahaLilahRoomStatus  @default(ACTIVE)
-  maxParticipants   Int
-  therapistPlays    Boolean              @default(true)
-  planType          MahaLilahPlanType    @default(SINGLE_SESSION)
-  orderId           String?
-  subscriptionId    String?
+  id                 String              @id @default(cuid())
+  code               String              @unique
+  createdByUserId    String
+  createdAt          DateTime            @default(now())
+  closedAt           DateTime?
+  status             MahaLilahRoomStatus @default(ACTIVE)
+  maxParticipants    Int
+  therapistPlays     Boolean             @default(true)
+  planType           MahaLilahPlanType   @default(SINGLE_SESSION)
+  orderId            String?
+  subscriptionId     String?
   consentTextVersion String?
 
-  createdByUser User               @relation("MahaLilahRoomCreator", fields: [createdByUserId], references: [id])
-  order         Order?             @relation(fields: [orderId], references: [id])
-  subscription  Subscription?      @relation(fields: [subscriptionId], references: [id])
-  invites       MahaLilahInvite[]
-  participants  MahaLilahParticipant[]
-  gameState     MahaLilahGameState?
-  playerStates  MahaLilahPlayerState[]
-  moves         MahaLilahMove[]
+  createdByUser  User                    @relation("MahaLilahRoomCreator", fields: [createdByUserId], references: [id])
+  order          Order?                  @relation(fields: [orderId], references: [id])
+  subscription   Subscription?           @relation(fields: [subscriptionId], references: [id])
+  invites        MahaLilahInvite[]
+  participants   MahaLilahParticipant[]
+  gameState      MahaLilahGameState?
+  playerStates   MahaLilahPlayerState[]
+  moves          MahaLilahMove[]
   therapyEntries MahaLilahTherapyEntry[]
-  cardDraws     MahaLilahCardDraw[]
-  aiUsages      MahaLilahAiUsage[]
-  aiReports     MahaLilahAiReport[]
+  cardDraws      MahaLilahCardDraw[]
+  aiUsages       MahaLilahAiUsage[]
+  aiReports      MahaLilahAiReport[]
 
   @@index([createdByUserId])
   @@index([status])
@@ -2989,17 +3027,17 @@ model MahaLilahRoom {
 }
 
 model MahaLilahInvite {
-  id              String               @id @default(cuid())
+  id              String              @id @default(cuid())
   roomId          String
   email           String
-  role            MahaLilahInviteRole  @default(PLAYER)
-  token           String               @unique
-  sentAt          DateTime             @default(now())
+  role            MahaLilahInviteRole @default(PLAYER)
+  token           String              @unique
+  sentAt          DateTime            @default(now())
   acceptedAt      DateTime?
   invitedByUserId String
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  invitedBy   User          @relation("MahaLilahInviteSender", fields: [invitedByUserId], references: [id])
+  room        MahaLilahRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  invitedBy   User                  @relation("MahaLilahInviteSender", fields: [invitedByUserId], references: [id])
   participant MahaLilahParticipant?
 
   @@unique([roomId, email])
@@ -3008,24 +3046,24 @@ model MahaLilahInvite {
 }
 
 model MahaLilahParticipant {
-  id                String                  @id @default(cuid())
+  id                String                   @id @default(cuid())
   roomId            String
   role              MahaLilahParticipantRole
   userId            String
   displayName       String?
-  inviteId          String?                 @unique
-  joinedAt          DateTime                @default(now())
+  inviteId          String?                  @unique
+  joinedAt          DateTime                 @default(now())
   consentAcceptedAt DateTime?
 
-  room         MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user         User          @relation(fields: [userId], references: [id])
-  invite       MahaLilahInvite? @relation(fields: [inviteId], references: [id])
-  playerState  MahaLilahPlayerState?
-  moves        MahaLilahMove[]
+  room           MahaLilahRoom           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [userId], references: [id])
+  invite         MahaLilahInvite?        @relation(fields: [inviteId], references: [id])
+  playerState    MahaLilahPlayerState?
+  moves          MahaLilahMove[]
   therapyEntries MahaLilahTherapyEntry[]
-  cardDraws    MahaLilahCardDraw[]
-  aiUsages     MahaLilahAiUsage[]
-  aiReports    MahaLilahAiReport[]
+  cardDraws      MahaLilahCardDraw[]
+  aiUsages       MahaLilahAiUsage[]
+  aiReports      MahaLilahAiReport[]
 
   @@unique([roomId, userId])
   @@index([role])
@@ -3041,16 +3079,16 @@ model MahaLilahGameState {
 }
 
 model MahaLilahPlayerState {
-  id                String   @id @default(cuid())
-  roomId            String
-  participantId     String   @unique
-  position          Int
-  hasStarted        Boolean  @default(false)
-  hasCompleted      Boolean  @default(false)
-  rollCountTotal    Int      @default(0)
-  rollCountUntilStart Int    @default(0)
+  id                  String  @id @default(cuid())
+  roomId              String
+  participantId       String  @unique
+  position            Int
+  hasStarted          Boolean @default(false)
+  hasCompleted        Boolean @default(false)
+  rollCountTotal      Int     @default(0)
+  rollCountUntilStart Int     @default(0)
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room        MahaLilahRoom        @relation(fields: [roomId], references: [id], onDelete: Cascade)
   participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, participantId])
@@ -3058,21 +3096,21 @@ model MahaLilahPlayerState {
 }
 
 model MahaLilahMove {
-  id             String   @id @default(cuid())
-  roomId         String
-  turnNumber     Int
-  participantId  String
-  diceValue      Int
-  fromPos        Int
-  toPos          Int
+  id              String   @id @default(cuid())
+  roomId          String
+  turnNumber      Int
+  participantId   String
+  diceValue       Int
+  fromPos         Int
+  toPos           Int
   appliedJumpFrom Int?
   appliedJumpTo   Int?
-  createdAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  room           MahaLilahRoom           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant    MahaLilahParticipant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
   therapyEntries MahaLilahTherapyEntry[]
-  cardDraws    MahaLilahCardDraw[]
+  cardDraws      MahaLilahCardDraw[]
 
   @@index([roomId])
   @@index([participantId])
@@ -3091,8 +3129,8 @@ model MahaLilahTherapyEntry {
   microAction   String?
   createdAt     DateTime @default(now())
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  move        MahaLilahMove @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  room        MahaLilahRoom        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  move        MahaLilahMove        @relation(fields: [moveId], references: [id], onDelete: Cascade)
   participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
@@ -3101,19 +3139,26 @@ model MahaLilahTherapyEntry {
 }
 
 model MahaLilahCardDraw {
-  id                    String   @id @default(cuid())
-  roomId                String
-  moveId                String?
-  drawnByParticipantId  String
-  cards                 Int[]
-  createdAt             DateTime @default(now())
+  id                   String   @id @default(cuid())
+  roomId               String
+  moveId               String?
+  drawnByParticipantId String
+  deckId               String?
+  cardId               String?
+  cards                Int[]
+  createdAt            DateTime @default(now())
 
-  room       MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  move       MahaLilahMove? @relation(fields: [moveId], references: [id], onDelete: Cascade)
-  drawnBy    MahaLilahParticipant @relation(fields: [drawnByParticipantId], references: [id], onDelete: Cascade)
+  room    MahaLilahRoom        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  move    MahaLilahMove?       @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  drawnBy MahaLilahParticipant @relation(fields: [drawnByParticipantId], references: [id], onDelete: Cascade)
+  deck    CardDeck?            @relation(fields: [deckId], references: [id], onDelete: SetNull)
+  card    CardDeckCard?        @relation(fields: [cardId], references: [id], onDelete: SetNull)
 
   @@index([roomId])
+  @@index([moveId])
   @@index([drawnByParticipantId])
+  @@index([deckId])
+  @@index([cardId])
   @@index([createdAt])
 }
 
@@ -3125,7 +3170,7 @@ model MahaLilahAiUsage {
   tipsLimit     Int      @default(0)
   updatedAt     DateTime @updatedAt
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room        MahaLilahRoom        @relation(fields: [roomId], references: [id], onDelete: Cascade)
   participant MahaLilahParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, participantId])
@@ -3133,14 +3178,14 @@ model MahaLilahAiUsage {
 }
 
 model MahaLilahAiReport {
-  id            String             @id @default(cuid())
+  id            String                @id @default(cuid())
   roomId        String
   participantId String?
   kind          MahaLilahAiReportKind @default(FINAL)
   content       String
-  createdAt     DateTime           @default(now())
+  createdAt     DateTime              @default(now())
 
-  room        MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room        MahaLilahRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
   participant MahaLilahParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
 
   @@index([roomId])
