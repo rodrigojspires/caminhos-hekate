@@ -86,6 +86,8 @@ type Filters = {
   to: string
 }
 
+type RoomDetailsTab = 'invites' | 'participants' | 'timeline' | 'deck' | 'aiReports'
+
 export function DashboardClient() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,6 +98,7 @@ export function DashboardClient() {
   const [canCreateRoom, setCanCreateRoom] = useState(false)
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({})
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({})
+  const [activeDetailTabs, setActiveDetailTabs] = useState<Record<string, RoomDetailsTab>>({})
   const [timelineParticipantFilters, setTimelineParticipantFilters] = useState<Record<string, string>>({})
   const [details, setDetails] = useState<Record<string, { loading: boolean; moves: TimelineMove[]; aiReports: AiReport[]; cardDraws: StandaloneCardDraw[]; error?: string }>>({})
   const [filters, setFilters] = useState<Filters>({ status: '', from: '', to: '' })
@@ -265,6 +268,11 @@ export function DashboardClient() {
       }
       return { ...prev, [roomId]: nextOpen }
     })
+    setActiveDetailTabs((prev) => (
+      prev[roomId]
+        ? prev
+        : { ...prev, [roomId]: 'invites' }
+    ))
   }
 
   const statusClass = (status: string) => {
@@ -282,6 +290,7 @@ export function DashboardClient() {
 
   const roomCards = rooms.map((room) => {
     const isOpen = !!openRooms[room.id]
+    const activeTab = activeDetailTabs[room.id] || 'invites'
     const roomDetails = details[room.id]
     const selectedParticipantId = timelineParticipantFilters[room.id] || ''
 
@@ -355,253 +364,344 @@ export function DashboardClient() {
 
         {isOpen && (
           <div className="grid" style={{ gap: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-            <div className="grid" style={{ gap: 10 }}>
-              <strong>Convites</strong>
-              {room.invites.length === 0 ? (
-                <span className="small-muted">Nenhum convite enviado.</span>
-              ) : (
-                <div style={{ display: 'grid', gap: 6 }}>
-                  {room.invites.map((invite) => (
-                    <div
-                      key={invite.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                        padding: '10px 12px',
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        background: 'hsl(var(--temple-surface-2))'
-                      }}
-                    >
-                      <div style={{ display: 'grid', gap: 2 }}>
-                        <strong style={{ fontSize: 13 }}>{invite.email}</strong>
-                        <span className="small-muted">
-                          Enviado em {new Date(invite.sentAt).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span
-                          className="pill"
-                          style={
-                            invite.acceptedAt
-                              ? { background: 'rgba(106, 211, 176, 0.18)', borderColor: 'rgba(106, 211, 176, 0.4)', color: '#9fe6cc' }
-                              : { background: 'rgba(241, 213, 154, 0.2)', borderColor: 'rgba(217, 164, 65, 0.45)', color: '#f1d59a' }
-                          }
-                        >
-                          {invite.acceptedAt ? 'Aceito' : 'Pendente'}
-                        </span>
-                        {!invite.acceptedAt && (
-                          <button
-                            className="btn-secondary px-3 py-1 text-xs"
-                            onClick={() => handleSendInvites(room.id, [invite.email])}
-                          >
-                            Reenviar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid" style={{ gap: 10 }}>
-              <strong>Participantes</strong>
-              <div style={{ display: 'grid', gap: 6 }}>
-                {room.participants.map((participant) => {
-                  const isTherapist = participant.role === 'THERAPIST'
-
-                  return (
-                    <div
-                      key={participant.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                        padding: '10px 12px',
-                        borderRadius: 12,
-                        border: isTherapist ? '1px solid rgba(217, 164, 65, 0.45)' : '1px solid var(--border)',
-                        background: isTherapist
-                          ? 'linear-gradient(160deg, rgba(217, 164, 65, 0.12) 0%, hsl(var(--temple-surface-2)) 80%)'
-                          : 'hsl(var(--temple-surface-2))'
-                      }}
-                    >
-                      <div style={{ display: 'grid', gap: 2 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <strong>{participant.user.name || participant.user.email}</strong>
-                          {isTherapist ? (
-                            <span
-                              className="pill"
-                              style={{ background: 'rgba(217, 164, 65, 0.2)', borderColor: 'rgba(217, 164, 65, 0.5)', color: '#f1d59a' }}
-                            >
-                              Terapeuta
-                            </span>
-                          ) : (
-                            <span className="small-muted">{participantRoleLabel(participant.role)}</span>
-                          )}
-                        </div>
-                        {!participant.consentAcceptedAt && (
-                          <span className="small-muted">Consentimento pendente</span>
-                        )}
-                      </div>
-                      {participant.role === 'PLAYER' && (
-                        <button
-                          className="btn-secondary px-3 py-1 text-xs"
-                          onClick={() => handleRemoveParticipant(room.id, participant.id)}
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ display: 'grid', gap: 6 }}>
-                <span>Enviar convites (separe por vírgula)</span>
-                <input
-                  type="text"
-                  value={inviteEmails[room.id] || ''}
-                  onChange={(event) =>
-                    setInviteEmails((prev) => ({ ...prev, [room.id]: event.target.value }))
-                  }
-                  placeholder="jogador1@email.com, jogador2@email.com"
-                />
-              </label>
-              <button className="btn-secondary w-fit" onClick={() => handleSendInvites(room.id)}>
-                Enviar convites
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className={activeTab === 'invites' ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setActiveDetailTabs((prev) => ({ ...prev, [room.id]: 'invites' }))}
+              >
+                Convites
+              </button>
+              <button
+                className={activeTab === 'participants' ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setActiveDetailTabs((prev) => ({ ...prev, [room.id]: 'participants' }))}
+              >
+                Participantes
+              </button>
+              <button
+                className={activeTab === 'timeline' ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setActiveDetailTabs((prev) => ({ ...prev, [room.id]: 'timeline' }))}
+              >
+                Timeline
+              </button>
+              <button
+                className={activeTab === 'deck' ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setActiveDetailTabs((prev) => ({ ...prev, [room.id]: 'deck' }))}
+              >
+                Deck randômico
+              </button>
+              <button
+                className={activeTab === 'aiReports' ? 'btn-primary' : 'btn-secondary'}
+                onClick={() => setActiveDetailTabs((prev) => ({ ...prev, [room.id]: 'aiReports' }))}
+              >
+                Relatórios IA
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <strong>Timeline</strong>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                {room.participants.length > 1 && (
-                  <select
-                    value={selectedParticipantId}
-                    onChange={(event) =>
-                      setTimelineParticipantFilters((prev) => ({ ...prev, [room.id]: event.target.value }))
-                    }
-                  >
-                    <option value="">Todos os jogadores</option>
-                    {room.participants.map((participant) => (
-                      <option key={participant.id} value={participant.id}>
-                        {participant.user.name || participant.user.email}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
-                  Atualizar timeline
-                </button>
-              </div>
-            </div>
-            {roomDetails?.loading ? (
-              <span className="small-muted">Carregando timeline...</span>
-            ) : roomDetails?.error ? (
-              <span className="notice">{roomDetails.error}</span>
-            ) : filteredMoves.length ? (
-              <div style={{ display: 'grid', gap: 8 }}>
-                {filteredMoves.map((move) => (
-                  <div
-                    key={move.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 10,
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      background: 'hsl(var(--temple-surface-2))'
-                    }}
-                  >
-                    <div>
-                      <strong>{move.participant.user.name || move.participant.user.email}</strong>
-                      <div className="small-muted">
-                        Jogada #{move.turnNumber} • {new Date(move.createdAt).toLocaleString('pt-BR')} • Dado {move.diceValue}
-                      </div>
-                      <div className="small-muted">
-                        {move.fromPos} → {move.toPos}
-                        {move.appliedJumpFrom ? ` • Atalho ${move.appliedJumpFrom}→${move.appliedJumpTo}` : ''}
-                      </div>
-                      {move.therapyEntries.length > 0 && (
-                        <div className="small-muted">Registros: {move.therapyEntries.length}</div>
-                      )}
-                      {move.cardDraws.length > 0 && (
-                        <div className="small-muted">Cartas: {move.cardDraws.map((draw) => draw.cards.join(',')).join(' | ')}</div>
-                      )}
+            {activeTab === 'invites' && (
+              <>
+                <div className="grid" style={{ gap: 10 }}>
+                  <strong>Convites</strong>
+                  {room.invites.length === 0 ? (
+                    <span className="small-muted">Nenhum convite enviado.</span>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {room.invites.map((invite) => (
+                        <div
+                          key={invite.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            border: '1px solid var(--border)',
+                            background: 'hsl(var(--temple-surface-2))'
+                          }}
+                        >
+                          <div style={{ display: 'grid', gap: 2 }}>
+                            <strong style={{ fontSize: 13 }}>{invite.email}</strong>
+                            <span className="small-muted">
+                              Enviado em {new Date(invite.sentAt).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span
+                              className="pill"
+                              style={
+                                invite.acceptedAt
+                                  ? { background: 'rgba(106, 211, 176, 0.18)', borderColor: 'rgba(106, 211, 176, 0.4)', color: '#9fe6cc' }
+                                  : { background: 'rgba(241, 213, 154, 0.2)', borderColor: 'rgba(217, 164, 65, 0.45)', color: '#f1d59a' }
+                              }
+                            >
+                              {invite.acceptedAt ? 'Aceito' : 'Pendente'}
+                            </span>
+                            {!invite.acceptedAt && (
+                              <button
+                                className="btn-secondary px-3 py-1 text-xs"
+                                onClick={() => handleSendInvites(room.id, [invite.email])}
+                              >
+                                Reenviar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="small-muted">
-                {selectedParticipantId ? 'Nenhuma jogada para o jogador selecionado.' : 'Ainda não há jogadas.'}
-              </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Enviar convites (separe por vírgula)</span>
+                    <input
+                      type="text"
+                      value={inviteEmails[room.id] || ''}
+                      onChange={(event) =>
+                        setInviteEmails((prev) => ({ ...prev, [room.id]: event.target.value }))
+                      }
+                      placeholder="jogador1@email.com, jogador2@email.com"
+                    />
+                  </label>
+                  <button className="btn-secondary w-fit" onClick={() => handleSendInvites(room.id)}>
+                    Enviar convites
+                  </button>
+                </div>
+              </>
             )}
 
-            <div className="grid" style={{ gap: 8 }}>
-              <strong>Deck randômico</strong>
-              {filteredDeckDraws.length ? (
+            {activeTab === 'participants' && (
+              <div className="grid" style={{ gap: 10 }}>
+                <strong>Participantes</strong>
                 <div style={{ display: 'grid', gap: 6 }}>
-                  {filteredDeckDraws.map((draw) => (
-                    <div
-                      key={draw.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 10,
-                        padding: '10px 12px',
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        background: 'hsl(var(--temple-surface-2))'
-                      }}
-                    >
-                      <div>
-                        <strong>{draw.drawnBy.user.name || draw.drawnBy.user.email}</strong>
-                        <div className="small-muted">
-                          {new Date(draw.createdAt).toLocaleString('pt-BR')}
-                          {draw.turnNumber ? ` • Jogada #${draw.turnNumber}` : ' • Sem jogada'}
-                          {' '}• {draw.cards.join(', ')}
+                  {room.participants.map((participant) => {
+                    const isTherapist = participant.role === 'THERAPIST'
+
+                    return (
+                      <div
+                        key={participant.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: isTherapist ? '1px solid rgba(217, 164, 65, 0.45)' : '1px solid var(--border)',
+                          background: isTherapist
+                            ? 'linear-gradient(160deg, rgba(217, 164, 65, 0.12) 0%, hsl(var(--temple-surface-2)) 80%)'
+                            : 'hsl(var(--temple-surface-2))'
+                        }}
+                      >
+                        <div style={{ display: 'grid', gap: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <strong>{participant.user.name || participant.user.email}</strong>
+                            {isTherapist ? (
+                              <span
+                                className="pill"
+                                style={{ background: 'rgba(217, 164, 65, 0.2)', borderColor: 'rgba(217, 164, 65, 0.5)', color: '#f1d59a' }}
+                              >
+                                Terapeuta
+                              </span>
+                            ) : (
+                              <span className="small-muted">{participantRoleLabel(participant.role)}</span>
+                            )}
+                          </div>
+                          {!participant.consentAcceptedAt && (
+                            <span className="small-muted">Consentimento pendente</span>
+                          )}
+                        </div>
+                        {participant.role === 'PLAYER' && (
+                          <button
+                            className="btn-secondary px-3 py-1 text-xs"
+                            onClick={() => handleRemoveParticipant(room.id, participant.id)}
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'timeline' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <strong>Timeline</strong>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {room.participants.length > 1 && (
+                      <select
+                        value={selectedParticipantId}
+                        onChange={(event) =>
+                          setTimelineParticipantFilters((prev) => ({ ...prev, [room.id]: event.target.value }))
+                        }
+                      >
+                        <option value="">Todos os jogadores</option>
+                        {room.participants.map((participant) => (
+                          <option key={participant.id} value={participant.id}>
+                            {participant.user.name || participant.user.email}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
+                      Atualizar timeline
+                    </button>
+                  </div>
+                </div>
+                {roomDetails?.loading ? (
+                  <span className="small-muted">Carregando timeline...</span>
+                ) : roomDetails?.error ? (
+                  <span className="notice">{roomDetails.error}</span>
+                ) : filteredMoves.length ? (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {filteredMoves.map((move) => (
+                      <div
+                        key={move.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          background: 'hsl(var(--temple-surface-2))'
+                        }}
+                      >
+                        <div>
+                          <strong>{move.participant.user.name || move.participant.user.email}</strong>
+                          <div className="small-muted">
+                            Jogada #{move.turnNumber} • {new Date(move.createdAt).toLocaleString('pt-BR')} • Dado {move.diceValue}
+                          </div>
+                          <div className="small-muted">
+                            {move.fromPos} → {move.toPos}
+                            {move.appliedJumpFrom ? ` • Atalho ${move.appliedJumpFrom}→${move.appliedJumpTo}` : ''}
+                          </div>
+                          {move.therapyEntries.length > 0 && (
+                            <div className="small-muted">Registros: {move.therapyEntries.length}</div>
+                          )}
+                          {move.cardDraws.length > 0 && (
+                            <div className="small-muted">Cartas: {move.cardDraws.map((draw) => draw.cards.join(',')).join(' | ')}</div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="small-muted">
-                  {selectedParticipantId ? 'Nenhuma tiragem para o jogador selecionado.' : 'Nenhuma tiragem registrada.'}
-                </span>
-              )}
-            </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="small-muted">
+                    {selectedParticipantId ? 'Nenhuma jogada para o jogador selecionado.' : 'Ainda não há jogadas.'}
+                  </span>
+                )}
+              </>
+            )}
 
-            <div className="grid" style={{ gap: 8 }}>
-              <strong>Relatórios IA</strong>
-              {filteredAiReports.length ? (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {filteredAiReports.map((report) => (
-                    <div key={report.id} className="card" style={{ padding: 12 }}>
-                      <div className="small-muted">
-                        {new Date(report.createdAt).toLocaleString('pt-BR')} • {report.kind}
-                        {report.participant ? ` • ${report.participant.user.name || report.participant.user.email}` : ''}
-                      </div>
-                      <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{report.content}</div>
-                    </div>
-                  ))}
+            {activeTab === 'deck' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <strong>Deck randômico</strong>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {room.participants.length > 1 && (
+                      <select
+                        value={selectedParticipantId}
+                        onChange={(event) =>
+                          setTimelineParticipantFilters((prev) => ({ ...prev, [room.id]: event.target.value }))
+                        }
+                      >
+                        <option value="">Todos os jogadores</option>
+                        {room.participants.map((participant) => (
+                          <option key={participant.id} value={participant.id}>
+                            {participant.user.name || participant.user.email}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
+                      Atualizar timeline
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <span className="small-muted">
-                  {selectedParticipantId ? 'Nenhum relatório para o jogador selecionado.' : 'Nenhum relatório ainda.'}
-                </span>
-              )}
-            </div>
+                {filteredDeckDraws.length ? (
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {filteredDeckDraws.map((draw) => (
+                      <div
+                        key={draw.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          background: 'hsl(var(--temple-surface-2))'
+                        }}
+                      >
+                        <div>
+                          <strong>{draw.drawnBy.user.name || draw.drawnBy.user.email}</strong>
+                          <div className="small-muted">
+                            {new Date(draw.createdAt).toLocaleString('pt-BR')}
+                            {draw.turnNumber ? ` • Jogada #${draw.turnNumber}` : ' • Sem jogada'}
+                            {' '}• {draw.cards.join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="small-muted">
+                    {selectedParticipantId ? 'Nenhuma tiragem para o jogador selecionado.' : 'Nenhuma tiragem registrada.'}
+                  </span>
+                )}
+              </>
+            )}
+
+            {activeTab === 'aiReports' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <strong>Relatórios IA</strong>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {room.participants.length > 1 && (
+                      <select
+                        value={selectedParticipantId}
+                        onChange={(event) =>
+                          setTimelineParticipantFilters((prev) => ({ ...prev, [room.id]: event.target.value }))
+                        }
+                      >
+                        <option value="">Todos os jogadores</option>
+                        {room.participants.map((participant) => (
+                          <option key={participant.id} value={participant.id}>
+                            {participant.user.name || participant.user.email}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button className="btn-secondary" onClick={() => loadTimeline(room.id)}>
+                      Atualizar timeline
+                    </button>
+                  </div>
+                </div>
+                {filteredAiReports.length ? (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {filteredAiReports.map((report) => (
+                      <div key={report.id} className="card" style={{ padding: 12 }}>
+                        <div className="small-muted">
+                          {new Date(report.createdAt).toLocaleString('pt-BR')} • {report.kind}
+                          {report.participant ? ` • ${report.participant.user.name || report.participant.user.email}` : ''}
+                        </div>
+                        <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{report.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="small-muted">
+                    {selectedParticipantId ? 'Nenhum relatório para o jogador selecionado.' : 'Nenhum relatório ainda.'}
+                  </span>
+                )}
+              </>
+            )}
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn-secondary" onClick={() => handleExport(room.id, 'json')}>

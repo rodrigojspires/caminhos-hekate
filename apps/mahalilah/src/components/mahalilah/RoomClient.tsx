@@ -29,6 +29,7 @@ type RoomState = {
     status: string
     currentTurnIndex: number
     turnParticipantId: string | null
+    therapistOnline: boolean
   }
   participants: Participant[]
   playerStates: PlayerState[]
@@ -189,6 +190,7 @@ export function RoomClient({ code }: { code: string }) {
   const lastHouse = state.lastMove ? getHouseByNumber(state.lastMove.toPos) : null
   const canLogTherapy = !!(state.lastMove && myParticipant && state.lastMove.participantId === myParticipant.id)
   const canCloseRoom = myParticipant?.role === 'THERAPIST'
+  const canRoll = isMyTurn && state.room.status === 'ACTIVE' && !(needsConsent && !consentAccepted) && state.room.therapistOnline
 
   return (
     <div className="grid" style={{ gap: 20 }}>
@@ -226,9 +228,14 @@ export function RoomClient({ code }: { code: string }) {
             <strong>Vez de:</strong> {currentParticipant ? (currentParticipant.user.name || currentParticipant.user.email) : 'Aguardando jogadores'}
           </div>
         </div>
+        {!state.room.therapistOnline && (
+          <div className="small-muted">
+            Rolagem pausada: terapeuta fora da sala.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={handleRoll} disabled={!isMyTurn || state.room.status !== 'ACTIVE' || (needsConsent && !consentAccepted)}>
-            {isMyTurn ? 'Rolar dado' : 'Aguardando sua vez'}
+          <button onClick={handleRoll} disabled={!canRoll}>
+            {!state.room.therapistOnline ? 'Aguardando terapeuta' : isMyTurn ? 'Rolar dado' : 'Aguardando sua vez'}
           </button>
           {canCloseRoom && (
             <Link href="/dashboard" className="btn-secondary">

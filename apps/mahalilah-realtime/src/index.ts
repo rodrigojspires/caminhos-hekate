@@ -52,6 +52,7 @@ type AuthedSocket = Parameters<typeof io.on>[1] & {
 }
 
 const actionCooldowns = new Map<string, number>()
+const roomUserConnections = new Map<string, Map<string, number>>()
 
 function enforceCooldown(key: string, cooldownMs: number) {
   if (!cooldownMs || cooldownMs <= 0) return
@@ -65,6 +66,35 @@ function enforceCooldown(key: string, cooldownMs: number) {
 
 function randomDice() {
   return Math.floor(Math.random() * 6) + 1
+}
+
+function addRoomConnection(roomId: string, userId: string) {
+  const users = roomUserConnections.get(roomId) || new Map<string, number>()
+  users.set(userId, (users.get(userId) || 0) + 1)
+  roomUserConnections.set(roomId, users)
+}
+
+function removeRoomConnection(roomId: string, userId: string) {
+  const users = roomUserConnections.get(roomId)
+  if (!users) return
+  const current = users.get(userId) || 0
+  if (current <= 1) {
+    users.delete(userId)
+  } else {
+    users.set(userId, current - 1)
+  }
+  if (users.size === 0) {
+    roomUserConnections.delete(roomId)
+  }
+}
+
+function hasTherapistOnline(
+  roomId: string,
+  participants: Array<{ role: string; userId: string }>
+) {
+  const users = roomUserConnections.get(roomId)
+  if (!users || users.size === 0) return false
+  return participants.some((participant) => participant.role === 'THERAPIST' && (users.get(participant.userId) || 0) > 0)
 }
 
 async function callOpenAI(prompt: string) {
@@ -172,7 +202,7 @@ function ensureConsentAccepted(participant: { consentAcceptedAt: Date | null }) 
   }
 }
 
-function getTurnParticipants<T extends { id: string; role: string }>(participants: T[], therapistPlays: boolean) {
+function getTurnParticipants<T extends { id: string; role: string; userId: string }>(participants: T[], therapistPlays: boolean) {
   return participants.filter((participant) => therapistPlays || participant.role !== 'THERAPIST')
 }
 
@@ -240,6 +270,7 @@ async function buildRoomState(roomId: string) {
   const currentTurnIndex = room.gameState?.currentTurnIndex ?? 0
   const safeTurnIndex = turnParticipantIds.length ? currentTurnIndex % turnParticipantIds.length : 0
   const turnParticipantId = turnParticipantIds.length ? turnParticipantIds[safeTurnIndex] : null
+  const therapistOnline = hasTherapistOnline(room.id, room.participants)
 
   return {
     room: {
@@ -247,7 +278,8 @@ async function buildRoomState(roomId: string) {
       code: room.code,
       status: room.status,
       currentTurnIndex: safeTurnIndex,
-      turnParticipantId
+      turnParticipantId,
+      therapistOnline
     },
     participants: room.participants.map((p) => ({
       id: p.id,
@@ -308,6 +340,9 @@ async function rollInRoom(roomId: string, userId: string) {
     }
     if (room.status !== 'ACTIVE') {
       throw new Error('Sala não está ativa')
+    }
+    if (!hasTherapistOnline(room.id, room.participants)) {
+      throw new Error('A rolagem está pausada até o terapeuta estar na sala')
     }
 
     const turnParticipants = getTurnParticipants(room.participants, room.therapistPlays)
@@ -494,8 +529,19 @@ io.on('connection', (socket: AuthedSocket) => {
       })
       if (!participant) throw new Error('Sem acesso à sala')
 
+      const previousRoomId = socket.data.roomId || null
+      if (previousRoomId) {
+        removeRoomConnection(previousRoomId, socket.data.user.id)
+        if (previousRoomId !== room.id) {
+          socket.leave(previousRoomId)
+          const previousState = await buildRoomState(previousRoomId)
+          if (previousState) io.to(previousRoomId).emit('room:state', previousState)
+        }
+      }
+
       socket.join(room.id)
       socket.data.roomId = room.id
+      addRoomConnection(room.id, socket.data.user.id)
 
       const state = await buildRoomState(room.id)
       if (!state) throw new Error('Sala não encontrada')
@@ -731,8 +777,16 @@ io.on('connection', (socket: AuthedSocket) => {
     }
   })
 
-  socket.on('disconnect', () => {
-    // no-op for now
+  socket.on('disconnect', async () => {
+    try {
+      if (!socket.data.user?.id || !socket.data.roomId) return
+      const roomId = socket.data.roomId
+      removeRoomConnection(roomId, socket.data.user.id)
+      const state = await buildRoomState(roomId)
+      if (state) io.to(roomId).emit('room:state', state)
+    } catch {
+      // no-op
+    }
   })
 })
 
