@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useSession } from 'next-auth/react'
@@ -229,6 +230,11 @@ export function RoomClient({ code }: { code: string }) {
           <button onClick={handleRoll} disabled={!isMyTurn || state.room.status !== 'ACTIVE' || (needsConsent && !consentAccepted)}>
             {isMyTurn ? 'Rolar dado' : 'Aguardando sua vez'}
           </button>
+          {canCloseRoom && (
+            <Link href="/dashboard" className="btn-secondary">
+              Voltar ao dashboard
+            </Link>
+          )}
           {canCloseRoom && (
             <button
               className="secondary"
