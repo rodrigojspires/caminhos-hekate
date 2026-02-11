@@ -13,6 +13,7 @@ import {
 } from "@hekate/mahalilah-core";
 import { HOUSE_MEANINGS } from "@/lib/mahalilah/house-meanings";
 import { HOUSE_POLARITIES } from "@/lib/mahalilah/house-polarities";
+import { HOUSE_THERAPEUTIC_TEXTS } from "@/lib/mahalilah/house-therapeutic-texts";
 
 type Participant = {
   id: string;
@@ -825,12 +826,18 @@ export function RoomClient({ code }: { code: string }) {
   const selectedHouseQuestion = selectedHouse
     ? stripTherapeuticPromptPrefix(getHousePrompt(selectedHouse.number))
     : "";
+  const selectedHouseTherapeutic = selectedHouse
+    ? HOUSE_THERAPEUTIC_TEXTS[selectedHouse.number] || null
+    : null;
   const modalHouseInfo = houseMeaningModal
     ? getHouseDisplayInfo(houseMeaningModal.houseNumber)
     : null;
   const modalHouseQuestion = houseMeaningModal
     ? stripTherapeuticPromptPrefix(getHousePrompt(houseMeaningModal.houseNumber))
     : "";
+  const modalHouseTherapeutic = houseMeaningModal
+    ? HOUSE_THERAPEUTIC_TEXTS[houseMeaningModal.houseNumber] || null
+    : null;
   const lastMoveHouseInfo = state?.lastMove
     ? getHouseDisplayInfo(state.lastMove.toPos)
     : null;
@@ -1982,8 +1989,12 @@ export function RoomClient({ code }: { code: string }) {
                     </span>
                   </div>
                   <div className="notice" style={{ display: "grid", gap: 4 }}>
-                    <strong>Pergunta Terapêutica</strong>
-                    <span className="small-muted">{selectedHouseQuestion}</span>
+                    <strong>Texto Terapêutico</strong>
+                    <span className="small-muted">
+                      {selectedHouseTherapeutic
+                        ? `${selectedHouseTherapeutic.text} Pergunta: ${selectedHouseTherapeutic.question}`
+                        : selectedHouseQuestion}
+                    </span>
                   </div>
                 </>
               ) : (
@@ -2965,8 +2976,12 @@ export function RoomClient({ code }: { code: string }) {
                   </span>
                 </div>
                 <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Pergunta Terapêutica</strong>
-                  <span className="small-muted">{modalHouseQuestion}</span>
+                  <strong>Texto Terapêutico</strong>
+                  <span className="small-muted">
+                    {modalHouseTherapeutic
+                      ? `${modalHouseTherapeutic.text} Pergunta: ${modalHouseTherapeutic.question}`
+                      : modalHouseQuestion}
+                  </span>
                 </div>
               </div>
             ) : (
