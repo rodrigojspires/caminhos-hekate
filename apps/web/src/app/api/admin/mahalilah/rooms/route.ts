@@ -76,10 +76,7 @@ export async function GET(request: NextRequest) {
         code: room.code,
         status: room.status,
         planType: room.planType,
-        isTrial:
-          room.planType === MahaLilahPlanType.SINGLE_SESSION &&
-          !room.orderId &&
-          !room.subscriptionId,
+        isTrial: room.isTrial,
         maxParticipants: room.maxParticipants,
         therapistPlays: room.therapistPlays,
         createdAt: room.createdAt,
@@ -129,6 +126,7 @@ export async function POST(request: NextRequest) {
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
           therapistPlays: data.therapistPlays,
+          isTrial: false,
           planType,
           consentTextVersion
         }

@@ -21,6 +21,12 @@ async function ensureUniqueCode() {
   throw new Error('Não foi possível gerar um código único para a sala.')
 }
 
+function isTrialRoom(room: {
+  isTrial: boolean | null
+}) {
+  return Boolean(room.isTrial)
+}
+
 function parseDateRange(from?: string | null, to?: string | null) {
   const range: { gte?: Date; lte?: Date } = {}
   if (from) {
@@ -199,7 +205,7 @@ export async function GET(request: Request) {
       where.createdAt = createdAtRange
     }
 
-    const [rooms, canCreateRoom, hasUsedTrial] = await Promise.all([
+    const [rooms, canCreateRoom, trialRoom] = await Promise.all([
       prisma.mahaLilahRoom.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -225,9 +231,7 @@ export async function GET(request: Request) {
       prisma.mahaLilahRoom.findFirst({
         where: {
           createdByUserId: session.user.id,
-          planType: MahaLilahPlanType.SINGLE_SESSION,
-          orderId: null,
-          subscriptionId: null
+          isTrial: true
         },
         select: { id: true }
       })
@@ -235,7 +239,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       canCreateRoom,
-      hasUsedTrial: Boolean(hasUsedTrial),
+      hasUsedTrial: Boolean(trialRoom),
       rooms: rooms.map((room) => {
         const rollsTotal = room.playerStates.reduce(
           (sum, state) => sum + (state.rollCountTotal || 0),
@@ -252,10 +256,7 @@ export async function GET(request: Request) {
           status: room.status,
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
-          isTrial:
-            room.planType === MahaLilahPlanType.SINGLE_SESSION &&
-            !room.orderId &&
-            !room.subscriptionId,
+          isTrial: isTrialRoom(room),
           createdAt: room.createdAt,
           invites: room.invites.map((invite) => ({
             id: invite.id,
@@ -310,9 +311,7 @@ export async function POST(request: Request) {
         const existingTrial = await tx.mahaLilahRoom.findFirst({
           where: {
             createdByUserId: session.user.id,
-            planType: MahaLilahPlanType.SINGLE_SESSION,
-            orderId: null,
-            subscriptionId: null
+            isTrial: true
           },
           select: { id: true, code: true }
         })
@@ -329,6 +328,7 @@ export async function POST(request: Request) {
             maxParticipants: 1,
             therapistPlays: true,
             planType: MahaLilahPlanType.SINGLE_SESSION,
+            isTrial: true,
             consentTextVersion
           }
         })
@@ -365,6 +365,7 @@ export async function POST(request: Request) {
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
           therapistPlays: data.therapistPlays,
+          isTrial: false,
           planType: entitlement.planType,
           orderId:
             entitlement.source === 'ORDER' ? entitlement.orderId : undefined,

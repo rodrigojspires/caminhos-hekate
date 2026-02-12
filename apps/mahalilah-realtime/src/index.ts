@@ -290,13 +290,9 @@ async function getDefaultAiLimitsForPlan(planType: string) {
 }
 
 function isTrialRoom(room: {
-  planType: string;
-  orderId: string | null;
-  subscriptionId: string | null;
+  isTrial?: boolean | null;
 }) {
-  return (
-    room.planType === "SINGLE_SESSION" && !room.orderId && !room.subscriptionId
-  );
+  return Boolean(room.isTrial);
 }
 
 function parseSubscriptionMahaMetadata(raw: unknown) {
@@ -321,6 +317,7 @@ async function getRoomAiLimits(room: {
   id: string;
   planType: string;
   orderId: string | null;
+  isTrial?: boolean | null;
   subscriptionId?: string | null;
   createdByUserId: string;
 }) {

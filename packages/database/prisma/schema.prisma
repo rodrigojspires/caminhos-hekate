@@ -3059,6 +3059,7 @@ model MahaLilahRoom {
   status             MahaLilahRoomStatus @default(ACTIVE)
   maxParticipants    Int
   therapistPlays     Boolean             @default(true)
+  isTrial            Boolean             @default(false)
   planType           MahaLilahPlanType   @default(SINGLE_SESSION)
   orderId            String?
   subscriptionId     String?
