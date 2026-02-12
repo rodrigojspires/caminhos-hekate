@@ -87,7 +87,8 @@ type DeckTimelineEntry = {
   drawnBy: { id: string; user: { name: string | null; email: string } };
 };
 
-type Notice = { message: string; variant: "error" | "success" };
+type DashboardToastKind = "info" | "success" | "warning" | "error";
+type DashboardToast = { id: number; message: string; kind: DashboardToastKind };
 
 type Filters = {
   status: string;
@@ -231,8 +232,7 @@ function getTutorialPopoverPosition(targetRect: DOMRect | null) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const canRight =
-    targetRect.right + gap + cardWidth <= viewportWidth - margin;
+  const canRight = targetRect.right + gap + cardWidth <= viewportWidth - margin;
   const canLeft = targetRect.left - gap - cardWidth >= margin;
   const canBottom =
     targetRect.bottom + gap + cardHeight <= viewportHeight - margin;
@@ -259,8 +259,16 @@ function getTutorialPopoverPosition(targetRect: DOMRect | null) {
     top = targetRect.top - cardHeight - gap;
   }
 
-  const clampedLeft = clampNumber(left, margin, viewportWidth - cardWidth - margin);
-  const clampedTop = clampNumber(top, margin, viewportHeight - cardHeight - margin);
+  const clampedLeft = clampNumber(
+    left,
+    margin,
+    viewportWidth - cardWidth - margin,
+  );
+  const clampedTop = clampNumber(
+    top,
+    margin,
+    viewportHeight - cardHeight - margin,
+  );
 
   const arrowOffset =
     placement === "right" || placement === "left"
@@ -292,7 +300,7 @@ export function DashboardClient() {
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [toasts, setToasts] = useState<DashboardToast[]>([]);
   const [canCreateRoom, setCanCreateRoom] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({});
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({});
@@ -333,12 +341,19 @@ export function DashboardClient() {
     [canCreateRoom, rooms.length],
   );
 
-  const showNotice = (
-    message: string,
-    variant: Notice["variant"] = "error",
-  ) => {
-    setNotice({ message, variant });
-    window.setTimeout(() => setNotice(null), 3000);
+  const pushToast = useCallback(
+    (message: string, kind: DashboardToastKind = "info") => {
+      const id = Date.now() + Math.floor(Math.random() * 10000);
+      setToasts((prev) => [...prev, { id, message, kind }].slice(-3));
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, 2600);
+    },
+    [],
+  );
+
+  const removeToast = (toastId: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
 
   const loadRooms = useCallback(
@@ -359,7 +374,7 @@ export function DashboardClient() {
         `/api/mahalilah/rooms${params.toString() ? `?${params.toString()}` : ""}`,
       );
       if (!res.ok) {
-        showNotice("Não foi possível carregar as salas.");
+        pushToast("Não foi possível carregar as salas.", "error");
         setLoading(false);
         return;
       }
@@ -369,7 +384,7 @@ export function DashboardClient() {
       setHasUsedTrial(Boolean(data.hasUsedTrial));
       setLoading(false);
     },
-    [filters],
+    [filters, pushToast],
   );
 
   useEffect(() => {
@@ -497,7 +512,7 @@ export function DashboardClient() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      showNotice(payload.error || "Erro ao criar sala.");
+      pushToast(payload.error || "Erro ao criar sala.", "error");
       setCreating(false);
       return;
     }
@@ -516,7 +531,7 @@ export function DashboardClient() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      showNotice(payload.error || "Erro ao criar sala trial.");
+      pushToast(payload.error || "Erro ao criar sala trial.", "error");
       setCreatingTrial(false);
       return;
     }
@@ -554,12 +569,12 @@ export function DashboardClient() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      showNotice(payload.error || "Erro ao enviar convites.");
+      pushToast(payload.error || "Erro ao enviar convites.", "error");
       return;
     }
 
     setInviteEmails((prev) => ({ ...prev, [roomId]: "" }));
-    showNotice("Convites enviados com sucesso.", "success");
+    pushToast("Convites enviados com sucesso.", "success");
     await loadRooms();
   };
 
@@ -576,11 +591,11 @@ export function DashboardClient() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      showNotice(payload.error || "Erro ao remover participante.");
+      pushToast(payload.error || "Erro ao remover participante.", "error");
       return;
     }
 
-    showNotice("Participante removido.", "success");
+    pushToast("Participante removido.", "success");
     await loadRooms();
   };
 
@@ -590,7 +605,7 @@ export function DashboardClient() {
     );
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      showNotice(payload.error || "Erro ao exportar sessão.");
+      pushToast(payload.error || "Erro ao exportar sessão.", "error");
       return;
     }
 
@@ -827,7 +842,10 @@ export function DashboardClient() {
 
         <div className="grid dashboard-room-indicators" style={{ gap: 8 }}>
           <strong>Indicadores</strong>
-          <div className="dashboard-room-pill-row" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div
+            className="dashboard-room-pill-row"
+            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
             <span className="pill">Jogadas: {room.stats.moves}</span>
             <span className="pill">Rolagens: {room.stats.rollsTotal}</span>
             <span className="pill">
@@ -910,9 +928,7 @@ export function DashboardClient() {
                     [room.id]: "deck",
                   }))
                 }
-                data-tour-dashboard={
-                  index === 0 ? "room-tab-deck" : undefined
-                }
+                data-tour-dashboard={index === 0 ? "room-tab-deck" : undefined}
               >
                 Deck randômico
               </button>
@@ -1406,11 +1422,68 @@ export function DashboardClient() {
 
   return (
     <div className="grid dashboard-root" style={{ gap: 24 }}>
-      {notice && (
-        <div className={`notice ${notice.variant === "success" ? "good" : ""}`}>
-          {notice.message}
-        </div>
-      )}
+      <div
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: 18,
+          transform: "translateX(-50%)",
+          zIndex: 9999,
+          display: "grid",
+          gap: 8,
+          width: "min(92vw, 560px)",
+          pointerEvents: "none",
+        }}
+      >
+        {toasts.map((toast) => {
+          const palette =
+            toast.kind === "success"
+              ? { border: "rgba(118, 240, 181, 0.35)", dot: "#76f0b5" }
+              : toast.kind === "warning"
+                ? { border: "rgba(255, 207, 90, 0.35)", dot: "#ffcf5a" }
+                : toast.kind === "error"
+                  ? { border: "rgba(255, 107, 107, 0.35)", dot: "#ff6b6b" }
+                  : { border: "rgba(154, 208, 255, 0.35)", dot: "#9ad0ff" };
+
+          return (
+            <div
+              key={toast.id}
+              style={{
+                pointerEvents: "auto",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                padding: "10px 12px",
+                borderRadius: 14,
+                border: `1px solid ${palette.border}`,
+                background: "rgba(15, 22, 33, 0.95)",
+                boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 999,
+                  background: palette.dot,
+                  marginTop: 4,
+                  flex: "0 0 auto",
+                }}
+              />
+              <div style={{ flex: 1, fontSize: 13, lineHeight: 1.35 }}>
+                {toast.message}
+              </div>
+              <button
+                className="btn-ghost"
+                style={{ padding: "2px 8px", borderRadius: 8 }}
+                onClick={() => removeToast(toast.id)}
+              >
+                x
+              </button>
+            </div>
+          );
+        })}
+      </div>
       {hasUsedTrial === false && (
         <div
           className="card dashboard-create-card"
@@ -1582,7 +1655,10 @@ export function DashboardClient() {
             Nenhuma sala encontrada com os filtros atuais.
           </div>
         ) : (
-          <div className="dashboard-sessions-list" data-tour-dashboard="sessions-list">
+          <div
+            className="dashboard-sessions-list"
+            data-tour-dashboard="sessions-list"
+          >
             {roomCards}
           </div>
         )}
@@ -1687,7 +1763,9 @@ export function DashboardClient() {
               position: "fixed",
               top: dashboardTutorialPopover?.top || "50%",
               left: dashboardTutorialPopover?.left || "50%",
-              transform: dashboardTutorialPopover ? "none" : "translate(-50%, -50%)",
+              transform: dashboardTutorialPopover
+                ? "none"
+                : "translate(-50%, -50%)",
               zIndex: 10002,
             }}
           >

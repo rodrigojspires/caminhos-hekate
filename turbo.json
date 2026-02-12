@@ -32,6 +32,12 @@
     },
     "db:seed": {
       "cache": false
+    },
+    "db:seed:dev": {
+      "cache": false
+    },
+    "db:seed:prod": {
+      "cache": false
     }
   }
 }

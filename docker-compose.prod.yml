@@ -231,7 +231,7 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["pnpm"]
-    command: ["--filter", "@hekate/database", "db:seed"]
+    command: ["--filter", "@hekate/database", "db:seed:prod"]
     # Run only on demand: `docker compose -f docker-compose.prod.yml run --rm dbtools`
 
 volumes:
