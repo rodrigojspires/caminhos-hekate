@@ -51,7 +51,7 @@ export default function HomePage() {
         title="Maha Lilah Online"
         subtitle="Salas ao vivo para jornadas terapêuticas com registro, deck randômico e síntese por IA."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
+        secondaryCta={{ label: 'Experimente já', href: '/dashboard' }}
         mediaLabel="Vídeo hero: criar sala, convidar por e-mail, rolar dado, puxar cartas, registrar terapia, gerar resumo"
         note="Não substitui terapia ou atendimento médico"
       />
@@ -176,7 +176,7 @@ export default function HomePage() {
         title="Comece com clareza e segurança"
         subtitle="Crie sua primeira sala e acompanhe toda a jornada com registro e síntese cuidadosa."
         primaryCta={{ label: 'Começar agora', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        secondaryCta={{ label: 'Experimente já', href: '/dashboard' }}
       />
 
       <LegalNotice

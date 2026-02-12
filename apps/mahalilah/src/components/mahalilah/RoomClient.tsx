@@ -1541,12 +1541,6 @@ export function RoomClient({ code }: { code: string }) {
     setTrialLimitModalOpen(true);
   }, [trialLimitReached]);
 
-  useEffect(() => {
-    if (!isTrialRoom) return;
-    if (activePanel !== "ai") return;
-    setActivePanel("house");
-  }, [isTrialRoom, activePanel]);
-
   const summaryStatus = summaryPlayerState
     ? summaryPlayerState.hasCompleted
       ? "Concluiu (retornou à casa 68)"
@@ -2120,20 +2114,12 @@ export function RoomClient({ code }: { code: string }) {
           >
             {ACTION_ITEMS.map((item) => {
               const isActive = activePanel === item.key;
-              const isTrialAiDisabled = isTrialRoom && item.key === "ai";
               return (
                 <button
                   key={item.key}
                   className={isActive ? "btn-primary" : "btn-secondary"}
-                  onClick={() => {
-                    if (isTrialAiDisabled) {
-                      setTrialLimitModalOpen(true);
-                      return;
-                    }
-                    handleSelectActionPanel(item.key);
-                  }}
+                  onClick={() => handleSelectActionPanel(item.key)}
                   title={item.label}
-                  disabled={isTrialAiDisabled}
                   data-tour-room={
                     isMobileViewport
                       ? undefined
@@ -2497,22 +2483,12 @@ export function RoomClient({ code }: { code: string }) {
           {activePanel === "ai" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>IA terapêutica</strong>
-              {isTrialRoom ? (
-                <div className="notice" style={{ display: "grid", gap: 8 }}>
-                  <span className="small-muted">
-                    A IA fica indisponível na sala trial.
-                  </span>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href="/pricing" className="btn-secondary">
-                      Assinar plano
-                    </a>
-                    <a href="/pricing" className="btn-secondary">
-                      Comprar sala avulsa
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <>
+              {isTrialRoom && (
+                <span className="small-muted">
+                  No modo trial, o menu IA fica visível para demonstração, mas
+                  os botões ficam bloqueados.
+                </span>
+              )}
               <span className="small-muted">
                 Ajudas usadas:{" "}
                 <strong>
@@ -2522,7 +2498,7 @@ export function RoomClient({ code }: { code: string }) {
 
               <button
                 className="secondary"
-                disabled={actionsBlockedByConsent || aiTipLoading}
+                disabled={actionsBlockedByConsent || aiTipLoading || isTrialRoom}
                 onClick={() =>
                   (() => {
                     if (!socket) return;
@@ -2601,6 +2577,7 @@ export function RoomClient({ code }: { code: string }) {
                       <button
                         key={report.id}
                         className="btn-secondary"
+                        disabled={isTrialRoom}
                         style={{
                           justifyContent: "flex-start",
                           textAlign: "left",
@@ -2633,7 +2610,9 @@ export function RoomClient({ code }: { code: string }) {
               <button
                 className="secondary"
                 onClick={() => void requestFinalReport()}
-                disabled={actionsBlockedByConsent || finalReportLoading}
+                disabled={
+                  actionsBlockedByConsent || finalReportLoading || isTrialRoom
+                }
               >
                 {finalReportLoading
                   ? "Gerando resumo final..."
@@ -2644,8 +2623,6 @@ export function RoomClient({ code }: { code: string }) {
                 <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
                   {aiSummary}
                 </div>
-              )}
-                </>
               )}
             </div>
           )}
@@ -2966,20 +2943,12 @@ export function RoomClient({ code }: { code: string }) {
       <div className="room-mobile-actionbar">
         {ACTION_ITEMS.map((item) => {
           const isActive = activePanel === item.key;
-          const isTrialAiDisabled = isTrialRoom && item.key === "ai";
           return (
             <button
               key={`mobile-${item.key}`}
               className={isActive ? "btn-primary" : "btn-secondary"}
-              onClick={() => {
-                if (isTrialAiDisabled) {
-                  setTrialLimitModalOpen(true);
-                  return;
-                }
-                handleSelectActionPanel(item.key);
-              }}
+              onClick={() => handleSelectActionPanel(item.key)}
               title={item.label}
-              disabled={isTrialAiDisabled}
               data-tour-room={
                 isMobileViewport
                   ? TOUR_TARGET_BY_ACTION_PANEL[item.key]

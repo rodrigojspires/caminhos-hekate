@@ -159,9 +159,14 @@ export function Navbar() {
               )}
             </div>
           ) : (
-            <Link href="/login" className="btn-ghost px-3 py-2">
-              Entrar
-            </Link>
+            <>
+              <Link href="/login" className="btn-ghost px-3 py-2">
+                Entrar
+              </Link>
+              <Link href="/dashboard" className="btn-secondary px-3 py-2">
+                Experimente já
+              </Link>
+            </>
           )}
           {session ? (
             <Link href="/dashboard" className="btn-primary px-3 py-2">
@@ -232,13 +237,20 @@ export function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Link
                   href="/login"
                   className="btn-ghost w-full justify-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Entrar
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="btn-secondary w-full justify-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Experimente já
                 </Link>
                 <Link
                   href="/planos"
