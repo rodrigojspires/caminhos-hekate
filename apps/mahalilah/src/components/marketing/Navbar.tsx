@@ -7,14 +7,20 @@ import { signOut, useSession } from 'next-auth/react'
 
 const navLinks = [
   { href: '/', label: 'Início' },
-  { href: '/como-funciona', label: 'Como funciona' },
   { href: '/planos', label: 'Planos' },
+  { href: '/como-funciona', label: 'Como funciona' },
   { href: '/recursos', label: 'Recursos' },
   { href: '/para-terapeutas', label: 'Para terapeutas' },
+  { href: '/para-grupos', label: 'Para grupos' },
   { href: '/faq', label: 'FAQ' },
   { href: '/blog', label: 'Blog' },
   { href: '/contato', label: 'Contato' }
 ]
+
+const isLinkActive = (pathname: string, href: string) => {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
 
 export function Navbar() {
   const { data: session, status } = useSession()
@@ -81,7 +87,11 @@ export function Navbar() {
   }, [mobileMenuOpen])
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/60 bg-[#0b0e13]/80 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-border/70 bg-[linear-gradient(180deg,rgba(10,15,24,0.95),rgba(10,15,24,0.84))] backdrop-blur">
+      <div className="hidden border-b border-border/50 px-4 py-2 text-center text-xs uppercase tracking-[0.18em] text-gold-soft sm:block">
+        Experimente o fluxo ao vivo e publique sua primeira sala em menos de 5 minutos
+      </div>
+
       <div className="mx-auto flex w-full max-w-content items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-3">
@@ -90,20 +100,31 @@ export function Navbar() {
             </div>
             <div>
               <p className="font-serif text-lg text-ink">Maha Lilah Online</p>
-              <p className="text-xs uppercase tracking-[0.28em] text-ink-muted">SaaS terapêutico</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-ink-muted">Jornadas ao vivo</p>
             </div>
           </Link>
         </div>
 
         <nav
           aria-label="Navegação principal"
-          className="hidden flex-wrap items-center gap-4 text-sm text-ink-muted lg:flex"
+          className="hidden flex-wrap items-center gap-2 text-sm text-ink-muted lg:flex"
         >
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="transition hover:text-ink">
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const active = isLinkActive(pathname, link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-full px-3 py-1.5 transition ${
+                  active
+                    ? 'border border-gold/35 bg-surface/85 text-ink'
+                    : 'border border-transparent text-ink-muted hover:border-border/70 hover:bg-surface/65 hover:text-ink'
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="hidden flex-wrap items-center gap-3 lg:flex">
@@ -168,28 +189,28 @@ export function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="btn-ghost px-3 py-2">
+              <Link href="/login" className="btn-ghost">
                 Entrar
               </Link>
-              <Link href="/dashboard" className="btn-secondary px-3 py-2">
-                Experimente já
+              <Link href="/dashboard" className="btn-secondary">
+                Ver demo
               </Link>
             </>
           )}
           {session ? (
-            <Link href="/dashboard" className="btn-primary px-3 py-2">
-              Dashboard
+            <Link href="/dashboard" className="btn-primary">
+              Ir para dashboard
             </Link>
           ) : (
-            <Link href="/planos" className="btn-primary px-3 py-2">
-              Ver planos
+            <Link href="/planos" className="btn-primary">
+              Começar agora
             </Link>
           )}
         </div>
 
         <button
           type="button"
-          className="btn-ghost px-3 py-2 lg:hidden"
+          className="btn-ghost lg:hidden"
           onClick={() => setMobileMenuOpen((open) => !open)}
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-nav"
@@ -205,16 +226,23 @@ export function Navbar() {
           className="border-t border-border/60 bg-[#0b0e13]/95 px-4 pb-5 pt-4 sm:px-6 lg:hidden"
         >
           <nav aria-label="Navegação principal mobile" className="grid gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-xl border border-transparent px-3 py-2 text-sm text-ink-muted transition hover:border-border/60 hover:bg-surface/70 hover:text-ink"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const active = isLinkActive(pathname, link.href)
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-xl border px-3 py-2 text-sm transition ${
+                    active
+                      ? 'border-gold/35 bg-surface/80 text-ink'
+                      : 'border-transparent text-ink-muted hover:border-border/60 hover:bg-surface/70 hover:text-ink'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </nav>
 
           <div className="mt-4 border-t border-border/60 pt-4">
@@ -265,14 +293,14 @@ export function Navbar() {
                   className="btn-secondary w-full justify-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Experimente já
+                  Ver demo
                 </Link>
                 <Link
                   href="/planos"
                   className="btn-primary w-full justify-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Ver planos
+                  Começar agora
                 </Link>
               </div>
             )}

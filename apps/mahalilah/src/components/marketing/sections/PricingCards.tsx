@@ -31,10 +31,17 @@ export function PricingCards({
         {plans.map((plan) => (
           <div
             key={plan.name}
-            className={`flex h-full flex-col gap-6 rounded-3xl border ${
-              plan.highlight ? 'border-gold/70 bg-surface' : 'border-border/70 bg-surface/70'
-            } p-6 shadow-soft sm:p-8`}
+            className={`relative flex h-full flex-col gap-6 rounded-3xl border ${
+              plan.highlight
+                ? 'border-gold/70 bg-[linear-gradient(160deg,rgba(34,49,70,0.95),rgba(20,29,44,0.96))]'
+                : 'border-border/70 bg-surface/75'
+            } p-6 shadow-soft transition hover:-translate-y-0.5 sm:p-8`}
           >
+            {plan.highlight && (
+              <span className="absolute right-4 top-4 rounded-full border border-gold/45 bg-surface/80 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-gold-soft">
+                Mais escolhido
+              </span>
+            )}
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.3em] text-ink-muted">{plan.name}</span>
               {typeof plan.price === 'string' ? (

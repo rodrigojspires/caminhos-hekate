@@ -57,7 +57,7 @@ export default function BlogPostPage({ params }: PageProps) {
 
   return (
     <div>
-      <SectionShell className="pt-20">
+      <SectionShell className="pt-16">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-ink-muted">
@@ -65,7 +65,7 @@ export default function BlogPostPage({ params }: PageProps) {
               <span>{post.date}</span>
               <span>{post.readTime}</span>
             </div>
-            <h1 className="font-serif text-4xl text-ink">{post.title}</h1>
+            <h1 className="font-serif text-4xl text-ink sm:text-5xl">{post.title}</h1>
             <p className="text-base text-ink-muted">{post.excerpt}</p>
             <div className="flex flex-wrap gap-3">
               <Link href="/login" className="btn-primary">
@@ -96,10 +96,10 @@ export default function BlogPostPage({ params }: PageProps) {
       {post.content.map((section) => (
         <SectionShell key={section.heading}>
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="flex flex-col gap-4">
-              <h2 className="font-serif text-2xl text-ink">{section.heading}</h2>
-              {section.paragraphs.map((paragraph) => (
-                <p key={paragraph} className="text-sm text-ink-muted">
+          <div className="flex flex-col gap-4">
+            <h2 className="font-serif text-2xl text-ink">{section.heading}</h2>
+            {section.paragraphs.map((paragraph) => (
+                <p key={paragraph} className="text-sm leading-relaxed text-ink-muted">
                   {paragraph}
                 </p>
               ))}
@@ -122,6 +122,7 @@ export default function BlogPostPage({ params }: PageProps) {
         subtitle="Crie uma sala ao vivo e registre os insights com clareza."
         primaryCta={{ label: 'Criar sala', href: '/login' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Aplicação imediata', 'Fluxo em tempo real']}
       />
     </div>
   )

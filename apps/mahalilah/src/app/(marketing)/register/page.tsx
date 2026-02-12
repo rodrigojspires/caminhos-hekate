@@ -20,12 +20,13 @@ export default function RegisterPage() {
     <div>
       <Hero
         eyebrow="Cadastro rápido"
-        title="Crie sua conta com nome, e-mail e senha"
-        subtitle="Seu cadastro garante acesso seguro às salas, convites personalizados e histórico terapêutico."
+        title="Crie sua conta e entre no fluxo em poucos minutos"
+        subtitle="Cadastro simples para acessar salas, convites personalizados e histórico terapêutico com segurança."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
         mediaLabel="Tela de cadastro do Maha Lilah Online"
         note="Conta única para toda a experiência"
+        highlights={['Cadastro em 1 minuto', 'Acesso seguro', 'Sem burocracia']}
       />
 
       <SectionShell>
@@ -47,6 +48,7 @@ export default function RegisterPage() {
         subtitle="Após criar sua conta, basta entrar com o mesmo e-mail do convite para acessar a sala."
         primaryCta={{ label: 'Entrar', href: '/login' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Conta única', 'Fluxo instantâneo']}
       />
     </div>
   )

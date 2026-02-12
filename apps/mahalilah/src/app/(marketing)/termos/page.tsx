@@ -41,6 +41,7 @@ export default function TermosPage() {
         primaryCta={{ label: 'Política de privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Política de reembolso', href: '/politica-de-reembolso' }}
         mediaLabel="Imagem: termos e acordos"
+        highlights={['Uso responsável', 'Consentimento', 'Transparência']}
       />
 
       <SectionShell>
@@ -142,6 +143,7 @@ export default function TermosPage() {
         subtitle="Crie sua sala com responsabilidade e respeito ao grupo."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Entrar', href: '/login' }}
+        badges={['Diretrizes claras', 'Proteção de dados']}
       />
     </div>
   )

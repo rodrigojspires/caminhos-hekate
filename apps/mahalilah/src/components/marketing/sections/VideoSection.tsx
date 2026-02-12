@@ -20,9 +20,12 @@ export function VideoSection({
         <div className="flex flex-col gap-6">
           <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
           {bullets && (
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
+            <ul className="space-y-3 text-sm text-ink-muted">
               {bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
+                <li key={bullet} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{bullet}</span>
+                </li>
               ))}
             </ul>
           )}

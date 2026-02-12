@@ -11,10 +11,12 @@ import { getPlanConfig } from '@/lib/mahalilah/plans'
 
 export const metadata: Metadata = {
   title: 'Planos',
-  description: 'Escolha entre sessão avulsa, assinatura mensal ilimitada ou plano com salas mensais.',
+  description:
+    'Planos flexíveis para quem quer experimentar, escalar atendimentos ou conduzir grupos recorrentes.',
   openGraph: {
     title: 'Planos Maha Lilah Online',
-    description: 'Sessão avulsa ou assinaturas com limites claros e checkout via Mercado Pago.',
+    description:
+      'Planos flexíveis para quem quer experimentar, escalar atendimentos ou conduzir grupos recorrentes.',
     url: '/planos'
   }
 }
@@ -22,19 +24,19 @@ export const metadata: Metadata = {
 const billingFaq = [
   {
     question: 'Quais formas de pagamento estão disponíveis?',
-    answer: 'Pix e cartão via Mercado Pago. O checkout é seguro e rápido.'
+    answer: 'Pix e cartão via Mercado Pago, com checkout rápido e seguro.'
   },
   {
     question: 'Como funciona a renovação?',
-    answer: 'Planos mensais renovam automaticamente até cancelamento.'
+    answer: 'Planos mensais renovam automaticamente até o cancelamento.'
   },
   {
     question: 'Posso cancelar quando quiser?',
-    answer: 'Sim. O cancelamento impede a próxima cobrança, sem multas.'
+    answer: 'Sim. O cancelamento impede novas cobranças e não possui multa.'
   },
   {
-    question: 'E o reembolso?',
-    answer: 'Veja os critérios completos na política de reembolso.'
+    question: 'Como funciona o reembolso?',
+    answer: 'As regras estão detalhadas na Política de Reembolso, com critérios transparentes.'
   }
 ]
 
@@ -50,7 +52,7 @@ export const dynamic = 'force-dynamic'
 export default async function PlanosPage() {
   const planConfig = await getPlanConfig()
 
-  const pricingPlans: PricingPlan[] = [
+  const planCandidates: Array<PricingPlan | null> = [
     planConfig.singleSession.isActive
       ? {
           name: planConfig.singleSession.name,
@@ -63,7 +65,7 @@ export default async function PlanosPage() {
           limits: planConfig.singleSession.marketing.limits,
           cta: {
             label: planConfig.singleSession.marketing.ctaLabel,
-            href: planConfig.singleSession.marketing.ctaHref,
+            href: planConfig.singleSession.marketing.ctaHref
           },
           highlight: planConfig.singleSession.marketing.highlight
         }
@@ -78,7 +80,7 @@ export default async function PlanosPage() {
           limits: planConfig.subscriptionUnlimited.marketing.limits,
           cta: {
             label: planConfig.subscriptionUnlimited.marketing.ctaLabel,
-            href: planConfig.subscriptionUnlimited.marketing.ctaHref,
+            href: planConfig.subscriptionUnlimited.marketing.ctaHref
           },
           highlight: planConfig.subscriptionUnlimited.marketing.highlight
         }
@@ -93,28 +95,36 @@ export default async function PlanosPage() {
           limits: planConfig.subscriptionLimited.marketing.limits,
           cta: {
             label: planConfig.subscriptionLimited.marketing.ctaLabel,
-            href: planConfig.subscriptionLimited.marketing.ctaHref,
+            href: planConfig.subscriptionLimited.marketing.ctaHref
           },
           highlight: planConfig.subscriptionLimited.marketing.highlight
         }
       : null
-  ].filter((plan): plan is PricingPlan => Boolean(plan))
+  ]
+
+  const pricingPlans = planCandidates.filter((plan): plan is PricingPlan => plan !== null)
 
   return (
     <div>
       <Hero
         eyebrow="Planos"
-        title="Escolha o formato ideal"
-        subtitle="Sessão avulsa para experimentar ou assinaturas para quem conduz com frequência."
-        primaryCta={{ label: 'Assinar', href: '/checkout' }}
-        secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
-        mediaLabel="Imagem: comparativo de planos e limites"
+        title="Escolha o plano que acompanha seu ritmo de condução"
+        subtitle="Comece leve com sessão avulsa ou escale com assinatura para ter previsibilidade, continuidade e profundidade."
+        primaryCta={{ label: 'Ir para checkout', href: '/checkout' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        mediaLabel="Comparativo visual de planos e benefícios"
+        highlights={['Pix e cartão', 'Cancelamento sem multa', 'Upgrade quando quiser']}
+        metrics={[
+          { value: '3', label: 'formatos de contratação' },
+          { value: '100%', label: 'checkout seguro' },
+          { value: '0', label: 'taxa de setup' }
+        ]}
       />
 
       <PricingCards
-        eyebrow="Planos e limites"
-        title="Opções para diferentes ritmos"
-        subtitle="Cada plano tem limites de salas e uso de IA definidos para manter qualidade e segurança."
+        eyebrow="Planos e benefícios"
+        title="Opções para diferentes momentos da sua jornada"
+        subtitle="Escolha o que faz sentido agora e ajuste depois, sem perder histórico."
         plans={pricingPlans}
       />
 
@@ -122,14 +132,46 @@ export default async function PlanosPage() {
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="flex flex-col gap-6">
             <SectionHeader
-              eyebrow="IA com limites"
-              title="Uso consciente e controlado"
-              subtitle="A IA oferece perguntas e uma síntese final por botão, sempre com limites definidos por plano."
+              eyebrow="Valor percebido"
+              title="Por que os planos retêm melhor"
+              subtitle="Além da tecnologia, você leva consistência operacional para cada sessão."
             />
-            <div className="rounded-2xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted">
+            <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-6">
+              <ul className="space-y-3">
+                {[
+                  'Menos tempo com organização manual e mais foco em presença terapêutica.',
+                  'Histórico claro entre sessões, aumentando adesão dos participantes.',
+                  'Fluxo previsível para grupos recorrentes e atendimentos individuais.',
+                  'Uso de IA como suporte estratégico, sem perder autonomia profissional.'
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-sm text-ink-muted">
+              Precisa de ajuda para escolher? Fale com a equipe e montamos a melhor configuração para seu perfil.
+            </p>
+          </div>
+          <MediaPlaceholder variant="vertical" label="Painel de comparação entre planos" />
+        </div>
+      </SectionShell>
+
+      <SectionShell>
+        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+          <MediaPlaceholder variant="horizontal" label="Fluxo de IA assistida e limites por plano" />
+          <div className="flex flex-col gap-6">
+            <SectionHeader
+              eyebrow="IA assistida"
+              title="Uso consciente, com limites claros"
+              subtitle="Você decide quando usar IA para perguntas e fechamento, sempre com controle humano."
+            />
+            <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-6">
               <p>
-                Cada jogador tem direito a um número configurável de dicas por sessão, além de síntese final
-                dentro do limite de cada plano.
+                Cada plano define quantas dicas por jogador e quantas sínteses por sessão estão disponíveis.
+                Assim você evita excesso e mantém a qualidade da condução.
               </p>
               {planConfig.singleSession.isActive && (
                 <p className="mt-3 text-xs uppercase tracking-[0.2em] text-ink-muted">
@@ -147,17 +189,13 @@ export default async function PlanosPage() {
                 </p>
               )}
             </div>
-            <p className="text-sm text-ink-muted">
-              A IA não substitui terapia. Ela organiza registros e sugere perguntas, mas a condução é sempre humana.
-            </p>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: painel de limites de IA" />
         </div>
       </SectionShell>
 
       <FAQ
         eyebrow="Pagamento"
-        title="Perguntas sobre cobrança"
+        title="Perguntas sobre cobrança e assinatura"
         items={billingFaq}
         ctaLabel="Ver política de reembolso"
         ctaHref="/politica-de-reembolso"
@@ -166,17 +204,25 @@ export default async function PlanosPage() {
       <SectionShell>
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
           <p>
-            Ao assinar, você concorda com nossos <Link className="text-gold" href="/termos">Termos de uso</Link>
-            {' '}e com a <Link className="text-gold" href="/privacidade">Política de privacidade</Link>.
+            Ao contratar qualquer plano, você concorda com nossos{' '}
+            <Link className="text-gold" href="/termos">
+              Termos de uso
+            </Link>{' '}
+            e com a{' '}
+            <Link className="text-gold" href="/privacidade">
+              Política de privacidade
+            </Link>
+            .
           </p>
         </div>
       </SectionShell>
 
       <CTA
-        title="Escolha seu plano e comece"
-        subtitle="Sessão avulsa para testar ou assinatura para quem precisa de continuidade."
+        title="Pronto para dar o próximo passo?"
+        subtitle="Escolha seu plano e comece sua primeira sessão com uma experiência de alto valor percebido."
         primaryCta={{ label: 'Assinar agora', href: '/checkout' }}
-        secondaryCta={{ label: 'Falar com vendas', href: '/contato' }}
+        secondaryCta={{ label: 'Tirar dúvidas', href: '/contato' }}
+        badges={['Pagamento seguro', 'Sem fidelidade obrigatória', 'Suporte humano']}
       />
     </div>
   )

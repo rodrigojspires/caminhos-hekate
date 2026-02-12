@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div className="flex flex-col gap-6">
             <LoginForm />
             <div className="flex flex-col gap-3">
-              <h2 className="font-serif text-3xl text-ink">Seu acesso, seu ritmo</h2>
+              <h2 className="font-serif text-3xl text-ink">Entre e retome sua jornada com um clique</h2>
               <p className="text-base text-ink-muted">
                 Use o mesmo login do Caminhos de Hekate. O acesso garante que cada participante esteja
                 identificado e que os registros fiquem vinculados ao perfil correto.
@@ -59,10 +59,11 @@ export default function LoginPage() {
       />
 
       <CTA
-        title="Pronto para sua primeira sala?"
-        subtitle="Escolha o formato ideal ou avance direto para o checkout com sua sessão avulsa."
+        title="Pronto para iniciar uma nova sessão?"
+        subtitle="Escolha o plano ideal ou avance para o checkout e comece em minutos."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Ir para checkout', href: '/checkout' }}
+        badges={['Login seguro', 'Histórico contínuo']}
       />
     </div>
   )

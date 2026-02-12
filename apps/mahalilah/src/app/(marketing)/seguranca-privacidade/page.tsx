@@ -41,6 +41,7 @@ export default function SegurancaPrivacidadePage() {
         primaryCta={{ label: 'Ver política de privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Termos de uso', href: '/termos' }}
         mediaLabel="Imagem: escudo de segurança com luz suave"
+        highlights={['Login obrigatório', 'Consentimento registrado', 'Acesso rastreável']}
       />
 
       <SectionShell>
@@ -103,6 +104,7 @@ export default function SegurancaPrivacidadePage() {
         subtitle="Crie sua sala com clareza de consentimento e controle total sobre o acesso."
         primaryCta={{ label: 'Criar sala', href: '/login' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Privacidade por padrão', 'Controle de acesso']}
       />
     </div>
   )

@@ -7,10 +7,12 @@ import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 
 export const metadata: Metadata = {
   title: 'Recursos',
-  description: 'Deck randômico, modo terapia, tempo real e síntese por IA: tudo dentro da sala.',
+  description:
+    'Conheça os recursos que tornam o Maha Lilah Online envolvente, seguro e com alto potencial de retenção.',
   openGraph: {
     title: 'Recursos do Maha Lilah Online',
-    description: 'Deck randômico, modo terapia, tempo real e síntese por IA: tudo dentro da sala.',
+    description:
+      'Conheça os recursos que tornam o Maha Lilah Online envolvente, seguro e com alto potencial de retenção.',
     url: '/recursos'
   }
 }
@@ -18,15 +20,15 @@ export const metadata: Metadata = {
 const faqItems = [
   {
     question: 'Posso puxar cartas em qualquer momento?',
-    answer: 'Sim. O deck randômico permite puxar 1 a 3 cartas quando fizer sentido.'
+    answer: 'Sim. O deck randômico funciona como gatilho de reflexão no momento em que fizer sentido.'
   },
   {
     question: 'O modo terapia é obrigatório?',
-    answer: 'Não. Ele é uma camada opcional de registro para quem deseja acompanhar detalhes.'
+    answer: 'Não. Ele é opcional e fica disponível quando você quer aprofundar registro e continuidade.'
   },
   {
-    question: 'A IA pode ser desativada?',
-    answer: 'Sim. O uso é sempre opcional e limitado por plano.'
+    question: 'A IA pode ser desligada?',
+    answer: 'Sim. O uso é opcional e controlado por limites definidos no seu plano.'
   }
 ]
 
@@ -35,11 +37,12 @@ export default function RecursosPage() {
     <div>
       <Hero
         eyebrow="Recursos"
-        title="Tudo o que você precisa dentro da sala"
-        subtitle="Tempo real, turnos claros, deck randômico, modo terapia e IA com limites — em um fluxo único."
+        title="Uma plataforma desenhada para sessões que as pessoas querem repetir"
+        subtitle="Cada recurso foi pensado para aumentar presença, clareza e continuidade: do tabuleiro ao fechamento."
         primaryCta={{ label: 'Experimentar', href: '/login' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
-        mediaLabel="Imagem: painel completo de recursos"
+        mediaLabel="Visão geral do ecossistema de recursos do Maha Lilah Online"
+        highlights={['Tempo real', 'Turnos claros', 'Registros por rodada', 'IA assistida']}
       />
 
       <SectionShell>
@@ -47,32 +50,46 @@ export default function RecursosPage() {
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Sala ao vivo"
-              title="Tempo real e sincronizado"
-              subtitle="Todos veem o mesmo tabuleiro e acompanham jogadas em tempo real."
+              title="Sincronia instantânea para todos"
+              subtitle="Participantes e facilitadores enxergam o mesmo contexto em tempo real."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Sala online com atualização instantânea.</li>
-              <li>Visibilidade completa para facilitadores e terapeutas.</li>
-              <li>Controle de participantes via login.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Atualização em tempo real para manter ritmo coletivo.',
+                'Visão compartilhada do tabuleiro sem confusão.',
+                'Entrada com login para proteger identidade do grupo.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Screenshot: sala ao vivo" />
+          <MediaPlaceholder variant="horizontal" label="Sala ao vivo com tabuleiro compartilhado" />
         </div>
       </SectionShell>
 
       <SectionShell>
         <div id="turnos" className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Screenshot: turnos e rolagens" />
+          <MediaPlaceholder variant="vertical" label="Controle de turnos e rolagens" />
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Turnos"
-              title="Rolagens com clareza"
-              subtitle="Cada jogador rola o próprio dado na sua vez, mantendo o ritmo do grupo."
+              title="Ritmo claro para grupos pequenos e grandes"
+              subtitle="Cada pessoa joga na sua vez com total visibilidade do processo."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Indicação clara do jogador da vez.</li>
-              <li>Sequência organizada para grupos grandes.</li>
-              <li>Controle suave pelo facilitador.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Indicação visual de quem está no turno atual.',
+                'Menos sobreposição de fala e maior escuta ativa.',
+                'Facilitador com controle leve do andamento.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -83,32 +100,46 @@ export default function RecursosPage() {
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Deck randômico"
-              title="Cartas que abrem perguntas"
-              subtitle="Puxe 1 a 3 cartas a qualquer momento, independente da casa."
+              title="Cartas para abrir espaço emocional"
+              subtitle="Puxe 1 a 3 cartas para iluminar perspectivas sem impor significado."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Cartas como disparadores, não respostas finais.</li>
-              <li>Uso livre conforme o ritmo da sessão.</li>
-              <li>Registros vinculados a cada carta puxada.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Gatilho de conversa quando o processo pede frescor.',
+                'Uso livre em qualquer ponto da sessão.',
+                'Registro conectado ao contexto da jogada.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Screenshot: deck randômico" />
+          <MediaPlaceholder variant="horizontal" label="Deck randômico dentro da sala" />
         </div>
       </SectionShell>
 
       <SectionShell>
         <div id="modo-terapia" className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Screenshot: modo terapia" />
+          <MediaPlaceholder variant="vertical" label="Modo terapia e campos estruturados" />
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Modo terapia"
-              title="Registre o essencial"
-              subtitle="Campos guiados para emoção, intensidade, insight, corpo e micro-ação."
+              title="Registro rápido com profundidade"
+              subtitle="Organize emoção, corpo, insight e micro-ação sem interromper a experiência."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Registro breve, consistente e comparável.</li>
-              <li>Histórico automático no perfil do terapeuta.</li>
-              <li>Export fácil para TXT/JSON.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Menos textos longos, mais clareza operacional.',
+                'Histórico automaticamente vinculado ao facilitador.',
+                'Export para continuidade fora da plataforma.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -119,16 +150,23 @@ export default function RecursosPage() {
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="IA com limites"
-              title="Perguntas e síntese final"
-              subtitle="Dicas limitadas por jogador e sessão, com síntese final por botão."
+              title="Perguntas melhores, decisões mais humanas"
+              subtitle="Use IA como apoio para ampliar reflexão e finalizar com síntese objetiva."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Uso opcional, sempre com controle humano.</li>
-              <li>Resumo final organizado para revisão rápida.</li>
-              <li>Limites configurados conforme o plano.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Ativação opcional e transparente para o grupo.',
+                'Limites por plano para preservar qualidade.',
+                'Fechamento por botão com organização da sessão.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Screenshot: painel de IA" />
+          <MediaPlaceholder variant="horizontal" label="Painel de IA assistida para perguntas e síntese" />
         </div>
       </SectionShell>
 
@@ -141,10 +179,11 @@ export default function RecursosPage() {
       />
 
       <CTA
-        title="Experimente na prática"
-        subtitle="Entre na plataforma e crie sua primeira sala ao vivo."
+        title="Agora é sua vez de sentir essa experiência ao vivo"
+        subtitle="Entre, crie sua sala e use os recursos na prática com seu grupo."
         primaryCta={{ label: 'Entrar', href: '/login' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Experiência fluida', 'Retenção por design', 'Suporte humano']}
       />
     </div>
   )

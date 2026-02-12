@@ -22,11 +22,9 @@ export function ImageGallery({
       <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
       <div className="grid gap-6 md:grid-cols-2">
         {items.map((item) => (
-          <MediaPlaceholder
-            key={item.label}
-            variant={item.variant ?? 'horizontal'}
-            label={item.label}
-          />
+          <div key={item.label} className="overflow-hidden rounded-3xl border border-border/70 bg-surface/40 p-1">
+            <MediaPlaceholder variant={item.variant ?? 'horizontal'} label={item.label} />
+          </div>
         ))}
       </div>
     </SectionShell>

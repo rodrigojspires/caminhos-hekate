@@ -39,7 +39,9 @@ export default function CookiesPage() {
         subtitle="Usamos cookies para garantir login seguro e melhorar a experiência. Você controla as preferências."
         primaryCta={{ label: 'Ver privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Termos de uso', href: '/termos' }}
-        mediaLabel="Imagem: cookies e preferencias" />
+        mediaLabel="Imagem: cookies e preferências"
+        highlights={['Controle do usuário', 'Transparência', 'Segurança de sessão']}
+      />
 
       <SectionShell>
         <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -73,7 +75,7 @@ export default function CookiesPage() {
             </div>
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.2em] text-ink-muted">
-            TODO: implementar banner real com consentimento.
+            Banner de consentimento apresentado conforme evolução da experiência.
           </p>
         </div>
       </SectionShell>

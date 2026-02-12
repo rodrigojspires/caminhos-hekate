@@ -7,10 +7,12 @@ import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 
 export const metadata: Metadata = {
   title: 'Como funciona',
-  description: 'Do convite ao resumo final: entenda o fluxo completo de uma sessão no Maha Lilah Online.',
+  description:
+    'Entenda o fluxo completo do Maha Lilah Online, do convite ao fechamento com síntese assistida.',
   openGraph: {
     title: 'Como funciona o Maha Lilah Online',
-    description: 'Do convite ao resumo final: entenda o fluxo completo de uma sessão no Maha Lilah Online.',
+    description:
+      'Entenda o fluxo completo do Maha Lilah Online, do convite ao fechamento com síntese assistida.',
     url: '/como-funciona'
   }
 }
@@ -18,15 +20,15 @@ export const metadata: Metadata = {
 const faqItems = [
   {
     question: 'Cada jogador rola o próprio dado?',
-    answer: 'Sim. O turno é individual e cada pessoa faz sua rolagem na sua vez.'
+    answer: 'Sim. A rolagem é individual e respeita a ordem do grupo.'
   },
   {
     question: 'Posso puxar cartas fora do tabuleiro?',
-    answer: 'Sim. O deck randômico permite puxar 1 a 3 cartas a qualquer momento.'
+    answer: 'Sim. O deck randômico pode ser acionado a qualquer momento, com 1 a 3 cartas.'
   },
   {
-    question: 'A síntese por IA é obrigatória?',
-    answer: 'Não. Ela fica disponível por botão, dentro dos limites do plano.'
+    question: 'A síntese por IA é automática?',
+    answer: 'Não. Ela aparece por botão, dentro do limite do plano e com decisão humana.'
   }
 ]
 
@@ -35,11 +37,12 @@ export default function ComoFuncionaPage() {
     <div>
       <Hero
         eyebrow="Como funciona"
-        title="Do convite ao resumo final — em uma sala ao vivo"
-        subtitle="Um fluxo claro para conduzir jornadas terapêuticas em tempo real, com registros e apoio de IA quando necessário."
+        title="Fluxo simples para sessões profundas"
+        subtitle="Você entra, cria a sala, convida participantes e conduz uma experiência ao vivo com rastro terapêutico completo."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Recursos', href: '/recursos' }}
-        mediaLabel="Vídeo curto: fluxo completo da sessão"
+        secondaryCta={{ label: 'Começar agora', href: '/login' }}
+        mediaLabel="Vídeo curto com a jornada completa em tempo real"
+        highlights={['Convite por e-mail', 'Turnos organizados', 'Histórico por sessão']}
       />
 
       <SectionShell>
@@ -47,19 +50,19 @@ export default function ComoFuncionaPage() {
           <div className="flex flex-col gap-6">
             <SectionHeader
               eyebrow="Fluxo da sessão"
-              title="Da entrada ao fechamento, em 8 passos"
-              subtitle="Cada etapa garante clareza para o grupo e continuidade para o acompanhamento terapêutico."
+              title="Da entrada ao fechamento em 8 etapas"
+              subtitle="Uma estrutura clara para conduzir com segurança, sem perder espontaneidade."
             />
             <ol className="space-y-4 text-sm text-ink-muted">
               {[
-                'Login na plataforma',
-                'Compra via Mercado Pago',
-                'Criar sala ao vivo',
-                'Convidar jogadores por e-mail (vínculo de conta)',
-                'Consentimento inicial registrado',
-                'Turnos: cada jogador rola o dado na sua vez',
-                'Puxar cartas randômicas (1 a 3) quando desejar',
-                'Resumo final por IA (botão)'
+                'Acesse com login seguro',
+                'Escolha sessão avulsa ou assinatura',
+                'Crie uma sala ao vivo em segundos',
+                'Convide participantes por e-mail',
+                'Registre consentimento inicial',
+                'Conduza as jogadas por turno',
+                'Use cartas randômicas para abrir novas perguntas',
+                'Finalize com síntese assistida por IA'
               ].map((step, index) => (
                 <li key={step} className="flex gap-3">
                   <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full border border-gold/70 text-xs text-gold">
@@ -70,27 +73,27 @@ export default function ComoFuncionaPage() {
               ))}
             </ol>
           </div>
-          <MediaPlaceholder variant="vertical" label="Screenshot: timeline da sessão" />
+          <MediaPlaceholder variant="vertical" label="Timeline visual da sessão ao vivo" />
         </div>
       </SectionShell>
 
       <SectionShell>
         <SectionHeader
-          eyebrow="Registro"
-          title="O que fica salvo"
-          subtitle="Tudo o que acontece na sala fica organizado para revisão e acompanhamento."
+          eyebrow="O que fica registrado"
+          title="Memória terapêutica sem retrabalho"
+          subtitle="Tudo o que importa para continuidade, acompanhamento e evolução."
         />
         <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
-            'Jogadas, caminhos e rolagens',
-            'Cartas puxadas do deck randômico',
-            'Registros terapêuticos por jogada',
-            'Sínteses de IA (quando usadas)',
-            'Consentimentos e combinados',
-            'Histórico no perfil do terapeuta'
+            'Jogadas e movimentações no tabuleiro',
+            'Cartas puxadas e contexto de uso',
+            'Registros terapêuticos por rodada',
+            'Sínteses finais quando acionadas',
+            'Consentimentos e acordos da sessão',
+            'Histórico no perfil do facilitador'
           ].map((item) => (
             <div key={item} className="flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-teal" />
+              <span className="h-2.5 w-2.5 rounded-full bg-teal" />
               <span>{item}</span>
             </div>
           ))}
@@ -99,23 +102,29 @@ export default function ComoFuncionaPage() {
 
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <MediaPlaceholder variant="horizontal" label="Imagem: boas práticas terapêuticas" />
+          <MediaPlaceholder variant="horizontal" label="Boas práticas de condução terapêutica" />
           <div className="flex flex-col gap-6">
             <SectionHeader
               eyebrow="Boas práticas"
-              title="Condução terapêutica com cuidado"
-              subtitle="Recomendações para manter o ambiente seguro e acolhedor."
+              title="Como manter a experiência segura e envolvente"
+              subtitle="Retenção e transformação nascem de ambiente seguro, ritmo claro e fechamento consciente."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Alinhe expectativas e combinados antes de iniciar.</li>
-              <li>Respeite pausas e sinais de cansaço.</li>
-              <li>Registre apenas o essencial para preservar a linguagem da pessoa.</li>
-              <li>Use a IA apenas como apoio, dentro dos limites.</li>
-              <li>Evite interpretar cartas como verdades absolutas.</li>
-              <li>Finalize com um fechamento emocional seguro.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                'Abra a sessão alinhando intenção e combinados.',
+                'Respeite o tempo emocional de cada participante.',
+                'Registre o essencial para não perder presença.',
+                'Use IA apenas quando ela realmente ajuda.',
+                'Finalize sempre com uma micro-ação concreta.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
             <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
-              Não substitui terapia ou atendimento médico.
+              Uso responsável: não substitui atendimento clínico.
             </p>
           </div>
         </div>
@@ -123,17 +132,18 @@ export default function ComoFuncionaPage() {
 
       <FAQ
         eyebrow="Perguntas"
-        title="Dúvidas rápidas sobre o fluxo"
+        title="Dúvidas sobre o fluxo"
         items={faqItems}
         ctaLabel="Ver FAQ completa"
         ctaHref="/faq"
       />
 
       <CTA
-        title="Pronto para facilitar sua primeira sessão?"
-        subtitle="Escolha o plano ideal e conduza sua sala com calma e segurança."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
+        title="Agora que você viu o fluxo, é só entrar e conduzir"
+        subtitle="Teste o ciclo completo na prática e sinta a diferença de uma experiência viva."
+        primaryCta={{ label: 'Começar agora', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        badges={['Onboarding rápido', 'Sem setup técnico complexo']}
       />
     </div>
   )

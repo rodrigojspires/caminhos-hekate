@@ -21,13 +21,16 @@ export function Steps({
       <SectionHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
       <div className="grid gap-6 md:grid-cols-3">
         {steps.map((step, index) => (
-          <div key={step.title} className="rounded-2xl border border-border/70 bg-surface/70 p-5 sm:p-6">
+          <article
+            key={step.title}
+            className="rounded-3xl border border-border/70 bg-surface/70 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-gold/35 sm:p-6"
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/60 bg-surface text-sm font-semibold text-gold">
               {index + 1}
             </div>
             <h3 className="mt-4 font-serif text-xl text-ink">{step.title}</h3>
             <p className="mt-3 text-sm text-ink-muted">{step.description}</p>
-          </div>
+          </article>
         ))}
       </div>
     </SectionShell>

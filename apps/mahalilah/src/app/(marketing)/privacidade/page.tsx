@@ -40,7 +40,9 @@ export default function PrivacidadePage() {
         subtitle="Explicamos o que coletamos, como usamos e quais direitos você tem como titular."
         primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         secondaryCta={{ label: 'Termos de uso', href: '/termos' }}
-        mediaLabel="Imagem: privacidade e dados" />
+        mediaLabel="Imagem: privacidade e dados"
+        highlights={['LGPD', 'Consentimento', 'Controle do titular']}
+      />
 
       <SectionShell>
         <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -110,6 +112,7 @@ export default function PrivacidadePage() {
         subtitle="Estamos prontos para esclarecer qualquer dúvida sobre dados."
         primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Dados protegidos', 'Uso mínimo necessário']}
       />
     </div>
   )

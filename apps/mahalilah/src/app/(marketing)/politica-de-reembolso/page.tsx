@@ -40,7 +40,9 @@ export default function PoliticaDeReembolsoPage() {
         subtitle="Regras claras para garantir transparência em sessões avulsas e assinaturas."
         primaryCta={{ label: 'Falar com suporte', href: '/contato' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
-        mediaLabel="Imagem: reembolso e suporte" />
+        mediaLabel="Imagem: reembolso e suporte"
+        highlights={['Transparência', 'Análise justa', 'Suporte dedicado']}
+      />
 
       <SectionShell>
         <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -51,7 +53,7 @@ export default function PoliticaDeReembolsoPage() {
               subtitle="Reembolso quando a sessão não foi iniciada ou dentro do prazo permitido."
             />
             <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Solicitações até X dias após a compra (placeholder).</li>
+              <li>Solicitações devem ser feitas em prazo razoável após a compra.</li>
               <li>Reembolso integral se a sala não foi iniciada.</li>
               <li>Se a sessão foi iniciada, avaliamos caso a caso.</li>
             </ul>

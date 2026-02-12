@@ -8,70 +8,72 @@ import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 
 export const metadata: Metadata = {
   title: 'FAQ',
-  description: 'Respostas sobre salas, convites, IA, planos e privacidade no Maha Lilah Online.',
+  description:
+    'Perguntas e respostas sobre uso da plataforma, planos, IA, segurança e privacidade no Maha Lilah Online.',
   openGraph: {
     title: 'FAQ Maha Lilah Online',
-    description: 'Respostas sobre salas, convites, IA, planos e privacidade no Maha Lilah Online.',
+    description:
+      'Perguntas e respostas sobre uso da plataforma, planos, IA, segurança e privacidade no Maha Lilah Online.',
     url: '/faq'
   }
 }
 
 const faqItems = [
   {
-    question: 'Preciso ser terapeuta?',
-    answer: 'Não. Você pode jogar de forma autoguiada ou com acompanhamento profissional.'
+    question: 'Preciso ser terapeuta para usar?',
+    answer: 'Não. Você pode usar de forma autoguiada, em grupo ou com suporte profissional.'
   },
   {
     question: 'Posso jogar sozinho?',
-    answer: 'Sim. Há fluxo para jornada individual com registros e síntese opcional.'
+    answer: 'Sim. O fluxo individual está disponível com registro e fechamento opcional.'
   },
   {
     question: 'Como funcionam convites por e-mail?',
-    answer: 'Você envia o convite e cada participante vincula sua conta ao entrar na sala.'
+    answer: 'Você envia o convite e o participante entra com o mesmo e-mail para garantir identidade.'
   },
   {
     question: 'Cada jogador rola o dado?',
-    answer: 'Sim. Os turnos são individuais e cada pessoa rola o próprio dado na sua vez.'
+    answer: 'Sim. A rolagem é individual, respeitando a vez de cada participante.'
   },
   {
     question: 'O que é o deck randômico?',
-    answer: 'Um conjunto de cartas puxadas a qualquer momento (1 a 3) para abrir novas perspectivas.'
+    answer: 'Cartas que podem ser puxadas a qualquer momento para abrir novas perspectivas.'
   },
   {
     question: 'A IA substitui terapia?',
-    answer: 'Não. A IA apenas sugere perguntas e gera síntese final limitada.'
+    answer: 'Não. A IA apoia com perguntas e síntese; a condução e decisão final são humanas.'
   },
   {
-    question: 'Quantas dicas de IA eu tenho?',
-    answer: 'O número varia por plano e aparece no checkout. Cada jogador possui limites por sessão.'
+    question: 'Quantas dicas de IA tenho por sessão?',
+    answer: 'O limite varia por plano e aparece com clareza no checkout.'
   },
   {
     question: 'Posso exportar os registros?',
-    answer: 'Sim. Export em TXT/JSON está disponível para terapeutas e facilitadores.'
+    answer: 'Sim. Você pode exportar em TXT/JSON para continuidade do trabalho.'
   },
   {
-    question: 'O que fica salvo?',
-    answer: 'Jogadas, cartas, registros terapêuticos e sínteses por IA quando usadas.'
+    question: 'Quais informações ficam salvas?',
+    answer: 'Jogadas, cartas, registros terapêuticos e sínteses acionadas durante a sessão.'
   },
   {
-    question: 'Como cancelam assinaturas?',
-    answer: 'O cancelamento é feito na área da conta e impede a próxima cobrança.'
+    question: 'Como cancelar assinatura?',
+    answer: 'O cancelamento é feito na conta e impede a próxima cobrança.'
   },
   {
-    question: 'Qual a política de reembolso?',
-    answer: 'Consulte nossa Política de Reembolso para prazos e condições.'
+    question: 'Existe política de reembolso?',
+    answer: 'Sim. Consulte a página de Política de Reembolso para critérios detalhados.'
   },
   {
-    question: 'Posso ter várias salas ao mesmo tempo?',
-    answer: 'Depende do plano. O limite de salas simultâneas é informado no checkout.'
+    question: 'Posso ter várias salas ativas ao mesmo tempo?',
+    answer: 'Depende do plano contratado. O limite aparece antes da compra.'
   },
   {
     question: 'Login é obrigatório?',
-    answer: 'Sim. Todos precisam estar logados para garantir identidade e histórico.'
+    answer: 'Sim. Todos entram com login para garantir segurança, identidade e histórico confiável.'
   },
   {
-    question: 'O histórico fica no perfil do terapeuta?',
-    answer: 'Sim. O histórico completo aparece no perfil profissional do terapeuta ou facilitador.'
+    question: 'O histórico fica no perfil de quem facilita?',
+    answer: 'Sim. O histórico completo fica disponível para continuidade das jornadas.'
   }
 ]
 
@@ -81,11 +83,12 @@ export default function FaqPage() {
       <FaqJsonLd items={faqItems} />
       <Hero
         eyebrow="FAQ"
-        title="Perguntas frequentes"
-        subtitle="Respostas diretas para você entender a experiência, os limites e a privacidade."
+        title="Tudo que você precisa saber antes de começar"
+        subtitle="Respostas diretas para escolher o plano certo e conduzir com confiança desde a primeira sessão."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        mediaLabel="Imagem: perguntas frequentes em destaque"
+        mediaLabel="Equipe de suporte e experiência acolhedora"
+        highlights={['Resposta rápida', 'Transparência total', 'Suporte humano']}
       />
 
       <SectionShell>
@@ -93,28 +96,26 @@ export default function FaqPage() {
           <div className="flex flex-col gap-6">
             <SectionHeader
               eyebrow="Visão geral"
-              title="Tudo o que você precisa saber antes de entrar"
-              subtitle="Organizamos as respostas mais comuns para você seguir com clareza."
+              title="FAQ pensada para reduzir dúvida e acelerar decisão"
+              subtitle="Se preferir, nossa equipe também pode te orientar por contexto de uso."
             />
             <p className="text-sm text-ink-muted">
-              Caso sua dúvida não esteja aqui, fale com a equipe. Respondemos em até 2 dias úteis.
+              Respondemos contatos em até 2 dias úteis com orientação personalizada para terapeutas,
+              facilitadores e grupos.
             </p>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: suporte e acolhimento" />
+          <MediaPlaceholder variant="vertical" label="Suporte humano e orientação para escolha de plano" />
         </div>
       </SectionShell>
 
-      <FAQ
-        eyebrow="FAQ completa"
-        title="Perguntas e respostas"
-        items={faqItems}
-      />
+      <FAQ eyebrow="FAQ completa" title="Perguntas e respostas" items={faqItems} />
 
       <CTA
-        title="Ainda com dúvidas?"
-        subtitle="Fale com a equipe e receba orientação personalizada."
+        title="Quer orientação específica para seu caso?"
+        subtitle="Fale com a equipe e receba direcionamento claro para começar com segurança."
         primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        badges={['Atendimento humano', 'Retorno em até 2 dias úteis']}
       />
     </div>
   )

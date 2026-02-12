@@ -8,10 +8,12 @@ import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 
 export const metadata: Metadata = {
   title: 'Para grupos',
-  description: 'Jornadas em grupo com turnos claros, visibilidade em tempo real e registros individuais.',
+  description:
+    'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
   openGraph: {
     title: 'Maha Lilah Online para grupos',
-    description: 'Jornadas em grupo com turnos claros, visibilidade em tempo real e registros individuais.',
+    description:
+      'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
     url: '/para-grupos'
   }
 }
@@ -21,33 +23,34 @@ export default function ParaGruposPage() {
     <div>
       <Hero
         eyebrow="Para grupos"
-        title="Jornadas em grupo, com turnos e visibilidade em tempo real"
-        subtitle="Cada participante entra com login obrigatório, rola seu próprio dado e registra sua experiência com segurança."
+        title="Grupos com energia alta, organização clara e profundidade"
+        subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder individualidade."
         primaryCta={{ label: 'Ver planos e limites', href: '/planos' }}
         secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
-        mediaLabel="Imagem: grupo em sala ao vivo"
+        mediaLabel="Grupo em sessão ao vivo com turnos e acompanhamento"
+        highlights={['Turnos individuais', 'Visão em tempo real', 'Registro por participante']}
       />
 
       <Features
         eyebrow="Recursos para grupos"
-        title="Organização que respeita cada voz"
-        subtitle="Uma sala, vários jogadores, sem perder o ritmo nem a visibilidade."
+        title="Tudo para manter o grupo engajado até o final"
+        subtitle="A estrutura combina dinamismo e segurança emocional para jornadas coletivas memoráveis."
         items={[
           {
-            title: 'Vários jogadores no tabuleiro',
-            description: 'Todos veem o mesmo tabuleiro e acompanham o andamento da jornada.'
+            title: 'Tabuleiro compartilhado ao vivo',
+            description: 'Todos acompanham o mesmo contexto e a evolução da sessão em tempo real.'
           },
           {
-            title: 'Cada jogador rola na sua vez',
-            description: 'Turnos individuais garantem autonomia e evitam sobreposição.'
+            title: 'Turnos individuais sem atropelo',
+            description: 'Cada voz tem espaço, evitando sobreposição e melhorando escuta coletiva.'
           },
           {
-            title: 'Deck randômico para insights coletivos',
-            description: 'Cartas puxadas no momento certo ajudam o grupo a encontrar novas perguntas.'
+            title: 'Deck randômico para destravar',
+            description: 'Cartas no momento certo aumentam repertório e profundidade da conversa.'
           },
           {
-            title: 'Registro individual e síntese final',
-            description: 'Cada participante registra sua experiência, com fechamento organizado ao final.'
+            title: 'Fechamento organizado',
+            description: 'Registros e síntese final ajudam o grupo a sair com clareza e próximos passos.'
           }
         ]}
       />
@@ -56,33 +59,42 @@ export default function ParaGruposPage() {
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="flex flex-col gap-6">
             <SectionHeader
-              eyebrow="Participantes"
-              title="Como calcular o número ideal"
-              subtitle="Planeje o tamanho do grupo de acordo com o tempo disponível e o nível de profundidade desejado."
+              eyebrow="Dimensionamento"
+              title="Como definir o tamanho ideal do grupo"
+              subtitle="Escolher a quantidade certa de participantes melhora retenção e qualidade da condução."
             />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
-              <li>Grupos menores (3-5) favorecem aprofundamento individual.</li>
-              <li>Grupos médios (6-8) equilibram diversidade e tempo de fala.</li>
-              <li>Grupos maiores exigem mais tempo e combinados claros.</li>
-              <li>Use o tempo da sessão como referência para distribuir turnos.</li>
+            <ul className="space-y-3 text-sm text-ink-muted">
+              {[
+                '3 a 5 pessoas: profundidade individual mais alta.',
+                '6 a 8 pessoas: equilíbrio entre diversidade e tempo de fala.',
+                'Acima de 8: exige blocos de tempo e acordos bem definidos.',
+                'Sempre planeje tempo de abertura, desenvolvimento e fechamento.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: planejamento de grupo" />
+          <MediaPlaceholder variant="vertical" label="Planejamento de grupo e distribuição de turnos" />
         </div>
       </SectionShell>
 
       <Testimonials
         eyebrow="Relatos"
-        title="Grupos que encontraram fluidez"
-        subtitle="Experiências reais, com foco em segurança emocional."
+        title="Quem facilita grupos sente mais fluidez"
+        subtitle="Resultados percebidos por profissionais que migraram para uma experiência digital estruturada."
         items={[
           {
-            quote: 'Os turnos deixam todo mundo tranquilo. A sala fica viva, mas organizada.',
+            quote:
+              'Os turnos deram segurança para o grupo inteiro. Até os mais quietos passaram a participar com confiança.',
             name: 'Isabela C.',
             role: 'Facilitadora de grupos'
           },
           {
-            quote: 'O deck randômico ajuda o grupo a destravar sem impor significados.',
+            quote:
+              'A condução ficou mais leve e profissional. O fechamento por síntese ajuda muito no pós-encontro.',
             name: 'Thiago M.',
             role: 'Coordenador de vivências'
           }
@@ -90,10 +102,11 @@ export default function ParaGruposPage() {
       />
 
       <CTA
-        title="Pronto para reunir seu grupo?"
-        subtitle="Veja os limites de participantes e escolha o plano ideal para sua jornada coletiva."
+        title="Pronto para conduzir seu próximo grupo com mais impacto?"
+        subtitle="Escolha o plano ideal para o número de participantes e comece sua jornada coletiva agora."
         primaryCta={{ label: 'Ver planos e limites', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        badges={['Onboarding rápido', 'Escalável para grupos', 'Experiência memorável']}
       />
     </div>
   )
