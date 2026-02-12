@@ -20,6 +20,7 @@ type Participant = {
   role: string;
   user: { id: string; name: string | null; email: string };
   consentAcceptedAt: string | null;
+  gameIntention?: string | null;
 };
 
 type PlayerState = {
@@ -38,6 +39,7 @@ type RoomState = {
     status: string;
     planType?: string;
     isTrial?: boolean;
+    playerIntentionLocked?: boolean;
     currentTurnIndex: number;
     turnParticipantId: string | null;
     therapistOnline: boolean;
@@ -558,6 +560,12 @@ function parseTipReportContent(content: string): ParsedTip {
   };
 }
 
+function getParticipantDisplayName(participant: {
+  user: { name: string | null; email: string };
+}) {
+  return participant.user.name || participant.user.email;
+}
+
 export function RoomClient({ code }: { code: string }) {
   const { data: session } = useSession();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -573,8 +581,6 @@ export function RoomClient({ code }: { code: string }) {
     body: "",
     microAction: "",
   });
-  const [aiTip, setAiTip] = useState<string | null>(null);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiIntention, setAiIntention] = useState("");
   const [aiTipLoading, setAiTipLoading] = useState(false);
   const [aiTipUsage, setAiTipUsage] = useState<{
@@ -635,10 +641,13 @@ export function RoomClient({ code }: { code: string }) {
   const [finalReportLoading, setFinalReportLoading] = useState(false);
   const [pendingCompletedParticipantPrompts, setPendingCompletedParticipantPrompts] =
     useState<string[]>([]);
+  const [replicateIntentionLoading, setReplicateIntentionLoading] =
+    useState(false);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
+  const syncedIntentionRef = useRef("");
   const completionStateByParticipantRef = useRef<Map<string, boolean>>(
     new Map(),
   );
@@ -942,7 +951,18 @@ export function RoomClient({ code }: { code: string }) {
       myParticipant &&
       state.lastMove.participantId === myParticipant.id,
   );
+  const isTherapist = myParticipant?.role === "THERAPIST";
   const canCloseRoom = myParticipant?.role === "THERAPIST";
+  const isPlayerIntentionLocked = Boolean(
+    myParticipant?.role === "PLAYER" && state?.room.playerIntentionLocked,
+  );
+  const shouldShowSessionIntentionField = Boolean(myParticipant);
+  const canEditSessionIntention = Boolean(
+    myParticipant && !isPlayerIntentionLocked,
+  );
+  const canReplicateIntentionToPlayers = Boolean(
+    myParticipant?.role === "THERAPIST",
+  );
   const canRoll = Boolean(
     isMyTurn &&
       state?.room.status === "ACTIVE" &&
@@ -1039,7 +1059,7 @@ export function RoomClient({ code }: { code: string }) {
 
   const aiTipHistory = useMemo(() => {
     if (!aiHistoryParticipantId) return [];
-    return timelineReports
+    const history = timelineReports
       .filter(
         (report) =>
           report.kind === "TIP" &&
@@ -1048,8 +1068,52 @@ export function RoomClient({ code }: { code: string }) {
       .map((report) => ({
         report,
         parsed: parseTipReportContent(report.content),
-      }));
+      }))
+      .sort(
+        (a, b) =>
+          new Date(a.report.createdAt).getTime() -
+          new Date(b.report.createdAt).getTime(),
+      );
+
+    return history.map((entry, index) => ({
+      ...entry,
+      helpNumber: index + 1,
+    }));
   }, [timelineReports, aiHistoryParticipantId]);
+
+  const finalReportsByParticipantId = useMemo(() => {
+    const reportsByParticipantId = new Map<string, TimelineAiReport[]>();
+
+    timelineReports.forEach((report) => {
+      if (report.kind !== "FINAL" || !report.participant?.id) return;
+      const existing = reportsByParticipantId.get(report.participant.id) || [];
+      existing.push(report);
+      reportsByParticipantId.set(report.participant.id, existing);
+    });
+
+    reportsByParticipantId.forEach((reports, participantId) => {
+      reportsByParticipantId.set(
+        participantId,
+        reports.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
+    });
+
+    return reportsByParticipantId;
+  }, [timelineReports]);
+
+  const finalReportParticipants = useMemo(() => {
+    if (!state?.participants || !myParticipant) return [];
+
+    const players = state.participants.filter(
+      (participant) => participant.role === "PLAYER",
+    );
+
+    if (isTherapist) return players;
+    return players.filter((participant) => participant.id === myParticipant.id);
+  }, [state?.participants, myParticipant, isTherapist]);
 
   const summaryParticipant = useMemo(() => {
     if (!summaryParticipantId) return null;
@@ -1091,24 +1155,93 @@ export function RoomClient({ code }: { code: string }) {
     return path;
   }, [summaryMoves]);
 
-  const aiIntentionStorageKey = useMemo(() => {
-    if (!state?.room.id || !session?.user?.id) return null;
-    return `mahalilah:intention:${state.room.id}:${session.user.id}`;
-  }, [state?.room.id, session?.user?.id]);
-
   useEffect(() => {
-    if (!aiIntentionStorageKey) return;
-    const saved = window.localStorage.getItem(aiIntentionStorageKey) || "";
-    setAiIntention(saved);
+    if (!myParticipant) {
+      syncedIntentionRef.current = "";
+      setAiIntention("");
+      setAiIntentionSavedLabel("");
+      return;
+    }
+
+    const participantIntention = myParticipant.gameIntention || "";
+    const syncKey = `${myParticipant.id}:${participantIntention}`;
+    if (syncedIntentionRef.current === syncKey) {
+      return;
+    }
+
+    syncedIntentionRef.current = syncKey;
+    setAiIntention(participantIntention);
     setAiIntentionSavedLabel(
-      saved ? "Intenção carregada automaticamente." : "",
+      participantIntention
+        ? "Intenção carregada da sala."
+        : "Defina sua intenção para orientar os resumos da IA.",
     );
-  }, [aiIntentionStorageKey]);
+  }, [myParticipant]);
 
   const persistAiIntention = () => {
-    if (!aiIntentionStorageKey) return;
-    window.localStorage.setItem(aiIntentionStorageKey, aiIntention.trim());
-    setAiIntentionSavedLabel("Intenção salva automaticamente.");
+    if (!socket || !myParticipant || !canEditSessionIntention) return;
+
+    const normalizedIntention = aiIntention.trim();
+    const currentIntention = (myParticipant.gameIntention || "").trim();
+    if (normalizedIntention === currentIntention) {
+      setAiIntentionSavedLabel("Intenção já está atualizada.");
+      return;
+    }
+
+    socket.emit(
+      "participant:setIntention",
+      { intention: normalizedIntention },
+      (resp: any) => {
+        if (!resp?.ok) {
+          pushToast(resp?.error || "Erro ao salvar intenção", "error");
+          return;
+        }
+        setAiIntention(typeof resp.intention === "string" ? resp.intention : "");
+        setAiIntentionSavedLabel("Intenção salva na sala.");
+      },
+    );
+  };
+
+  const replicateIntentionToPlayers = async () => {
+    if (!socket || !canReplicateIntentionToPlayers) return;
+
+    setReplicateIntentionLoading(true);
+    try {
+      const resp = await new Promise<any>((resolve) => {
+        socket.emit(
+          "participant:replicateIntentionToPlayers",
+          { intention: aiIntention },
+          resolve,
+        );
+      });
+
+      if (!resp?.ok) {
+        showSocketError("Erro ao replicar intenção", resp);
+        return;
+      }
+
+      const intentionValue =
+        typeof resp?.intention === "string" ? resp.intention : aiIntention;
+      setAiIntention(intentionValue);
+      setAiIntentionSavedLabel("Intenção replicada para todos os jogadores.");
+
+      if (typeof resp?.updatedPlayers === "number") {
+        const playersCount = resp.updatedPlayers;
+        pushToast(
+          playersCount === 1
+            ? "Intenção replicada para 1 jogador e bloqueada."
+            : `Intenção replicada para ${playersCount} jogadores e bloqueada.`,
+          "success",
+        );
+      } else {
+        pushToast(
+          "Intenção replicada para os jogadores e bloqueada.",
+          "success",
+        );
+      }
+    } finally {
+      setReplicateIntentionLoading(false);
+    }
   };
 
   const summaryTopHouses = useMemo(() => {
@@ -1488,7 +1621,7 @@ export function RoomClient({ code }: { code: string }) {
       try {
         if (options?.allPlayers) {
           const resp = await new Promise<any>((resolve) => {
-            socket.emit("ai:finalReportAll", { intention: aiIntention }, resolve);
+            socket.emit("ai:finalReportAll", {}, resolve);
           });
 
           if (!resp?.ok) {
@@ -1519,7 +1652,7 @@ export function RoomClient({ code }: { code: string }) {
         const resp = await new Promise<any>((resolve) => {
           socket.emit(
             "ai:finalReport",
-            { intention: aiIntention, participantId: targetParticipantId },
+            { participantId: targetParticipantId },
             resolve,
           );
         });
@@ -1529,11 +1662,22 @@ export function RoomClient({ code }: { code: string }) {
           return false;
         }
 
-        const generatedForMe =
-          !targetParticipantId || targetParticipantId === myParticipant?.id;
-        if (generatedForMe) {
-          setAiSummary(resp.content);
-        }
+        const targetParticipant = targetParticipantId
+          ? state?.participants.find(
+              (participant) => participant.id === targetParticipantId,
+            ) || null
+          : myParticipant;
+        const targetParticipantLabel = targetParticipant
+          ? getParticipantDisplayName(targetParticipant)
+          : "Jogador";
+        setAiContentModal({
+          title: `Relatório final • ${targetParticipantLabel}`,
+          subtitle: `Gerado em ${new Date().toLocaleString("pt-BR")}`,
+          content:
+            typeof resp.content === "string"
+              ? resp.content
+              : "Sem conteúdo disponível.",
+        });
         pushToast(options?.successMessage || "Resumo final gerado.", "success");
         await loadTimelineData();
         return true;
@@ -1543,11 +1687,11 @@ export function RoomClient({ code }: { code: string }) {
     },
     [
       socket,
-      aiIntention,
       showSocketError,
       pushToast,
       loadTimelineData,
-      myParticipant?.id,
+      state?.participants,
+      myParticipant,
     ],
   );
 
@@ -1718,6 +1862,12 @@ export function RoomClient({ code }: { code: string }) {
     timelineLoaded,
     loadTimelineData,
   ]);
+
+  useEffect(() => {
+    if (!timelineLoaded) return;
+    if (!state?.lastMove?.id) return;
+    void loadTimelineData();
+  }, [timelineLoaded, state?.lastMove?.id, loadTimelineData]);
 
   useEffect(() => {
     if (!trialLimitReached) {
@@ -2262,22 +2412,44 @@ export function RoomClient({ code }: { code: string }) {
             </button>
           </div>
 
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Intenção da sessão (opcional)</span>
-            <input
-              value={aiIntention}
-              onChange={(event) => {
-                setAiIntention(event.target.value);
-                setAiIntentionSavedLabel("");
-              }}
-              onBlur={persistAiIntention}
-              placeholder="Ex.: clareza sobre limites e comunicação"
-            />
-            <span className="small-muted">
-              {aiIntentionSavedLabel ||
-                "Salva automaticamente ao sair do campo."}
-            </span>
-          </label>
+          {shouldShowSessionIntentionField && (
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Intenção de jogo (opcional)</span>
+              <input
+                value={aiIntention}
+                disabled={!canEditSessionIntention || replicateIntentionLoading}
+                onChange={(event) => {
+                  if (!canEditSessionIntention) return;
+                  setAiIntention(event.target.value);
+                  setAiIntentionSavedLabel("");
+                }}
+                onBlur={persistAiIntention}
+                placeholder="Ex.: clareza sobre limites e comunicação"
+              />
+              <span className="small-muted">
+                {isPlayerIntentionLocked
+                  ? "Intenção definida pelo terapeuta e bloqueada para edição."
+                  : aiIntentionSavedLabel || "Salva na sala ao sair do campo."}
+              </span>
+
+              {canReplicateIntentionToPlayers && (
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={
+                    replicateIntentionLoading || !aiIntention.trim().length
+                  }
+                  onClick={() => void replicateIntentionToPlayers()}
+                >
+                  {replicateIntentionLoading
+                    ? "Replicando intenção..."
+                    : state?.room.playerIntentionLocked
+                      ? "Atualizar e replicar para jogadores"
+                      : "Replicar intenção para jogadores"}
+                </button>
+              )}
+            </label>
+          )}
 
           <div
             className="room-desktop-action-nav"
@@ -2680,13 +2852,12 @@ export function RoomClient({ code }: { code: string }) {
                     setAiTipLoading(true);
                     socket.emit(
                       "ai:tip",
-                      { intention: aiIntention },
-                      (resp: any) => {
+                      {},
+                      async (resp: any) => {
                         setAiTipLoading(false);
                         if (!resp?.ok) {
                           showSocketError("Erro ao gerar dica", resp);
                         } else {
-                          setAiTip(resp.content);
                           if (
                             typeof resp.tipsUsed === "number" &&
                             typeof resp.tipsLimit === "number"
@@ -2696,6 +2867,15 @@ export function RoomClient({ code }: { code: string }) {
                               limit: resp.tipsLimit,
                             });
                           }
+                          setAiContentModal({
+                            title: "Ajuda da IA",
+                            subtitle: `Gerada em ${new Date().toLocaleString("pt-BR")}`,
+                            content:
+                              typeof resp.content === "string"
+                                ? resp.content
+                                : "Sem conteúdo disponível.",
+                          });
+                          await loadTimelineData();
                           pushToast("Dica da IA gerada.", "success");
                         }
                       },
@@ -2712,15 +2892,9 @@ export function RoomClient({ code }: { code: string }) {
                 </span>
               )}
 
-              {aiTip && (
-                <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
-                  {aiTip}
-                </div>
-              )}
-
               <div className="notice" style={{ display: "grid", gap: 6 }}>
                 <strong>Histórico de ajudas da IA</strong>
-                {timelineParticipants.length > 1 && (
+                {isTherapist && timelineParticipants.length > 1 && (
                   <select
                     value={aiHistoryParticipantId}
                     onChange={(event) =>
@@ -2748,7 +2922,7 @@ export function RoomClient({ code }: { code: string }) {
                       paddingRight: 2,
                     }}
                   >
-                    {aiTipHistory.map(({ report, parsed }) => (
+                    {aiTipHistory.map(({ report, parsed, helpNumber }) => (
                       <button
                         key={report.id}
                         className="btn-secondary"
@@ -2761,12 +2935,15 @@ export function RoomClient({ code }: { code: string }) {
                         }}
                         onClick={() =>
                           setAiContentModal({
-                            title: "Ajuda da IA",
-                            subtitle: `Gerada em ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                            title: `Ajuda da IA #${helpNumber}`,
+                            subtitle: `${parsed.turnNumber !== null ? `Jogada #${parsed.turnNumber}` : "Jogada não identificada"}${parsed.houseNumber !== null ? ` • Casa ${parsed.houseNumber}` : ""} • ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
                             content: parsed.text,
                           })
                         }
                       >
+                        <strong style={{ fontSize: 12 }}>
+                          Ajuda #{helpNumber}
+                        </strong>
                         <span className="small-muted">
                           {parsed.turnNumber !== null
                             ? `Jogada #${parsed.turnNumber}`
@@ -2783,7 +2960,25 @@ export function RoomClient({ code }: { code: string }) {
 
               <button
                 className="secondary"
-                onClick={() => void requestFinalReport()}
+                onClick={() => {
+                  if (!isTherapist || !aiHistoryParticipantId) {
+                    void requestFinalReport();
+                    return;
+                  }
+
+                  const selectedParticipant = state.participants.find(
+                    (participant) => participant.id === aiHistoryParticipantId,
+                  );
+                  if (!selectedParticipant) {
+                    void requestFinalReport();
+                    return;
+                  }
+
+                  void requestFinalReport({
+                    participantId: selectedParticipant.id,
+                    successMessage: `Resumo final gerado para ${getParticipantDisplayName(selectedParticipant)}.`,
+                  });
+                }}
                 disabled={actionsBlockedByConsent || finalReportLoading}
               >
                 {finalReportLoading
@@ -2791,11 +2986,58 @@ export function RoomClient({ code }: { code: string }) {
                   : "Gerar resumo final"}
               </button>
 
-              {aiSummary && (
-                <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
-                  {aiSummary}
-                </div>
-              )}
+              <div className="notice" style={{ display: "grid", gap: 6 }}>
+                <strong>Relatórios finais disponíveis</strong>
+                {finalReportParticipants.length === 0 ? (
+                  <span className="small-muted">
+                    Nenhum jogador disponível para leitura do relatório final.
+                  </span>
+                ) : (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {finalReportParticipants.map((participant) => {
+                      const participantReports =
+                        finalReportsByParticipantId.get(participant.id) || [];
+                      const latestReport = participantReports[0] || null;
+                      const participantLabel =
+                        getParticipantDisplayName(participant);
+
+                      return (
+                        <button
+                          key={participant.id}
+                          className="btn-secondary"
+                          disabled={!latestReport}
+                          style={{
+                            justifyContent: "flex-start",
+                            textAlign: "left",
+                            whiteSpace: "normal",
+                            height: "auto",
+                            padding: "8px 10px",
+                          }}
+                          onClick={() => {
+                            if (!latestReport) return;
+                            setAiContentModal({
+                              title: `Relatório final • ${participantLabel}`,
+                              subtitle: `Gerado em ${new Date(latestReport.createdAt).toLocaleString("pt-BR")}`,
+                              content: latestReport.content,
+                            });
+                          }}
+                        >
+                          <strong style={{ fontSize: 12 }}>
+                            {isTherapist
+                              ? participantLabel
+                              : "Meu relatório final"}
+                          </strong>
+                          <span className="small-muted">
+                            {latestReport
+                              ? `Disponível para leitura${participantReports.length > 1 ? ` • ${participantReports.length} versões` : ""}`
+                              : "Ainda não gerado para este jogador."}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2847,6 +3089,14 @@ export function RoomClient({ code }: { code: string }) {
                           </span>
                         )}
                       </div>
+                      {!isTherapist && (
+                        <span className="small-muted">
+                          <strong>Intenção de jogo:</strong>{" "}
+                          {participant.gameIntention?.trim()
+                            ? participant.gameIntention
+                            : "Não informada."}
+                        </span>
+                      )}
                     </div>
                   );
                 })}

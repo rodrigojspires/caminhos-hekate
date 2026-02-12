@@ -168,7 +168,7 @@ function getDashboardTutorialSteps({
     {
       title: "Acoes rapidas da sala",
       description:
-        '"Abrir sala" entra na partida, "Copiar link" compartilha acesso com jogadores e "Ver detalhes" abre toda a gestao da sessao.',
+        '"Abrir sala" entra na partida e "Ver detalhes" abre toda a gestao da sessao.',
       target: "room-actions",
     },
     {
@@ -323,7 +323,7 @@ export function DashboardClient() {
   const [dashboardTutorialStep, setDashboardTutorialStep] = useState(0);
   const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
     useState<DOMRect | null>(null);
-  const [hasUsedTrial, setHasUsedTrial] = useState(false);
+  const [hasUsedTrial, setHasUsedTrial] = useState<boolean | null>(null);
   const dashboardTutorialSteps = useMemo(
     () =>
       getDashboardTutorialSteps({
@@ -584,12 +584,6 @@ export function DashboardClient() {
     await loadRooms();
   };
 
-  const handleCopyLink = async (roomCode: string) => {
-    const link = `${window.location.origin}/rooms/${roomCode}`;
-    await navigator.clipboard.writeText(link);
-    showNotice("Link da sala copiado.", "success");
-  };
-
   const handleExport = async (roomId: string, format: "json" | "txt") => {
     const res = await fetch(
       `/api/mahalilah/rooms/${roomId}/export?format=${format}`,
@@ -822,12 +816,6 @@ export function DashboardClient() {
             <a href={`/rooms/${room.code}`} className="btn-secondary">
               Abrir sala
             </a>
-            <button
-              className="btn-secondary"
-              onClick={() => handleCopyLink(room.code)}
-            >
-              Copiar link
-            </button>
             <button
               className="btn-secondary"
               onClick={() => toggleRoom(room.id)}
@@ -1423,7 +1411,7 @@ export function DashboardClient() {
           {notice.message}
         </div>
       )}
-      {!hasUsedTrial && (
+      {hasUsedTrial === false && (
         <div
           className="card dashboard-create-card"
           style={{ display: "grid", gap: 12 }}

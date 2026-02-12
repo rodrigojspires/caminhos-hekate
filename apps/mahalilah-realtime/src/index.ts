@@ -43,6 +43,9 @@ const TRIAL_POST_START_MOVE_LIMIT = Number(
 );
 const TRIAL_AI_TIPS_LIMIT = 1;
 const TRIAL_AI_SUMMARY_LIMIT = 1;
+const PLAYER_INTENTION_MAX_LENGTH = Number(
+  process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
+);
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -398,9 +401,8 @@ async function generateFinalReportForParticipant(params: {
     createdByUserId: string;
   };
   participantId: string;
-  intention?: string;
 }) {
-  const { room, participantId, intention } = params;
+  const { room, participantId } = params;
   const { summaryLimit: finalLimit } = await getRoomAiLimits(room);
 
   const existingReports = await prisma.mahaLilahAiReport.count({
@@ -415,8 +417,17 @@ async function generateFinalReportForParticipant(params: {
     return { created: false as const };
   }
 
+  const participant = await prisma.mahaLilahParticipant.findUnique({
+    where: { id: participantId },
+    select: { gameIntention: true },
+  });
+  if (!participant) {
+    throw new Error("Participante não encontrado para gerar resumo final.");
+  }
+
+  const participantIntention = participant.gameIntention?.trim() || null;
   const context = await buildAiContext(room.id, participantId);
-  const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${intention || "não informada"}\n\nGere um resumo final estruturado com: padrões, temas, 3 intervenções, plano de 7 dias e perguntas finais.`;
+  const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nGere um resumo final estruturado com: padrões, temas, 3 intervenções, plano de 7 dias e perguntas finais.`;
   const content = await callOpenAI(prompt);
 
   await prisma.mahaLilahAiReport.create({
@@ -567,6 +578,7 @@ async function buildRoomState(roomId: string) {
       status: roomStatus,
       planType: room.planType,
       isTrial: isTrialRoom(room),
+      playerIntentionLocked: room.playerIntentionLocked,
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,
       therapistOnline,
@@ -576,6 +588,7 @@ async function buildRoomState(roomId: string) {
       role: p.role,
       user: p.user,
       consentAcceptedAt: p.consentAcceptedAt,
+      gameIntention: p.gameIntention,
     })),
     playerStates: playerStates.map((state) => ({
       participantId: state.participantId,
@@ -1163,9 +1176,133 @@ io.on("connection", (socket: AuthedSocket) => {
   );
 
   socket.on(
-    "ai:tip",
+    "participant:setIntention",
     async (
       { intention }: { intention?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId)
+          throw new Error("Sala não selecionada");
+        enforceCooldown(
+          `participant-intention:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const participant = await prisma.mahaLilahParticipant.findFirst({
+          where: { roomId: socket.data.roomId, userId: socket.data.user.id },
+        });
+        if (!participant) throw new Error("Participante não encontrado");
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          select: { playerIntentionLocked: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+        if (participant.role === "PLAYER" && room.playerIntentionLocked) {
+          throw new Error(
+            "A intenção foi definida pelo terapeuta e está bloqueada para os jogadores.",
+          );
+        }
+
+        const normalizedIntention =
+          typeof intention === "string"
+            ? intention.trim().slice(0, PLAYER_INTENTION_MAX_LENGTH)
+            : "";
+
+        await prisma.mahaLilahParticipant.update({
+          where: { id: participant.id },
+          data: { gameIntention: normalizedIntention || null },
+        });
+
+        const state = await buildRoomState(socket.data.roomId);
+        if (state) io.to(socket.data.roomId).emit("room:state", state);
+        callback?.({ ok: true, intention: normalizedIntention || null });
+      } catch (error: any) {
+        callback?.({ ok: false, error: error.message });
+      }
+    },
+  );
+
+  socket.on(
+    "participant:replicateIntentionToPlayers",
+    async (
+      { intention }: { intention?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId)
+          throw new Error("Sala não selecionada");
+        enforceCooldown(
+          `participant-replicate-intention:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: { participants: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+
+        const therapist = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!therapist || therapist.role !== "THERAPIST") {
+          throw new Error(
+            "Apenas o terapeuta pode replicar a intenção para os jogadores.",
+          );
+        }
+        ensureConsentAccepted(therapist);
+
+        const normalizedIntention =
+          typeof intention === "string"
+            ? intention.trim().slice(0, PLAYER_INTENTION_MAX_LENGTH)
+            : (therapist.gameIntention?.trim() || "");
+
+        if (!normalizedIntention) {
+          throw new Error(
+            "Defina a intenção da sessão do terapeuta antes de replicar.",
+          );
+        }
+
+        const updatedPlayers = await prisma.$transaction(async (tx) => {
+          await tx.mahaLilahParticipant.update({
+            where: { id: therapist.id },
+            data: { gameIntention: normalizedIntention },
+          });
+
+          const result = await tx.mahaLilahParticipant.updateMany({
+            where: {
+              roomId: room.id,
+              role: "PLAYER",
+            },
+            data: { gameIntention: normalizedIntention },
+          });
+
+          await tx.mahaLilahRoom.update({
+            where: { id: room.id },
+            data: { playerIntentionLocked: true },
+          });
+
+          return result.count;
+        });
+
+        const state = await buildRoomState(room.id);
+        if (state) io.to(room.id).emit("room:state", state);
+        callback?.({
+          ok: true,
+          intention: normalizedIntention,
+          updatedPlayers,
+        });
+      } catch (error: any) {
+        callback?.({ ok: false, error: error.message });
+      }
+    },
+  );
+
+  socket.on(
+    "ai:tip",
+    async (
+      _payload: { intention?: string } = {},
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -1209,8 +1346,9 @@ io.on("connection", (socket: AuthedSocket) => {
           throw new Error("Limite de dicas atingido para esta sessão");
         }
 
+        const participantIntention = participant.gameIntention?.trim() || null;
         const context = await buildAiContext(room.id, participant.id);
-        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${intention || "não informada"}\n\nGere: perguntas terapêuticas, hipótese de padrão, micro-intervenção corporal e micro-ação. Seja direto e prático.`;
+        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nGere: perguntas terapêuticas, hipótese de padrão, micro-intervenção corporal e micro-ação. Seja direto e prático.`;
 
         const content = await callOpenAI(prompt);
         const lastMove = await prisma.mahaLilahMove.findFirst({
@@ -1231,7 +1369,7 @@ io.on("connection", (socket: AuthedSocket) => {
             kind: "TIP",
             content: JSON.stringify({
               text: content,
-              intention: intention || null,
+              intention: participantIntention,
               turnNumber: lastMove?.turnNumber ?? null,
               houseNumber,
             }),
@@ -1261,7 +1399,6 @@ io.on("connection", (socket: AuthedSocket) => {
     "ai:finalReport",
     async (
       {
-        intention,
         participantId,
       }: { intention?: string; participantId?: string } = {},
       callback?: (payload: any) => void,
@@ -1309,7 +1446,6 @@ io.on("connection", (socket: AuthedSocket) => {
         const generated = await generateFinalReportForParticipant({
           room,
           participantId: targetParticipantId,
-          intention,
         });
 
         if (!generated.created) {
@@ -1332,7 +1468,7 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "ai:finalReportAll",
     async (
-      { intention }: { intention?: string } = {},
+      _payload: { intention?: string } = {},
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -1380,7 +1516,6 @@ io.on("connection", (socket: AuthedSocket) => {
           const generated = await generateFinalReportForParticipant({
             room,
             participantId,
-            intention,
           });
           if (generated.created) {
             generatedCount += 1;

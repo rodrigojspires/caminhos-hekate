@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         createdByUserId: true,
         code: true,
         participants: {
-          select: { userId: true },
+          select: { id: true, userId: true, role: true },
         },
       },
     });
@@ -49,6 +49,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (room.createdByUserId !== session.user.id && !isRoomParticipant) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
+
+    const requesterParticipant = room.participants.find(
+      (participant) => participant.userId === session.user.id,
+    );
+    const canViewAllAiReports =
+      room.createdByUserId === session.user.id ||
+      requesterParticipant?.role === "THERAPIST";
 
     const [moves, aiReports, standaloneDraws] = await prisma.$transaction([
       prisma.mahaLilahMove.findMany({
@@ -138,13 +145,19 @@ export async function GET(request: Request, { params }: RouteParams) {
         : null,
     });
 
+    const visibleAiReports = canViewAllAiReports
+      ? aiReports
+      : aiReports.filter(
+          (report) => report.participantId === requesterParticipant?.id,
+        );
+
     return NextResponse.json({
       room: { id: room.id, code: room.code },
       moves: moves.map((move) => ({
         ...move,
         cardDraws: move.cardDraws.map(mapDrawWithCard),
       })),
-      aiReports,
+      aiReports: visibleAiReports,
       cardDraws: standaloneDraws.map(mapDrawWithCard),
     });
   } catch (error) {

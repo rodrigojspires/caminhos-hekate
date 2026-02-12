@@ -3060,6 +3060,7 @@ model MahaLilahRoom {
   maxParticipants    Int
   therapistPlays     Boolean             @default(true)
   isTrial            Boolean             @default(false)
+  playerIntentionLocked Boolean          @default(false)
   planType           MahaLilahPlanType   @default(SINGLE_SESSION)
   orderId            String?
   subscriptionId     String?
@@ -3108,6 +3109,7 @@ model MahaLilahParticipant {
   role              MahaLilahParticipantRole
   userId            String
   displayName       String?
+  gameIntention     String?
   inviteId          String?                  @unique
   joinedAt          DateTime                 @default(now())
   consentAcceptedAt DateTime?
