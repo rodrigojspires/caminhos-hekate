@@ -197,6 +197,10 @@ const COLORS = [
   "#d5a439",
 ];
 const TRIAL_POST_START_MOVE_LIMIT = 5;
+const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
+const DICE_SPIN_INTERVAL_MS = 90;
+const DICE_MIN_SPIN_MS = 900;
+const DICE_RESULT_PREVIEW_MS = 950;
 
 const ACTION_ITEMS: Array<{
   key: ActionPanel;
@@ -566,6 +570,15 @@ function getParticipantDisplayName(participant: {
   return participant.user.name || participant.user.email;
 }
 
+function randomDiceFace() {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function getDiceFaceSymbol(face: number) {
+  const symbols = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+  return symbols[face - 1] || "⚀";
+}
+
 export function RoomClient({ code }: { code: string }) {
   const { data: session } = useSession();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -603,6 +616,12 @@ export function RoomClient({ code }: { code: string }) {
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
   const [showBoardNames, setShowBoardNames] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  const [diceAnimationEnabled, setDiceAnimationEnabled] = useState(true);
+  const [rollInFlight, setRollInFlight] = useState(false);
+  const [diceModalOpen, setDiceModalOpen] = useState(false);
+  const [diceRolling, setDiceRolling] = useState(false);
+  const [diceFace, setDiceFace] = useState(1);
+  const [diceResult, setDiceResult] = useState<number | null>(null);
   const [showRoomTutorial, setShowRoomTutorial] = useState(false);
   const [roomTutorialStep, setRoomTutorialStep] = useState(0);
   const [roomTutorialRole, setRoomTutorialRole] =
@@ -654,6 +673,9 @@ export function RoomClient({ code }: { code: string }) {
   const completionPromptedParticipantsRef = useRef<Set<string>>(new Set());
   const completionPromptQueueProcessingRef = useRef(false);
   const trialModalPromptedRef = useRef(false);
+  const diceSpinIntervalRef = useRef<number | null>(null);
+  const diceRevealTimeoutRef = useRef<number | null>(null);
+  const diceCloseTimeoutRef = useRef<number | null>(null);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -666,6 +688,50 @@ export function RoomClient({ code }: { code: string }) {
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  const clearDiceTimers = useCallback(() => {
+    if (diceSpinIntervalRef.current !== null) {
+      window.clearInterval(diceSpinIntervalRef.current);
+      diceSpinIntervalRef.current = null;
+    }
+    if (diceRevealTimeoutRef.current !== null) {
+      window.clearTimeout(diceRevealTimeoutRef.current);
+      diceRevealTimeoutRef.current = null;
+    }
+    if (diceCloseTimeoutRef.current !== null) {
+      window.clearTimeout(diceCloseTimeoutRef.current);
+      diceCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(DICE_ANIMATION_STORAGE_KEY);
+      if (stored === "false") {
+        setDiceAnimationEnabled(false);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        DICE_ANIMATION_STORAGE_KEY,
+        diceAnimationEnabled ? "true" : "false",
+      );
+    } catch {
+      // no-op
+    }
+  }, [diceAnimationEnabled]);
+
+  useEffect(
+    () => () => {
+      clearDiceTimers();
+    },
+    [clearDiceTimers],
+  );
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -807,12 +873,17 @@ export function RoomClient({ code }: { code: string }) {
     setTimelineError(null);
     setTimelineMoves([]);
     setTimelineReports([]);
+    clearDiceTimers();
+    setRollInFlight(false);
+    setDiceModalOpen(false);
+    setDiceRolling(false);
+    setDiceResult(null);
     setFinalReportPrompt(null);
     setPendingCompletedParticipantPrompts([]);
     completionStateByParticipantRef.current = new Map();
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
-  }, [state?.room.id]);
+  }, [state?.room.id, clearDiceTimers]);
 
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
@@ -960,8 +1031,11 @@ export function RoomClient({ code }: { code: string }) {
   const canEditSessionIntention = Boolean(
     myParticipant && !isPlayerIntentionLocked,
   );
+  const playerParticipantsCount =
+    state?.participants.filter((participant) => participant.role === "PLAYER")
+      .length || 0;
   const canReplicateIntentionToPlayers = Boolean(
-    myParticipant?.role === "THERAPIST",
+    myParticipant?.role === "THERAPIST" && playerParticipantsCount > 1,
   );
   const canRoll = Boolean(
     isMyTurn &&
@@ -1111,8 +1185,16 @@ export function RoomClient({ code }: { code: string }) {
       (participant) => participant.role === "PLAYER",
     );
 
-    if (isTherapist) return players;
-    return players.filter((participant) => participant.id === myParticipant.id);
+    if (isTherapist) {
+      if (players.length > 0) return players;
+      return [myParticipant];
+    }
+
+    if (myParticipant.role === "PLAYER") {
+      return players.filter((participant) => participant.id === myParticipant.id);
+    }
+
+    return [myParticipant];
   }, [state?.participants, myParticipant, isTherapist]);
 
   const summaryParticipant = useMemo(() => {
@@ -1174,7 +1256,7 @@ export function RoomClient({ code }: { code: string }) {
     setAiIntentionSavedLabel(
       participantIntention
         ? "Intenção carregada da sala."
-        : "Defina sua intenção para orientar os resumos da IA.",
+        : "",
     );
   }, [myParticipant]);
 
@@ -1436,15 +1518,76 @@ export function RoomClient({ code }: { code: string }) {
     [isMobileViewport],
   );
 
+  const openDiceRollModal = useCallback(() => {
+    clearDiceTimers();
+    setDiceResult(null);
+    setDiceFace(randomDiceFace());
+    setDiceModalOpen(true);
+
+    if (!diceAnimationEnabled) {
+      setDiceRolling(false);
+      return;
+    }
+
+    setDiceRolling(true);
+    diceSpinIntervalRef.current = window.setInterval(() => {
+      setDiceFace(randomDiceFace());
+    }, DICE_SPIN_INTERVAL_MS);
+  }, [clearDiceTimers, diceAnimationEnabled]);
+
+  const finalizeDiceRollModal = useCallback(
+    (finalDice: number | null) => {
+      const finish = () => {
+        clearDiceTimers();
+        setDiceRolling(false);
+
+        if (typeof finalDice === "number") {
+          setDiceFace(finalDice);
+          setDiceResult(finalDice);
+          diceCloseTimeoutRef.current = window.setTimeout(() => {
+            setDiceModalOpen(false);
+          }, DICE_RESULT_PREVIEW_MS);
+        } else {
+          setDiceResult(null);
+          setDiceModalOpen(false);
+        }
+      };
+
+      if (diceAnimationEnabled && typeof finalDice === "number") {
+        diceRevealTimeoutRef.current = window.setTimeout(finish, DICE_MIN_SPIN_MS);
+        return;
+      }
+
+      finish();
+    },
+    [clearDiceTimers, diceAnimationEnabled],
+  );
+
   const handleRoll = () => {
-    if (!socket) return;
+    if (!socket || rollInFlight) return;
+
+    setRollInFlight(true);
+    openDiceRollModal();
+
     socket.emit("game:roll", {}, (resp: any) => {
+      setRollInFlight(false);
+      const diceValue =
+        typeof resp?.diceValue === "number" ? resp.diceValue : null;
+
       if (!resp?.ok) {
+        clearDiceTimers();
+        setDiceRolling(false);
+        setDiceModalOpen(false);
+        setDiceResult(null);
+
         if (resp?.code === "TRIAL_LIMIT_REACHED") {
           setTrialLimitModalOpen(true);
         }
         showSocketError("Erro ao rolar dado", resp);
+        return;
       }
+
+      finalizeDiceRollModal(diceValue);
     });
   };
 
@@ -2111,10 +2254,12 @@ export function RoomClient({ code }: { code: string }) {
         >
           <button
             onClick={handleRoll}
-            disabled={!canRoll}
+            disabled={!canRoll || rollInFlight}
             style={{ flex: "0 0 auto" }}
           >
-            {trialLimitReached
+            {rollInFlight
+              ? "Rolando..."
+              : trialLimitReached
               ? "Trial bloqueada"
               : !state.room.therapistOnline
               ? "Aguardando terapeuta"
@@ -2165,6 +2310,15 @@ export function RoomClient({ code }: { code: string }) {
             style={{ flex: "0 0 auto" }}
           >
             Regras do jogo
+          </button>
+          <button
+            className="secondary"
+            onClick={() => setDiceAnimationEnabled((prev) => !prev)}
+            style={{ flex: "0 0 auto" }}
+          >
+            {diceAnimationEnabled
+              ? "Animação do dado: ligada"
+              : "Animação do dado: desligada"}
           </button>
           {canCloseRoom && (
             <Link
@@ -2990,7 +3144,7 @@ export function RoomClient({ code }: { code: string }) {
                 <strong>Relatórios finais disponíveis</strong>
                 {finalReportParticipants.length === 0 ? (
                   <span className="small-muted">
-                    Nenhum jogador disponível para leitura do relatório final.
+                    Nenhum relatório final disponível para leitura.
                   </span>
                 ) : (
                   <div style={{ display: "grid", gap: 6 }}>
@@ -3467,6 +3621,61 @@ export function RoomClient({ code }: { code: string }) {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {diceModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (diceRolling || rollInFlight) return;
+            clearDiceTimers();
+            setDiceModalOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.72)",
+            zIndex: 10010,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card mahalilah-dice-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <strong>
+              {diceRolling ? "Rolando dado..." : "Resultado da rolagem"}
+            </strong>
+            <div
+              className={`mahalilah-dice-face${diceRolling && diceAnimationEnabled ? " is-rolling" : ""}`}
+            >
+              {getDiceFaceSymbol(diceFace)}
+            </div>
+            <span className="small-muted">
+              {diceRolling
+                ? diceAnimationEnabled
+                  ? "O dado está girando."
+                  : "Aguardando o número sorteado..."
+                : typeof diceResult === "number"
+                  ? `Número sorteado: ${diceResult}`
+                  : "Número não disponível."}
+            </span>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                clearDiceTimers();
+                setDiceModalOpen(false);
+                setDiceRolling(false);
+              }}
+              disabled={diceRolling || rollInFlight}
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}

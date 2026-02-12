@@ -793,7 +793,7 @@ async function rollInRoom(roomId: string, userId: string) {
         where: { id: room.id },
         data: { status: "CLOSED", closedAt: new Date() },
       });
-      return { roomId: room.id, trialClosedByLimit: true };
+      return { roomId: room.id, trialClosedByLimit: true, diceValue: dice };
     }
 
     const allCompleted =
@@ -818,7 +818,7 @@ async function rollInRoom(roomId: string, userId: string) {
       });
     }
 
-    return { roomId: room.id, trialClosedByLimit: false };
+    return { roomId: room.id, trialClosedByLimit: false, diceValue: dice };
   });
 }
 
@@ -988,7 +988,12 @@ io.on("connection", (socket: AuthedSocket) => {
         const result = await rollInRoom(socket.data.roomId, socket.data.user.id);
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
-        callback?.({ ok: true, trialClosedByLimit: Boolean(result?.trialClosedByLimit) });
+        callback?.({
+          ok: true,
+          trialClosedByLimit: Boolean(result?.trialClosedByLimit),
+          diceValue:
+            typeof result?.diceValue === "number" ? result.diceValue : null,
+        });
       } catch (error: any) {
         callback?.({
           ok: false,
