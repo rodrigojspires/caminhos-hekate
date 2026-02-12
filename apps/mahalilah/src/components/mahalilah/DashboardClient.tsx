@@ -418,7 +418,9 @@ export function DashboardClient() {
       getDashboardTutorialSteps({
         canCreateRoom,
         hasRooms: rooms.length > 0,
-        canManageRoom: rooms.some((room) => room.canManage),
+        canManageRoom: rooms.some(
+          (room) => room.canManage && room.status === "ACTIVE",
+        ),
       }),
     [canCreateRoom, rooms],
   );
@@ -777,7 +779,8 @@ export function DashboardClient() {
 
   const toggleRoom = (roomId: string) => {
     const room = rooms.find((item) => item.id === roomId);
-    const defaultTab: RoomDetailsTab = room?.canManage ? "invites" : "timeline";
+    const canManageInvites = room?.canManage && room.status === "ACTIVE";
+    const defaultTab: RoomDetailsTab = canManageInvites ? "invites" : "timeline";
 
     setOpenRooms((prev) => {
       const nextOpen = !prev[roomId];
@@ -806,19 +809,30 @@ export function DashboardClient() {
 
   const roomCards = rooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
+    const canManageInvites = room.canManage && room.status === "ACTIVE";
     const requestedTab = activeDetailTabs[room.id];
     const activeTab: RoomDetailsTab =
-      !room.canManage && requestedTab === "invites"
+      !canManageInvites && requestedTab === "invites"
         ? "timeline"
-        : requestedTab || (room.canManage ? "invites" : "timeline");
+        : requestedTab || (canManageInvites ? "invites" : "timeline");
     const roomDetails = details[room.id];
     const selectedParticipantId = timelineParticipantFilters[room.id] || "";
     const currentUserParticipant = room.participants.find(
       (participant) => participant.user.id === currentUserId,
     );
+    const playerParticipants = room.participants.filter(
+      (participant) => participant.role === "PLAYER",
+    );
+    const therapistParticipants = room.participants.filter(
+      (participant) => participant.role === "THERAPIST",
+    );
     const exportableParticipants =
       room.viewerRole === "THERAPIST"
-        ? room.participants.filter((participant) => participant.role === "PLAYER")
+        ? playerParticipants.length > 0
+          ? playerParticipants
+          : room.therapistPlays
+            ? therapistParticipants
+            : []
         : currentUserParticipant
           ? [currentUserParticipant]
           : [];
@@ -996,7 +1010,7 @@ export function DashboardClient() {
               className="dashboard-room-tabs"
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
-              {room.canManage && (
+              {canManageInvites && (
                 <button
                   className={
                     activeTab === "invites" ? "btn-primary" : "btn-secondary"
@@ -1078,7 +1092,7 @@ export function DashboardClient() {
               </button>
             </div>
 
-            {room.canManage && activeTab === "invites" && (
+            {canManageInvites && activeTab === "invites" && (
               <>
                 <div className="grid" style={{ gap: 10 }}>
                   <strong>Convites</strong>
