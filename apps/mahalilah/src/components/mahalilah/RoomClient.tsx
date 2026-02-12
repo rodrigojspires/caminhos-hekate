@@ -658,6 +658,8 @@ export function RoomClient({ code }: { code: string }) {
     participantName?: string;
   } | null>(null);
   const [trialLimitModalOpen, setTrialLimitModalOpen] = useState(false);
+  const [pendingTrialPlansAfterAiModal, setPendingTrialPlansAfterAiModal] =
+    useState(false);
   const [finalReportLoading, setFinalReportLoading] = useState(false);
   const [pendingCompletedParticipantPrompts, setPendingCompletedParticipantPrompts] =
     useState<string[]>([]);
@@ -1566,6 +1568,14 @@ export function RoomClient({ code }: { code: string }) {
     },
     [pushToast],
   );
+
+  const closeAiContentModal = useCallback(() => {
+    setAiContentModal(null);
+    if (pendingTrialPlansAfterAiModal) {
+      setPendingTrialPlansAfterAiModal(false);
+      setTrialLimitModalOpen(true);
+    }
+  }, [pendingTrialPlansAfterAiModal]);
 
   const handleSelectActionPanel = useCallback(
     (panel: ActionPanel) => {
@@ -3804,7 +3814,7 @@ export function RoomClient({ code }: { code: string }) {
         <div
           role="dialog"
           aria-modal="true"
-          onClick={() => setAiContentModal(null)}
+          onClick={closeAiContentModal}
           style={{
             position: "fixed",
             inset: 0,
@@ -3841,7 +3851,7 @@ export function RoomClient({ code }: { code: string }) {
               </div>
               <button
                 className="btn-secondary"
-                onClick={() => setAiContentModal(null)}
+                onClick={closeAiContentModal}
               >
                 Fechar
               </button>
@@ -4171,7 +4181,12 @@ export function RoomClient({ code }: { code: string }) {
                     finalReportPrompt.mode === "close"
                       ? await requestFinalReport({ allPlayers: true })
                       : finalReportPrompt.mode === "trialLimit"
-                        ? await requestFinalReport({ allPlayers: true })
+                        ? await requestFinalReport({
+                            participantId:
+                              therapistParticipantInRoom?.id ||
+                              myParticipant?.id,
+                            successMessage: "Resumo final gerado.",
+                          })
                       : await requestFinalReport({
                           participantId: finalReportPrompt.participantId,
                           successMessage: `Resumo final gerado para ${finalReportPrompt.participantName || "o jogador"}.`,
@@ -4182,7 +4197,7 @@ export function RoomClient({ code }: { code: string }) {
                   }
                   setFinalReportPrompt(null);
                   if (finalReportPrompt.mode === "trialLimit") {
-                    setTrialLimitModalOpen(true);
+                    setPendingTrialPlansAfterAiModal(true);
                   }
                 }}
               >
