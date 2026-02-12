@@ -41,6 +41,8 @@ const PLAN_LIMITS_CACHE_TTL_MS = Number(
 const TRIAL_POST_START_MOVE_LIMIT = Number(
   process.env.MAHALILAH_TRIAL_POST_START_MOVE_LIMIT || 5,
 );
+const TRIAL_AI_TIPS_LIMIT = 1;
+const TRIAL_AI_SUMMARY_LIMIT = 1;
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -319,8 +321,16 @@ async function getRoomAiLimits(room: {
   id: string;
   planType: string;
   orderId: string | null;
+  subscriptionId?: string | null;
   createdByUserId: string;
 }) {
+  if (isTrialRoom(room)) {
+    return {
+      tipsLimit: TRIAL_AI_TIPS_LIMIT,
+      summaryLimit: TRIAL_AI_SUMMARY_LIMIT,
+    };
+  }
+
   const defaults = await getDefaultAiLimitsForPlan(room.planType);
   let tipsLimit = defaults.tipsPerPlayer;
   let summaryLimit = defaults.summaryLimit;
@@ -1173,11 +1183,6 @@ io.on("connection", (socket: AuthedSocket) => {
         });
         if (!room) throw new Error("Sala não encontrada");
         if (room.status !== "ACTIVE") throw new Error("Sala não está ativa");
-        if (isTrialRoom(room)) {
-          throw new Error(
-            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
-          );
-        }
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
           where: { roomId: room.id, userId: socket.data.user.id },
@@ -1276,11 +1281,6 @@ io.on("connection", (socket: AuthedSocket) => {
           include: { participants: true },
         });
         if (!room) throw new Error("Sala não encontrada");
-        if (isTrialRoom(room)) {
-          throw new Error(
-            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
-          );
-        }
 
         const requester = room.participants.find(
           (roomParticipant) => roomParticipant.userId === socket.data.user?.id,
@@ -1353,11 +1353,6 @@ io.on("connection", (socket: AuthedSocket) => {
           },
         });
         if (!room) throw new Error("Sala não encontrada");
-        if (isTrialRoom(room)) {
-          throw new Error(
-            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
-          );
-        }
 
         const therapist = room.participants.find(
           (participant) => participant.userId === socket.data.user?.id,

@@ -2660,8 +2660,8 @@ export function RoomClient({ code }: { code: string }) {
               <strong>IA terapêutica</strong>
               {isTrialRoom && (
                 <span className="small-muted">
-                  No modo trial, o menu IA fica visível para demonstração, mas
-                  os botões ficam bloqueados.
+                  No modo trial você pode usar 1 ajuda da IA e gerar 1 resumo
+                  final.
                 </span>
               )}
               <span className="small-muted">
@@ -2673,7 +2673,7 @@ export function RoomClient({ code }: { code: string }) {
 
               <button
                 className="secondary"
-                disabled={actionsBlockedByConsent || aiTipLoading || isTrialRoom}
+                disabled={actionsBlockedByConsent || aiTipLoading}
                 onClick={() =>
                   (() => {
                     if (!socket) return;
@@ -2752,7 +2752,6 @@ export function RoomClient({ code }: { code: string }) {
                       <button
                         key={report.id}
                         className="btn-secondary"
-                        disabled={isTrialRoom}
                         style={{
                           justifyContent: "flex-start",
                           textAlign: "left",
@@ -2785,9 +2784,7 @@ export function RoomClient({ code }: { code: string }) {
               <button
                 className="secondary"
                 onClick={() => void requestFinalReport()}
-                disabled={
-                  actionsBlockedByConsent || finalReportLoading || isTrialRoom
-                }
+                disabled={actionsBlockedByConsent || finalReportLoading}
               >
                 {finalReportLoading
                   ? "Gerando resumo final..."
@@ -3628,7 +3625,8 @@ export function RoomClient({ code }: { code: string }) {
             <strong>Sua experiência trial terminou</strong>
             <span className="small-muted">
               Você usou as {TRIAL_POST_START_MOVE_LIMIT} jogadas da sala trial após sair da casa 68.
-              Para continuar com IA, histórico completo e sessões sem limite de trial, escolha uma opção:
+              Para continuar com mais uso de IA, histórico completo e sessões
+              sem limite de trial, escolha uma opção:
             </span>
 
             <div

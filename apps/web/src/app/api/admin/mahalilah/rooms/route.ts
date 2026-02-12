@@ -16,6 +16,19 @@ const CreateRoomSchema = z.object({
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const generator = customAlphabet(alphabet, 6)
 
+function getMahaLilahEmailIdentity() {
+  const from = process.env.MAHALILAH_FROM_EMAIL
+  if (!from) {
+    throw new Error('MAHALILAH_FROM_EMAIL não configurado')
+  }
+
+  return {
+    from,
+    fromName: process.env.MAHALILAH_FROM_NAME || 'Maha Lilah Online',
+    replyTo: process.env.MAHALILAH_REPLY_TO_EMAIL || from
+  }
+}
+
 async function ensureUniqueCode() {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const code = generator()
@@ -142,10 +155,14 @@ export async function POST(request: NextRequest) {
       process.env.NEXTAUTH_URL_MAHALILAH ||
       'https://mahalilahonline.com.br'
     const roomUrl = `${baseUrl}/rooms/${room.code}`
+    const emailIdentity = getMahaLilahEmailIdentity()
 
     try {
       await resendEmailService.sendEmail({
         to: therapist.email,
+        from: emailIdentity.from,
+        fromName: emailIdentity.fromName,
+        replyTo: emailIdentity.replyTo,
         subject: `Sua sala Maha Lilah foi criada (${room.code})`,
         html: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
@@ -158,10 +175,11 @@ export async function POST(request: NextRequest) {
                 Entrar na sala
               </a>
             </p>
+            <p style="font-size:12px;color:#5d6b75;">Equipe Maha Lilah Online</p>
             <p style="font-size:12px;color:#5d6b75;">Se você não esperava esta criação, ignore este email.</p>
           </div>
         `,
-        text: `Sala Maha Lilah criada.\nCódigo: ${room.code}\nAcesse: ${roomUrl}`
+        text: `Sala Maha Lilah criada.\nCódigo: ${room.code}\nAcesse: ${roomUrl}\n\nEquipe Maha Lilah Online`
       })
     } catch (error) {
       console.warn('Falha ao enviar email de criação de sala Maha Lilah:', error)

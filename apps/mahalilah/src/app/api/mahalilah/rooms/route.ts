@@ -199,32 +199,43 @@ export async function GET(request: Request) {
       where.createdAt = createdAtRange
     }
 
-    const rooms = await prisma.mahaLilahRoom.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        invites: true,
-        participants: {
-          include: {
-            user: { select: { id: true, name: true, email: true } }
-          }
-        },
-        playerStates: true,
-        _count: {
-          select: {
-            moves: true,
-            therapyEntries: true,
-            cardDraws: true,
-            aiReports: true
+    const [rooms, canCreateRoom, hasUsedTrial] = await Promise.all([
+      prisma.mahaLilahRoom.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          invites: true,
+          participants: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          playerStates: true,
+          _count: {
+            select: {
+              moves: true,
+              therapyEntries: true,
+              cardDraws: true,
+              aiReports: true
+            }
           }
         }
-      }
-    })
-
-    const canCreateRoom = await hasActiveSubscription(session.user.id)
+      }),
+      hasActiveSubscription(session.user.id),
+      prisma.mahaLilahRoom.findFirst({
+        where: {
+          createdByUserId: session.user.id,
+          planType: MahaLilahPlanType.SINGLE_SESSION,
+          orderId: null,
+          subscriptionId: null
+        },
+        select: { id: true }
+      })
+    ])
 
     return NextResponse.json({
       canCreateRoom,
+      hasUsedTrial: Boolean(hasUsedTrial),
       rooms: rooms.map((room) => {
         const rollsTotal = room.playerStates.reduce(
           (sum, state) => sum + (state.rollCountTotal || 0),

@@ -323,6 +323,7 @@ export function DashboardClient() {
   const [dashboardTutorialStep, setDashboardTutorialStep] = useState(0);
   const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
     useState<DOMRect | null>(null);
+  const [hasUsedTrial, setHasUsedTrial] = useState(false);
   const dashboardTutorialSteps = useMemo(
     () =>
       getDashboardTutorialSteps({
@@ -330,10 +331,6 @@ export function DashboardClient() {
         hasRooms: rooms.length > 0,
       }),
     [canCreateRoom, rooms.length],
-  );
-  const hasTrialRoom = useMemo(
-    () => rooms.some((room) => Boolean(room.isTrial)),
-    [rooms],
   );
 
   const showNotice = (
@@ -369,6 +366,7 @@ export function DashboardClient() {
       const data = await res.json();
       setRooms(data.rooms || []);
       setCanCreateRoom(Boolean(data.canCreateRoom));
+      setHasUsedTrial(Boolean(data.hasUsedTrial));
       setLoading(false);
     },
     [filters],
@@ -1425,33 +1423,30 @@ export function DashboardClient() {
           {notice.message}
         </div>
       )}
-      <div
-        className="card dashboard-create-card"
-        style={{ display: "grid", gap: 12 }}
-      >
-        <strong>Sala trial</strong>
-        <p className="small-muted" style={{ margin: 0 }}>
-          Experimente agora com 1 jogador. Sem IA e com limite de 5 jogadas
-          após sair da casa 68.
-        </p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            className="btn-primary"
-            onClick={handleCreateTrialRoom}
-            disabled={creatingTrial || hasTrialRoom}
-          >
-            {creatingTrial ? "Criando trial..." : "Experimente já"}
-          </button>
-          <a href="/pricing" className="btn-secondary">
-            Ver planos
-          </a>
+      {!hasUsedTrial && (
+        <div
+          className="card dashboard-create-card"
+          style={{ display: "grid", gap: 12 }}
+        >
+          <strong>Sala trial</strong>
+          <p className="small-muted" style={{ margin: 0 }}>
+            Experimente agora com 1 jogador, 1 ajuda de IA e resumo final, com
+            limite de 5 jogadas após sair da casa 68.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              className="btn-primary"
+              onClick={handleCreateTrialRoom}
+              disabled={creatingTrial}
+            >
+              {creatingTrial ? "Criando trial..." : "Experimente já"}
+            </button>
+            <a href="/pricing" className="btn-secondary">
+              Ver planos
+            </a>
+          </div>
         </div>
-        {hasTrialRoom && (
-          <span className="small-muted">
-            Você já possui uma sala trial criada.
-          </span>
-        )}
-      </div>
+      )}
       {canCreateRoom && (
         <div
           className="card dashboard-create-card"
