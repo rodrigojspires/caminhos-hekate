@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const PLAN_TYPES = ['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED'] as const
 
 type PlanType = (typeof PLAN_TYPES)[number]

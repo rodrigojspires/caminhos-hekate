@@ -12,6 +12,8 @@ import {
 } from '@/lib/gamification/point-settings.server'
 import { SettingsCache } from '@/lib/cache'
 
+export const dynamic = 'force-dynamic'
+
 const UpdateSchema = z.object({
   settings: z.array(
     z.object({
