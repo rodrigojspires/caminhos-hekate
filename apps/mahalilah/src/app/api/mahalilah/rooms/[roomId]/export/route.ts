@@ -184,6 +184,54 @@ function formatReportKind(kind: string) {
   return kind
 }
 
+function repairPtBrMojibake(value: string) {
+  let fixed = value
+
+  // Correcoes comuns de texto UTF-8 mal decodificado para PT-BR
+  if (/[ÃÂâ]/.test(fixed)) {
+    const utf8Candidate = Buffer.from(fixed, 'latin1').toString('utf8')
+    if (utf8Candidate && !/[\uFFFD]/.test(utf8Candidate)) {
+      fixed = utf8Candidate
+    }
+  }
+
+  // Correcoes pontuais observadas em alguns relatorios
+  fixed = fixed
+    .replace(/Œ/g, 'ê')
+    .replace(/Ø/g, 'é')
+    .replace(/ª/g, 'ã')
+
+  return fixed.normalize('NFC')
+}
+
+function extractAiReportText(content: string) {
+  const raw = (content || '').trim()
+  if (!raw) return ''
+
+  try {
+    const parsed = JSON.parse(raw)
+
+    if (typeof parsed === 'string') {
+      return repairPtBrMojibake(parsed)
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const text =
+        typeof (parsed as { text?: unknown }).text === 'string'
+          ? (parsed as { text: string }).text
+          : typeof (parsed as { content?: unknown }).content === 'string'
+            ? (parsed as { content: string }).content
+            : ''
+
+      if (text) return repairPtBrMojibake(text)
+    }
+  } catch {
+    // Se nao for JSON, segue com o proprio conteudo.
+  }
+
+  return repairPtBrMojibake(raw)
+}
+
 function buildPdf(room: ExportRoom) {
   const pages: string[][] = []
 
@@ -438,7 +486,8 @@ function buildPdf(room: ExportRoom) {
         { font: 'F2', size: 10 }
       )
 
-      const contentLines = report.content
+      const reportText = extractAiReportText(report.content)
+      const contentLines = reportText
         .split(/\r?\n/g)
         .map((line) => line.trim())
         .filter(Boolean)
