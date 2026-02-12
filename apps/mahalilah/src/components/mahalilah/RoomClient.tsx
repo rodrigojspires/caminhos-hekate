@@ -2241,36 +2241,6 @@ export function RoomClient({ code }: { code: string }) {
           )}
           <button
             type="button"
-            className="pill"
-            onClick={() => setDiceAnimationEnabled((prev) => !prev)}
-            style={{
-              flex: "0 0 auto",
-              borderColor: diceAnimationEnabled
-                ? "rgba(106, 211, 176, 0.6)"
-                : "rgba(255, 107, 107, 0.6)",
-              background: diceAnimationEnabled
-                ? "rgba(106, 211, 176, 0.15)"
-                : "rgba(255, 107, 107, 0.15)",
-              cursor: "pointer",
-            }}
-            title="Ativar ou desativar animação do dado"
-            aria-pressed={diceAnimationEnabled}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: diceAnimationEnabled ? "#6ad3b0" : "#ff6b6b",
-                boxShadow: diceAnimationEnabled
-                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
-                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
-              }}
-            />
-            <strong>Animação do Dado</strong>
-          </button>
-          <button
-            type="button"
             className="btn-secondary"
             onClick={() => setRulesModalOpen(true)}
             style={{
@@ -2350,6 +2320,32 @@ export function RoomClient({ code }: { code: string }) {
             style={{ flex: "0 0 auto" }}
           >
             {showBoardNames ? "Ocultar nomes" : "Mostrar nomes"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setDiceAnimationEnabled((prev) => !prev)}
+            style={{
+              flex: "0 0 auto",
+              display: "inline-flex",
+              gap: 8,
+              alignItems: "center",
+            }}
+            title="Ativar ou desativar animação do dado"
+            aria-pressed={diceAnimationEnabled}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: diceAnimationEnabled ? "#6ad3b0" : "#ff6b6b",
+                boxShadow: diceAnimationEnabled
+                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+              }}
+            />
+            <span>Animação do Dado</span>
           </button>
           {canCloseRoom && (
             <Link
