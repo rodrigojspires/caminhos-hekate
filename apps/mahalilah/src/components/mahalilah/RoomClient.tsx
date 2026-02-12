@@ -627,15 +627,23 @@ export function RoomClient({ code }: { code: string }) {
     subtitle?: string;
   } | null>(null);
   const [finalReportPrompt, setFinalReportPrompt] = useState<{
-    mode: "close" | "completed";
+    mode: "close" | "participantCompleted";
+    participantId?: string;
+    participantName?: string;
   } | null>(null);
   const [trialLimitModalOpen, setTrialLimitModalOpen] = useState(false);
   const [finalReportLoading, setFinalReportLoading] = useState(false);
+  const [pendingCompletedParticipantPrompts, setPendingCompletedParticipantPrompts] =
+    useState<string[]>([]);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
-  const completionPromptedStatusRef = useRef<string>("");
+  const completionStateByParticipantRef = useRef<Map<string, boolean>>(
+    new Map(),
+  );
+  const completionPromptedParticipantsRef = useRef<Set<string>>(new Set());
+  const completionPromptQueueProcessingRef = useRef(false);
   const trialModalPromptedRef = useRef(false);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
@@ -790,6 +798,11 @@ export function RoomClient({ code }: { code: string }) {
     setTimelineError(null);
     setTimelineMoves([]);
     setTimelineReports([]);
+    setFinalReportPrompt(null);
+    setPendingCompletedParticipantPrompts([]);
+    completionStateByParticipantRef.current = new Map();
+    completionPromptedParticipantsRef.current = new Set();
+    completionPromptQueueProcessingRef.current = false;
   }, [state?.room.id]);
 
   const boardCells = useMemo(() => {
@@ -1463,41 +1476,114 @@ export function RoomClient({ code }: { code: string }) {
     });
   }, [socket, showSocketError, pushToast]);
 
-  const requestFinalReport = useCallback(async () => {
-    if (!socket) return false;
+  const requestFinalReport = useCallback(
+    async (options?: {
+      participantId?: string;
+      allPlayers?: boolean;
+      successMessage?: string;
+    }) => {
+      if (!socket) return false;
 
-    setFinalReportLoading(true);
-    try {
-      const resp = await new Promise<any>((resolve) => {
-        socket.emit("ai:finalReport", { intention: aiIntention }, resolve);
-      });
+      setFinalReportLoading(true);
+      try {
+        if (options?.allPlayers) {
+          const resp = await new Promise<any>((resolve) => {
+            socket.emit("ai:finalReportAll", { intention: aiIntention }, resolve);
+          });
 
-      if (!resp?.ok) {
-        showSocketError("Erro ao gerar resumo", resp);
-        return false;
+          if (!resp?.ok) {
+            showSocketError("Erro ao gerar resumo", resp);
+            return false;
+          }
+
+          const generatedCount =
+            typeof resp.generatedCount === "number" ? resp.generatedCount : null;
+          if (generatedCount !== null) {
+            pushToast(
+              generatedCount > 1
+                ? `${generatedCount} resumos finais gerados.`
+                : "Resumo final gerado.",
+              "success",
+            );
+          } else {
+            pushToast(
+              options.successMessage || "Resumos finais gerados.",
+              "success",
+            );
+          }
+          await loadTimelineData();
+          return true;
+        }
+
+        const targetParticipantId = options?.participantId || undefined;
+        const resp = await new Promise<any>((resolve) => {
+          socket.emit(
+            "ai:finalReport",
+            { intention: aiIntention, participantId: targetParticipantId },
+            resolve,
+          );
+        });
+
+        if (!resp?.ok) {
+          showSocketError("Erro ao gerar resumo", resp);
+          return false;
+        }
+
+        const generatedForMe =
+          !targetParticipantId || targetParticipantId === myParticipant?.id;
+        if (generatedForMe) {
+          setAiSummary(resp.content);
+        }
+        pushToast(options?.successMessage || "Resumo final gerado.", "success");
+        await loadTimelineData();
+        return true;
+      } finally {
+        setFinalReportLoading(false);
       }
+    },
+    [
+      socket,
+      aiIntention,
+      showSocketError,
+      pushToast,
+      loadTimelineData,
+      myParticipant?.id,
+    ],
+  );
 
-      setAiSummary(resp.content);
-      pushToast("Resumo final gerado.", "success");
-      await loadTimelineData();
-      return true;
-    } finally {
-      setFinalReportLoading(false);
-    }
-  }, [socket, aiIntention, showSocketError, pushToast, loadTimelineData]);
-
-  const hasFinalReportInTimeline = useCallback(
-    (reports: TimelineAiReport[]) => {
-      return reports.some((report) => report.kind === "FINAL");
+  const hasFinalReportForParticipant = useCallback(
+    (reports: TimelineAiReport[], participantId: string) => {
+      return reports.some(
+        (report) =>
+          report.kind === "FINAL" && report.participant?.id === participantId,
+      );
     },
     [],
+  );
+
+  const getPlayersNeedingFinalReport = useCallback(
+    (reports: TimelineAiReport[]) => {
+      if (!state) return [];
+      const participantsWithFinal = new Set(
+        reports
+          .filter((report) => report.kind === "FINAL" && report.participant?.id)
+          .map((report) => report.participant!.id),
+      );
+
+      return state.participants.filter(
+        (participant) =>
+          participant.role === "PLAYER" &&
+          !participantsWithFinal.has(participant.id),
+      );
+    },
+    [state],
   );
 
   const shouldPromptForFinalReport = useCallback(async () => {
     const loaded = await loadTimelineData();
     const reports = loaded.ok ? loaded.aiReports : timelineReports;
-    return !hasFinalReportInTimeline(reports);
-  }, [loadTimelineData, timelineReports, hasFinalReportInTimeline]);
+    return getPlayersNeedingFinalReport(reports).length > 0;
+  }, [loadTimelineData, timelineReports, getPlayersNeedingFinalReport]);
 
   const handleCloseRoom = useCallback(async () => {
     if (!canCloseRoom || !state) return;
@@ -1520,21 +1606,106 @@ export function RoomClient({ code }: { code: string }) {
 
   useEffect(() => {
     if (!state || !canCloseRoom) return;
-    if (state.room.status !== "COMPLETED") return;
 
-    const completionKey = `${state.room.id}:${state.room.status}`;
-    if (completionPromptedStatusRef.current === completionKey) return;
-    completionPromptedStatusRef.current = completionKey;
+    const previousCompletion = completionStateByParticipantRef.current;
+    const currentCompletion = new Map<string, boolean>();
+    const newlyCompletedParticipantIds: string[] = [];
 
-    const promptIfNeeded = async () => {
-      const needsPrompt = await shouldPromptForFinalReport();
-      if (needsPrompt) {
-        setFinalReportPrompt({ mode: "completed" });
+    state.participants.forEach((participant) => {
+      if (participant.role !== "PLAYER") return;
+      const isCompleted = Boolean(playerStateMap.get(participant.id)?.hasCompleted);
+      currentCompletion.set(participant.id, isCompleted);
+
+      const previousValue = previousCompletion.has(participant.id)
+        ? previousCompletion.get(participant.id)
+        : isCompleted;
+
+      if (isCompleted && !previousValue) {
+        newlyCompletedParticipantIds.push(participant.id);
+      }
+    });
+
+    completionStateByParticipantRef.current = currentCompletion;
+
+    if (!newlyCompletedParticipantIds.length) return;
+
+    setPendingCompletedParticipantPrompts((previousQueue) => {
+      const unique = new Set(previousQueue);
+      newlyCompletedParticipantIds.forEach((participantId) => {
+        if (!completionPromptedParticipantsRef.current.has(participantId)) {
+          unique.add(participantId);
+        }
+      });
+      return Array.from(unique);
+    });
+  }, [state, canCloseRoom, playerStateMap]);
+
+  useEffect(() => {
+    if (!canCloseRoom || !state) return;
+    if (finalReportPrompt) return;
+    if (!pendingCompletedParticipantPrompts.length) return;
+    if (completionPromptQueueProcessingRef.current) return;
+
+    const nextParticipantId = pendingCompletedParticipantPrompts[0];
+    const participant = state.participants.find(
+      (item) => item.id === nextParticipantId,
+    );
+
+    if (!participant || participant.role !== "PLAYER") {
+      completionPromptedParticipantsRef.current.add(nextParticipantId);
+      setPendingCompletedParticipantPrompts((queue) =>
+        queue.filter((participantId) => participantId !== nextParticipantId),
+      );
+      return;
+    }
+
+    completionPromptQueueProcessingRef.current = true;
+    let cancelled = false;
+
+    const processPrompt = async () => {
+      try {
+        const loaded = await loadTimelineData();
+        if (cancelled) return;
+
+        const reports = loaded.ok ? loaded.aiReports : timelineReports;
+        const alreadyHasFinal = hasFinalReportForParticipant(
+          reports,
+          nextParticipantId,
+        );
+
+        completionPromptedParticipantsRef.current.add(nextParticipantId);
+
+        if (!alreadyHasFinal) {
+          setFinalReportPrompt({
+            mode: "participantCompleted",
+            participantId: nextParticipantId,
+            participantName: participant.user.name || participant.user.email,
+          });
+        }
+      } finally {
+        completionPromptQueueProcessingRef.current = false;
+        if (!cancelled) {
+          setPendingCompletedParticipantPrompts((queue) =>
+            queue.filter((participantId) => participantId !== nextParticipantId),
+          );
+        }
       }
     };
 
-    void promptIfNeeded();
-  }, [state, canCloseRoom, shouldPromptForFinalReport]);
+    void processPrompt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    canCloseRoom,
+    state,
+    finalReportPrompt,
+    pendingCompletedParticipantPrompts,
+    loadTimelineData,
+    timelineReports,
+    hasFinalReportForParticipant,
+  ]);
 
   useEffect(() => {
     if (!["summary", "timeline", "ai"].includes(activePanel)) return;
@@ -3362,11 +3533,13 @@ export function RoomClient({ code }: { code: string }) {
           >
             <strong>
               {finalReportPrompt.mode === "close"
-                ? "Gerar resumo final da IA antes de encerrar?"
-                : "Jogo concluído. Deseja gerar o resumo final da IA?"}
+                ? "Gerar resumo final da IA para todos os jogadores antes de encerrar?"
+                : `${finalReportPrompt.participantName || "Jogador"} concluiu (casa 68). Deseja gerar o resumo final agora?`}
             </strong>
             <span className="small-muted">
-              Esse resumo final ficará registrado na timeline da sala.
+              {finalReportPrompt.mode === "close"
+                ? "Os resumos finais serão registrados na timeline da sala."
+                : "Esse resumo final ficará registrado na timeline da sala."}
             </span>
 
             <div
@@ -3401,7 +3574,13 @@ export function RoomClient({ code }: { code: string }) {
               <button
                 disabled={finalReportLoading}
                 onClick={async () => {
-                  const ok = await requestFinalReport();
+                  const ok =
+                    finalReportPrompt.mode === "close"
+                      ? await requestFinalReport({ allPlayers: true })
+                      : await requestFinalReport({
+                          participantId: finalReportPrompt.participantId,
+                          successMessage: `Resumo final gerado para ${finalReportPrompt.participantName || "o jogador"}.`,
+                        });
                   if (!ok) return;
                   if (finalReportPrompt.mode === "close") {
                     closeRoom();

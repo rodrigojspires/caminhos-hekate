@@ -383,6 +383,47 @@ async function getRoomAiLimits(room: {
   return { tipsLimit, summaryLimit };
 }
 
+async function generateFinalReportForParticipant(params: {
+  room: {
+    id: string;
+    planType: string;
+    orderId: string | null;
+    createdByUserId: string;
+  };
+  participantId: string;
+  intention?: string;
+}) {
+  const { room, participantId, intention } = params;
+  const { summaryLimit: finalLimit } = await getRoomAiLimits(room);
+
+  const existingReports = await prisma.mahaLilahAiReport.count({
+    where: {
+      roomId: room.id,
+      participantId,
+      kind: "FINAL",
+    },
+  });
+
+  if (existingReports >= finalLimit) {
+    return { created: false as const };
+  }
+
+  const context = await buildAiContext(room.id, participantId);
+  const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${intention || "não informada"}\n\nGere um resumo final estruturado com: padrões, temas, 3 intervenções, plano de 7 dias e perguntas finais.`;
+  const content = await callOpenAI(prompt);
+
+  await prisma.mahaLilahAiReport.create({
+    data: {
+      roomId: room.id,
+      participantId,
+      kind: "FINAL",
+      content,
+    },
+  });
+
+  return { created: true as const, content };
+}
+
 function ensureConsentAccepted(participant: {
   consentAcceptedAt: Date | null;
 }) {
@@ -1217,7 +1258,10 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "ai:finalReport",
     async (
-      { intention }: { intention?: string } = {},
+      {
+        intention,
+        participantId,
+      }: { intention?: string; participantId?: string } = {},
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -1229,6 +1273,7 @@ io.on("connection", (socket: AuthedSocket) => {
         );
         const room = await prisma.mahaLilahRoom.findUnique({
           where: { id: socket.data.roomId },
+          include: { participants: true },
         });
         if (!room) throw new Error("Sala não encontrada");
         if (isTrialRoom(room)) {
@@ -1237,42 +1282,130 @@ io.on("connection", (socket: AuthedSocket) => {
           );
         }
 
-        const participant = await prisma.mahaLilahParticipant.findFirst({
-          where: { roomId: room.id, userId: socket.data.user.id },
-        });
+        const requester = room.participants.find(
+          (roomParticipant) => roomParticipant.userId === socket.data.user?.id,
+        );
 
-        if (!participant) throw new Error("Participante não encontrado");
-        ensureConsentAccepted(participant);
+        if (!requester) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requester);
 
-        const { summaryLimit: finalLimit } = await getRoomAiLimits(room);
+        let targetParticipantId = requester.id;
 
-        const existingReports = await prisma.mahaLilahAiReport.count({
-          where: {
-            roomId: room.id,
-            participantId: participant.id,
-            kind: "FINAL",
-          },
-        });
+        if (participantId && participantId !== requester.id) {
+          if (requester.role !== "THERAPIST") {
+            throw new Error(
+              "Apenas o terapeuta pode gerar o resumo final para outro jogador.",
+            );
+          }
 
-        if (existingReports >= finalLimit) {
-          throw new Error("Resumo final já gerado para esta sessão");
+          const targetParticipant = room.participants.find(
+            (roomParticipant) => roomParticipant.id === participantId,
+          );
+          if (!targetParticipant || targetParticipant.role === "THERAPIST") {
+            throw new Error("Jogador não encontrado para gerar o resumo final.");
+          }
+
+          ensureConsentAccepted(targetParticipant);
+          targetParticipantId = targetParticipant.id;
         }
 
-        const context = await buildAiContext(room.id, participant.id);
-        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${intention || "não informada"}\n\nGere um resumo final estruturado com: padrões, temas, 3 intervenções, plano de 7 dias e perguntas finais.`;
-
-        const content = await callOpenAI(prompt);
-
-        await prisma.mahaLilahAiReport.create({
-          data: {
-            roomId: room.id,
-            participantId: participant.id,
-            kind: "FINAL",
-            content,
-          },
+        const generated = await generateFinalReportForParticipant({
+          room,
+          participantId: targetParticipantId,
+          intention,
         });
 
-        callback?.({ ok: true, content });
+        if (!generated.created) {
+          throw new Error("Resumo final já gerado para este jogador na sessão");
+        }
+
+        const state = await buildRoomState(room.id);
+        if (state) io.to(room.id).emit("room:state", state);
+        callback?.({
+          ok: true,
+          content: generated.content,
+          participantId: targetParticipantId,
+        });
+      } catch (error: any) {
+        callback?.({ ok: false, error: error.message });
+      }
+    },
+  );
+
+  socket.on(
+    "ai:finalReportAll",
+    async (
+      { intention }: { intention?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId)
+          throw new Error("Sala não selecionada");
+        enforceCooldown(
+          `ai-final-all:${socket.data.user.id}:${socket.data.roomId}`,
+          AI_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: {
+            participants: true,
+          },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+        if (isTrialRoom(room)) {
+          throw new Error(
+            "IA indisponível na sala trial. Escolha um plano ou sessão avulsa para usar este recurso.",
+          );
+        }
+
+        const therapist = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!therapist || therapist.role !== "THERAPIST") {
+          throw new Error(
+            "Apenas o terapeuta pode gerar o resumo final para todos os jogadores.",
+          );
+        }
+        ensureConsentAccepted(therapist);
+
+        const participantIds = Array.from(
+          new Set(
+            room.participants
+              .filter((participant) => participant.role !== "THERAPIST")
+              .map((participant) => participant.id),
+          ),
+        );
+
+        if (!participantIds.length) {
+          throw new Error("Nenhum jogador elegível para resumo final.");
+        }
+
+        let generatedCount = 0;
+        let skippedCount = 0;
+
+        for (const participantId of participantIds) {
+          const generated = await generateFinalReportForParticipant({
+            room,
+            participantId,
+            intention,
+          });
+          if (generated.created) {
+            generatedCount += 1;
+          } else {
+            skippedCount += 1;
+          }
+        }
+
+        if (generatedCount === 0) {
+          throw new Error(
+            "Resumo final já existe para todos os jogadores desta sala.",
+          );
+        }
+
+        const state = await buildRoomState(room.id);
+        if (state) io.to(room.id).emit("room:state", state);
+        callback?.({ ok: true, generatedCount, skippedCount });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
       }
