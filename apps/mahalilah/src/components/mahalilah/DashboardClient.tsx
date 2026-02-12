@@ -13,6 +13,7 @@ type RoomParticipant = {
   id: string;
   role: string;
   consentAcceptedAt: string | null;
+  gameIntention?: string | null;
   user: { id: string; name: string | null; email: string };
 };
 
@@ -29,6 +30,8 @@ type Room = {
   id: string;
   code: string;
   status: string;
+  viewerRole: "THERAPIST" | "PLAYER";
+  canManage: boolean;
   maxParticipants: number;
   therapistPlays: boolean;
   isTrial?: boolean;
@@ -45,6 +48,20 @@ type TimelineCardDraw = {
   createdAt: string;
   moveId: string | null;
   drawnBy: { id: string; user: { name: string | null; email: string } };
+  card?: {
+    id: string;
+    cardNumber: number;
+    description: string;
+    keywords: string;
+    observation: string | null;
+    imageUrl: string;
+    deck: {
+      id: string;
+      name: string;
+      imageDirectory: string;
+      imageExtension: string;
+    };
+  } | null;
 };
 
 type TimelineMove = {
@@ -62,6 +79,9 @@ type TimelineMove = {
     emotion?: string | null;
     intensity?: number | null;
     insight?: string | null;
+    body?: string | null;
+    microAction?: string | null;
+    createdAt?: string;
   }>;
   cardDraws: TimelineCardDraw[];
 };
@@ -89,6 +109,12 @@ type DeckTimelineEntry = {
 
 type DashboardToastKind = "info" | "success" | "warning" | "error";
 type DashboardToast = { id: number; message: string; kind: DashboardToastKind };
+type ParsedTip = {
+  text: string;
+  turnNumber: number | null;
+  houseNumber: number | null;
+  intention: string | null;
+};
 
 type Filters = {
   status: string;
@@ -133,9 +159,11 @@ const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
 function getDashboardTutorialSteps({
   canCreateRoom,
   hasRooms,
+  canManageRoom,
 }: {
   canCreateRoom: boolean;
   hasRooms: boolean;
+  canManageRoom: boolean;
 }): TutorialStep[] {
   const steps: TutorialStep[] = [];
 
@@ -169,14 +197,8 @@ function getDashboardTutorialSteps({
     {
       title: "Acoes rapidas da sala",
       description:
-        '"Abrir sala" entra na partida e "Ver detalhes" abre toda a gestao da sessao.',
+        '"Abrir sala" (quando ativa) entra na partida e "Ver detalhes" abre toda a gestao da sessao.',
       target: "room-actions",
-    },
-    {
-      title: "Aba Convites",
-      description:
-        "Envie novos convites por e-mail, acompanhe quem esta pendente/aceito e use reenviar quando necessario.",
-      target: "room-tab-invites",
     },
     {
       title: "Aba Participantes",
@@ -204,11 +226,56 @@ function getDashboardTutorialSteps({
     },
   );
 
+  if (canManageRoom) {
+    steps.splice(4, 0, {
+      title: "Aba Convites",
+      description:
+        "Envie novos convites por e-mail, acompanhe quem esta pendente/aceito e use reenviar quando necessario.",
+      target: "room-tab-invites",
+    });
+  }
+
   return steps;
 }
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function parseTipReportContent(content: string): ParsedTip {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        text: parsed.text,
+        turnNumber:
+          typeof parsed.turnNumber === "number" ? parsed.turnNumber : null,
+        houseNumber:
+          typeof parsed.houseNumber === "number" ? parsed.houseNumber : null,
+        intention:
+          typeof parsed.intention === "string" ? parsed.intention : null,
+      };
+    }
+  } catch {
+    // Compat with previous plain text payload.
+  }
+
+  return {
+    text: content,
+    turnNumber: null,
+    houseNumber: null,
+    intention: null,
+  };
+}
+
+function getParticipantDisplayName(participant: {
+  user: { name: string | null; email: string };
+}) {
+  return participant.user.name || participant.user.email;
 }
 
 type TutorialPopoverPosition = {
@@ -294,6 +361,7 @@ function getTutorialPopoverPosition(targetRect: DOMRect | null) {
 }
 
 export function DashboardClient() {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -332,13 +400,27 @@ export function DashboardClient() {
   const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
     useState<DOMRect | null>(null);
   const [hasUsedTrial, setHasUsedTrial] = useState<boolean | null>(null);
+  const [trialRoomStatus, setTrialRoomStatus] = useState<string | null>(null);
+  const [therapyModalEntries, setTherapyModalEntries] = useState<
+    Array<
+      TimelineMove["therapyEntries"][number] & {
+        move: TimelineMove;
+      }
+    >
+  >([]);
+  const [aiContentModal, setAiContentModal] = useState<{
+    title: string;
+    content: string;
+    subtitle?: string;
+  } | null>(null);
   const dashboardTutorialSteps = useMemo(
     () =>
       getDashboardTutorialSteps({
         canCreateRoom,
         hasRooms: rooms.length > 0,
+        canManageRoom: rooms.some((room) => room.canManage),
       }),
-    [canCreateRoom, rooms.length],
+    [canCreateRoom, rooms],
   );
 
   const pushToast = useCallback(
@@ -379,9 +461,11 @@ export function DashboardClient() {
         return;
       }
       const data = await res.json();
+      setCurrentUserId(data.currentUserId || null);
       setRooms(data.rooms || []);
       setCanCreateRoom(Boolean(data.canCreateRoom));
       setHasUsedTrial(Boolean(data.hasUsedTrial));
+      setTrialRoomStatus(data.trialRoomStatus || null);
       setLoading(false);
     },
     [filters, pushToast],
@@ -599,27 +683,13 @@ export function DashboardClient() {
     await loadRooms();
   };
 
-  const handleExport = async (roomId: string, format: "json" | "txt") => {
-    const res = await fetch(
-      `/api/mahalilah/rooms/${roomId}/export?format=${format}`,
-    );
+  const handleExport = async (roomId: string, participantId?: string) => {
+    const params = new URLSearchParams({ format: "pdf" });
+    if (participantId) params.set("participantId", participantId);
+    const res = await fetch(`/api/mahalilah/rooms/${roomId}/export?${params.toString()}`);
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
       pushToast(payload.error || "Erro ao exportar sessão.", "error");
-      return;
-    }
-
-    if (format === "json") {
-      const data = await res.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mahalilah_${roomId}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
       return;
     }
 
@@ -627,9 +697,12 @@ export function DashboardClient() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mahalilah_${roomId}.txt`;
+    a.download = participantId
+      ? `mahalilah_${roomId}_${participantId}.pdf`
+      : `mahalilah_${roomId}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+    pushToast("Relatório em PDF exportado com sucesso.", "success");
   };
 
   const loadTimeline = useCallback(async (roomId: string) => {
@@ -703,6 +776,9 @@ export function DashboardClient() {
   ]);
 
   const toggleRoom = (roomId: string) => {
+    const room = rooms.find((item) => item.id === roomId);
+    const defaultTab: RoomDetailsTab = room?.canManage ? "invites" : "timeline";
+
     setOpenRooms((prev) => {
       const nextOpen = !prev[roomId];
       if (nextOpen && !details[roomId]) {
@@ -711,7 +787,7 @@ export function DashboardClient() {
       return { ...prev, [roomId]: nextOpen };
     });
     setActiveDetailTabs((prev) =>
-      prev[roomId] ? prev : { ...prev, [roomId]: "invites" },
+      prev[roomId] ? prev : { ...prev, [roomId]: defaultTab },
     );
   };
 
@@ -730,9 +806,22 @@ export function DashboardClient() {
 
   const roomCards = rooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
-    const activeTab = activeDetailTabs[room.id] || "invites";
+    const requestedTab = activeDetailTabs[room.id];
+    const activeTab: RoomDetailsTab =
+      !room.canManage && requestedTab === "invites"
+        ? "timeline"
+        : requestedTab || (room.canManage ? "invites" : "timeline");
     const roomDetails = details[room.id];
     const selectedParticipantId = timelineParticipantFilters[room.id] || "";
+    const currentUserParticipant = room.participants.find(
+      (participant) => participant.user.id === currentUserId,
+    );
+    const exportableParticipants =
+      room.viewerRole === "THERAPIST"
+        ? room.participants.filter((participant) => participant.role === "PLAYER")
+        : currentUserParticipant
+          ? [currentUserParticipant]
+          : [];
 
     const filteredMoves = (roomDetails?.moves || []).filter((move) =>
       selectedParticipantId
@@ -778,6 +867,41 @@ export function DashboardClient() {
         ? report.participant?.id === selectedParticipantId
         : true,
     );
+
+    const filteredTipReports = filteredAiReports.filter(
+      (report) => report.kind === "TIP",
+    );
+
+    const filteredFinalReports = filteredAiReports.filter(
+      (report) => report.kind === "FINAL",
+    );
+
+    const timelineTipsByMoveKey = new Map<
+      string,
+      Array<{ report: AiReport; parsed: ParsedTip }>
+    >();
+    filteredTipReports.forEach((report) => {
+      const parsed = parseTipReportContent(report.content);
+      if (!report.participant || parsed.turnNumber === null) return;
+      const key = `${report.participant.id}:${parsed.turnNumber}`;
+      const current = timelineTipsByMoveKey.get(key) || [];
+      current.push({ report, parsed });
+      timelineTipsByMoveKey.set(key, current);
+    });
+
+    const finalReportsByParticipantId = new Map<string, AiReport[]>();
+    filteredFinalReports.forEach((report) => {
+      if (!report.participant) return;
+      const current = finalReportsByParticipantId.get(report.participant.id) || [];
+      current.push(report);
+      finalReportsByParticipantId.set(report.participant.id, current);
+    });
+    finalReportsByParticipantId.forEach((reports) => {
+      reports.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    });
 
     return (
       <div
@@ -828,9 +952,11 @@ export function DashboardClient() {
             }}
             data-tour-dashboard={index === 0 ? "room-actions" : undefined}
           >
-            <a href={`/rooms/${room.code}`} className="btn-secondary">
-              Abrir sala
-            </a>
+            {room.status === "ACTIVE" && (
+              <a href={`/rooms/${room.code}`} className="btn-secondary">
+                Abrir sala
+              </a>
+            )}
             <button
               className="btn-secondary"
               onClick={() => toggleRoom(room.id)}
@@ -870,22 +996,24 @@ export function DashboardClient() {
               className="dashboard-room-tabs"
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
-              <button
-                className={
-                  activeTab === "invites" ? "btn-primary" : "btn-secondary"
-                }
-                onClick={() =>
-                  setActiveDetailTabs((prev) => ({
-                    ...prev,
-                    [room.id]: "invites",
-                  }))
-                }
-                data-tour-dashboard={
-                  index === 0 ? "room-tab-invites" : undefined
-                }
-              >
-                Convites
-              </button>
+              {room.canManage && (
+                <button
+                  className={
+                    activeTab === "invites" ? "btn-primary" : "btn-secondary"
+                  }
+                  onClick={() =>
+                    setActiveDetailTabs((prev) => ({
+                      ...prev,
+                      [room.id]: "invites",
+                    }))
+                  }
+                  data-tour-dashboard={
+                    index === 0 ? "room-tab-invites" : undefined
+                  }
+                >
+                  Convites
+                </button>
+              )}
               <button
                 className={
                   activeTab === "participants" ? "btn-primary" : "btn-secondary"
@@ -950,7 +1078,7 @@ export function DashboardClient() {
               </button>
             </div>
 
-            {activeTab === "invites" && (
+            {room.canManage && activeTab === "invites" && (
               <>
                 <div className="grid" style={{ gap: 10 }}>
                   <strong>Convites</strong>
@@ -1111,7 +1239,7 @@ export function DashboardClient() {
                             </span>
                           )}
                         </div>
-                        {participant.role === "PLAYER" && (
+                        {room.canManage && participant.role === "PLAYER" && (
                           <button
                             className="btn-secondary px-3 py-1 text-xs"
                             onClick={() =>
@@ -1165,72 +1293,110 @@ export function DashboardClient() {
                         ))}
                       </select>
                     )}
-                    <button
-                      className="btn-secondary"
-                      onClick={() => loadTimeline(room.id)}
-                    >
-                      Atualizar timeline
-                    </button>
                   </div>
                 </div>
                 {roomDetails?.loading ? (
                   <span className="small-muted">Carregando timeline...</span>
                 ) : roomDetails?.error ? (
                   <span className="notice">{roomDetails.error}</span>
-                ) : filteredMoves.length ? (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {filteredMoves.map((move) => (
-                      <div
-                        key={move.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 10,
-                          padding: "10px 12px",
-                          borderRadius: 12,
-                          border: "1px solid var(--border)",
-                          background: "hsl(var(--temple-surface-2))",
-                        }}
-                      >
-                        <div>
-                          <strong>
-                            {move.participant.user.name ||
-                              move.participant.user.email}
-                          </strong>
-                          <div className="small-muted">
-                            Jogada #{move.turnNumber} •{" "}
-                            {new Date(move.createdAt).toLocaleString("pt-BR")} •
-                            Dado {move.diceValue}
-                          </div>
-                          <div className="small-muted">
-                            {move.fromPos} → {move.toPos}
-                            {move.appliedJumpFrom
-                              ? ` • Atalho ${move.appliedJumpFrom}→${move.appliedJumpTo}`
-                              : ""}
-                          </div>
-                          {move.therapyEntries.length > 0 && (
-                            <div className="small-muted">
-                              Registros: {move.therapyEntries.length}
-                            </div>
-                          )}
-                          {move.cardDraws.length > 0 && (
-                            <div className="small-muted">
-                              Cartas:{" "}
-                              {move.cardDraws
-                                .map((draw) => draw.cards.join(","))
-                                .join(" | ")}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 ) : (
-                  <span className="small-muted">
-                    {selectedParticipantId
-                      ? "Nenhuma jogada para o jogador selecionado."
-                      : "Ainda não há jogadas."}
-                  </span>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {filteredMoves.length === 0 ? (
+                      <span className="small-muted">
+                        {selectedParticipantId
+                          ? "Nenhuma jogada para o jogador selecionado."
+                          : "Ainda não há jogadas."}
+                      </span>
+                    ) : (
+                      filteredMoves.map((move) => {
+                        const hasJump =
+                          move.appliedJumpFrom !== null &&
+                          move.appliedJumpTo !== null;
+                        const movementText = !hasJump
+                          ? `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.toPos}`
+                          : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${move.appliedJumpTo! > move.appliedJumpFrom! ? "subida" : "descida"}): ${move.appliedJumpTo}`;
+                        const moveTips =
+                          timelineTipsByMoveKey.get(
+                            `${move.participant.id}:${move.turnNumber}`,
+                          ) || [];
+
+                        return (
+                          <div
+                            key={move.id}
+                            className="notice"
+                            style={{ display: "grid", gap: 4 }}
+                          >
+                            <strong style={{ fontSize: 12 }}>
+                              {move.participant.user.name ||
+                                move.participant.user.email}
+                            </strong>
+                            <div
+                              className="btn-secondary"
+                              style={{
+                                justifyContent: "flex-start",
+                                textAlign: "left",
+                                whiteSpace: "normal",
+                                height: "auto",
+                                padding: "6px 8px",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                cursor: "default",
+                              }}
+                            >
+                              {movementText}
+                            </div>
+                            <span className="small-muted">
+                              {new Date(move.createdAt).toLocaleString("pt-BR")}
+                            </span>
+                            {move.cardDraws.length > 0 && (
+                              <div style={{ display: "grid", gap: 2 }}>
+                                {move.cardDraws.map((draw) => (
+                                  <span key={draw.id} className="small-muted">
+                                    {draw.card
+                                      ? `Carta #${draw.card.cardNumber} • ${draw.card.keywords}`
+                                      : `Carta(s): ${draw.cards.join(", ")}`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {move.therapyEntries.length > 0 && (
+                              <button
+                                className="btn-secondary"
+                                style={{ justifyContent: "flex-start" }}
+                                onClick={() =>
+                                  setTherapyModalEntries(
+                                    move.therapyEntries.map((entry) => ({
+                                      ...entry,
+                                      move,
+                                    })),
+                                  )
+                                }
+                              >
+                                Ver registro ({move.therapyEntries.length})
+                              </button>
+                            )}
+                            {moveTips.length > 0 && (
+                              <button
+                                className="btn-secondary"
+                                style={{ justifyContent: "flex-start" }}
+                                onClick={() =>
+                                  setAiContentModal({
+                                    title: "Ajuda da IA",
+                                    subtitle: `Jogada #${move.turnNumber} • ${new Date(moveTips[moveTips.length - 1]?.report.createdAt).toLocaleString("pt-BR")}`,
+                                    content: moveTips
+                                      .map((tip) => tip.parsed.text)
+                                      .join("\n\n"),
+                                  })
+                                }
+                              >
+                                Ver ajuda IA ({moveTips.length})
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -1272,12 +1438,6 @@ export function DashboardClient() {
                         ))}
                       </select>
                     )}
-                    <button
-                      className="btn-secondary"
-                      onClick={() => loadTimeline(room.id)}
-                    >
-                      Atualizar timeline
-                    </button>
                   </div>
                 </div>
                 {filteredDeckDraws.length ? (
@@ -1357,34 +1517,120 @@ export function DashboardClient() {
                         ))}
                       </select>
                     )}
-                    <button
-                      className="btn-secondary"
-                      onClick={() => loadTimeline(room.id)}
-                    >
-                      Atualizar timeline
-                    </button>
                   </div>
                 </div>
                 {filteredAiReports.length ? (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {filteredAiReports.map((report) => (
-                      <div
-                        key={report.id}
-                        className="card"
-                        style={{ padding: 12 }}
-                      >
-                        <div className="small-muted">
-                          {new Date(report.createdAt).toLocaleString("pt-BR")} •{" "}
-                          {report.kind}
-                          {report.participant
-                            ? ` • ${report.participant.user.name || report.participant.user.email}`
-                            : ""}
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div className="notice" style={{ display: "grid", gap: 6 }}>
+                      <strong>Histórico de ajudas da IA</strong>
+                      {filteredTipReports.length === 0 ? (
+                        <span className="small-muted">
+                          Nenhuma ajuda registrada.
+                        </span>
+                      ) : (
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: 6,
+                            maxHeight: 220,
+                            overflow: "auto",
+                            paddingRight: 2,
+                          }}
+                        >
+                          {filteredTipReports.map((report, index) => {
+                            const parsed = parseTipReportContent(report.content);
+                            const helpNumber = filteredTipReports.length - index;
+                            return (
+                              <button
+                                key={report.id}
+                                className="btn-secondary"
+                                style={{
+                                  justifyContent: "flex-start",
+                                  textAlign: "left",
+                                  whiteSpace: "normal",
+                                  height: "auto",
+                                  padding: "8px 10px",
+                                }}
+                                onClick={() =>
+                                  setAiContentModal({
+                                    title: `Ajuda da IA #${helpNumber}`,
+                                    subtitle: `${parsed.turnNumber !== null ? `Jogada #${parsed.turnNumber}` : "Jogada não identificada"}${parsed.houseNumber !== null ? ` • Casa ${parsed.houseNumber}` : ""} • ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                                    content: parsed.text,
+                                  })
+                                }
+                              >
+                                <strong style={{ fontSize: 12 }}>
+                                  Ajuda #{helpNumber}
+                                </strong>
+                                <span className="small-muted">
+                                  {parsed.turnNumber !== null
+                                    ? `Jogada #${parsed.turnNumber}`
+                                    : "Jogada não identificada"}
+                                  {parsed.houseNumber !== null
+                                    ? ` • Casa ${parsed.houseNumber}`
+                                    : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
-                        <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-                          {report.content}
+                      )}
+                    </div>
+
+                    <div className="notice" style={{ display: "grid", gap: 6 }}>
+                      <strong>Relatórios finais disponíveis</strong>
+                      {finalReportsByParticipantId.size === 0 ? (
+                        <span className="small-muted">
+                          Nenhum relatório final disponível para leitura.
+                        </span>
+                      ) : (
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {Array.from(finalReportsByParticipantId.entries()).map(
+                            ([participantId, reports]) => {
+                              const participant = room.participants.find(
+                                (item) => item.id === participantId,
+                              );
+                              const latestReport = reports[0] || null;
+                              if (!participant || !latestReport) return null;
+                              const participantLabel =
+                                getParticipantDisplayName(participant);
+                              return (
+                                <button
+                                  key={participantId}
+                                  className="btn-secondary"
+                                  style={{
+                                    justifyContent: "flex-start",
+                                    textAlign: "left",
+                                    whiteSpace: "normal",
+                                    height: "auto",
+                                    padding: "8px 10px",
+                                  }}
+                                  onClick={() =>
+                                    setAiContentModal({
+                                      title: `Relatório final • ${participantLabel}`,
+                                      subtitle: `Gerado em ${new Date(latestReport.createdAt).toLocaleString("pt-BR")}`,
+                                      content: latestReport.content,
+                                    })
+                                  }
+                                >
+                                  <strong style={{ fontSize: 12 }}>
+                                    {room.viewerRole === "THERAPIST"
+                                      ? participantLabel
+                                      : "Meu relatório final"}
+                                  </strong>
+                                  <span className="small-muted">
+                                    Disponível para leitura
+                                    {reports.length > 1
+                                      ? ` • ${reports.length} versões`
+                                      : ""}
+                                  </span>
+                                </button>
+                              );
+                            },
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <span className="small-muted">
@@ -1396,19 +1642,31 @@ export function DashboardClient() {
               </>
             )}
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                className="btn-secondary"
-                onClick={() => handleExport(room.id, "json")}
-              >
-                Exportar JSON
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => handleExport(room.id, "txt")}
-              >
-                Exportar TXT
-              </button>
+            <div style={{ display: "grid", gap: 8 }}>
+              <strong>
+                {room.viewerRole === "THERAPIST"
+                  ? "Exportar PDF por jogador"
+                  : "Exportar meu PDF"}
+              </strong>
+              {exportableParticipants.length === 0 ? (
+                <span className="small-muted">
+                  Nenhum jogador disponível para exportação.
+                </span>
+              ) : (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {exportableParticipants.map((participant) => (
+                    <button
+                      key={participant.id}
+                      className="btn-secondary"
+                      onClick={() => handleExport(room.id, participant.id)}
+                    >
+                      {room.viewerRole === "THERAPIST"
+                        ? getParticipantDisplayName(participant)
+                        : "Exportar meu PDF"}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1419,6 +1677,11 @@ export function DashboardClient() {
   const dashboardTutorialPopover = getTutorialPopoverPosition(
     dashboardTutorialTargetRect,
   );
+  const showTrialUpgradeCard =
+    hasUsedTrial === true &&
+    trialRoomStatus !== null &&
+    trialRoomStatus !== "ACTIVE" &&
+    !canCreateRoom;
 
   return (
     <div className="grid dashboard-root" style={{ gap: 24 }}>
@@ -1504,6 +1767,23 @@ export function DashboardClient() {
             </button>
             <a href="/planos" className="btn-secondary">
               Ver planos
+            </a>
+          </div>
+        </div>
+      )}
+      {showTrialUpgradeCard && (
+        <div className="card dashboard-create-card" style={{ display: "grid", gap: 12 }}>
+          <strong>Sala trial encerrada</strong>
+          <p className="small-muted" style={{ margin: 0 }}>
+            Sua sala trial foi encerrada. Para criar novas salas, escolha entre sessão
+            avulsa ou assinatura.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="/planos" className="btn-secondary">
+              Comprar sessão avulsa
+            </a>
+            <a href="/planos" className="btn-primary">
+              Assinar Plano
             </a>
           </div>
         </div>
@@ -1663,6 +1943,135 @@ export function DashboardClient() {
           </div>
         )}
       </div>
+
+      {therapyModalEntries.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setTherapyModalEntries([])}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(680px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <strong>Registro terapêutico</strong>
+              <button
+                className="btn-secondary"
+                onClick={() => setTherapyModalEntries([])}
+              >
+                Fechar
+              </button>
+            </div>
+            {therapyModalEntries.map((entry) => (
+              <div key={entry.id} className="notice" style={{ display: "grid", gap: 6 }}>
+                <span className="small-muted">
+                  Jogada #{entry.move.turnNumber} • Casa {entry.move.toPos} •{" "}
+                  {entry.createdAt
+                    ? new Date(entry.createdAt).toLocaleString("pt-BR")
+                    : "-"}
+                </span>
+                {entry.emotion && (
+                  <span className="small-muted">
+                    <strong>Emoção:</strong> {entry.emotion}
+                    {entry.intensity ? ` (${entry.intensity}/10)` : ""}
+                  </span>
+                )}
+                {entry.insight && (
+                  <span className="small-muted">
+                    <strong>Insight:</strong> {entry.insight}
+                  </span>
+                )}
+                {entry.body && (
+                  <span className="small-muted">
+                    <strong>Corpo:</strong> {entry.body}
+                  </span>
+                )}
+                {entry.microAction && (
+                  <span className="small-muted">
+                    <strong>Ação:</strong> {entry.microAction}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {aiContentModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setAiContentModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <strong>{aiContentModal.title}</strong>
+                {aiContentModal.subtitle && (
+                  <span className="small-muted">{aiContentModal.subtitle}</span>
+                )}
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setAiContentModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
+            <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
+              {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDashboardTutorial && (
         <div

@@ -196,7 +196,12 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    const where: Record<string, any> = { createdByUserId: session.user.id }
+    const where: Record<string, any> = {
+      OR: [
+        { createdByUserId: session.user.id },
+        { participants: { some: { userId: session.user.id } } }
+      ]
+    }
     if (status && ['ACTIVE', 'CLOSED', 'COMPLETED'].includes(status)) {
       where.status = status
     }
@@ -233,14 +238,24 @@ export async function GET(request: Request) {
           createdByUserId: session.user.id,
           isTrial: true
         },
-        select: { id: true }
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, status: true }
       })
     ])
 
     return NextResponse.json({
+      currentUserId: session.user.id,
       canCreateRoom,
       hasUsedTrial: Boolean(trialRoom),
+      trialRoomStatus: trialRoom?.status ?? null,
       rooms: rooms.map((room) => {
+        const viewerParticipant = room.participants.find(
+          (participant) => participant.userId === session.user.id
+        )
+        const viewerRole = room.createdByUserId === session.user.id
+          ? MahaLilahParticipantRole.THERAPIST
+          : viewerParticipant?.role || MahaLilahParticipantRole.PLAYER
+
         const rollsTotal = room.playerStates.reduce(
           (sum, state) => sum + (state.rollCountTotal || 0),
           0
@@ -254,6 +269,8 @@ export async function GET(request: Request) {
           id: room.id,
           code: room.code,
           status: room.status,
+          viewerRole,
+          canManage: room.createdByUserId === session.user.id,
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
           isTrial: isTrialRoom(room),
