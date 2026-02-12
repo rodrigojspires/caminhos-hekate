@@ -1,31 +1,28 @@
-import { LRUCache } from 'lru-cache'
-
 // Interface para itens do cache
 interface CacheItem<T> {
   data: T
   timestamp: number
   ttl: number
+  lastAccessAt: number
 }
 
 // Configuração do cache
 const CACHE_CONFIG = {
   max: 500, // Máximo de 500 itens
   ttl: 1000 * 60 * 15, // 15 minutos por padrão
-  allowStale: false,
-  updateAgeOnGet: false,
-  updateAgeOnHas: false,
 }
 
-// Cache global em memória
-const memoryCache = new LRUCache<string, CacheItem<any>>(CACHE_CONFIG)
+function isExpired(item: CacheItem<unknown>): boolean {
+  return Date.now() - item.timestamp > item.ttl
+}
 
 // Classe para gerenciar cache
 export class CacheManager {
   private static instance: CacheManager
-  private cache: LRUCache<string, CacheItem<any>>
+  private cache: Map<string, CacheItem<unknown>>
 
   private constructor() {
-    this.cache = memoryCache
+    this.cache = new Map()
   }
 
   public static getInstance(): CacheManager {
@@ -37,12 +34,19 @@ export class CacheManager {
 
   // Definir item no cache
   set<T>(key: string, data: T, ttl?: number): void {
+    this.purgeExpired()
+
+    const effectiveTTL = ttl || CACHE_CONFIG.ttl
+    const now = Date.now()
     const item: CacheItem<T> = {
       data,
-      timestamp: Date.now(),
-      ttl: ttl || CACHE_CONFIG.ttl
+      timestamp: now,
+      ttl: effectiveTTL,
+      lastAccessAt: now
     }
-    this.cache.set(key, item)
+    this.cache.set(key, item as CacheItem<unknown>)
+
+    this.ensureCapacity()
   }
 
   // Obter item do cache
@@ -54,11 +58,13 @@ export class CacheManager {
     }
 
     // Verificar se o item expirou
-    const now = Date.now()
-    if (now - item.timestamp > item.ttl) {
+    if (isExpired(item)) {
       this.cache.delete(key)
       return null
     }
+
+    item.lastAccessAt = Date.now()
+    this.cache.set(key, item as CacheItem<unknown>)
 
     return item.data
   }
@@ -71,8 +77,7 @@ export class CacheManager {
     }
 
     // Verificar se não expirou
-    const now = Date.now()
-    if (now - item.timestamp > item.ttl) {
+    if (isExpired(item)) {
       this.cache.delete(key)
       return false
     }
@@ -107,10 +112,12 @@ export class CacheManager {
 
   // Obter estatísticas do cache
   getStats() {
+    this.purgeExpired()
+
     return {
       size: this.cache.size,
-      max: this.cache.max,
-      calculatedSize: this.cache.calculatedSize,
+      max: CACHE_CONFIG.max,
+      calculatedSize: this.cache.size,
       keys: Array.from(this.cache.keys())
     }
   }
@@ -118,6 +125,32 @@ export class CacheManager {
   // Invalidar cache por tags
   invalidateByTag(tag: string): void {
     this.clear(`.*:${tag}:.*`)
+  }
+
+  private ensureCapacity(): void {
+    if (this.cache.size <= CACHE_CONFIG.max) return
+
+    let keyToEvict: string | null = null
+    let oldestAccess = Number.POSITIVE_INFINITY
+
+    for (const [key, item] of this.cache.entries()) {
+      if (item.lastAccessAt < oldestAccess) {
+        oldestAccess = item.lastAccessAt
+        keyToEvict = key
+      }
+    }
+
+    if (keyToEvict) {
+      this.cache.delete(keyToEvict)
+    }
+  }
+
+  private purgeExpired(): void {
+    for (const [key, item] of this.cache.entries()) {
+      if (isExpired(item)) {
+        this.cache.delete(key)
+      }
+    }
   }
 }
 
