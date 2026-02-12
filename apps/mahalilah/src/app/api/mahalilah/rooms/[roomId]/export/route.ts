@@ -158,6 +158,32 @@ function formatDate(date: Date) {
   return date.toLocaleString('pt-BR')
 }
 
+function formatRoomStatus(status: string) {
+  if (status === 'ACTIVE') return 'Ativa'
+  if (status === 'CLOSED') return 'Encerrada'
+  if (status === 'COMPLETED') return 'Concluida'
+  return status
+}
+
+function formatPlanType(planType: string | null) {
+  if (planType === 'SINGLE_SESSION') return 'Sessao avulsa'
+  if (planType === 'SUBSCRIPTION') return 'Assinatura ilimitada'
+  if (planType === 'SUBSCRIPTION_LIMITED') return 'Assinatura limitada'
+  return planType || '-'
+}
+
+function formatParticipantRole(role: string) {
+  if (role === 'THERAPIST') return 'Terapeuta'
+  if (role === 'PLAYER') return 'Assistido'
+  return role
+}
+
+function formatReportKind(kind: string) {
+  if (kind === 'TIP') return 'Ajuda da IA'
+  if (kind === 'FINAL') return 'Relatorio final'
+  return kind
+}
+
 function buildPdf(room: ExportRoom) {
   const pages: string[][] = []
 
@@ -205,7 +231,7 @@ function buildPdf(room: ExportRoom) {
 
   drawText(
     coverPage,
-    `Status da sala: ${room.status}  |  Trial: ${room.isTrial ? 'Sim' : 'Nao'}  |  Criada em ${formatDate(room.createdAt)}`,
+    `Status da sala: ${formatRoomStatus(room.status)}  |  Trial: ${room.isTrial ? 'Sim' : 'Nao'}  |  Criada em ${formatDate(room.createdAt)}`,
     52,
     500,
     { font: 'F1', size: 11, color: [0.26, 0.33, 0.38] }
@@ -297,15 +323,15 @@ function buildPdf(room: ExportRoom) {
   addParagraph(`Total de jogadas: ${totalMoves}`)
   addParagraph(`Total de registros terapeuticos: ${totalTherapyEntries}`)
   addParagraph(`Total de cartas reveladas: ${totalDeckDraws}`)
-  addParagraph(`Relatorios IA: ${room.aiReports.length} (TIP: ${totalTips} | FINAL: ${totalFinalReports})`)
+  addParagraph(`Relatorios IA: ${room.aiReports.length} (Ajudas: ${totalTips} | Finais: ${totalFinalReports})`)
 
   addSpacer(20)
   addSectionTitle('1. Visao geral da sessao')
   addParagraph(`Codigo da sala: ${room.code}`)
   addParagraph(`Criada em: ${formatDate(room.createdAt)}`)
-  addParagraph(`Status atual: ${room.status}`)
+  addParagraph(`Status atual: ${formatRoomStatus(room.status)}`)
   addParagraph(`Participantes: ${room.participants.length} de ${room.maxParticipants}`)
-  addParagraph(`Plano: ${room.planType || '-'} | Sala trial: ${room.isTrial ? 'Sim' : 'Nao'}`)
+  addParagraph(`Plano: ${formatPlanType(room.planType)} | Sala trial: ${room.isTrial ? 'Sim' : 'Nao'}`)
   addParagraph(`Terapeuta joga: ${room.therapistPlays ? 'Sim' : 'Nao'}`)
   addParagraph(`Intencao bloqueada para jogadores: ${room.playerIntentionLocked ? 'Sim' : 'Nao'}`)
 
@@ -318,7 +344,7 @@ function buildPdf(room: ExportRoom) {
       const label = participant.user.name || participant.user.email
       const state = stateByParticipant.get(participant.id)
       addParagraph(`${index + 1}. ${label}`, { font: 'F2', size: 12 })
-      addParagraph(`Role: ${participant.role}`, { indent: 14 })
+      addParagraph(`Papel: ${formatParticipantRole(participant.role)}`, { indent: 14 })
       addParagraph(
         `Consentimento: ${participant.consentAcceptedAt ? formatDate(participant.consentAcceptedAt) : 'Nao aceito'}`,
         { indent: 14 }
@@ -408,7 +434,7 @@ function buildPdf(room: ExportRoom) {
     room.aiReports.forEach((report, index) => {
       const owner = report.participant?.user?.name || report.participant?.user?.email || 'Sessao'
       addParagraph(
-        `${index + 1}. ${report.kind} | ${formatDate(report.createdAt)} | alvo: ${owner}`,
+        `${index + 1}. ${formatReportKind(report.kind)} | ${formatDate(report.createdAt)} | alvo: ${owner}`,
         { font: 'F2', size: 10 }
       )
 
