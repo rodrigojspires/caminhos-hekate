@@ -35,16 +35,9 @@ const DECK_COOLDOWN_MS = Number(process.env.MAHALILAH_DECK_COOLDOWN_MS || 800);
 const THERAPY_COOLDOWN_MS = Number(
   process.env.MAHALILAH_THERAPY_COOLDOWN_MS || 800,
 );
-
-const AI_TIPS_LIMITS: Record<string, number> = {
-  SINGLE_SESSION: Number(process.env.MAHALILAH_TIPS_SINGLE || 3),
-  SUBSCRIPTION: Number(process.env.MAHALILAH_TIPS_SUBSCRIPTION || 5),
-  SUBSCRIPTION_LIMITED: Number(
-    process.env.MAHALILAH_TIPS_SUBSCRIPTION_LIMITED || 3,
-  ),
-};
-
-const AI_FINAL_LIMIT = Number(process.env.MAHALILAH_FINAL_LIMIT || 1);
+const PLAN_LIMITS_CACHE_TTL_MS = Number(
+  process.env.MAHALILAH_PLAN_LIMITS_CACHE_TTL_MS || 30_000,
+);
 const TRIAL_POST_START_MOVE_LIMIT = Number(
   process.env.MAHALILAH_TRIAL_POST_START_MOVE_LIMIT || 5,
 );
@@ -71,6 +64,13 @@ type AuthedSocket = Parameters<typeof io.on>[1] & {
 
 const actionCooldowns = new Map<string, number>();
 const roomUserConnections = new Map<string, Map<string, number>>();
+let planAiLimitsCache: {
+  expiresAt: number;
+  byPlanType: Map<string, { tipsPerPlayer: number; summaryLimit: number }>;
+} = {
+  expiresAt: 0,
+  byPlanType: new Map(),
+};
 
 function enforceCooldown(key: string, cooldownMs: number) {
   if (!cooldownMs || cooldownMs <= 0) return;
@@ -235,8 +235,56 @@ async function buildAiContext(roomId: string, participantId: string) {
   };
 }
 
-function getTipsLimitForPlan(planType: string) {
-  return AI_TIPS_LIMITS[planType] ?? AI_TIPS_LIMITS.SINGLE_SESSION;
+async function loadPlanAiLimitsByType() {
+  const now = Date.now();
+  if (
+    planAiLimitsCache.byPlanType.size > 0 &&
+    planAiLimitsCache.expiresAt > now
+  ) {
+    return planAiLimitsCache.byPlanType;
+  }
+
+  const plans = await prisma.mahaLilahPlan.findMany({
+    where: {
+      isActive: true,
+      planType: { in: ["SINGLE_SESSION", "SUBSCRIPTION", "SUBSCRIPTION_LIMITED"] },
+    },
+    select: {
+      planType: true,
+      tipsPerPlayer: true,
+      summaryLimit: true,
+    },
+  });
+
+  const byPlanType = new Map<
+    string,
+    { tipsPerPlayer: number; summaryLimit: number }
+  >();
+
+  plans.forEach((plan) => {
+    byPlanType.set(plan.planType, {
+      tipsPerPlayer: Number(plan.tipsPerPlayer || 0),
+      summaryLimit: Number(plan.summaryLimit || 0),
+    });
+  });
+
+  planAiLimitsCache = {
+    byPlanType,
+    expiresAt: now + PLAN_LIMITS_CACHE_TTL_MS,
+  };
+
+  return byPlanType;
+}
+
+async function getDefaultAiLimitsForPlan(planType: string) {
+  const byPlanType = await loadPlanAiLimitsByType();
+  const limits = byPlanType.get(planType);
+
+  if (!limits) {
+    throw new Error(`Plano ${planType} sem configuração de IA no catálogo`);
+  }
+
+  return limits;
 }
 
 function isTrialRoom(room: {
@@ -247,6 +295,92 @@ function isTrialRoom(room: {
   return (
     room.planType === "SINGLE_SESSION" && !room.orderId && !room.subscriptionId
   );
+}
+
+function parseSubscriptionMahaMetadata(raw: unknown) {
+  const metadata = raw as any;
+  if (!metadata || typeof metadata !== "object") return null;
+  if (metadata.app !== "mahalilah") return null;
+  if (!metadata.mahalilah || typeof metadata.mahalilah !== "object") return null;
+  return metadata.mahalilah as {
+    planType?: string;
+    tipsPerPlayer?: number;
+    summaryLimit?: number;
+    durationDays?: number;
+  };
+}
+
+function isSubscriptionStillActive(currentPeriodEnd: Date | null) {
+  if (!currentPeriodEnd) return true;
+  return currentPeriodEnd.getTime() >= Date.now();
+}
+
+async function getRoomAiLimits(room: {
+  id: string;
+  planType: string;
+  orderId: string | null;
+  createdByUserId: string;
+}) {
+  const defaults = await getDefaultAiLimitsForPlan(room.planType);
+  let tipsLimit = defaults.tipsPerPlayer;
+  let summaryLimit = defaults.summaryLimit;
+
+  if (room.orderId) {
+    const order = await prisma.order.findUnique({
+      where: { id: room.orderId },
+      select: { metadata: true },
+    });
+    const meta = (order?.metadata as any)?.mahalilah;
+    if (meta?.tipsPerPlayer != null) {
+      const parsed = Number(meta.tipsPerPlayer);
+      if (Number.isFinite(parsed) && parsed >= 0) tipsLimit = parsed;
+    }
+    if (meta?.summaryLimit != null) {
+      const parsed = Number(meta.summaryLimit);
+      if (Number.isFinite(parsed) && parsed >= 0) summaryLimit = parsed;
+    }
+    return { tipsLimit, summaryLimit };
+  }
+
+  if (room.planType !== "SUBSCRIPTION" && room.planType !== "SUBSCRIPTION_LIMITED") {
+    return { tipsLimit, summaryLimit };
+  }
+
+  const subscriptions = await prisma.userSubscription.findMany({
+    where: {
+      userId: room.createdByUserId,
+      status: { in: ["ACTIVE", "TRIALING"] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      metadata: true,
+      currentPeriodEnd: true,
+    },
+  });
+
+  const activeMeta = subscriptions
+    .filter((subscription) =>
+      isSubscriptionStillActive(subscription.currentPeriodEnd),
+    )
+    .map((subscription) => parseSubscriptionMahaMetadata(subscription.metadata))
+    .find((meta) => meta?.planType === room.planType);
+
+  if (!activeMeta) {
+    return { tipsLimit, summaryLimit };
+  }
+
+  if (activeMeta.tipsPerPlayer != null) {
+    const parsed = Number(activeMeta.tipsPerPlayer);
+    if (Number.isFinite(parsed) && parsed >= 0) tipsLimit = parsed;
+  }
+
+  if (activeMeta.summaryLimit != null) {
+    const parsed = Number(activeMeta.summaryLimit);
+    if (Number.isFinite(parsed) && parsed >= 0) summaryLimit = parsed;
+  }
+
+  return { tipsLimit, summaryLimit };
 }
 
 function ensureConsentAccepted(participant: {
@@ -342,14 +476,7 @@ async function buildRoomState(roomId: string) {
   );
   await ensurePlayerStates(room.id, turnParticipantIds);
 
-  let tipsLimit = getTipsLimitForPlan(room.planType);
-  const orderMeta = (room.order?.metadata as any)?.mahalilah;
-  if (orderMeta?.tipsPerPlayer) {
-    const parsedLimit = Number(orderMeta.tipsPerPlayer);
-    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
-      tipsLimit = parsedLimit;
-    }
-  }
+  const { tipsLimit } = await getRoomAiLimits(room);
   const aiUsageByParticipant = new Map(
     room.aiUsages.map((usage) => [usage.participantId, usage]),
   );
@@ -974,14 +1101,7 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
 
-        let tipsLimit = getTipsLimitForPlan(room.planType);
-        if (room.orderId) {
-          const order = await prisma.order.findUnique({
-            where: { id: room.orderId },
-          });
-          const meta = (order?.metadata as any)?.mahalilah;
-          if (meta?.tipsPerPlayer) tipsLimit = Number(meta.tipsPerPlayer);
-        }
+        const { tipsLimit } = await getRoomAiLimits(room);
 
         const usage = await prisma.mahaLilahAiUsage.upsert({
           where: {
@@ -1081,14 +1201,7 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
 
-        let finalLimit = AI_FINAL_LIMIT;
-        if (room.orderId) {
-          const order = await prisma.order.findUnique({
-            where: { id: room.orderId },
-          });
-          const meta = (order?.metadata as any)?.mahalilah;
-          if (meta?.summaryLimit) finalLimit = Number(meta.summaryLimit);
-        }
+        const { summaryLimit: finalLimit } = await getRoomAiLimits(room);
 
         const existingReports = await prisma.mahaLilahAiReport.count({
           where: {

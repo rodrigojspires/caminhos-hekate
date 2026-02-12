@@ -63,8 +63,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Busca o plano de assinatura
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId, isActive: true },
+    const plan = await prisma.subscriptionPlan.findFirst({
+      where: {
+        id: planId,
+        isActive: true,
+        appScope: { in: ['CAMINHOS', 'SHARED'] as any }
+      },
     });
 
     if (!plan) {

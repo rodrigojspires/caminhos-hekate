@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
         code: room.code,
         status: room.status,
         planType: room.planType,
+        isTrial:
+          room.planType === MahaLilahPlanType.SINGLE_SESSION &&
+          !room.orderId &&
+          !room.subscriptionId,
         maxParticipants: room.maxParticipants,
         therapistPlays: room.therapistPlays,
         createdAt: room.createdAt,

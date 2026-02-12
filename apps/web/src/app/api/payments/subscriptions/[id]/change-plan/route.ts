@@ -17,7 +17,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Proibido' }, { status: 403 })
     }
 
-    const newPlan = await prisma.subscriptionPlan.findUnique({ where: { id: newPlanId } })
+    const newPlan = await prisma.subscriptionPlan.findFirst({
+      where: {
+        id: newPlanId,
+        appScope: { in: ['CAMINHOS', 'SHARED'] as any }
+      }
+    })
     if (!newPlan || !newPlan.isActive) return NextResponse.json({ error: 'Plano alvo inválido' }, { status: 400 })
 
     // Calcula crédito proporcional do período restante do plano atual
@@ -67,4 +72,3 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-

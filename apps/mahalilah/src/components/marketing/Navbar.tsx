@@ -144,6 +144,14 @@ export function Navbar() {
                   >
                     Dashboard
                   </Link>
+                  <Link
+                    href="/faturas"
+                    className={profileMenuItemClass}
+                    style={neutralMenuItemStyle}
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Faturas
+                  </Link>
                   <button
                     type="button"
                     className={profileMenuItemClass}
@@ -224,6 +232,13 @@ export function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/faturas"
+                  className="btn-secondary w-full justify-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Faturas
                 </Link>
                 <button
                   type="button"

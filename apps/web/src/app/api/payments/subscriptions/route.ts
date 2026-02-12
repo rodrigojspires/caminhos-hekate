@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       where: {
         id: planId,
         isActive: true,
+        appScope: { in: ['CAMINHOS', 'SHARED'] as any },
       },
     });
 

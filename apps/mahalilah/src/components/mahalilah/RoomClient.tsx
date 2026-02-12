@@ -585,6 +585,7 @@ export function RoomClient({ code }: { code: string }) {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineLoaded, setTimelineLoaded] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [timelineMoves, setTimelineMoves] = useState<TimelineMove[]>([]);
   const [timelineReports, setTimelineReports] = useState<TimelineAiReport[]>(
@@ -784,6 +785,13 @@ export function RoomClient({ code }: { code: string }) {
     setSelectedHouseNumber(state.lastMove.toPos);
   }, [state?.lastMove?.id, state?.lastMove?.toPos]);
 
+  useEffect(() => {
+    setTimelineLoaded(false);
+    setTimelineError(null);
+    setTimelineMoves([]);
+    setTimelineReports([]);
+  }, [state?.room.id]);
+
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
 
@@ -848,7 +856,6 @@ export function RoomClient({ code }: { code: string }) {
     ? playerStateMap.get(indicatorParticipant.id)
     : undefined;
   const indicatorHouseNumber = (indicatorState?.position ?? 67) + 1;
-  const indicatorHouse = getHouseByNumber(indicatorHouseNumber);
 
   const selectedHouse =
     getHouseByNumber(selectedHouseNumber) ||
@@ -1401,37 +1408,48 @@ export function RoomClient({ code }: { code: string }) {
 
   const loadTimelineData = useCallback(
     async (showSuccessToast = false) => {
-      if (!state) {
+      if (!state?.room.id) {
         return { ok: false as const, aiReports: [] as TimelineAiReport[] };
       }
 
       setTimelineLoading(true);
       setTimelineError(null);
+      try {
+        const res = await fetch(`/api/mahalilah/rooms/${state.room.id}/timeline`);
+        const payload = await res.json().catch(() => ({}));
 
-      const res = await fetch(`/api/mahalilah/rooms/${state.room.id}/timeline`);
-      const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const message =
+            payload.error || "Não foi possível carregar a timeline do jogador.";
+          setTimelineError(message);
+          pushToast(message, "error");
+          return { ok: false as const, aiReports: [] as TimelineAiReport[] };
+        }
 
-      if (!res.ok) {
-        const message =
-          payload.error || "Não foi possível carregar a timeline do jogador.";
+        const moves = Array.isArray(payload.moves) ? payload.moves : [];
+        const aiReports = Array.isArray(payload.aiReports)
+          ? payload.aiReports
+          : [];
+        setTimelineMoves(moves);
+        setTimelineReports(aiReports);
+        if (showSuccessToast) {
+          pushToast("Timeline carregada.", "success");
+        }
+        return {
+          ok: true as const,
+          aiReports: aiReports as TimelineAiReport[],
+        };
+      } catch {
+        const message = "Não foi possível carregar a timeline do jogador.";
         setTimelineError(message);
-        setTimelineLoading(false);
         pushToast(message, "error");
         return { ok: false as const, aiReports: [] as TimelineAiReport[] };
+      } finally {
+        setTimelineLoading(false);
+        setTimelineLoaded(true);
       }
-
-      setTimelineMoves(payload.moves || []);
-      setTimelineReports(payload.aiReports || []);
-      setTimelineLoading(false);
-      if (showSuccessToast) {
-        pushToast("Timeline carregada.", "success");
-      }
-      return {
-        ok: true as const,
-        aiReports: (payload.aiReports || []) as TimelineAiReport[],
-      };
     },
-    [state, pushToast],
+    [state?.room.id, pushToast],
   );
 
   const closeRoom = useCallback(() => {
@@ -1521,13 +1539,12 @@ export function RoomClient({ code }: { code: string }) {
   useEffect(() => {
     if (!["summary", "timeline", "ai"].includes(activePanel)) return;
     if (timelineLoading) return;
-    if (timelineMoves.length > 0 || timelineReports.length > 0) return;
+    if (timelineLoaded) return;
     void loadTimelineData();
   }, [
     activePanel,
     timelineLoading,
-    timelineMoves.length,
-    timelineReports.length,
+    timelineLoaded,
     loadTimelineData,
   ]);
 
@@ -1704,19 +1721,6 @@ export function RoomClient({ code }: { code: string }) {
             Até iniciar:{" "}
             <strong>{indicatorState?.rollCountUntilStart || 0}</strong>
           </span>
-          <span className="pill">
-            Casa Atual: <strong>{indicatorHouseNumber}</strong>
-            {indicatorHouse ? ` • ${indicatorHouse.title}` : ""}
-          </span>
-          {lastMoveJump && indicatorHouseNumber === lastMoveJump.to && (
-            <span className="pill" style={{ flex: "0 0 auto" }}>
-              Veio de atalho:{" "}
-              <strong>
-                {lastMoveJump.from} {lastMoveJump.isUp ? "↗" : "↘"}{" "}
-                {lastMoveJump.to}
-              </strong>
-            </span>
-          )}
           <span className="pill" style={{ flex: "0 0 auto" }}>
             <span
               style={{
@@ -2867,6 +2871,10 @@ export function RoomClient({ code }: { code: string }) {
               ) : !summaryParticipant ? (
                 <span className="small-muted">
                   Nenhum jogador disponível para resumo.
+                </span>
+              ) : summaryMoves.length === 0 ? (
+                <span className="small-muted">
+                  Ainda não houve jogadas para gerar o resumo.
                 </span>
               ) : (
                 <>

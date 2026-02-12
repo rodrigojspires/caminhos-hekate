@@ -36,7 +36,14 @@ export async function PUT(
     })
 
     // Vincular/atualizar UserSubscription de acordo com o plano por tier
-    const plan = await prisma.subscriptionPlan.findUnique({ where: { tier: validatedData.subscriptionTier as any } })
+    const plan = await prisma.subscriptionPlan.findFirst({
+      where: {
+        tier: validatedData.subscriptionTier as any,
+        isActive: true,
+        appScope: { in: ['CAMINHOS', 'SHARED'] as any }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
     if (plan) {
       const now = new Date()
       const start = validatedData.subscriptionStartedAt ? new Date(validatedData.subscriptionStartedAt) : now

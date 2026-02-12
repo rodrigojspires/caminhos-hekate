@@ -177,7 +177,8 @@ model Subscription {
 
 model SubscriptionPlan {
   id                String               @id @default(cuid())
-  tier              SubscriptionTier     @unique
+  tier              SubscriptionTier
+  appScope          SubscriptionAppScope @default(CAMINHOS)
   name              String
   description       String
   monthlyPrice      Decimal              @db.Decimal(10, 2)
@@ -193,8 +194,11 @@ model SubscriptionPlan {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   userSubscriptions UserSubscription[]
+  mahaLilahPlans    MahaLilahPlan[]      @relation("MahaLilahSubscriptionPlan")
 
   @@index([isActive])
+  @@index([appScope, isActive])
+  @@unique([tier, appScope])
 }
 
 model Category {
@@ -982,6 +986,12 @@ enum SubscriptionTier {
   INICIADO
   ADEPTO
   SACERDOCIO
+}
+
+enum SubscriptionAppScope {
+  CAMINHOS
+  MAHALILAH
+  SHARED
 }
 
 enum SubscriptionStatus {
@@ -2997,6 +3007,49 @@ model SmsLog {
   @@map("sms_logs")
 }
 
+model MahaLilahPlan {
+  id                 String                           @id @default(cuid())
+  name               String
+  description        String
+  planType           MahaLilahPlanType               @unique
+  billingType        MahaLilahBillingType
+  subscriptionPlanId String?
+  maxParticipants    Int
+  roomsPerMonth      Int?
+  tipsPerPlayer      Int                              @default(0)
+  summaryLimit       Int                              @default(0)
+  durationDays       Int                              @default(30)
+  isActive           Boolean                          @default(true)
+  metadata           Json?
+  createdAt          DateTime                         @default(now())
+  updatedAt          DateTime                         @updatedAt
+
+  subscriptionPlan        SubscriptionPlan?               @relation("MahaLilahSubscriptionPlan", fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
+  singleSessionPriceTiers MahaLilahSingleSessionPriceTier[]
+
+  @@index([isActive])
+  @@index([planType, isActive])
+}
+
+model MahaLilahSingleSessionPriceTier {
+  id               String                            @id @default(cuid())
+  planId           String
+  participantsFrom Int
+  participantsTo   Int
+  pricingMode      MahaLilahSingleSessionPricingMode
+  unitPrice        Decimal?                          @db.Decimal(10, 2)
+  fixedPrice       Decimal?                          @db.Decimal(10, 2)
+  sortOrder        Int                               @default(0)
+  isActive         Boolean                           @default(true)
+  createdAt        DateTime                          @default(now())
+  updatedAt        DateTime                          @updatedAt
+
+  plan MahaLilahPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, isActive, sortOrder])
+  @@unique([planId, participantsFrom, participantsTo])
+}
+
 model MahaLilahRoom {
   id                 String              @id @default(cuid())
   code               String              @unique
@@ -3206,6 +3259,16 @@ enum MahaLilahPlanType {
   SINGLE_SESSION
   SUBSCRIPTION
   SUBSCRIPTION_LIMITED
+}
+
+enum MahaLilahBillingType {
+  ONE_TIME
+  RECURRING
+}
+
+enum MahaLilahSingleSessionPricingMode {
+  UNIT_PER_PARTICIPANT
+  FIXED_TOTAL
 }
 
 enum MahaLilahInviteRole {

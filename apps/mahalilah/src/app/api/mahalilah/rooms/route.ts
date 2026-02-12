@@ -44,22 +44,137 @@ function isExpired(expiresAt?: string | null) {
   return Number.isNaN(d.getTime()) ? false : d.getTime() < Date.now()
 }
 
-async function hasActiveSubscription(userId: string) {
+type Entitlement = {
+  source: 'ORDER' | 'USER_SUBSCRIPTION'
+  planType: MahaLilahPlanType
+  maxParticipants: number
+  roomsLimit: number | null
+  roomsUsed: number
+  orderId?: string
+  userSubscriptionId?: string
+}
+
+type MahaMetadata = {
+  planType?: string
+  maxParticipants?: number
+  roomsLimit?: number | null
+  roomsUsed?: number
+  tipsPerPlayer?: number
+  summaryLimit?: number
+  durationDays?: number
+  active?: boolean
+  expiresAt?: string | null
+}
+
+function parseOrderMahaMetadata(raw: unknown): MahaMetadata | null {
+  const metadata = (raw as any)?.mahalilah
+  if (!metadata || typeof metadata !== 'object') return null
+  return metadata as MahaMetadata
+}
+
+function parseSubscriptionMahaMetadata(raw: unknown): MahaMetadata | null {
+  const metadata = raw as any
+  if (!metadata || typeof metadata !== 'object') return null
+  if (metadata.app !== 'mahalilah') return null
+  if (!metadata.mahalilah || typeof metadata.mahalilah !== 'object') return null
+  return metadata.mahalilah as MahaMetadata
+}
+
+function normalizePlanType(planType: string | undefined): MahaLilahPlanType | null {
+  if (planType === 'SINGLE_SESSION') return MahaLilahPlanType.SINGLE_SESSION
+  if (planType === 'SUBSCRIPTION') return MahaLilahPlanType.SUBSCRIPTION
+  if (planType === 'SUBSCRIPTION_LIMITED') return MahaLilahPlanType.SUBSCRIPTION_LIMITED
+  return null
+}
+
+function isSubscriptionExpired(currentPeriodEnd?: Date | null) {
+  if (!currentPeriodEnd) return false
+  return currentPeriodEnd.getTime() < Date.now()
+}
+
+async function findEntitlement(userId: string, requestedMax: number) {
+  const subscriptions = await prisma.userSubscription.findMany({
+    where: {
+      userId,
+      status: { in: ['ACTIVE', 'TRIALING'] }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  for (const subscription of subscriptions) {
+    const meta = parseSubscriptionMahaMetadata(subscription.metadata)
+    if (!meta) continue
+    if (isSubscriptionExpired(subscription.currentPeriodEnd)) continue
+
+    const planType = normalizePlanType(meta.planType)
+    if (
+      planType !== MahaLilahPlanType.SUBSCRIPTION &&
+      planType !== MahaLilahPlanType.SUBSCRIPTION_LIMITED
+    ) {
+      continue
+    }
+
+    const maxParticipants = Number(meta.maxParticipants || 0)
+    if (!Number.isFinite(maxParticipants) || maxParticipants <= 0) continue
+    if (requestedMax > maxParticipants) continue
+
+    const roomsLimit =
+      meta.roomsLimit === null || meta.roomsLimit === undefined
+        ? null
+        : Number(meta.roomsLimit)
+    const roomsUsed = Number(meta.roomsUsed || 0)
+    if (roomsLimit !== null && Number.isFinite(roomsLimit) && roomsUsed >= roomsLimit) {
+      continue
+    }
+
+    return {
+      source: 'USER_SUBSCRIPTION',
+      userSubscriptionId: subscription.id,
+      planType,
+      maxParticipants,
+      roomsLimit: roomsLimit !== null && Number.isFinite(roomsLimit) ? roomsLimit : null,
+      roomsUsed
+    } satisfies Entitlement
+  }
+
   const orders = await prisma.order.findMany({
     where: { userId, status: 'PAID' },
     orderBy: { createdAt: 'desc' }
   })
 
   for (const order of orders) {
-    const meta = (order.metadata as any)?.mahalilah
+    const meta = parseOrderMahaMetadata(order.metadata)
     if (!meta || meta.active !== true) continue
     if (isExpired(meta.expiresAt)) continue
-    if (meta.planType !== 'SUBSCRIPTION' && meta.planType !== 'SUBSCRIPTION_LIMITED') continue
-    if (meta.roomsLimit != null && meta.roomsUsed >= meta.roomsLimit) continue
-    return true
+    const planType = normalizePlanType(meta.planType)
+    if (
+      planType !== MahaLilahPlanType.SUBSCRIPTION &&
+      planType !== MahaLilahPlanType.SUBSCRIPTION_LIMITED
+    ) {
+      continue
+    }
+    if (meta.roomsLimit != null && Number(meta.roomsUsed || 0) >= Number(meta.roomsLimit)) continue
+    if (requestedMax > Number(meta.maxParticipants || 0)) continue
+
+    return {
+      source: 'ORDER',
+      orderId: order.id,
+      planType,
+      maxParticipants: Number(meta.maxParticipants || 0),
+      roomsLimit:
+        meta.roomsLimit === null || meta.roomsLimit === undefined
+          ? null
+          : Number(meta.roomsLimit),
+      roomsUsed: Number(meta.roomsUsed || 0)
+    } satisfies Entitlement
   }
 
-  return false
+  return null
+}
+
+async function hasActiveSubscription(userId: string) {
+  const entitlement = await findEntitlement(userId, 1)
+  return Boolean(entitlement)
 }
 
 export async function GET(request: Request) {
@@ -165,39 +280,6 @@ export async function GET(request: Request) {
   }
 }
 
-type Entitlement = {
-  orderId: string
-  planType: MahaLilahPlanType
-  maxParticipants: number
-  roomsLimit: number | null
-  roomsUsed: number
-}
-
-async function findEntitlement(userId: string, requestedMax: number) {
-  const orders = await prisma.order.findMany({
-    where: { userId, status: 'PAID' },
-    orderBy: { createdAt: 'desc' }
-  })
-
-  for (const order of orders) {
-    const meta = (order.metadata as any)?.mahalilah
-    if (!meta || meta.active !== true) continue
-    if (isExpired(meta.expiresAt)) continue
-    if (meta.roomsLimit != null && meta.roomsUsed >= meta.roomsLimit) continue
-    if (requestedMax > meta.maxParticipants) continue
-
-    return {
-      orderId: order.id,
-      planType: meta.planType as MahaLilahPlanType,
-      maxParticipants: meta.maxParticipants,
-      roomsLimit: meta.roomsLimit ?? null,
-      roomsUsed: meta.roomsUsed ?? 0
-    } satisfies Entitlement
-  }
-
-  return null
-}
-
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -214,6 +296,20 @@ export async function POST(request: Request) {
 
     if (data.trial) {
       const trialRoom = await prisma.$transaction(async (tx) => {
+        const existingTrial = await tx.mahaLilahRoom.findFirst({
+          where: {
+            createdByUserId: session.user.id,
+            planType: MahaLilahPlanType.SINGLE_SESSION,
+            orderId: null,
+            subscriptionId: null
+          },
+          select: { id: true, code: true }
+        })
+
+        if (existingTrial) {
+          throw new Error('TRIAL_ALREADY_EXISTS')
+        }
+
         const created = await tx.mahaLilahRoom.create({
           data: {
             code,
@@ -259,7 +355,8 @@ export async function POST(request: Request) {
           maxParticipants: data.maxParticipants,
           therapistPlays: data.therapistPlays,
           planType: entitlement.planType,
-          orderId: entitlement.orderId,
+          orderId:
+            entitlement.source === 'ORDER' ? entitlement.orderId : undefined,
           consentTextVersion
         }
       })
@@ -277,21 +374,46 @@ export async function POST(request: Request) {
         data: { roomId: created.id }
       })
 
-      const order = await tx.order.findUnique({ where: { id: entitlement.orderId } })
-      if (order) {
-        const meta = (order.metadata as any)?.mahalilah || {}
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            metadata: {
-              ...(order.metadata as any),
-              mahalilah: {
-                ...meta,
-                roomsUsed: (meta.roomsUsed || 0) + 1
+      if (entitlement.source === 'ORDER' && entitlement.orderId) {
+        const order = await tx.order.findUnique({ where: { id: entitlement.orderId } })
+        if (order) {
+          const metadata = (order.metadata as any) || {}
+          const meta = metadata.mahalilah || {}
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              metadata: {
+                ...metadata,
+                mahalilah: {
+                  ...meta,
+                  roomsUsed: (meta.roomsUsed || 0) + 1
+                }
               }
             }
-          }
+          })
+        }
+      }
+
+      if (entitlement.source === 'USER_SUBSCRIPTION' && entitlement.userSubscriptionId) {
+        const subscription = await tx.userSubscription.findUnique({
+          where: { id: entitlement.userSubscriptionId }
         })
+        if (subscription) {
+          const metadata = (subscription.metadata as any) || {}
+          const maha = metadata.mahalilah || {}
+          await tx.userSubscription.update({
+            where: { id: subscription.id },
+            data: {
+              metadata: {
+                ...metadata,
+                mahalilah: {
+                  ...maha,
+                  roomsUsed: Number(maha.roomsUsed || 0) + 1
+                }
+              }
+            }
+          })
+        }
       }
 
       return created
@@ -299,6 +421,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ room })
   } catch (error) {
+    if (error instanceof Error && error.message === 'TRIAL_ALREADY_EXISTS') {
+      return NextResponse.json(
+        { error: 'Você já possui uma sala trial e não pode criar outra.' },
+        { status: 409 }
+      )
+    }
     console.error('Erro ao criar sala Maha Lilah:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }

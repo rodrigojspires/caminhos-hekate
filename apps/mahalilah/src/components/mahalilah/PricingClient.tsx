@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 type PlanConfig = {
-  singleSession: { pricesByParticipants: Record<string, number>; tipsPerPlayer: number; summaryLimit: number }
-  subscriptionUnlimited: { monthlyPrice: number; maxParticipants: number; tipsPerPlayer: number; summaryLimit: number }
-  subscriptionLimited: { monthlyPrice: number; maxParticipants: number; roomsPerMonth: number; tipsPerPlayer: number; summaryLimit: number }
+  singleSession: { pricesByParticipants: Record<string, number>; tipsPerPlayer: number; summaryLimit: number; isActive: boolean }
+  subscriptionUnlimited: { monthlyPrice: number; maxParticipants: number; tipsPerPlayer: number; summaryLimit: number; isActive: boolean }
+  subscriptionLimited: { monthlyPrice: number; maxParticipants: number; roomsPerMonth: number; tipsPerPlayer: number; summaryLimit: number; isActive: boolean }
 }
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -30,10 +30,17 @@ export function PricingClient() {
 
   useEffect(() => {
     const load = async () => {
-      const res = await fetch('/api/mahalilah/plans')
-      if (!res.ok) return
-      const data = await res.json()
-      setConfig(data.plans)
+      try {
+        const res = await fetch('/api/mahalilah/plans')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setError(data.error || 'Não foi possível carregar os planos.')
+          return
+        }
+        setConfig(data.plans)
+      } catch {
+        setError('Não foi possível carregar os planos.')
+      }
     }
     load()
   }, [])
@@ -70,7 +77,7 @@ export function PricingClient() {
   }
 
   if (!config) {
-    return <div className="card">Carregando planos...</div>
+    return <div className="card">{error || 'Carregando planos...'}</div>
   }
 
   const selectedOption = participantOptions.find((option) => option.participants === maxParticipants) ?? participantOptions[0]
@@ -99,7 +106,7 @@ export function PricingClient() {
           </label>
           <div><strong>{singlePrice ? formatCurrency(singlePrice) : '--'}</strong></div>
           <div className="small-muted">Dicas por jogador: {config.singleSession.tipsPerPlayer} • Resumo: {config.singleSession.summaryLimit}</div>
-          <button onClick={() => startCheckout('SINGLE_SESSION')} disabled={loading || !singlePrice}>
+          <button onClick={() => startCheckout('SINGLE_SESSION')} disabled={loading || !singlePrice || !config.singleSession.isActive}>
             Comprar sessão
           </button>
         </div>
@@ -109,7 +116,7 @@ export function PricingClient() {
           <div><strong>{formatCurrency(config.subscriptionUnlimited.monthlyPrice)} / mês</strong></div>
           <div className="small-muted">Participantes por sala: {config.subscriptionUnlimited.maxParticipants}</div>
           <div className="small-muted">Dicas por jogador: {config.subscriptionUnlimited.tipsPerPlayer} • Resumo: {config.subscriptionUnlimited.summaryLimit}</div>
-          <button onClick={() => startCheckout('SUBSCRIPTION')} disabled={loading}>
+          <button onClick={() => startCheckout('SUBSCRIPTION')} disabled={loading || !config.subscriptionUnlimited.isActive}>
             Assinar agora
           </button>
         </div>
@@ -121,7 +128,7 @@ export function PricingClient() {
         <div className="small-muted">Salas por mês: {config.subscriptionLimited.roomsPerMonth}</div>
         <div className="small-muted">Participantes por sala: {config.subscriptionLimited.maxParticipants}</div>
         <div className="small-muted">Dicas por jogador: {config.subscriptionLimited.tipsPerPlayer} • Resumo: {config.subscriptionLimited.summaryLimit}</div>
-        <button onClick={() => startCheckout('SUBSCRIPTION_LIMITED')} disabled={loading}>
+        <button onClick={() => startCheckout('SUBSCRIPTION_LIMITED')} disabled={loading || !config.subscriptionLimited.isActive}>
           Assinar plano limitado
         </button>
       </div>

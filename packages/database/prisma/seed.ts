@@ -57,6 +57,8 @@ async function main() {
     prisma.product.deleteMany(),
     prisma.category.deleteMany(),
     prisma.subscription.deleteMany(),
+    prisma.mahaLilahSingleSessionPriceTier.deleteMany(),
+    prisma.mahaLilahPlan.deleteMany(),
     prisma.subscriptionPlan.deleteMany(),
     prisma.address.deleteMany(),
     prisma.notificationPreference.deleteMany(),
@@ -90,10 +92,11 @@ async function main() {
   }
 
   // Criar planos de assinatura
-  const plans = await Promise.all([
+  await Promise.all([
     prisma.subscriptionPlan.create({
       data: {
         tier: 'FREE',
+        appScope: 'CAMINHOS',
         name: 'Visitante',
         description: 'Acesso gratuito ao conteúdo público',
         monthlyPrice: 0,
@@ -108,6 +111,7 @@ async function main() {
     prisma.subscriptionPlan.create({
       data: {
         tier: 'INICIADO',
+        appScope: 'CAMINHOS',
         name: 'Iniciado',
         description: 'Primeiros passos nos mistérios de Hekate',
         monthlyPrice: 47,
@@ -124,6 +128,7 @@ async function main() {
     prisma.subscriptionPlan.create({
       data: {
         tier: 'ADEPTO',
+        appScope: 'CAMINHOS',
         name: 'Adepto',
         description: 'Aprofundamento nos ensinamentos',
         monthlyPrice: 97,
@@ -140,6 +145,7 @@ async function main() {
     prisma.subscriptionPlan.create({
       data: {
         tier: 'SACERDOCIO',
+        appScope: 'CAMINHOS',
         name: 'Sacerdócio',
         description: 'Acesso completo aos mistérios sagrados',
         monthlyPrice: 197,
@@ -151,9 +157,160 @@ async function main() {
         },
       },
     }),
+    prisma.subscriptionPlan.create({
+      data: {
+        tier: 'INICIADO',
+        appScope: 'MAHALILAH',
+        name: 'Maha Lilah Limitado',
+        description: 'Assinatura Maha Lilah com limite mensal de salas.',
+        monthlyPrice: 290,
+        yearlyPrice: 2900,
+        features: {
+          access: ['Maha Lilah', 'Até 6 participantes por sala', 'Até 4 salas por mês'],
+          maxParticipants: 6,
+          roomsPerMonth: 4,
+          tipsPerPlayer: 3,
+          summaryLimit: 1,
+        },
+        metadata: {
+          app: 'mahalilah',
+          planType: 'SUBSCRIPTION_LIMITED',
+        },
+      },
+    }),
+    prisma.subscriptionPlan.create({
+      data: {
+        tier: 'ADEPTO',
+        appScope: 'MAHALILAH',
+        name: 'Maha Lilah Ilimitado',
+        description: 'Assinatura Maha Lilah com salas ilimitadas.',
+        monthlyPrice: 490,
+        yearlyPrice: 4900,
+        features: {
+          access: ['Maha Lilah', 'Até 8 participantes por sala', 'Salas ilimitadas'],
+          maxParticipants: 8,
+          roomsPerMonth: -1,
+          tipsPerPlayer: 5,
+          summaryLimit: 2,
+        },
+        metadata: {
+          app: 'mahalilah',
+          planType: 'SUBSCRIPTION',
+        },
+      },
+    }),
   ]);
 
   console.log('✅ Planos de assinatura criados');
+
+  const mahaLimitedSubscriptionPlan = await prisma.subscriptionPlan.findFirst({
+    where: {
+      appScope: 'MAHALILAH',
+      tier: 'INICIADO'
+    },
+    select: { id: true }
+  })
+  const mahaUnlimitedSubscriptionPlan = await prisma.subscriptionPlan.findFirst({
+    where: {
+      appScope: 'MAHALILAH',
+      tier: 'ADEPTO'
+    },
+    select: { id: true }
+  })
+
+  if (!mahaLimitedSubscriptionPlan || !mahaUnlimitedSubscriptionPlan) {
+    throw new Error('Planos de assinatura Maha Lilah não encontrados para criar o catálogo.')
+  }
+
+  await Promise.all([
+    prisma.mahaLilahPlan.create({
+      data: {
+        name: 'Sessão avulsa',
+        description: 'Pagamento único para uma sala com preço por faixa de participantes.',
+        planType: 'SINGLE_SESSION',
+        billingType: 'ONE_TIME',
+        maxParticipants: 8,
+        roomsPerMonth: 1,
+        tipsPerPlayer: 3,
+        summaryLimit: 1,
+        durationDays: 30,
+        metadata: {
+          app: 'mahalilah',
+          checkout: 'single_session'
+        },
+        singleSessionPriceTiers: {
+          create: [
+            {
+              participantsFrom: 1,
+              participantsTo: 2,
+              pricingMode: 'FIXED_TOTAL',
+              fixedPrice: 180,
+              sortOrder: 1
+            },
+            {
+              participantsFrom: 3,
+              participantsTo: 4,
+              pricingMode: 'FIXED_TOTAL',
+              fixedPrice: 260,
+              sortOrder: 2
+            },
+            {
+              participantsFrom: 5,
+              participantsTo: 6,
+              pricingMode: 'FIXED_TOTAL',
+              fixedPrice: 320,
+              sortOrder: 3
+            },
+            {
+              participantsFrom: 7,
+              participantsTo: 8,
+              pricingMode: 'FIXED_TOTAL',
+              fixedPrice: 380,
+              sortOrder: 4
+            }
+          ]
+        }
+      }
+    }),
+    prisma.mahaLilahPlan.create({
+      data: {
+        name: 'Assinatura ilimitada',
+        description: 'Assinatura mensal com salas ilimitadas.',
+        planType: 'SUBSCRIPTION',
+        billingType: 'RECURRING',
+        subscriptionPlanId: mahaUnlimitedSubscriptionPlan.id,
+        maxParticipants: 8,
+        roomsPerMonth: null,
+        tipsPerPlayer: 5,
+        summaryLimit: 2,
+        durationDays: 30,
+        metadata: {
+          app: 'mahalilah',
+          checkout: 'subscription_unlimited'
+        }
+      }
+    }),
+    prisma.mahaLilahPlan.create({
+      data: {
+        name: 'Assinatura limitada',
+        description: 'Assinatura mensal com limite de salas.',
+        planType: 'SUBSCRIPTION_LIMITED',
+        billingType: 'RECURRING',
+        subscriptionPlanId: mahaLimitedSubscriptionPlan.id,
+        maxParticipants: 6,
+        roomsPerMonth: 4,
+        tipsPerPlayer: 3,
+        summaryLimit: 1,
+        durationDays: 30,
+        metadata: {
+          app: 'mahalilah',
+          checkout: 'subscription_limited'
+        }
+      }
+    })
+  ])
+
+  console.log('✅ Catálogo de planos Maha Lilah criado');
 
   // Criar categorias
   const categories = await Promise.all([

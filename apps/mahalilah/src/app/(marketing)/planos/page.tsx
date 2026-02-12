@@ -56,8 +56,10 @@ const formatParticipantRange = (participants: number[]) => {
   return `${sorted.join(', ')} participantes`
 }
 
-export default function PlanosPage() {
-  const planConfig = getPlanConfig()
+export const dynamic = 'force-dynamic'
+
+export default async function PlanosPage() {
+  const planConfig = await getPlanConfig()
   const singleSessionEntries = Object.entries(planConfig.singleSession.pricesByParticipants)
     .map(([participants, price]) => ({ participants: Number(participants), price }))
     .sort((a, b) => a.participants - b.participants)

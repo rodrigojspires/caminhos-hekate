@@ -331,6 +331,10 @@ export function DashboardClient() {
       }),
     [canCreateRoom, rooms.length],
   );
+  const hasTrialRoom = useMemo(
+    () => rooms.some((room) => Boolean(room.isTrial)),
+    [rooms],
+  );
 
   const showNotice = (
     message: string,
@@ -1434,7 +1438,7 @@ export function DashboardClient() {
           <button
             className="btn-primary"
             onClick={handleCreateTrialRoom}
-            disabled={creatingTrial}
+            disabled={creatingTrial || hasTrialRoom}
           >
             {creatingTrial ? "Criando trial..." : "Experimente já"}
           </button>
@@ -1442,6 +1446,11 @@ export function DashboardClient() {
             Ver planos
           </a>
         </div>
+        {hasTrialRoom && (
+          <span className="small-muted">
+            Você já possui uma sala trial criada.
+          </span>
+        )}
       </div>
       {canCreateRoom && (
         <div
