@@ -40,6 +40,7 @@ type RoomState = {
     planType?: string;
     isTrial?: boolean;
     playerIntentionLocked?: boolean;
+    therapistSoloPlay?: boolean;
     currentTurnIndex: number;
     turnParticipantId: string | null;
     therapistOnline: boolean;
@@ -931,6 +932,15 @@ export function RoomClient({ code }: { code: string }) {
     );
   }, [state, session?.user?.id]);
 
+  const isTherapistSoloPlay = Boolean(state?.room.therapistSoloPlay);
+  const therapistParticipantInRoom = useMemo(() => {
+    if (!state?.participants) return null;
+    return (
+      state.participants.find((participant) => participant.role === "THERAPIST") ||
+      null
+    );
+  }, [state?.participants]);
+
   const playerStateMap = useMemo(() => {
     const map = new Map<string, PlayerState>();
     state?.playerStates.forEach((playerState) =>
@@ -942,9 +952,14 @@ export function RoomClient({ code }: { code: string }) {
   const myPlayerState = myParticipant
     ? playerStateMap.get(myParticipant.id)
     : undefined;
-  const indicatorParticipant = myPlayerState
-    ? myParticipant
-    : currentParticipant;
+  const indicatorParticipant =
+    isTherapistSoloPlay &&
+    myParticipant?.role === "PLAYER" &&
+    therapistParticipantInRoom
+      ? therapistParticipantInRoom
+      : myPlayerState
+        ? myParticipant
+        : currentParticipant;
   const indicatorState = indicatorParticipant
     ? playerStateMap.get(indicatorParticipant.id)
     : undefined;
@@ -1005,6 +1020,9 @@ export function RoomClient({ code }: { code: string }) {
     myParticipant && !myParticipant.consentAcceptedAt,
   );
   const actionsBlockedByConsent = needsConsent && !consentAccepted;
+  const isViewerInTherapistSoloPlay = Boolean(
+    isTherapistSoloPlay && myParticipant?.role === "PLAYER",
+  );
   const isTrialRoom = Boolean(state?.room.isTrial);
   const myPostStartMovesUsed = myPlayerState
     ? Math.max(0, myPlayerState.rollCountTotal - myPlayerState.rollCountUntilStart)
@@ -1020,22 +1038,27 @@ export function RoomClient({ code }: { code: string }) {
   const canLogTherapy = Boolean(
     state?.lastMove &&
       myParticipant &&
-      state.lastMove.participantId === myParticipant.id,
+      state.lastMove.participantId === myParticipant.id &&
+      !isViewerInTherapistSoloPlay,
   );
   const isTherapist = myParticipant?.role === "THERAPIST";
   const canCloseRoom = myParticipant?.role === "THERAPIST";
   const isPlayerIntentionLocked = Boolean(
     myParticipant?.role === "PLAYER" && state?.room.playerIntentionLocked,
   );
-  const shouldShowSessionIntentionField = Boolean(myParticipant);
+  const shouldShowSessionIntentionField = Boolean(
+    myParticipant && !isViewerInTherapistSoloPlay,
+  );
   const canEditSessionIntention = Boolean(
-    myParticipant && !isPlayerIntentionLocked,
+    myParticipant && !isPlayerIntentionLocked && !isViewerInTherapistSoloPlay,
   );
   const playerParticipantsCount =
     state?.participants.filter((participant) => participant.role === "PLAYER")
       .length || 0;
   const canReplicateIntentionToPlayers = Boolean(
-    myParticipant?.role === "THERAPIST" && playerParticipantsCount > 1,
+    myParticipant?.role === "THERAPIST" &&
+      !isTherapistSoloPlay &&
+      playerParticipantsCount > 1,
   );
   const canRoll = Boolean(
     isMyTurn &&
@@ -1046,56 +1069,85 @@ export function RoomClient({ code }: { code: string }) {
   );
 
   const timelineParticipants = useMemo(() => {
-    return state?.participants || [];
-  }, [state?.participants]);
+    if (!state?.participants) return [];
+    if (!isTherapistSoloPlay) return state.participants;
+    return state.participants.filter((participant) => participant.role === "THERAPIST");
+  }, [state?.participants, isTherapistSoloPlay]);
+
+  const boardParticipants = useMemo(() => {
+    if (!state?.participants) return [];
+    if (!isTherapistSoloPlay) return state.participants;
+    return state.participants.filter((participant) => participant.role === "THERAPIST");
+  }, [state?.participants, isTherapistSoloPlay]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
 
     if (myParticipant.role === "THERAPIST") {
-      const preferredPlayer = state.participants.find(
+      const targetGroup = isTherapistSoloPlay
+        ? state.participants.filter((participant) => participant.role === "THERAPIST")
+        : state.participants;
+      const preferredPlayer = targetGroup.find(
         (participant) => participant.role === "PLAYER",
       );
-      const fallbackParticipant = state.participants[0];
+      const fallbackParticipant = targetGroup[0];
       const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
       setTimelineTargetParticipantId((prev) => prev || targetId);
       return;
     }
 
-    setTimelineTargetParticipantId(myParticipant.id);
-  }, [state, myParticipant]);
+    const targetId =
+      isTherapistSoloPlay && therapistParticipantInRoom
+        ? therapistParticipantInRoom.id
+        : myParticipant.id;
+    setTimelineTargetParticipantId(targetId);
+  }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
 
     if (myParticipant.role === "THERAPIST") {
-      const preferredPlayer = state.participants.find(
+      const targetGroup = isTherapistSoloPlay
+        ? state.participants.filter((participant) => participant.role === "THERAPIST")
+        : state.participants;
+      const preferredPlayer = targetGroup.find(
         (participant) => participant.role === "PLAYER",
       );
-      const fallbackParticipant = state.participants[0];
+      const fallbackParticipant = targetGroup[0];
       const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
       setSummaryParticipantId((prev) => prev || targetId);
       return;
     }
 
-    setSummaryParticipantId(myParticipant.id);
-  }, [state, myParticipant]);
+    const targetId =
+      isTherapistSoloPlay && therapistParticipantInRoom
+        ? therapistParticipantInRoom.id
+        : myParticipant.id;
+    setSummaryParticipantId(targetId);
+  }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
 
     if (myParticipant.role === "THERAPIST") {
-      const preferredPlayer = state.participants.find(
+      const targetGroup = isTherapistSoloPlay
+        ? state.participants.filter((participant) => participant.role === "THERAPIST")
+        : state.participants;
+      const preferredPlayer = targetGroup.find(
         (participant) => participant.role === "PLAYER",
       );
-      const fallbackParticipant = state.participants[0];
+      const fallbackParticipant = targetGroup[0];
       const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
       setAiHistoryParticipantId((prev) => prev || targetId);
       return;
     }
 
-    setAiHistoryParticipantId(myParticipant.id);
-  }, [state, myParticipant]);
+    const targetId =
+      isTherapistSoloPlay && therapistParticipantInRoom
+        ? therapistParticipantInRoom.id
+        : myParticipant.id;
+    setAiHistoryParticipantId(targetId);
+  }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   const filteredTimelineMoves = useMemo(() => {
     if (!timelineTargetParticipantId) return timelineMoves;
@@ -1181,6 +1233,13 @@ export function RoomClient({ code }: { code: string }) {
   const finalReportParticipants = useMemo(() => {
     if (!state?.participants || !myParticipant) return [];
 
+    if (isTherapistSoloPlay) {
+      const therapistOnly = state.participants.filter(
+        (participant) => participant.role === "THERAPIST",
+      );
+      return therapistOnly;
+    }
+
     const players = state.participants.filter(
       (participant) => participant.role === "PLAYER",
     );
@@ -1195,7 +1254,7 @@ export function RoomClient({ code }: { code: string }) {
     }
 
     return [myParticipant];
-  }, [state?.participants, myParticipant, isTherapist]);
+  }, [state?.participants, myParticipant, isTherapist, isTherapistSoloPlay]);
 
   const summaryParticipant = useMemo(() => {
     if (!summaryParticipantId) return null;
@@ -1615,7 +1674,11 @@ export function RoomClient({ code }: { code: string }) {
       myParticipant &&
       state.lastMove.participantId === myParticipant.id &&
       remainingDrawsInCurrentMove > 0 &&
-      !actionsBlockedByConsent,
+      !actionsBlockedByConsent &&
+      !isViewerInTherapistSoloPlay,
+  );
+  const canUseAiActions = Boolean(
+    !actionsBlockedByConsent && !isViewerInTherapistSoloPlay,
   );
 
   const latestDrawnCard = useMemo(() => {
@@ -2247,6 +2310,18 @@ export function RoomClient({ code }: { code: string }) {
                 : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
             </span>
           )}
+          {isTherapistSoloPlay && (
+            <span
+              className="pill"
+              style={{
+                flex: "0 0 auto",
+                borderColor: "rgba(154, 208, 255, 0.55)",
+                background: "rgba(154, 208, 255, 0.14)",
+              }}
+            >
+              <strong>Modo:</strong> terapeuta único jogador (demais visualizam)
+            </span>
+          )}
           <button
             type="button"
             className="btn-secondary"
@@ -2288,6 +2363,8 @@ export function RoomClient({ code }: { code: string }) {
               ? "Trial bloqueada"
               : !state.room.therapistOnline
               ? "Aguardando terapeuta"
+              : isViewerInTherapistSoloPlay
+              ? "Modo visualização"
               : isMyTurn
                 ? "Rolar dado"
                 : "Aguardando sua vez"}
@@ -2441,7 +2518,7 @@ export function RoomClient({ code }: { code: string }) {
               const sanskritName =
                 HOUSE_SANSKRIT_NAMES[cell.houseNumber - 1] || "";
               const portugueseName = house?.title || `Casa ${cell.houseNumber}`;
-              const tokens = state.participants
+              const tokens = boardParticipants
                 .map((participant, participantIndex) => ({
                   participant,
                   color: COLORS[participantIndex % COLORS.length],
@@ -3019,6 +3096,12 @@ export function RoomClient({ code }: { code: string }) {
           {activePanel === "ai" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>IA terapêutica</strong>
+              {isViewerInTherapistSoloPlay && (
+                <span className="small-muted">
+                  Nesta sala você está como visualizador. As ações de IA ficam
+                  disponíveis apenas para o terapeuta.
+                </span>
+              )}
               {isTrialRoom && (
                 <span className="small-muted">
                   No modo trial você pode usar 1 ajuda da IA e gerar 1 resumo
@@ -3034,7 +3117,7 @@ export function RoomClient({ code }: { code: string }) {
 
               <button
                 className="secondary"
-                disabled={actionsBlockedByConsent || aiTipLoading}
+                disabled={!canUseAiActions || aiTipLoading}
                 onClick={() =>
                   (() => {
                     if (!socket) return;
@@ -3168,7 +3251,7 @@ export function RoomClient({ code }: { code: string }) {
                     successMessage: `Resumo final gerado para ${getParticipantDisplayName(selectedParticipant)}.`,
                   });
                 }}
-                disabled={actionsBlockedByConsent || finalReportLoading}
+                disabled={!canUseAiActions || finalReportLoading}
               >
                 {finalReportLoading
                   ? "Gerando resumo final..."
@@ -3214,7 +3297,9 @@ export function RoomClient({ code }: { code: string }) {
                           <strong style={{ fontSize: 12 }}>
                             {isTherapist
                               ? participantLabel
-                              : "Meu relatório final"}
+                              : isTherapistSoloPlay
+                                ? `Relatório final • ${participantLabel}`
+                                : "Meu relatório final"}
                           </strong>
                           <span className="small-muted">
                             {latestReport

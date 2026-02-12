@@ -29,6 +29,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       select: {
         id: true,
         createdByUserId: true,
+        therapistSoloPlay: true,
         code: true,
         participants: {
           select: { id: true, userId: true, role: true },
@@ -55,7 +56,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     );
     const canViewAllAiReports =
       room.createdByUserId === session.user.id ||
-      requesterParticipant?.role === "THERAPIST";
+      requesterParticipant?.role === "THERAPIST" ||
+      room.therapistSoloPlay;
 
     const [moves, aiReports, standaloneDraws] = await prisma.$transaction([
       prisma.mahaLilahMove.findMany({

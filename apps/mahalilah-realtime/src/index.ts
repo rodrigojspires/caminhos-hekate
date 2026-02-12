@@ -450,9 +450,27 @@ function ensureConsentAccepted(participant: {
   }
 }
 
+function ensureNotViewerInTherapistSoloMode(
+  room: { therapistSoloPlay: boolean },
+  participant: { role: string },
+) {
+  if (room.therapistSoloPlay && participant.role !== "THERAPIST") {
+    throw new Error(
+      "Esta sala está no modo visualizador. Somente o terapeuta pode executar essa ação.",
+    );
+  }
+}
+
 function getTurnParticipants<
   T extends { id: string; role: string; userId: string },
->(participants: T[], therapistPlays: boolean) {
+>(
+  participants: T[],
+  therapistPlays: boolean,
+  therapistSoloPlay = false,
+) {
+  if (therapistSoloPlay) {
+    return participants.filter((participant) => participant.role === "THERAPIST");
+  }
   return participants.filter(
     (participant) => therapistPlays || participant.role !== "THERAPIST",
   );
@@ -529,6 +547,7 @@ async function buildRoomState(roomId: string) {
   const turnParticipants = getTurnParticipants(
     room.participants,
     room.therapistPlays,
+    room.therapistSoloPlay,
   );
   const turnParticipantIds = turnParticipants.map(
     (participant) => participant.id,
@@ -579,6 +598,7 @@ async function buildRoomState(roomId: string) {
       planType: room.planType,
       isTrial: isTrialRoom(room),
       playerIntentionLocked: room.playerIntentionLocked,
+      therapistSoloPlay: room.therapistSoloPlay,
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,
       therapistOnline,
@@ -684,6 +704,7 @@ async function rollInRoom(roomId: string, userId: string) {
     const turnParticipants = getTurnParticipants(
       room.participants,
       room.therapistPlays,
+      room.therapistSoloPlay,
     );
     const turnParticipantIds = turnParticipants.map(
       (participant) => participant.id,
@@ -849,6 +870,7 @@ async function advanceTurnInRoom(roomId: string, userId: string) {
     const turnParticipants = getTurnParticipants(
       room.participants,
       room.therapistPlays,
+      room.therapistSoloPlay,
     );
     const turnParticipantIds = turnParticipants.map(
       (participant) => participant.id,
@@ -1029,6 +1051,7 @@ io.on("connection", (socket: AuthedSocket) => {
         );
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
+        ensureNotViewerInTherapistSoloMode(room, participant);
 
         if (!moveId) {
           throw new Error("Faça uma jogada antes de tirar carta");
@@ -1146,6 +1169,12 @@ io.on("connection", (socket: AuthedSocket) => {
         });
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          select: { therapistSoloPlay: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+        ensureNotViewerInTherapistSoloMode(room, participant);
 
         if (!moveId) throw new Error("Move obrigatório");
 
@@ -1200,9 +1229,10 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         const room = await prisma.mahaLilahRoom.findUnique({
           where: { id: socket.data.roomId },
-          select: { playerIntentionLocked: true },
+          select: { playerIntentionLocked: true, therapistSoloPlay: true },
         });
         if (!room) throw new Error("Sala não encontrada");
+        ensureNotViewerInTherapistSoloMode(room, participant);
         if (participant.role === "PLAYER" && room.playerIntentionLocked) {
           throw new Error(
             "A intenção foi definida pelo terapeuta e está bloqueada para os jogadores.",
@@ -1328,6 +1358,7 @@ io.on("connection", (socket: AuthedSocket) => {
         });
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
+        ensureNotViewerInTherapistSoloMode(room, participant);
 
         const { tipsLimit } = await getRoomAiLimits(room);
 
@@ -1427,10 +1458,16 @@ io.on("connection", (socket: AuthedSocket) => {
 
         if (!requester) throw new Error("Participante não encontrado");
         ensureConsentAccepted(requester);
+        ensureNotViewerInTherapistSoloMode(room, requester);
 
         let targetParticipantId = requester.id;
 
         if (participantId && participantId !== requester.id) {
+          if (room.therapistSoloPlay) {
+            throw new Error(
+              "No modo visualizador, o resumo final pode ser gerado apenas para o terapeuta.",
+            );
+          }
           if (requester.role !== "THERAPIST") {
             throw new Error(
               "Apenas o terapeuta pode gerar o resumo final para outro jogador.",
@@ -1505,7 +1542,11 @@ io.on("connection", (socket: AuthedSocket) => {
         const participantIds = Array.from(
           new Set(
             room.participants
-              .filter((participant) => participant.role !== "THERAPIST")
+              .filter((participant) =>
+                room.therapistSoloPlay
+                  ? participant.role === "THERAPIST"
+                  : participant.role !== "THERAPIST",
+              )
               .map((participant) => participant.id),
           ),
         );

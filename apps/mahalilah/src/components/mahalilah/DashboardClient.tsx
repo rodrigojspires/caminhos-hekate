@@ -34,6 +34,7 @@ type Room = {
   canManage: boolean;
   maxParticipants: number;
   therapistPlays: boolean;
+  therapistSoloPlay?: boolean;
   isTrial?: boolean;
   createdAt: string;
   invites: RoomInvite[];
@@ -368,6 +369,7 @@ export function DashboardClient() {
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
+  const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
   const [toasts, setToasts] = useState<DashboardToast[]>([]);
   const [canCreateRoom, setCanCreateRoom] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({});
@@ -593,7 +595,7 @@ export function DashboardClient() {
     const res = await fetch("/api/mahalilah/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ maxParticipants, therapistPlays }),
+      body: JSON.stringify({ maxParticipants, therapistPlays, therapistSoloPlay }),
     });
 
     if (!res.ok) {
@@ -829,15 +831,19 @@ export function DashboardClient() {
       (participant) => participant.role === "THERAPIST",
     );
     const exportableParticipants =
-      room.viewerRole === "THERAPIST"
-        ? playerParticipants.length > 0
-          ? playerParticipants
-          : room.therapistPlays
-            ? therapistParticipants
-            : []
-        : currentUserParticipant
-          ? [currentUserParticipant]
-          : [];
+      room.therapistSoloPlay
+        ? room.viewerRole === "THERAPIST"
+          ? therapistParticipants
+          : []
+        : room.viewerRole === "THERAPIST"
+          ? playerParticipants.length > 0
+            ? playerParticipants
+            : room.therapistPlays
+              ? therapistParticipants
+              : []
+          : currentUserParticipant
+            ? [currentUserParticipant]
+            : [];
 
     const filteredMoves = (roomDetails?.moves || []).filter((move) =>
       selectedParticipantId
@@ -953,7 +959,9 @@ export function DashboardClient() {
             <div style={{ color: "var(--muted)", marginTop: 6 }}>
               {new Date(room.createdAt).toLocaleString("pt-BR")} •{" "}
               {room.participantsCount}/{room.maxParticipants} jogadores •{" "}
-              {room.therapistPlays
+              {room.therapistSoloPlay
+                ? "Terapeuta joga sozinho (demais visualizam)"
+                : room.therapistPlays
                 ? "Terapeuta joga junto"
                 : "Terapeuta conduz sem jogar"}
             </div>
@@ -1666,7 +1674,9 @@ export function DashboardClient() {
               </strong>
               {exportableParticipants.length === 0 ? (
                 <span className="small-muted">
-                  Nenhum jogador disponível para exportação.
+                  {room.therapistSoloPlay && room.viewerRole !== "THERAPIST"
+                    ? "Exportação disponível apenas para o terapeuta neste modo."
+                    : "Nenhum jogador disponível para exportação."}
                 </span>
               ) : (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1843,9 +1853,34 @@ export function DashboardClient() {
               <input
                 type="checkbox"
                 checked={therapistPlays}
-                onChange={(event) => setTherapistPlays(event.target.checked)}
+                onChange={(event) => {
+                  if (therapistSoloPlay && !event.target.checked) return;
+                  setTherapistPlays(event.target.checked);
+                }}
+                disabled={therapistSoloPlay}
               />
               <span>Terapeuta joga junto</span>
+            </label>
+            <label
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                paddingTop: 22,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={therapistSoloPlay}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  setTherapistSoloPlay(enabled);
+                  if (enabled) {
+                    setTherapistPlays(true);
+                  }
+                }}
+              />
+              <span>Só o terapeuta joga (demais visualizam)</span>
             </label>
             <button
               className="btn-primary"
@@ -1857,7 +1892,8 @@ export function DashboardClient() {
           </div>
           <p className="small-muted">
             Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
-            vaga de jogador.
+            vaga de jogador. No modo "só o terapeuta joga", os demais entram
+            apenas como visualizadores da mesma partida.
           </p>
         </div>
       )}

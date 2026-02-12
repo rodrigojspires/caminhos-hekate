@@ -546,8 +546,20 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     let scopedParticipantId: string | null = null
+    const therapistParticipant =
+      room.participants.find((participant) => participant.role === 'THERAPIST') || null
 
-    if (isOwner) {
+    if (room.therapistSoloPlay) {
+      if (!isOwner) {
+        return NextResponse.json(
+          { error: 'No modo visualizador, apenas o terapeuta pode exportar o PDF.' },
+          { status: 403 }
+        )
+      }
+      scopedParticipantId = therapistParticipant?.id || requesterParticipant?.id || null
+    }
+
+    if (!scopedParticipantId && isOwner) {
       if (requestedParticipantId) {
         const participantExists = room.participants.some(
           (participant) => participant.id === requestedParticipantId
@@ -560,7 +572,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         }
         scopedParticipantId = requestedParticipantId
       }
-    } else {
+    } else if (!scopedParticipantId) {
       scopedParticipantId = requesterParticipant?.id || null
     }
 

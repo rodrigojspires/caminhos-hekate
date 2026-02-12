@@ -39,6 +39,7 @@ type Room = {
   isTrial?: boolean;
   maxParticipants: number;
   therapistPlays: boolean;
+  therapistSoloPlay?: boolean;
   createdAt: string;
   createdBy: { id: string; name: string | null; email: string };
   orderId: string | null;
@@ -69,6 +70,7 @@ export default function AdminMahaLilahRoomsPage() {
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [planType, setPlanType] = useState("SINGLE_SESSION");
   const [therapistPlays, setTherapistPlays] = useState(true);
+  const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
 
   const baseUrl = useMemo(() => {
     if (typeof window === "undefined") return "https://mahalilahonline.com.br";
@@ -128,6 +130,7 @@ export default function AdminMahaLilahRoomsPage() {
         maxParticipants,
         planType,
         therapistPlays,
+        therapistSoloPlay,
       }),
     });
 
@@ -148,6 +151,7 @@ export default function AdminMahaLilahRoomsPage() {
     toast.success("Sala criada com sucesso.");
     setTherapistEmail("");
     setTherapistPlays(true);
+    setTherapistSoloPlay(false);
     await loadRooms();
     setCreating(false);
   };
@@ -199,7 +203,7 @@ export default function AdminMahaLilahRoomsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-end">
+          <div className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_auto] items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium">Email do terapeuta</label>
               <Input
@@ -243,10 +247,33 @@ export default function AdminMahaLilahRoomsPage() {
               <div className="flex h-10 items-center gap-3 rounded-md border px-3">
                 <Switch
                   checked={therapistPlays}
-                  onCheckedChange={setTherapistPlays}
+                  onCheckedChange={(checked) => {
+                    if (therapistSoloPlay && !checked) return;
+                    setTherapistPlays(checked);
+                  }}
+                  disabled={therapistSoloPlay}
                 />
                 <span className="text-sm text-muted-foreground">
                   {therapistPlays ? "Sim, joga junto" : "Não, só conduz"}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Modo visualizador</label>
+              <div className="flex h-10 items-center gap-3 rounded-md border px-3">
+                <Switch
+                  checked={therapistSoloPlay}
+                  onCheckedChange={(checked) => {
+                    setTherapistSoloPlay(checked);
+                    if (checked) {
+                      setTherapistPlays(true);
+                    }
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {therapistSoloPlay
+                    ? "Só terapeuta joga"
+                    : "Todos jogam normalmente"}
                 </span>
               </div>
             </div>
@@ -353,7 +380,9 @@ export default function AdminMahaLilahRoomsPage() {
                       <TableCell>
                         {room.participantsCount}/{room.maxParticipants}
                         <div className="text-xs text-muted-foreground">
-                          {room.therapistPlays
+                          {room.therapistSoloPlay
+                            ? "Só terapeuta joga (demais visualizam)"
+                            : room.therapistPlays
                             ? "Terapeuta joga junto"
                             : "Terapeuta não joga"}
                         </div>

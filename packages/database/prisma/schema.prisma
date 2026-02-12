@@ -3059,6 +3059,7 @@ model MahaLilahRoom {
   status             MahaLilahRoomStatus @default(ACTIVE)
   maxParticipants    Int
   therapistPlays     Boolean             @default(true)
+  therapistSoloPlay  Boolean             @default(false)
   isTrial            Boolean             @default(false)
   playerIntentionLocked Boolean          @default(false)
   planType           MahaLilahPlanType   @default(SINGLE_SESSION)

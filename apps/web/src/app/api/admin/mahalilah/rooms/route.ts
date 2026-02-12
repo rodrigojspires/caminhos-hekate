@@ -10,7 +10,8 @@ const CreateRoomSchema = z.object({
   therapistEmail: z.string().email(),
   maxParticipants: z.coerce.number().int().min(1).max(12).default(4),
   planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']).optional(),
-  therapistPlays: z.boolean().default(true)
+  therapistPlays: z.boolean().default(true),
+  therapistSoloPlay: z.boolean().default(false)
 })
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
         isTrial: room.isTrial,
         maxParticipants: room.maxParticipants,
         therapistPlays: room.therapistPlays,
+        therapistSoloPlay: room.therapistSoloPlay,
         createdAt: room.createdAt,
         createdBy: room.createdByUser,
         orderId: room.orderId,
@@ -105,6 +107,8 @@ export async function POST(request: NextRequest) {
 
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
+    const therapistSoloPlay = Boolean(data.therapistSoloPlay)
+    const therapistPlays = therapistSoloPlay ? true : data.therapistPlays
 
     const therapist = await prisma.user.findUnique({
       where: { email: data.therapistEmail }
@@ -125,7 +129,8 @@ export async function POST(request: NextRequest) {
           createdByUserId: therapist.id,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
-          therapistPlays: data.therapistPlays,
+          therapistPlays,
+          therapistSoloPlay,
           isTrial: false,
           planType,
           consentTextVersion

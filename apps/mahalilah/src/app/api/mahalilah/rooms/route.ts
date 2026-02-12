@@ -9,6 +9,7 @@ import { RULES } from '@hekate/mahalilah-core'
 const CreateRoomSchema = z.object({
   maxParticipants: z.number().int().min(1).max(12).default(4),
   therapistPlays: z.boolean().default(true),
+  therapistSoloPlay: z.boolean().default(false),
   trial: z.boolean().default(false)
 })
 
@@ -273,6 +274,7 @@ export async function GET(request: Request) {
           canManage: room.createdByUserId === session.user.id,
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
+          therapistSoloPlay: room.therapistSoloPlay,
           isTrial: isTrialRoom(room),
           createdAt: room.createdAt,
           invites: room.invites.map((invite) => ({
@@ -319,6 +321,8 @@ export async function POST(request: Request) {
 
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
+    const therapistSoloPlay = Boolean(data.therapistSoloPlay)
+    const therapistPlays = therapistSoloPlay ? true : data.therapistPlays
 
     const code = await ensureUniqueCode()
     const consentTextVersion = process.env.MAHALILAH_CONSENT_VERSION || 'v1'
@@ -344,6 +348,7 @@ export async function POST(request: Request) {
             status: MahaLilahRoomStatus.ACTIVE,
             maxParticipants: 1,
             therapistPlays: true,
+            therapistSoloPlay: false,
             planType: MahaLilahPlanType.SINGLE_SESSION,
             isTrial: true,
             consentTextVersion
@@ -381,7 +386,8 @@ export async function POST(request: Request) {
           createdByUserId: session.user.id,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
-          therapistPlays: data.therapistPlays,
+          therapistPlays,
+          therapistSoloPlay,
           isTrial: false,
           planType: entitlement.planType,
           orderId:
