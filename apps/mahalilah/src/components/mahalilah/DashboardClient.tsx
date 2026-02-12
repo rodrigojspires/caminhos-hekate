@@ -780,7 +780,9 @@ export function DashboardClient() {
   const toggleRoom = (roomId: string) => {
     const room = rooms.find((item) => item.id === roomId);
     const canManageInvites = room?.canManage && room.status === "ACTIVE";
-    const defaultTab: RoomDetailsTab = canManageInvites ? "invites" : "timeline";
+    const defaultTab: RoomDetailsTab = canManageInvites
+      ? "invites"
+      : "participants";
 
     setOpenRooms((prev) => {
       const nextOpen = !prev[roomId];
@@ -813,8 +815,8 @@ export function DashboardClient() {
     const requestedTab = activeDetailTabs[room.id];
     const activeTab: RoomDetailsTab =
       !canManageInvites && requestedTab === "invites"
-        ? "timeline"
-        : requestedTab || (canManageInvites ? "invites" : "timeline");
+        ? "participants"
+        : requestedTab || (canManageInvites ? "invites" : "participants");
     const roomDetails = details[room.id];
     const selectedParticipantId = timelineParticipantFilters[room.id] || "";
     const currentUserParticipant = room.participants.find(
