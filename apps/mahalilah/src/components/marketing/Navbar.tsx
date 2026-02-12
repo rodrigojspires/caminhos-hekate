@@ -10,10 +10,9 @@ const navLinks = [
   { href: '/planos', label: 'Planos' },
   { href: '/como-funciona', label: 'Como funciona' },
   { href: '/recursos', label: 'Recursos' },
-  { href: '/para-terapeutas', label: 'Para terapeutas' },
-  { href: '/para-grupos', label: 'Para grupos' },
+  { href: '/para-terapeutas', label: 'Terapeutas' },
+  { href: '/para-grupos', label: 'Grupos' },
   { href: '/faq', label: 'FAQ' },
-  { href: '/blog', label: 'Blog' },
   { href: '/contato', label: 'Contato' }
 ]
 
@@ -92,7 +91,7 @@ export function Navbar() {
         Experimente o fluxo ao vivo e publique sua primeira sala em menos de 5 minutos
       </div>
 
-      <div className="mx-auto flex w-full max-w-content items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/60 bg-surface text-gold">
@@ -107,7 +106,7 @@ export function Navbar() {
 
         <nav
           aria-label="Navegação principal"
-          className="hidden flex-wrap items-center gap-2 text-sm text-ink-muted lg:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-1 text-sm text-ink-muted lg:flex"
         >
           {navLinks.map((link) => {
             const active = isLinkActive(pathname, link.href)
@@ -115,7 +114,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-full px-3 py-1.5 transition ${
+                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 transition ${
                   active
                     ? 'border border-gold/35 bg-surface/85 text-ink'
                     : 'border border-transparent text-ink-muted hover:border-border/70 hover:bg-surface/65 hover:text-ink'
@@ -127,7 +126,7 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="hidden flex-wrap items-center gap-3 lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
           {status === 'loading' ? (
             <div className="h-10 w-10 animate-pulse rounded-full border border-border/70 bg-surface/70" />
           ) : session ? (

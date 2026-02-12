@@ -19,9 +19,8 @@ const columns = [
     ]
   },
   {
-    title: 'Conteúdo',
+    title: 'Suporte',
     links: [
-      { href: '/blog', label: 'Blog' },
       { href: '/faq', label: 'FAQ' },
       { href: '/contato', label: 'Falar com a equipe' }
     ]
