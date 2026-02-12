@@ -1539,7 +1539,7 @@ io.on("connection", (socket: AuthedSocket) => {
         }
         ensureConsentAccepted(therapist);
 
-        const participantIds = Array.from(
+        let participantIds = Array.from(
           new Set(
             room.participants
               .filter((participant) =>
@@ -1550,6 +1550,12 @@ io.on("connection", (socket: AuthedSocket) => {
               .map((participant) => participant.id),
           ),
         );
+
+        // Trial com somente terapeuta (ou sala sem players elegiveis):
+        // garante geracao do resumo final para o terapeuta.
+        if (!participantIds.length) {
+          participantIds = therapist ? [therapist.id] : [];
+        }
 
         if (!participantIds.length) {
           throw new Error("Nenhum jogador elegível para resumo final.");
