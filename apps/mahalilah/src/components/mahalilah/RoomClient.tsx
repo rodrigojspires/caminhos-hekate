@@ -2239,6 +2239,53 @@ export function RoomClient({ code }: { code: string }) {
                 : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
             </span>
           )}
+          <button
+            type="button"
+            className="pill"
+            onClick={() => setDiceAnimationEnabled((prev) => !prev)}
+            style={{
+              flex: "0 0 auto",
+              borderColor: diceAnimationEnabled
+                ? "rgba(106, 211, 176, 0.6)"
+                : "rgba(255, 107, 107, 0.6)",
+              background: diceAnimationEnabled
+                ? "rgba(106, 211, 176, 0.15)"
+                : "rgba(255, 107, 107, 0.15)",
+              cursor: "pointer",
+            }}
+            title="Ativar ou desativar animação do dado"
+            aria-pressed={diceAnimationEnabled}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: diceAnimationEnabled ? "#6ad3b0" : "#ff6b6b",
+                boxShadow: diceAnimationEnabled
+                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+              }}
+            />
+            <strong>Animação do Dado</strong>
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setRulesModalOpen(true)}
+            style={{
+              flex: "0 0 auto",
+              minWidth: 30,
+              width: 30,
+              height: 30,
+              padding: 0,
+              borderRadius: 999,
+            }}
+            title="Regras do jogo"
+            aria-label="Regras do jogo"
+          >
+            ?
+          </button>
         </div>
 
         <div
@@ -2303,22 +2350,6 @@ export function RoomClient({ code }: { code: string }) {
             style={{ flex: "0 0 auto" }}
           >
             {showBoardNames ? "Ocultar nomes" : "Mostrar nomes"}
-          </button>
-          <button
-            className="secondary"
-            onClick={() => setRulesModalOpen(true)}
-            style={{ flex: "0 0 auto" }}
-          >
-            Regras do jogo
-          </button>
-          <button
-            className="secondary"
-            onClick={() => setDiceAnimationEnabled((prev) => !prev)}
-            style={{ flex: "0 0 auto" }}
-          >
-            {diceAnimationEnabled
-              ? "Animação do dado: ligada"
-              : "Animação do dado: desligada"}
           </button>
           {canCloseRoom && (
             <Link
