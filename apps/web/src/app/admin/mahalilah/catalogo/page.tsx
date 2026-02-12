@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -44,6 +45,16 @@ type SingleSessionTier = {
   isActive: boolean;
 };
 
+type PlanMarketing = {
+  forWho: string;
+  includes: string[];
+  limits: string[];
+  ctaLabel: string;
+  ctaHref: string;
+  aiSummaryLabel: string;
+  highlight: boolean;
+};
+
 type CatalogPlan = {
   id: string;
   planType: PlanType;
@@ -57,6 +68,7 @@ type CatalogPlan = {
   summaryLimit: number;
   durationDays: number;
   isActive: boolean;
+  marketing: PlanMarketing;
   singleSessionPriceTiers: SingleSessionTier[];
 };
 
@@ -85,6 +97,128 @@ function createEmptyTier(index: number): SingleSessionTier {
     sortOrder: index,
     isActive: true,
   };
+}
+
+function parseLineItems(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function stringifyLineItems(items: string[]) {
+  return items.join("\n");
+}
+
+function PlanMarketingEditor({
+  marketing,
+  onChange,
+}: {
+  marketing: PlanMarketing;
+  onChange: (marketing: PlanMarketing) => void;
+}) {
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div className="font-medium">Conteúdo da página de planos</div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-medium">Texto para quem</label>
+          <Input
+            value={marketing.forWho}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                forWho: event.target.value,
+              })
+            }
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Itens de inclui</label>
+          <Textarea
+            rows={5}
+            value={stringifyLineItems(marketing.includes)}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                includes: parseLineItems(event.target.value),
+              })
+            }
+          />
+          <p className="text-xs text-muted-foreground">Um item por linha.</p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Itens de limites</label>
+          <Textarea
+            rows={5}
+            value={stringifyLineItems(marketing.limits)}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                limits: parseLineItems(event.target.value),
+              })
+            }
+          />
+          <p className="text-xs text-muted-foreground">Um item por linha.</p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Texto do botão CTA</label>
+          <Input
+            value={marketing.ctaLabel}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                ctaLabel: event.target.value,
+              })
+            }
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Link do botão CTA</label>
+          <Input
+            value={marketing.ctaHref}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                ctaHref: event.target.value,
+              })
+            }
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-medium">Resumo no bloco de IA</label>
+          <Input
+            value={marketing.aiSummaryLabel}
+            onChange={(event) =>
+              onChange({
+                ...marketing,
+                aiSummaryLabel: event.target.value,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={marketing.highlight}
+          onCheckedChange={(value) =>
+            onChange({
+              ...marketing,
+              highlight: value,
+            })
+          }
+        />
+        <span className="text-sm text-muted-foreground">Destacar plano na vitrine</span>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminMahaLilahCatalogPage() {
@@ -213,6 +347,7 @@ export default function AdminMahaLilahCatalogPage() {
         durationDays: plan.durationDays,
         isActive: plan.isActive,
         subscriptionPlanId: plan.subscriptionPlanId,
+        marketing: plan.marketing,
         singleSessionPriceTiers: plan.planType === "SINGLE_SESSION"
           ? plan.singleSessionPriceTiers.map((tier, index) => ({
               participantsFrom: tier.participantsFrom,
@@ -386,6 +521,16 @@ export default function AdminMahaLilahCatalogPage() {
                       />
                     </div>
                   </div>
+
+                  <PlanMarketingEditor
+                    marketing={singleSessionPlan.marketing}
+                    onChange={(marketing) =>
+                      updatePlan("SINGLE_SESSION", (plan) => ({
+                        ...plan,
+                        marketing,
+                      }))
+                    }
+                  />
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -681,6 +826,16 @@ export default function AdminMahaLilahCatalogPage() {
                         />
                       </div>
                     </div>
+
+                    <PlanMarketingEditor
+                      marketing={subscriptionPlan.marketing}
+                      onChange={(marketing) =>
+                        updatePlan("SUBSCRIPTION", (plan) => ({
+                          ...plan,
+                          marketing,
+                        }))
+                      }
+                    />
                   </div>
                 )}
 
@@ -827,6 +982,16 @@ export default function AdminMahaLilahCatalogPage() {
                         />
                       </div>
                     </div>
+
+                    <PlanMarketingEditor
+                      marketing={subscriptionLimitedPlan.marketing}
+                      onChange={(marketing) =>
+                        updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
+                          ...plan,
+                          marketing,
+                        }))
+                      }
+                    />
                   </div>
                 )}
               </div>

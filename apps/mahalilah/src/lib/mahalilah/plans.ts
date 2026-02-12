@@ -13,6 +13,16 @@ type SingleSessionPricingTier = {
   fixedPrice: number | null
 }
 
+type PlanMarketingContent = {
+  forWho: string
+  includes: string[]
+  limits: string[]
+  ctaLabel: string
+  ctaHref: string
+  aiSummaryLabel: string
+  highlight: boolean
+}
+
 type SingleSessionConfig = {
   id: string
   name: string
@@ -22,6 +32,7 @@ type SingleSessionConfig = {
   durationDays: number
   tipsPerPlayer: number
   summaryLimit: number
+  marketing: PlanMarketingContent
   pricingTiers: SingleSessionPricingTier[]
   pricesByParticipants: Record<string, number>
 }
@@ -39,6 +50,7 @@ type SubscriptionConfig = {
   durationDays: number
   tipsPerPlayer: number
   summaryLimit: number
+  marketing: PlanMarketingContent
 }
 
 export type PlanConfig = {
@@ -112,6 +124,165 @@ function buildPricesByParticipants(
   return pricesByParticipants
 }
 
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function toStringList(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+}
+
+function formatParticipantRange(participants: number[]) {
+  const sorted = [...participants].sort((a, b) => a - b)
+  if (sorted.length === 1) {
+    return `${sorted[0]} participante`
+  }
+  if (sorted.length === 2 && sorted[1] === sorted[0] + 1) {
+    return `${sorted[0]}-${sorted[1]} participantes`
+  }
+  return `${sorted.join(', ')} participantes`
+}
+
+function buildSingleSessionPriceLabel(pricesByParticipants: Record<string, number>) {
+  const grouped = Object.entries(pricesByParticipants).reduce<Record<string, number[]>>(
+    (acc, [participants, price]) => {
+      const key = String(price)
+      if (!acc[key]) acc[key] = []
+      acc[key].push(Number(participants))
+      return acc
+    },
+    {},
+  )
+
+  const label = Object.entries(grouped)
+    .map(
+      ([price, participants]) =>
+        `${formatParticipantRange(participants)}: ${currencyFormatter.format(Number(price))}`,
+    )
+    .join(' · ')
+
+  return label || 'Faixas de preço definidas no catálogo'
+}
+
+function pluralize(base: string, value: number) {
+  return value === 1 ? base : `${base}s`
+}
+
+function withFallbackString(value: unknown, fallback: string) {
+  if (typeof value !== 'string') return fallback
+  const trimmed = value.trim()
+  return trimmed || fallback
+}
+
+function withFallbackList(value: unknown, fallback: string[]) {
+  const parsed = toStringList(value)
+  return parsed.length > 0 ? parsed : fallback
+}
+
+function buildMarketingContent({
+  planType,
+  name,
+  metadata,
+  maxParticipants,
+  roomsPerMonth,
+  tipsPerPlayer,
+  summaryLimit,
+  pricesByParticipants,
+}: {
+  planType: PlanType
+  name: string
+  metadata: unknown
+  maxParticipants: number
+  roomsPerMonth: number | null
+  tipsPerPlayer: number
+  summaryLimit: number
+  pricesByParticipants: Record<string, number>
+}): PlanMarketingContent {
+  const aiSummaryLabel = `${name}: ${tipsPerPlayer} ${pluralize(
+    'dica',
+    tipsPerPlayer,
+  )}/jogador · ${summaryLimit} ${pluralize('síntese', summaryLimit)}.`
+  const commonLimits = [
+    `Dicas de IA: ${tipsPerPlayer} por jogador/sessão`,
+    `Síntese final por IA: ${summaryLimit} por sessão`,
+  ]
+
+  const fallbackByType: Record<PlanType, PlanMarketingContent> = {
+    SINGLE_SESSION: {
+      forWho: 'Autoguiado, terapeutas iniciando ou grupos eventuais.',
+      includes: [
+        '1 sala ao vivo',
+        'Convites por e-mail',
+        'Deck randômico e modo terapia',
+        ...commonLimits,
+      ],
+      limits: [
+        `Participantes por sessão: até ${maxParticipants}`,
+        buildSingleSessionPriceLabel(pricesByParticipants),
+      ],
+      ctaLabel: 'Comprar sessão',
+      ctaHref: '/checkout',
+      aiSummaryLabel,
+      highlight: false,
+    },
+    SUBSCRIPTION: {
+      forWho: 'Terapeutas e facilitadores com agenda ativa.',
+      includes: [
+        roomsPerMonth == null ? 'Salas ilimitadas no mês' : `${roomsPerMonth} salas por mês`,
+        `Até ${maxParticipants} participantes por sala`,
+        'Histórico completo e export',
+        'Relatórios e síntese por IA',
+        'Suporte prioritário',
+      ],
+      limits: [...commonLimits, 'Políticas de uso justo'],
+      ctaLabel: 'Assinar plano',
+      ctaHref: '/checkout',
+      aiSummaryLabel,
+      highlight: true,
+    },
+    SUBSCRIPTION_LIMITED: {
+      forWho: 'Profissionais com número fixo de grupos por mês.',
+      includes: [
+        roomsPerMonth == null ? 'Salas ilimitadas no mês' : `${roomsPerMonth} salas por mês`,
+        'Convites por e-mail',
+        `Até ${maxParticipants} participantes por sala`,
+        'Deck randômico + modo terapia',
+      ],
+      limits: [...commonLimits, 'Salas extras cobradas à parte'],
+      ctaLabel: 'Assinar plano',
+      ctaHref: '/checkout',
+      aiSummaryLabel,
+      highlight: false,
+    },
+  }
+
+  const fallback = fallbackByType[planType]
+  if (!isRecord(metadata)) return fallback
+  if (!isRecord(metadata.marketing)) return fallback
+
+  const rawMarketing = metadata.marketing
+  return {
+    forWho: withFallbackString(rawMarketing.forWho, fallback.forWho),
+    includes: withFallbackList(rawMarketing.includes, fallback.includes),
+    limits: withFallbackList(rawMarketing.limits, fallback.limits),
+    ctaLabel: withFallbackString(rawMarketing.ctaLabel, fallback.ctaLabel),
+    ctaHref: withFallbackString(rawMarketing.ctaHref, fallback.ctaHref),
+    aiSummaryLabel: withFallbackString(rawMarketing.aiSummaryLabel, fallback.aiSummaryLabel),
+    highlight:
+      typeof rawMarketing.highlight === 'boolean'
+        ? rawMarketing.highlight
+        : fallback.highlight,
+  }
+}
+
 async function loadMahaLilahPlans() {
   const plans = await prisma.mahaLilahPlan.findMany({
     where: {
@@ -148,6 +319,13 @@ export async function getPlanConfig(): Promise<PlanConfig> {
     await loadMahaLilahPlans()
 
   const tiers = singleSession.singleSessionPriceTiers.map(mapTier)
+  const singleSessionMaxParticipants = Number(singleSession.maxParticipants)
+  const singleSessionTipsPerPlayer = Number(singleSession.tipsPerPlayer)
+  const singleSessionSummaryLimit = Number(singleSession.summaryLimit)
+  const singleSessionPricesByParticipants = buildPricesByParticipants(
+    tiers,
+    singleSessionMaxParticipants,
+  )
 
   const unlimitedSubscriptionPlan = subscriptionUnlimited.subscriptionPlan
   if (
@@ -165,21 +343,48 @@ export async function getPlanConfig(): Promise<PlanConfig> {
     throw new Error('Plano de assinatura limitada Maha Lilah inválido')
   }
 
+  const subscriptionUnlimitedMaxParticipants = Number(
+    subscriptionUnlimited.maxParticipants,
+  )
+  const subscriptionUnlimitedTipsPerPlayer = Number(
+    subscriptionUnlimited.tipsPerPlayer,
+  )
+  const subscriptionUnlimitedSummaryLimit = Number(subscriptionUnlimited.summaryLimit)
+  const subscriptionUnlimitedRoomsPerMonth =
+    subscriptionUnlimited.roomsPerMonth == null
+      ? null
+      : Number(subscriptionUnlimited.roomsPerMonth)
+
+  const subscriptionLimitedMaxParticipants = Number(subscriptionLimited.maxParticipants)
+  const subscriptionLimitedTipsPerPlayer = Number(subscriptionLimited.tipsPerPlayer)
+  const subscriptionLimitedSummaryLimit = Number(subscriptionLimited.summaryLimit)
+  const subscriptionLimitedRoomsPerMonth =
+    subscriptionLimited.roomsPerMonth == null
+      ? null
+      : Number(subscriptionLimited.roomsPerMonth)
+
   return {
     singleSession: {
       id: singleSession.id,
       name: singleSession.name,
       description: singleSession.description,
       isActive: singleSession.isActive,
-      maxParticipants: Number(singleSession.maxParticipants),
+      maxParticipants: singleSessionMaxParticipants,
       durationDays: Number(singleSession.durationDays),
-      tipsPerPlayer: Number(singleSession.tipsPerPlayer),
-      summaryLimit: Number(singleSession.summaryLimit),
+      tipsPerPlayer: singleSessionTipsPerPlayer,
+      summaryLimit: singleSessionSummaryLimit,
+      marketing: buildMarketingContent({
+        planType: 'SINGLE_SESSION',
+        name: singleSession.name,
+        metadata: singleSession.metadata,
+        maxParticipants: singleSessionMaxParticipants,
+        roomsPerMonth: 1,
+        tipsPerPlayer: singleSessionTipsPerPlayer,
+        summaryLimit: singleSessionSummaryLimit,
+        pricesByParticipants: singleSessionPricesByParticipants,
+      }),
       pricingTiers: tiers,
-      pricesByParticipants: buildPricesByParticipants(
-        tiers,
-        Number(singleSession.maxParticipants),
-      ),
+      pricesByParticipants: singleSessionPricesByParticipants,
     },
     subscriptionUnlimited: {
       id: subscriptionUnlimited.id,
@@ -189,14 +394,21 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       subscriptionPlanId: unlimitedSubscriptionPlan.id,
       monthlyPrice: Number(unlimitedSubscriptionPlan.monthlyPrice),
       yearlyPrice: Number(unlimitedSubscriptionPlan.yearlyPrice),
-      maxParticipants: Number(subscriptionUnlimited.maxParticipants),
-      roomsPerMonth:
-        subscriptionUnlimited.roomsPerMonth == null
-          ? null
-          : Number(subscriptionUnlimited.roomsPerMonth),
+      maxParticipants: subscriptionUnlimitedMaxParticipants,
+      roomsPerMonth: subscriptionUnlimitedRoomsPerMonth,
       durationDays: Number(subscriptionUnlimited.durationDays),
-      tipsPerPlayer: Number(subscriptionUnlimited.tipsPerPlayer),
-      summaryLimit: Number(subscriptionUnlimited.summaryLimit),
+      tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
+      summaryLimit: subscriptionUnlimitedSummaryLimit,
+      marketing: buildMarketingContent({
+        planType: 'SUBSCRIPTION',
+        name: subscriptionUnlimited.name,
+        metadata: subscriptionUnlimited.metadata,
+        maxParticipants: subscriptionUnlimitedMaxParticipants,
+        roomsPerMonth: subscriptionUnlimitedRoomsPerMonth,
+        tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
+        summaryLimit: subscriptionUnlimitedSummaryLimit,
+        pricesByParticipants: {},
+      }),
     },
     subscriptionLimited: {
       id: subscriptionLimited.id,
@@ -206,14 +418,21 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       subscriptionPlanId: limitedSubscriptionPlan.id,
       monthlyPrice: Number(limitedSubscriptionPlan.monthlyPrice),
       yearlyPrice: Number(limitedSubscriptionPlan.yearlyPrice),
-      maxParticipants: Number(subscriptionLimited.maxParticipants),
-      roomsPerMonth:
-        subscriptionLimited.roomsPerMonth == null
-          ? null
-          : Number(subscriptionLimited.roomsPerMonth),
+      maxParticipants: subscriptionLimitedMaxParticipants,
+      roomsPerMonth: subscriptionLimitedRoomsPerMonth,
       durationDays: Number(subscriptionLimited.durationDays),
-      tipsPerPlayer: Number(subscriptionLimited.tipsPerPlayer),
-      summaryLimit: Number(subscriptionLimited.summaryLimit),
+      tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
+      summaryLimit: subscriptionLimitedSummaryLimit,
+      marketing: buildMarketingContent({
+        planType: 'SUBSCRIPTION_LIMITED',
+        name: subscriptionLimited.name,
+        metadata: subscriptionLimited.metadata,
+        maxParticipants: subscriptionLimitedMaxParticipants,
+        roomsPerMonth: subscriptionLimitedRoomsPerMonth,
+        tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
+        summaryLimit: subscriptionLimitedSummaryLimit,
+        pricesByParticipants: {},
+      }),
     },
   }
 }

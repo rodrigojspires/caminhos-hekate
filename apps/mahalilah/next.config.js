@@ -19,6 +19,15 @@ const nextConfig = {
   output: 'standalone',
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  async redirects() {
+    return [
+      {
+        source: '/pricing',
+        destination: '/planos',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

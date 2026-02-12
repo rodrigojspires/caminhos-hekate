@@ -23,7 +23,7 @@ export default function CheckoutStatusPage() {
           <p>{message}</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/dashboard"><button>Ir para o dashboard</button></Link>
-            <Link href="/pricing"><button className="secondary">Ver planos</button></Link>
+            <Link href="/planos"><button className="secondary">Ver planos</button></Link>
           </div>
         </div>
       </section>

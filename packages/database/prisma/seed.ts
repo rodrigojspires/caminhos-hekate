@@ -236,7 +236,25 @@ async function main() {
         durationDays: 30,
         metadata: {
           app: 'mahalilah',
-          checkout: 'single_session'
+          checkout: 'single_session',
+          marketing: {
+            forWho: 'Autoguiado, terapeutas iniciando ou grupos eventuais.',
+            includes: [
+              '1 sala ao vivo',
+              'Convites por e-mail',
+              'Deck randômico e modo terapia',
+              'Dicas de IA: 3 por jogador/sessão',
+              'Síntese final por IA: 1 por sessão',
+            ],
+            limits: [
+              'Participantes por sessão: até 8',
+              '1-2 participantes: R$ 180,00 · 3-4 participantes: R$ 260,00 · 5-6 participantes: R$ 320,00 · 7-8 participantes: R$ 380,00',
+            ],
+            ctaLabel: 'Comprar sessão',
+            ctaHref: '/checkout',
+            aiSummaryLabel: 'Sessão avulsa: 3 dicas/jogador · 1 síntese.',
+            highlight: false,
+          },
         },
         singleSessionPriceTiers: {
           create: [
@@ -286,7 +304,26 @@ async function main() {
         durationDays: 30,
         metadata: {
           app: 'mahalilah',
-          checkout: 'subscription_unlimited'
+          checkout: 'subscription_unlimited',
+          marketing: {
+            forWho: 'Terapeutas e facilitadores com agenda ativa.',
+            includes: [
+              'Salas ilimitadas no mês',
+              'Até 8 participantes por sala',
+              'Histórico completo e export',
+              'Relatórios e síntese por IA',
+              'Suporte prioritário',
+            ],
+            limits: [
+              'Dicas de IA: 5 por jogador/sessão',
+              'Síntese final por IA: 2 por sessão',
+              'Políticas de uso justo',
+            ],
+            ctaLabel: 'Assinar plano',
+            ctaHref: '/checkout',
+            aiSummaryLabel: 'Assinatura ilimitada: 5 dicas/jogador · 2 sínteses.',
+            highlight: true,
+          },
         }
       }
     }),
@@ -304,7 +341,25 @@ async function main() {
         durationDays: 30,
         metadata: {
           app: 'mahalilah',
-          checkout: 'subscription_limited'
+          checkout: 'subscription_limited',
+          marketing: {
+            forWho: 'Profissionais com número fixo de grupos por mês.',
+            includes: [
+              '4 salas por mês',
+              'Convites por e-mail',
+              'Até 6 participantes por sala',
+              'Deck randômico + modo terapia',
+            ],
+            limits: [
+              'Dicas de IA: 3 por jogador/sessão',
+              'Síntese final por IA: 1 por sessão',
+              'Salas extras cobradas à parte',
+            ],
+            ctaLabel: 'Assinar plano',
+            ctaHref: '/checkout',
+            aiSummaryLabel: 'Assinatura limitada: 3 dicas/jogador · 1 síntese.',
+            highlight: false,
+          },
         }
       }
     })

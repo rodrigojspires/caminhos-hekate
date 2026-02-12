@@ -4129,10 +4129,10 @@ export function RoomClient({ code }: { code: string }) {
               >
                 Depois
               </button>
-              <a href="/pricing" className="btn-secondary">
+              <a href="/planos" className="btn-secondary">
                 Comprar sala avulsa
               </a>
-              <a href="/pricing" className="btn-primary">
+              <a href="/planos" className="btn-primary">
                 Assinar plano
               </a>
             </div>

@@ -1429,7 +1429,7 @@ export function DashboardClient() {
             >
               {creatingTrial ? "Criando trial..." : "Experimente já"}
             </button>
-            <a href="/pricing" className="btn-secondary">
+            <a href="/planos" className="btn-secondary">
               Ver planos
             </a>
           </div>
