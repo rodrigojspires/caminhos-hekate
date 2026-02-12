@@ -652,7 +652,7 @@ export function RoomClient({ code }: { code: string }) {
     subtitle?: string;
   } | null>(null);
   const [finalReportPrompt, setFinalReportPrompt] = useState<{
-    mode: "close" | "participantCompleted";
+    mode: "close" | "participantCompleted" | "trialLimit";
     participantId?: string;
     participantName?: string;
   } | null>(null);
@@ -1581,7 +1581,7 @@ export function RoomClient({ code }: { code: string }) {
         setDiceResult(null);
 
         if (resp?.code === "TRIAL_LIMIT_REACHED") {
-          setTrialLimitModalOpen(true);
+          handleTrialLimitReached();
         }
         showSocketError("Erro ao rolar dado", resp);
         return;
@@ -1891,6 +1891,15 @@ export function RoomClient({ code }: { code: string }) {
     closeRoom,
   ]);
 
+  const handleTrialLimitReached = useCallback(() => {
+    trialModalPromptedRef.current = true;
+    if (canCloseRoom) {
+      setFinalReportPrompt((current) => current ?? { mode: "trialLimit" });
+      return;
+    }
+    setTrialLimitModalOpen(true);
+  }, [canCloseRoom]);
+
   useEffect(() => {
     if (!state || !canCloseRoom) return;
 
@@ -2018,9 +2027,8 @@ export function RoomClient({ code }: { code: string }) {
       return;
     }
     if (trialModalPromptedRef.current) return;
-    trialModalPromptedRef.current = true;
-    setTrialLimitModalOpen(true);
-  }, [trialLimitReached]);
+    handleTrialLimitReached();
+  }, [trialLimitReached, handleTrialLimitReached]);
 
   const summaryStatus = summaryPlayerState
     ? summaryPlayerState.hasCompleted
@@ -3991,7 +3999,13 @@ export function RoomClient({ code }: { code: string }) {
           role="dialog"
           aria-modal="true"
           onClick={() => {
-            if (!finalReportLoading) setFinalReportPrompt(null);
+            if (finalReportLoading) return;
+            if (finalReportPrompt.mode === "trialLimit") {
+              setFinalReportPrompt(null);
+              setTrialLimitModalOpen(true);
+              return;
+            }
+            setFinalReportPrompt(null);
           }}
           style={{
             position: "fixed",
@@ -4017,11 +4031,15 @@ export function RoomClient({ code }: { code: string }) {
             <strong>
               {finalReportPrompt.mode === "close"
                 ? "Gerar resumo final da IA para todos os jogadores antes de encerrar?"
+                : finalReportPrompt.mode === "trialLimit"
+                  ? "Você atingiu o limite da sala trial. Deseja gerar o resumo final agora?"
                 : `${finalReportPrompt.participantName || "Jogador"} concluiu (casa 68). Deseja gerar o resumo final agora?`}
             </strong>
             <span className="small-muted">
               {finalReportPrompt.mode === "close"
                 ? "Os resumos finais serão registrados na timeline da sala."
+                : finalReportPrompt.mode === "trialLimit"
+                  ? "Após esta etapa, vamos abrir as opções para comprar sessão avulsa ou assinar um plano."
                 : "Esse resumo final ficará registrado na timeline da sala."}
             </span>
 
@@ -4036,7 +4054,14 @@ export function RoomClient({ code }: { code: string }) {
               <button
                 className="btn-secondary"
                 disabled={finalReportLoading}
-                onClick={() => setFinalReportPrompt(null)}
+                onClick={() => {
+                  if (finalReportPrompt.mode === "trialLimit") {
+                    setFinalReportPrompt(null);
+                    setTrialLimitModalOpen(true);
+                    return;
+                  }
+                  setFinalReportPrompt(null);
+                }}
               >
                 {finalReportPrompt.mode === "close" ? "Cancelar" : "Agora não"}
               </button>
@@ -4060,6 +4085,8 @@ export function RoomClient({ code }: { code: string }) {
                   const ok =
                     finalReportPrompt.mode === "close"
                       ? await requestFinalReport({ allPlayers: true })
+                      : finalReportPrompt.mode === "trialLimit"
+                        ? await requestFinalReport({ allPlayers: true })
                       : await requestFinalReport({
                           participantId: finalReportPrompt.participantId,
                           successMessage: `Resumo final gerado para ${finalReportPrompt.participantName || "o jogador"}.`,
@@ -4069,12 +4096,17 @@ export function RoomClient({ code }: { code: string }) {
                     closeRoom();
                   }
                   setFinalReportPrompt(null);
+                  if (finalReportPrompt.mode === "trialLimit") {
+                    setTrialLimitModalOpen(true);
+                  }
                 }}
               >
                 {finalReportLoading
                   ? "Gerando..."
                   : finalReportPrompt.mode === "close"
                     ? "Gerar e encerrar"
+                    : finalReportPrompt.mode === "trialLimit"
+                      ? "Gerar resumo e continuar"
                     : "Gerar agora"}
               </button>
             </div>
