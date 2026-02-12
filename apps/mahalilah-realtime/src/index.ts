@@ -485,6 +485,24 @@ async function buildRoomState(roomId: string) {
     where: { roomId: room.id, participantId: { in: turnParticipantIds } },
   });
 
+  let roomStatus = room.status;
+  if (
+    room.status === "ACTIVE" &&
+    isTrialRoom(room) &&
+    playerStates.some(
+      (state) =>
+        state.hasStarted &&
+        state.rollCountTotal - state.rollCountUntilStart >=
+          TRIAL_POST_START_MOVE_LIMIT,
+    )
+  ) {
+    await prisma.mahaLilahRoom.update({
+      where: { id: room.id },
+      data: { status: "CLOSED", closedAt: new Date() },
+    });
+    roomStatus = "CLOSED";
+  }
+
   const currentTurnIndex = room.gameState?.currentTurnIndex ?? 0;
   const safeTurnIndex = turnParticipantIds.length
     ? currentTurnIndex % turnParticipantIds.length
@@ -498,7 +516,7 @@ async function buildRoomState(roomId: string) {
     room: {
       id: room.id,
       code: room.code,
-      status: room.status,
+      status: roomStatus,
       planType: room.planType,
       isTrial: isTrialRoom(room),
       currentTurnIndex: safeTurnIndex,
@@ -634,10 +652,16 @@ async function rollInRoom(roomId: string, userId: string) {
       throw new Error("Estado do jogador não encontrado");
     }
 
-    if (isTrialRoom(room) && currentState.hasStarted) {
+    const trialRoom = isTrialRoom(room);
+
+    if (trialRoom && currentState.hasStarted) {
       const postStartMovesUsed =
         currentState.rollCountTotal - currentState.rollCountUntilStart;
       if (postStartMovesUsed >= TRIAL_POST_START_MOVE_LIMIT) {
+        await tx.mahaLilahRoom.update({
+          where: { id: room.id },
+          data: { status: "CLOSED", closedAt: new Date() },
+        });
         const error = new Error(
           "Limite de 5 jogadas da sala trial atingido. Escolha um plano ou sessão avulsa para continuar.",
         ) as Error & { code?: string };
@@ -692,6 +716,25 @@ async function rollInRoom(roomId: string, userId: string) {
       refreshedStates.map((state) => [state.participantId, state]),
     );
 
+    const refreshedCurrentState = stateMap.get(currentParticipant.id);
+    const postStartMovesUsedAfterMove =
+      refreshedCurrentState && refreshedCurrentState.hasStarted
+        ? refreshedCurrentState.rollCountTotal -
+          refreshedCurrentState.rollCountUntilStart
+        : 0;
+
+    if (
+      trialRoom &&
+      refreshedCurrentState?.hasStarted &&
+      postStartMovesUsedAfterMove >= TRIAL_POST_START_MOVE_LIMIT
+    ) {
+      await tx.mahaLilahRoom.update({
+        where: { id: room.id },
+        data: { status: "CLOSED", closedAt: new Date() },
+      });
+      return { roomId: room.id, trialClosedByLimit: true };
+    }
+
     const allCompleted =
       turnParticipantIds.length > 0 &&
       refreshedStates.length > 0 &&
@@ -714,7 +757,7 @@ async function rollInRoom(roomId: string, userId: string) {
       });
     }
 
-    return { roomId: room.id };
+    return { roomId: room.id, trialClosedByLimit: false };
   });
 }
 
@@ -881,10 +924,10 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
 
-        await rollInRoom(socket.data.roomId, socket.data.user.id);
+        const result = await rollInRoom(socket.data.roomId, socket.data.user.id);
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
-        callback?.({ ok: true });
+        callback?.({ ok: true, trialClosedByLimit: Boolean(result?.trialClosedByLimit) });
       } catch (error: any) {
         callback?.({
           ok: false,

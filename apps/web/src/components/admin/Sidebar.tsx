@@ -54,7 +54,12 @@ const menuItems = [
     href: "/admin/subscriptions/plans",
     icon: UsersRound,
   }, // Replaced Handshake
-  { title: "Maha Lilah", href: "/admin/mahalilah", icon: Dice6 },
+  { title: "Salas de Maha Lilah", href: "/admin/mahalilah", icon: Dice6 },
+  {
+    title: "Catálogo Maha Lilah",
+    href: "/admin/mahalilah/catalogo",
+    icon: Layers3,
+  },
   {
     title: "Baralhos",
     href: "/admin/mahalilah/baralhos",
