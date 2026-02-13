@@ -90,6 +90,44 @@ export async function sendInviteEmail(params: {
   })
 }
 
+export async function sendRoomCreatedEmail(params: {
+  to: string
+  recipientName?: string | null
+  roomCode: string
+}) {
+  const { fromEmail, fromName } = getMahaLilahFromAddress()
+  const roomUrl = `${getMahaLilahBaseUrl()}/rooms/${params.roomCode}`
+  const recipient = params.recipientName || params.to
+
+  const subject = `Sua sala Maha Lilah foi criada (${params.roomCode})`
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+      <h2>Sala Maha Lilah criada com sucesso</h2>
+      <p>Olá ${recipient},</p>
+      <p>Uma nova sala foi criada para você no Maha Lilah Online.</p>
+      <p><strong>Código:</strong> ${params.roomCode}</p>
+      <p>
+        <a href="${roomUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+          Entrar na sala
+        </a>
+      </p>
+      <p style="font-size:12px;color:#5d6b75;">Equipe Maha Lilah Online</p>
+      <p style="font-size:12px;color:#5d6b75;">Se você não esperava esta criação, ignore este email.</p>
+    </div>
+  `
+
+  const text = `Sala Maha Lilah criada.\nCódigo: ${params.roomCode}\nAcesse: ${roomUrl}\n\nEquipe Maha Lilah Online`
+
+  return sendViaSmtp({
+    to: params.to,
+    subject,
+    html,
+    text,
+    fromEmail,
+    fromName
+  })
+}
+
 export async function sendPasswordResetEmail(params: { to: string; resetToken: string }) {
   const { fromEmail, fromName } = getMahaLilahFromAddress()
   const resetUrl = `${getMahaLilahBaseUrl()}/reset-password?token=${encodeURIComponent(params.resetToken)}`

@@ -10,6 +10,7 @@ import {
 } from '@hekate/database'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 import { generateRoomCode } from '@/lib/mahalilah/room-code'
+import { sendRoomCreatedEmail } from '@/lib/email'
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELED' | 'REFUNDED'
 
@@ -366,7 +367,7 @@ export async function POST(request: Request) {
           const shouldAutoCreateSingleSessionRoom =
             maha.planType === 'SINGLE_SESSION' && !maha.autoRoomId && Boolean(order.userId)
 
-          await prisma.$transaction(async (tx) => {
+          const txResult = await prisma.$transaction(async (tx) => {
             const roomByOrder = await tx.mahaLilahRoom.findFirst({
               where: { orderId: order.id },
               select: { id: true, code: true }
@@ -433,7 +434,24 @@ export async function POST(request: Request) {
                 }
               }
             })
+
+            return {
+              createdRoomForEmail:
+                shouldAutoCreateSingleSessionRoom && !roomByOrder ? autoRoom : null
+            }
           })
+
+          if (txResult.createdRoomForEmail && order.customerEmail) {
+            try {
+              await sendRoomCreatedEmail({
+                to: order.customerEmail,
+                recipientName: order.customerName,
+                roomCode: txResult.createdRoomForEmail.code
+              })
+            } catch (error) {
+              console.warn('Falha ao enviar e-mail de sala criada (webhook):', error)
+            }
+          }
         } else if (status === 'FAILED' || status === 'CANCELED') {
           await prisma.order.update({
             where: { id: order.id },

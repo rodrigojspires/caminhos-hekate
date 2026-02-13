@@ -10,6 +10,7 @@ import {
 import { authOptions } from '@/lib/auth'
 import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
+import { sendRoomCreatedEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,12 +113,12 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-    const room = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const roomByOrder = await tx.mahaLilahRoom.findFirst({
         where: { orderId: order.id },
         select: { id: true, code: true }
       })
-      if (roomByOrder) return roomByOrder
+      if (roomByOrder) return { room: roomByOrder, wasCreated: false as const }
 
       const code = await ensureUniqueRoomCode(tx)
       const createdRoom = await tx.mahaLilahRoom.create({
@@ -169,13 +170,25 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      return createdRoom
+      return { room: createdRoom, wasCreated: true as const }
     })
+
+    if (result.wasCreated) {
+      try {
+        await sendRoomCreatedEmail({
+          to: order.customerEmail,
+          recipientName: order.customerName,
+          roomCode: result.room.code
+        })
+      } catch (error) {
+        console.warn('Falha ao enviar e-mail de sala criada (checkout/finalize):', error)
+      }
+    }
 
     return NextResponse.json({
       ok: true,
-      created: true,
-      room
+      created: result.wasCreated,
+      room: result.room
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

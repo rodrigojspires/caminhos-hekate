@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma, PaymentStatus } from '@hekate/database'
+import { prisma, PaymentStatus, ProductType } from '@hekate/database'
 import { z } from 'zod'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 import { resolvePlan, type BillingInterval, type PlanType } from '@/lib/mahalilah/plans'
@@ -19,6 +19,97 @@ function generateOrderNumber() {
   return `MLH-${ymd}-${rnd}`
 }
 
+function getMahaCatalogConfig(planType: PlanType) {
+  if (planType === 'SINGLE_SESSION') {
+    return {
+      productSlug: 'mahalilah-sessao-avulsa',
+      productName: 'Maha Lilah - Sessao avulsa',
+      variantSku: 'MAHA-SINGLE-SESSION',
+      variantName: 'Sessao avulsa'
+    }
+  }
+
+  if (planType === 'SUBSCRIPTION_LIMITED') {
+    return {
+      productSlug: 'mahalilah-assinatura-limitada',
+      productName: 'Maha Lilah - Assinatura limitada',
+      variantSku: 'MAHA-SUBSCRIPTION-LIMITED',
+      variantName: 'Plano limitado'
+    }
+  }
+
+  return {
+    productSlug: 'mahalilah-assinatura-ilimitada',
+    productName: 'Maha Lilah - Assinatura ilimitada',
+    variantSku: 'MAHA-SUBSCRIPTION-UNLIMITED',
+    variantName: 'Plano ilimitado'
+  }
+}
+
+async function ensureMahaCheckoutVariant(params: {
+  planType: PlanType
+  variantLabel: string
+  amount: number
+}) {
+  const config = getMahaCatalogConfig(params.planType)
+
+  let product = await prisma.product.findUnique({ where: { slug: config.productSlug } })
+
+  if (!product) {
+    product = await prisma.product.create({
+      data: {
+        name: config.productName,
+        slug: config.productSlug,
+        description: config.productName,
+        shortDescription: config.productName,
+        type: ProductType.DIGITAL,
+        images: [],
+        active: true
+      }
+    })
+  } else if (!product.active || product.name !== config.productName) {
+    product = await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        name: config.productName,
+        description: product.description || config.productName,
+        shortDescription: product.shortDescription || config.productName,
+        active: true
+      }
+    })
+  }
+
+  let variant = await prisma.productVariant.findUnique({ where: { sku: config.variantSku } })
+
+  if (!variant) {
+    variant = await prisma.productVariant.create({
+      data: {
+        productId: product.id,
+        sku: config.variantSku,
+        name: params.variantLabel || config.variantName,
+        price: params.amount,
+        stock: 0,
+        active: true
+      }
+    })
+  } else {
+    const nextName = params.variantLabel || variant.name || config.variantName
+    if (!variant.active || Number(variant.price) !== params.amount || variant.name !== nextName) {
+      variant = await prisma.productVariant.update({
+        where: { id: variant.id },
+        data: {
+          productId: product.id,
+          name: nextName,
+          price: params.amount,
+          active: true
+        }
+      })
+    }
+  }
+
+  return { product, variant }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -34,6 +125,12 @@ export async function POST(request: Request) {
 
     const plan = await resolvePlan(planType, data.maxParticipants, billingInterval)
     const baseUrl = process.env.NEXT_PUBLIC_MAHALILAH_URL || process.env.NEXTAUTH_URL || 'https://mahalilahonline.com.br'
+
+    const checkoutVariant = await ensureMahaCheckoutVariant({
+      planType,
+      variantLabel: plan.label,
+      amount: plan.price
+    })
 
     if (planType === 'SINGLE_SESSION') {
       const orderNumber = generateOrderNumber()
@@ -71,6 +168,24 @@ export async function POST(request: Request) {
                 total: plan.price
               }
             }
+          },
+          items: {
+            create: [
+              {
+                productId: checkoutVariant.product.id,
+                variantId: checkoutVariant.variant.id,
+                name: plan.label,
+                price: plan.price,
+                quantity: 1,
+                total: plan.price,
+                metadata: {
+                  app: 'mahalilah',
+                  planType,
+                  planId: plan.planId,
+                  billingInterval: plan.billingInterval
+                }
+              }
+            ]
           }
         }
       })
@@ -174,6 +289,58 @@ export async function POST(request: Request) {
       )
     }
 
+    const orderNumber = generateOrderNumber()
+    const order = await prisma.order.create({
+      data: {
+        orderNumber,
+        userId: session.user.id,
+        status: 'PENDING',
+        subtotal: plan.price,
+        shipping: 0,
+        discount: 0,
+        total: plan.price,
+        customerEmail: session.user.email,
+        customerName: session.user.name || session.user.email,
+        metadata: {
+          app: 'mahalilah',
+          mahalilah: {
+            planId: plan.planId,
+            planType,
+            maxParticipants: plan.maxParticipants,
+            roomsLimit: plan.roomsLimit,
+            roomsUsed: 0,
+            tipsPerPlayer: plan.tipsPerPlayer,
+            summaryLimit: plan.summaryLimit,
+            progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
+            durationDays: plan.durationDays,
+            active: false,
+            billingInterval: plan.billingInterval,
+            price: plan.price,
+            label: plan.label
+          }
+        },
+        items: {
+          create: [
+            {
+              productId: checkoutVariant.product.id,
+              variantId: checkoutVariant.variant.id,
+              name: plan.label,
+              price: plan.price,
+              quantity: 1,
+              total: plan.price,
+              metadata: {
+                app: 'mahalilah',
+                planType,
+                planId: plan.planId,
+                billingInterval: plan.billingInterval,
+                isSubscription: true
+              }
+            }
+          ]
+        }
+      }
+    })
+
     const now = new Date()
     const periodEnd = new Date(now.getTime() + plan.durationDays * 86400000)
     const subscription = await prisma.userSubscription.create({
@@ -209,6 +376,7 @@ export async function POST(request: Request) {
       data: {
         userId: session.user.id,
         subscriptionId: subscription.id,
+        orderId: order.id,
         amount: plan.price,
         currency: 'BRL',
         provider: 'MERCADOPAGO',
@@ -243,6 +411,7 @@ export async function POST(request: Request) {
         app: 'mahalilah',
         transactionId: transaction.id,
         subscriptionId: subscription.id,
+        orderId: order.id,
         planType
       }
     })
@@ -261,6 +430,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       subscriptionId: subscription.id,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
       paymentUrl: preference.init_point
     })
   } catch (error) {
