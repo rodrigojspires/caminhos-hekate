@@ -38,6 +38,10 @@ export function Hero({
             </span>
           )}
           <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl lg:text-6xl">{title}</h1>
+          <div className="flex flex-wrap gap-3">
+            <LinkButton cta={primaryCta} variant="primary" />
+            {secondaryCta && <LinkButton cta={secondaryCta} variant="secondary" />}
+          </div>
           <p className="max-w-3xl text-sm text-ink-muted sm:text-base lg:text-lg">{subtitle}</p>
           {highlights && highlights.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -50,11 +54,7 @@ export function Hero({
                 </span>
               ))}
             </div>
-          )}
-          <div className="flex flex-wrap gap-3">
-            <LinkButton cta={primaryCta} variant="primary" />
-            {secondaryCta && <LinkButton cta={secondaryCta} variant="secondary" />}
-          </div>
+          )}          
           {note && <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">{note}</p>}
           {metrics && metrics.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-3">
