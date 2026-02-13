@@ -119,6 +119,7 @@ export default async function HomePage() {
         subtitle="Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim."
         primaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
+        note="Com a ajuda da Ia, você pode ser seu próprio Terapeuta na condução do jogo"
         highlights={['Autoguiado', 'Autoconhecimento', 'Expansão da Consciência']}
         metrics={[
           { value: '3 min', label: 'para abrir a sala' },
