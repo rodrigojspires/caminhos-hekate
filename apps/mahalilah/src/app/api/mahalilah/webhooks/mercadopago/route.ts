@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { PaymentStatus, SubscriptionStatus, prisma } from '@hekate/database'
+import {
+  MahaLilahParticipantRole,
+  MahaLilahPlanType,
+  MahaLilahRoomStatus,
+  PaymentStatus,
+  SubscriptionStatus,
+  prisma
+} from '@hekate/database'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
+import { generateRoomCode } from '@/lib/mahalilah/room-code'
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELED' | 'REFUNDED'
 
@@ -70,6 +78,19 @@ function parseMahaSubscriptionMetadata(raw: unknown): MahaSubscriptionMetadata |
   if (metadata.app !== 'mahalilah') return null
   if (!metadata.mahalilah) return null
   return metadata
+}
+
+async function ensureUniqueRoomCode(db: {
+  mahaLilahRoom: {
+    findUnique: (args: { where: { code: string } }) => Promise<{ id: string } | null>
+  }
+}) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const code = generateRoomCode()
+    const exists = await db.mahaLilahRoom.findUnique({ where: { code } })
+    if (!exists) return code
+  }
+  throw new Error('Não foi possível gerar um código único para sala automática.')
 }
 
 function buildRenewalLabel(
@@ -342,21 +363,76 @@ export async function POST(request: Request) {
           const maha = metadata.mahalilah || {}
           const durationDays = maha.durationDays || 30
           const expiresAt = maha.planType === 'SINGLE_SESSION' ? null : new Date(now.getTime() + durationDays * 86400000)
+          const shouldAutoCreateSingleSessionRoom =
+            maha.planType === 'SINGLE_SESSION' && !maha.autoRoomId && Boolean(order.userId)
 
-          await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              status: 'PAID',
-              metadata: {
-                ...metadata,
-                mahalilah: {
-                  ...maha,
-                  active: true,
-                  activatedAt: now.toISOString(),
-                  expiresAt: expiresAt ? expiresAt.toISOString() : null
+          await prisma.$transaction(async (tx) => {
+            const roomByOrder = await tx.mahaLilahRoom.findFirst({
+              where: { orderId: order.id },
+              select: { id: true, code: true }
+            })
+
+            let autoRoom = roomByOrder
+
+            if (shouldAutoCreateSingleSessionRoom && !roomByOrder) {
+              const code = await ensureUniqueRoomCode(tx)
+              const createdRoom = await tx.mahaLilahRoom.create({
+                data: {
+                  code,
+                  createdByUserId: order.userId!,
+                  status: MahaLilahRoomStatus.ACTIVE,
+                  maxParticipants: Number(maha.maxParticipants || 4),
+                  therapistPlays: true,
+                  therapistSoloPlay: false,
+                  isTrial: false,
+                  planType: MahaLilahPlanType.SINGLE_SESSION,
+                  orderId: order.id,
+                  consentTextVersion: process.env.MAHALILAH_CONSENT_VERSION || 'v1'
+                },
+                select: { id: true, code: true }
+              })
+
+              await tx.mahaLilahParticipant.create({
+                data: {
+                  roomId: createdRoom.id,
+                  userId: order.userId!,
+                  role: MahaLilahParticipantRole.THERAPIST,
+                  displayName: order.customerName || null
+                }
+              })
+
+              await tx.mahaLilahGameState.create({
+                data: { roomId: createdRoom.id }
+              })
+
+              autoRoom = createdRoom
+            }
+
+            await tx.order.update({
+              where: { id: order.id },
+              data: {
+                status: 'PAID',
+                metadata: {
+                  ...metadata,
+                  mahalilah: {
+                    ...maha,
+                    active: true,
+                    activatedAt: now.toISOString(),
+                    expiresAt: expiresAt ? expiresAt.toISOString() : null,
+                    roomsUsed:
+                      maha.planType === 'SINGLE_SESSION'
+                        ? 1
+                        : Number(maha.roomsUsed || 0),
+                    autoRoomId: autoRoom?.id || maha.autoRoomId || null,
+                    autoRoomCode: autoRoom?.code || maha.autoRoomCode || null,
+                    autoRoomCreatedAt:
+                      autoRoom && !maha.autoRoomCreatedAt
+                        ? now.toISOString()
+                        : maha.autoRoomCreatedAt || null
+                  }
                 }
               }
-            }
+            })
           })
         } else if (status === 'FAILED' || status === 'CANCELED') {
           await prisma.order.update({
