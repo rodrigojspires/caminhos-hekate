@@ -24,29 +24,6 @@ export const metadata: Metadata = {
   }
 }
 
-const faqItems = [
-  {
-    question: 'Preciso ser terapeuta para usar?',
-    answer: 'Não. Você pode conduzir jornadas autoguiadas, em grupo ou com acompanhamento profissional.'
-  },
-  {
-    question: 'Cada jogador rola o próprio dado?',
-    answer: 'Sim. Cada pessoa joga na própria vez, com organização e visibilidade para o grupo.'
-  },
-  {
-    question: 'O que é o deck randômico?',
-    answer: 'Cartas que você puxa no momento certo para abrir novas perguntas e destravar a conversa.'
-  },
-  {
-    question: 'A IA substitui terapia?',
-    answer: 'Não. Ela apenas apoia com perguntas e síntese final, sempre com limites e decisão humana.'
-  },
-  {
-    question: 'Os registros ficam salvos?',
-    answer: 'Sim. Histórico por sala e por facilitador, com export para continuidade da jornada.'
-  }
-]
-
 type OperationalSnapshot = {
   sessionsThisMonth: number
   therapistsActiveThisMonth: number
@@ -127,62 +104,63 @@ export default async function HomePage() {
           { value: '100%', label: 'rastreio de jornada' }
         ]}
       />
+      
+      <CTA
+        title="Leve seu trabalho para um novo nível de presença"
+        subtitle="Crie sua primeira sala agora e descubra por que facilitadores e terapeutas utilizam o Maha Lilah Online."
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        badges={['Inicio rápido', 'Suporte humano', 'Assistência com IA', 'Deck exclusivo para o Jogo']}
+      />
 
       <SectionShell>
         <SectionHeader
           eyebrow="O que é Maha Lilah?"
-          title="Uma plataforma para conduzir jornadas terapêuticas ao vivo"
-          subtitle="Em 30 segundos: você cria a sala, convida participantes por e-mail, conduz o tabuleiro com turnos claros e fecha com registros organizados."
+          title="Mais que um jogo, uma jornada terapêutica lúdica"
+          subtitle="Maha Lilah é um jogo de tabuleiro hindu de autoconhecimento. O tabuleiro tem 72 casas, organizadas em 8 níveis, e cada casa representa um estado de consciência e uma experiência humana. A pessoa lança um dado e avança; as escadas elevam o caminho e as serpentes mostram quedas e aprendizados. A jornada busca chegar à casa 68, a Consciência Cósmica, como um espelho do momento presente."
         />
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
-          <p>
-            O Maha Lilah combina experiência simbólica com estrutura prática de condução.
-            Você mantém profundidade terapêutica sem perder o ritmo da sessão.
-          </p>
-          <Link href="/como-funciona" className="mt-4 inline-flex text-sm text-gold">
-            Leitura de 30s: como funciona →
-          </Link>
-        </div>
       </SectionShell>
 
       <Features
         eyebrow="Para quem é"
         title="Uma experiência que se adapta ao seu jeito de conduzir"
-        subtitle="Do autoconhecimento individual à facilitação de grupos, com fluidez e presença."
+        subtitle="Do uso individual ao trabalho profissional e à facilitação de grupos — com estrutura, fluidez e presença."
         items={[
           {
             title: 'Jornada autoguiada',
-            description: 'Para quem quer clareza emocional com estrutura de perguntas e registro leve.'
+            description: "Para quem quer se orientar sozinho(a) com perguntas bem construídas, clareza emocional e um registro simples para acompanhar insights, padrões e decisões ao longo do tempo."
           },
           {
             title: 'Terapeuta + assistido',
-            description: 'Condução profissional com histórico por sessão e export para acompanhamento.'
+            description: 'Para conduções profissionais: você tem apoio de perguntas, organização por sessão e histórico do processo, com possibilidade de exportação para acompanhamento e documentação.'
           },
           {
             title: 'Grupos e vivências',
-            description: 'Turnos organizados, visão compartilhada e segurança para múltiplos participantes.'
+            description: 'Ideal para rodas, workshops e encontros: turnos organizados, leitura compartilhada e um formato seguro para múltiplos participantes — mantendo foco, tempo e qualidade.'
           },
           {
             title: 'Facilitadores de comunidade',
-            description: 'Fluxo simples para abrir turmas recorrentes sem perder qualidade de condução.'
+            description: 'Perfeito para turmas recorrentes: um fluxo leve para repetir encontros com consistência, sem engessar seu estilo de condução e sem perder a profundidade da experiência.'
           }
         ]}
       />
 
       <SectionShell>
         <SectionHeader
-          eyebrow="Por que converte"
-          title="Retenção nasce da sensação de progresso real"
-          subtitle="Cada detalhe do produto foi pensado para manter engajamento sem sacrificar profundidade."
+          eyebrow="POR QUE AS PESSOAS VOLTAM"
+          title="O progresso fica visível — e a experiência continua viva"
+          subtitle="Cada detalhe do Mahalilah Online foi pensado para manter o fluxo do jogo e a profundidade da jornada."
         />
         <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
-            'Entrada simples: login e convite por e-mail em minutos',
-            'Clareza de turno: o grupo sabe sempre quem está no centro',
-            'Apoio na hora certa: deck randômico para destravar conversas',
-            'Memória terapêutica: registros curtos e consistentes por jogada',
-            'Fechamento objetivo: síntese final assistida por IA por botão',
-            'Confiança para voltar: histórico seguro e exportável'
+            'Começo rápido: entrar e convidar por e-mail leva poucos minutos',
+            'IA que guia sem invadir: perguntas inteligentes para destravar reflexão na casa certa',
+            'Cartas de apoio no momento certo: sugestões para destravar reflexão e conversa',
+            'Síntese de encerramento: um resumo final (opcional) para consolidar o que foi visto',
+            'Turnos claros: o grupo sempre sabe quem está no centro da rodada',
+            'Registro leve por jogada: memória curta, consistente e fácil de retomar',
+            'Confiança para continuar: histórico seguro e exportável quando você precisar',
+            'Para terapeutas: memória por sessão + exportação para acompanhamento'            
           ].map((item) => (
             <div key={item} className="flex items-start gap-3">
               <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
@@ -194,20 +172,20 @@ export default async function HomePage() {
 
       <Steps
         eyebrow="Como começa"
-        title="Em três passos, você já está conduzindo"
-        subtitle="Sem curva técnica longa e sem fricção no meio do caminho."
+        title="Em 3 passos, você já está jogando e conduzindo"
+        subtitle="Tudo pronto para autoguiado e para sessões com clientes. Sem curva longa de aprendizado."
         steps={[
           {
-            title: 'Escolha o plano ideal',
-            description: 'Sessão avulsa para testar ou assinatura para quem precisa de constância.'
+            title: 'Escolha o seu modo',
+            description: 'Use como jornada autoguiada para você ou como sessão terapêutica com estrutura e continuidade.'
           },
           {
             title: 'Crie a sala e convide',
-            description: 'Convites por e-mail com vínculo de identidade e entrada segura.'
+            description: 'Gere uma sala em segundos e convide por e-mail com link único e entrada segura.'
           },
           {
             title: 'Conduza e registre ao vivo',
-            description: 'Ritmo do grupo, profundidade terapêutica e histórico completo em um só fluxo.'
+            description: 'O tabuleiro organiza o ritmo. Você registra o essencial por jogada e ativa a assistência de IA para sugestões de perguntas e uma síntese final (opcional).'
           }
         ]}
       />
@@ -218,9 +196,14 @@ export default async function HomePage() {
         subtitle="Da criação da sala ao fechamento da sessão, tudo com ritmo, beleza e clareza."
         mediaLabel="Vídeo curto mostrando criação da sala, convites, jogadas, cartas e síntese"
         bullets={[
-          'Experiência em tempo real com sensação de presença',
-          'Deck randômico para ampliar perspectivas sem forçar significado',
-          'Registro terapêutico que favorece continuidade entre sessões'
+          'Criação de sala em segundos (sem configuração técnica)',
+          'Convite por e-mail com link único e entrada segura',
+          'Dado e tabuleiro em tempo real com sensação de presença',
+          'Turnos claros (quem está no centro fica evidente)',
+          'Cartas/apoios no momento certo para destravar a sessão',
+          'Assistência de IA opcional: sugere perguntas e amplia perspectivas',
+          'Síntese final por um clique (fechamento claro e acionável)',
+          'Histórico por sessão com exportação para continuidade terapêutica'
         ]}
       />
 
@@ -262,83 +245,7 @@ export default async function HomePage() {
         ]}
       />
 
-      <SectionShell>
-        <SectionHeader
-          eyebrow="Números verificáveis"
-          title="Indicadores reais do mês atual"
-          subtitle={
-            hasLiveData
-              ? 'Dados operacionais extraídos da plataforma para validar tração e uso.'
-              : 'Indicadores em modo de fallback durante o build. Em produção, os dados carregam automaticamente.'
-          }
-        />
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
-            <p className="font-serif text-3xl text-gold">{sessionsThisMonth}</p>
-            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">salas criadas no mês</p>
-          </div>
-          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
-            <p className="font-serif text-3xl text-gold">{therapistsActiveThisMonth}</p>
-            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">terapeutas/facilitadores ativos</p>
-          </div>
-          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
-            <p className="font-serif text-3xl text-gold">{entriesThisMonth}</p>
-            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">registros terapêuticos no mês</p>
-          </div>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <SectionHeader
-          eyebrow="Mini-cases"
-          title="Antes e depois do retrabalho"
-          subtitle="Contextos anonimizados para mostrar impacto operacional sem expor clientes."
-        />
-        <div className="grid gap-4 md:grid-cols-2">
-          {[
-            {
-              title: 'Terapeuta individual (agenda semanal)',
-              before: 'Antes: fechamento disperso e notas soltas.',
-              after: 'Depois: fechamento com síntese + histórico organizado por sessão.'
-            },
-            {
-              title: 'Facilitador de grupo (6-8 participantes)',
-              before: 'Antes: sobreposição de fala e pouca rastreabilidade.',
-              after: 'Depois: turnos claros, registro por participante e retorno mais estruturado.'
-            }
-          ].map((item) => (
-            <article key={item.title} className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted">
-              <h3 className="font-serif text-xl text-ink">{item.title}</h3>
-              <p className="mt-3">{item.before}</p>
-              <p className="mt-2 text-ink">{item.after}</p>
-            </article>
-          ))}
-        </div>
-      </SectionShell>
-
-      <FAQ
-        eyebrow="FAQ"
-        title="Dúvidas frequentes antes de começar"
-        subtitle="Respostas rápidas para você decidir com segurança."
-        items={faqItems}
-        ctaLabel="Ver FAQ completa"
-        ctaHref="/faq"
-      />
-
-      <CTA
-        title="Leve seu trabalho para um novo nível de presença"
-        subtitle="Crie sua primeira sala agora e descubra por que facilitadores e terapeutas permanecem no Maha Lilah."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Setup rápido', 'Sem curva complexa', 'Suporte humano']}
-      />
-
-      <LegalNotice
-        items={[
-          'Maha Lilah Online é uma plataforma de apoio terapêutico e não substitui atendimento clínico ou emergencial.',
-          'Resultados variam conforme contexto, condução profissional e comprometimento dos participantes.'
-        ]}
-      />
+   
     </div>
   )
 }

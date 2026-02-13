@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Footer } from '@/components/marketing/Footer'
 import { Navbar } from '@/components/marketing/Navbar'
+import { WhatsAppCta } from '@/components/marketing/WhatsAppCta'
 import { MarketingAnalyticsProvider } from '@/components/marketing/analytics/MarketingAnalyticsProvider'
 import { OrganizationJsonLd, ProductJsonLd } from '@/components/marketing/StructuredData'
 
@@ -17,6 +18,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <main className="marketing-main mx-auto w-full max-w-none p-0">
         {children}
       </main>
+      <WhatsAppCta />
       <Footer />
     </div>
   )

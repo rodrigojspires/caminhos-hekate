@@ -31,8 +31,12 @@ export function SectionHeader({
   return (
     <header className={`flex flex-col gap-4 ${alignment}`}>
       {eyebrow && (
-        <span className="inline-flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.26em] text-gold-soft/90">
-          <span aria-hidden className="h-px w-8 bg-gold/55 sm:w-10" />
+        <span className="inline-flex items-center gap-3 text-[0.85rem] font-semibold uppercase tracking-[0.22em] text-gold-soft/90 sm:text-[0.95rem]">
+          <span
+            aria-hidden
+            className="block h-[2px] w-8 shrink-0 rounded-full sm:w-10"
+            style={{ backgroundColor: 'hsl(var(--temple-accent-gold) / 0.85)' }}
+          />
           {eyebrow}
         </span>
       )}
