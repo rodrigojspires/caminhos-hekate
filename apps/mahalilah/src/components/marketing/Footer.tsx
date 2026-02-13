@@ -45,8 +45,9 @@ export function Footer() {
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-gold-soft">Pronto para começar?</p>
               <h2 className="font-serif text-2xl text-ink sm:text-3xl">
-                Crie sua primeira sala e veja a experiência ao vivo
+                  Crie sua primeira sala (ou comece autoguiado)
               </h2>
+              Veja a experiência real no tabuleiro — com registro e assistência de IA opcional.
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/planos" className="btn-primary">

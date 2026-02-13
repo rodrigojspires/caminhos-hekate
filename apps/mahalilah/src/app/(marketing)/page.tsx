@@ -92,16 +92,16 @@ export default async function HomePage() {
   return (
     <div>
       <Hero
-        title="Jogue ao vivo em um tabuleiro de autoconhecimento — com assistência de IA."
-        subtitle="Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim."
+        title="Jogue no tabuleiro do Maha Lilah — com assistência de IA (opcional)"
+        subtitle="Autoguiado ou em sessão terapêutica, crie uma sala, role o dado, avance pelas casas e registre o que importa — com perguntas e síntese quando você quiser."
         primaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
-        note="Com a ajuda da Ia, você pode ser seu próprio Terapeuta na condução do jogo"
+        note="Com assistência de IA, eu consigo me autoguiar com perguntas, sínteses e resumos"
         highlights={['Autoguiado', 'Autoconhecimento', 'Expansão da Consciência']}
         metrics={[
           { value: '3 min', label: 'para abrir a sala' },
           { value: '1 painel', label: 'para tudo da sessão' },
-          { value: '100%', label: 'rastreio de jornada' }
+          { value: '100%', label: 'rastreio completo da jornada' }
         ]}
       />
       
@@ -116,31 +116,31 @@ export default async function HomePage() {
       <SectionShell>
         <SectionHeader
           eyebrow="O que é Maha Lilah?"
-          title="Mais que um jogo, uma jornada terapêutica lúdica"
-          subtitle="Maha Lilah é um jogo de tabuleiro hindu de autoconhecimento. O tabuleiro tem 72 casas, organizadas em 8 níveis, e cada casa representa um estado de consciência e uma experiência humana. A pessoa lança um dado e avança; as escadas elevam o caminho e as serpentes mostram quedas e aprendizados. A jornada busca chegar à casa 68, a Consciência Cósmica, como um espelho do momento presente."
+          title="Mais que um jogo: uma jornada de autoconhecimento no tabuleiro"
+          subtitle="Maha Lilah é um tabuleiro hindu de autoconhecimento com 72 casas em 8 níveis. Você lança o dado e avança: escadas elevam o caminho e serpentes mostram quedas e aprendizados. A jornada espelha o seu momento e ajuda a encontrar clareza e próximo passo — até a casa 68 (Consciência Cósmica)."
         />
       </SectionShell>
 
       <Features
         eyebrow="Para quem é"
-        title="Uma experiência que se adapta ao seu jeito de conduzir"
-        subtitle="Do uso individual ao trabalho profissional e à facilitação de grupos — com estrutura, fluidez e presença."
+        title="Uma experiência que se adapta ao seu jeito de jogar e conduzir"
+        subtitle="Do autoguiado à prática terapêutica — com estrutura, fluidez e presença no tabuleiro online."
         items={[
           {
             title: 'Jornada autoguiada',
-            description: "Para quem quer se orientar sozinho(a) com perguntas bem construídas, clareza emocional e um registro simples para acompanhar insights, padrões e decisões ao longo do tempo."
+            description: "Para quando eu quero clareza sozinho(a): perguntas por casa, registro leve por jogada e assistência de IA opcional para destravar reflexão e fechar com síntese."
           },
           {
             title: 'Terapeuta + assistido',
-            description: 'Para conduções profissionais: você tem apoio de perguntas, organização por sessão e histórico do processo, com possibilidade de exportação para acompanhamento e documentação.'
+            description: 'Para sessões 1:1: sala com link seguro, condução no tabuleiro ao vivo, registro por jogada e histórico exportável para acompanhar o processo.'
           },
           {
             title: 'Grupos e vivências',
-            description: 'Ideal para rodas, workshops e encontros: turnos organizados, leitura compartilhada e um formato seguro para múltiplos participantes — mantendo foco, tempo e qualidade.'
+            description: 'Para rodas e workshops: turnos organizados, tabuleiro compartilhado e uma dinâmica que mantém foco e profundidade com várias pessoas.'
           },
           {
             title: 'Facilitadores de comunidade',
-            description: 'Perfeito para turmas recorrentes: um fluxo leve para repetir encontros com consistência, sem engessar seu estilo de condução e sem perder a profundidade da experiência.'
+            description: 'Para turmas recorrentes: fluxo simples para repetir encontros com consistência e manter qualidade de condução.'
           }
         ]}
       />
@@ -149,18 +149,18 @@ export default async function HomePage() {
         <SectionHeader
           eyebrow="POR QUE AS PESSOAS VOLTAM"
           title="O progresso fica visível — e a experiência continua viva"
-          subtitle="Cada detalhe do Mahalilah Online foi pensado para manter o fluxo do jogo e a profundidade da jornada."
+          subtitle="Cada detalhe do Maha Lilah Online foi pensado para manter o fluxo do jogo e a profundidade da jornada."
         />
         <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[
-            'Começo rápido: entrar e convidar por e-mail leva poucos minutos',
-            'IA que guia sem invadir: perguntas inteligentes para destravar reflexão na casa certa',
-            'Cartas de apoio no momento certo: sugestões para destravar reflexão e conversa',
-            'Síntese de encerramento: um resumo final (opcional) para consolidar o que foi visto',
-            'Turnos claros: o grupo sempre sabe quem está no centro da rodada',
-            'Registro leve por jogada: memória curta, consistente e fácil de retomar',
-            'Confiança para continuar: histórico seguro e exportável quando você precisar',
-            'Para terapeutas: memória por sessão + exportação para acompanhamento'            
+            'Autoguiado com constância: retome do ponto exato e veja evolução ao longo do tempo',
+            'IA opcional (no momento certo): perguntas melhores na casa certa + síntese final para integrar',
+            'Cartas de apoio: novas perspectivas sem forçar significado',
+            'Registro leve por jogada: o essencial fica guardado sem burocracia',
+            'Histórico seguro e exportável: confiança para continuar e acompanhar',
+            'Para terapeutas: memória por sessão + exportação para continuidade',
+            'Ao vivo quando precisar: sala com link e presença em tempo real',
+            'Clareza de turno (para grupos): o centro da rodada fica evidente'        
           ].map((item) => (
             <div key={item} className="flex items-start gap-3">
               <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
@@ -173,19 +173,19 @@ export default async function HomePage() {
       <Steps
         eyebrow="Como começa"
         title="Em 3 passos, você já está jogando e conduzindo"
-        subtitle="Tudo pronto para autoguiado e para sessões com clientes. Sem curva longa de aprendizado."
+        subtitle="Tudo pronto para autoguiado e para sessões com clientes - sem curva longa de aprendizado."
         steps={[
           {
             title: 'Escolha o seu modo',
-            description: 'Use como jornada autoguiada para você ou como sessão terapêutica com estrutura e continuidade.'
+            description: 'Autoguiado (solo) ou sessão terapêutica, com estrutura e continuidade.'
           },
           {
             title: 'Crie a sala e convide',
-            description: 'Gere uma sala em segundos e convide por e-mail com link único e entrada segura.'
+            description: 'Gere uma sala em segundos e, se houver participantes, envie o link por e-mail com entrada segura.'
           },
           {
-            title: 'Conduza e registre ao vivo',
-            description: 'O tabuleiro organiza o ritmo. Você registra o essencial por jogada e ativa a assistência de IA para sugestões de perguntas e uma síntese final (opcional).'
+            title: 'Jogue no tabuleiro e registre',
+            description: 'Role o dado, avance pelas casas e registre o essencial por jogada. Ative a assistência de IA (opcional) para sugestões de perguntas e uma síntese final.'
           }
         ]}
       />
@@ -193,7 +193,7 @@ export default async function HomePage() {
       <VideoSection
         eyebrow="Demonstração"
         title="Veja o ciclo completo em menos de 90 segundos"
-        subtitle="Da criação da sala ao fechamento da sessão, tudo com ritmo, beleza e clareza."
+        subtitle="Da criação da sala ao fechamento: tabuleiro ao vivo e online, registro e síntese - com ritmo, beleza e clareza"
         mediaLabel="Vídeo curto mostrando criação da sala, convites, jogadas, cartas e síntese"
         bullets={[
           'Criação de sala em segundos (sem configuração técnica)',
@@ -210,7 +210,7 @@ export default async function HomePage() {
       <ImageGallery
         eyebrow="Visão do produto"
         title="Encantamento com propósito em cada tela"
-        subtitle="Interface envolvente para aumentar permanência, adesão e retorno às próximas sessões."
+        subtitle="Interface pensada para presença e continuidade: tabuleiro no centro, registro por jogada e fechamento claro — para você conduzir sem se perder no processo."
         items={[
           { label: 'Sala ao vivo com tabuleiro compartilhado', variant: 'horizontal' },
           { label: 'Modo terapia com registro por jogada', variant: 'vertical' },
