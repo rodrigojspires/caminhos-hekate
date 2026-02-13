@@ -56,12 +56,54 @@ export async function GET(request: NextRequest) {
       Math.max(parseInt(searchParams.get("limit") || "20", 10), 1),
       100,
     );
+    const status = (searchParams.get("status") || "").trim().toUpperCase();
+    const reason = (searchParams.get("reason") || "").trim().toLowerCase();
+    const from = (searchParams.get("from") || "").trim();
+    const to = (searchParams.get("to") || "").trim();
     const skip = (page - 1) * limit;
     const userId = session.user.id;
 
     const where: Prisma.PaymentTransactionWhereInput = {
       userId,
     };
+
+    const allowedStatuses = new Set([
+      "PENDING",
+      "PROCESSING",
+      "COMPLETED",
+      "FAILED",
+      "CANCELED",
+      "REFUNDED",
+      "PARTIALLY_REFUNDED",
+    ]);
+    if (status && allowedStatuses.has(status)) {
+      where.status = status as any;
+    }
+
+    if (reason === "single_session") {
+      where.orderId = { not: null };
+    } else if (reason === "plan") {
+      where.subscriptionId = { not: null };
+    }
+
+    const createdAt: { gte?: Date; lte?: Date } = {};
+    if (from) {
+      const fromDate =
+        from.length === 10 ? new Date(`${from}T00:00:00`) : new Date(from);
+      if (!Number.isNaN(fromDate.getTime())) {
+        createdAt.gte = fromDate;
+      }
+    }
+    if (to) {
+      const toDate =
+        to.length === 10 ? new Date(`${to}T23:59:59.999`) : new Date(to);
+      if (!Number.isNaN(toDate.getTime())) {
+        createdAt.lte = toDate;
+      }
+    }
+    if (createdAt.gte || createdAt.lte) {
+      where.createdAt = createdAt;
+    }
 
     const [payments, total] = await Promise.all([
       prisma.paymentTransaction.findMany({
