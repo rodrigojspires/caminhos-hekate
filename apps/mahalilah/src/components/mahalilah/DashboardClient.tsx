@@ -156,6 +156,10 @@ type TutorialStep = {
   target: DashboardTutorialTarget;
 };
 
+const DASHBOARD_ONBOARDING_VERSION = "2026-02-feature-pack";
+const DASHBOARD_ONBOARDING_VERSION_KEY =
+  "mahalilah:onboarding:dashboard:version";
+
 const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
   Record<DashboardTutorialTarget, RoomDetailsTab>
 > = {
@@ -181,7 +185,7 @@ function getDashboardTutorialSteps({
     steps.push({
       title: "Criar sala",
       description:
-        'Defina "Jogadores maximos", marque se o terapeuta joga junto e use "Criar sala" para iniciar uma nova sessao.',
+        'Defina "Jogadores maximos", marque se o terapeuta joga junto e use "Criar sala". Em sessao avulsa paga, a sala pode ser criada automaticamente.',
       target: "create-room",
     });
   }
@@ -197,7 +201,7 @@ function getDashboardTutorialSteps({
     steps.push({
       title: "Minhas sessoes",
       description:
-        "Quando a primeira sala for criada, aqui voce acompanha indicadores e acessa as abas de detalhes (convites, participantes, timeline, deck e IA).",
+        'Quando a primeira sala aparecer (manual ou automatica apos checkout), aqui voce acompanha indicadores e abre detalhes por abas.',
       target: "sessions-list",
     });
     return steps;
@@ -207,7 +211,7 @@ function getDashboardTutorialSteps({
     {
       title: "Acoes rapidas da sala",
       description:
-        '"Abrir sala" (quando ativa) entra na partida e "Ver detalhes" abre toda a gestao da sessao.',
+        '"Abrir sala" (quando ativa) entra na partida e "Ver detalhes" abre a gestao. O chip "Novo" marca sala criada no checkout e some apos a primeira rodada.',
       target: "room-actions",
     },
     {
@@ -231,7 +235,7 @@ function getDashboardTutorialSteps({
     {
       title: "Aba Relatorios IA",
       description:
-        "Consulte as ajudas e sinteses geradas pela IA durante a sessao para apoiar supervisao e fechamento terapeutico.",
+        'Consulte ajudas da IA, "O Caminho ate agora" por intervalo de jogadas e relatorios finais para fechamento terapeutico.',
       target: "room-tab-aiReports",
     },
   );
@@ -536,7 +540,12 @@ export function DashboardClient() {
         const payload = await res.json().catch(() => ({}));
         if (cancelled) return;
 
-        if (!payload.dashboardSeen) {
+        const hasCurrentVersion =
+          typeof window !== "undefined" &&
+          window.localStorage.getItem(DASHBOARD_ONBOARDING_VERSION_KEY) ===
+            DASHBOARD_ONBOARDING_VERSION;
+
+        if (!payload.dashboardSeen || !hasCurrentVersion) {
           setDashboardTutorialStep(0);
           setShowDashboardTutorial(true);
         }
@@ -627,6 +636,14 @@ export function DashboardClient() {
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
+    try {
+      window.localStorage.setItem(
+        DASHBOARD_ONBOARDING_VERSION_KEY,
+        DASHBOARD_ONBOARDING_VERSION,
+      );
+    } catch {
+      // no-op
+    }
     await fetch("/api/mahalilah/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1815,6 +1832,7 @@ export function DashboardClient() {
   const dashboardTutorialPopover = getTutorialPopoverPosition(
     dashboardTutorialTargetRect,
   );
+  const hasSingleSessionOrPlan = canCreateRoom || rooms.some((room) => !room.isTrial);
   const showTrialUpgradeCard =
     hasUsedTrial === true &&
     trialRoomStatus !== null &&
@@ -1885,7 +1903,7 @@ export function DashboardClient() {
           );
         })}
       </div>
-      {hasUsedTrial === false && (
+      {hasUsedTrial === false && !hasSingleSessionOrPlan && (
         <div
           className="card dashboard-create-card"
           style={{ display: "grid", gap: 12 }}

@@ -208,6 +208,11 @@ const COLORS = [
 ];
 const TRIAL_POST_START_MOVE_LIMIT = 5;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
+const ROOM_ONBOARDING_VERSION = "2026-02-feature-pack";
+const ROOM_ONBOARDING_THERAPIST_VERSION_KEY =
+  "mahalilah:onboarding:room:therapist:version";
+const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
+  "mahalilah:onboarding:room:player:version";
 const DICE_SPIN_INTERVAL_MS = 90;
 const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
@@ -394,8 +399,8 @@ function getRoomTutorialSteps({
 
   const controlDescription =
     role === "THERAPIST"
-      ? 'Use "Rolar dado" para jogar a vez atual, "Avancar vez" para passar ao proximo participante e "Encerrar sala" para finalizar a sessao. "Mostrar nomes" exibe sanscrito/portugues no tabuleiro e "Regras do jogo" abre o resumo.'
-      : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde. O botao muda de status automaticamente conforme a vez e conexao do terapeuta.';
+      ? 'Use "Rolar dado" para jogar a vez atual, "Avancar vez" para passar ao proximo participante e "Encerrar sala" para finalizar. Ao concluir a jornada (casa 68), o sistema pergunta se deseja gerar o relatorio final.'
+      : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde. O botao muda de status automaticamente conforme vez e conexao do terapeuta.';
 
   return [
     {
@@ -436,7 +441,7 @@ function getRoomTutorialSteps({
     {
       title: "Menu IA",
       description:
-        "No icone IA voce pede ajuda contextual, acompanha limite de uso e gera o resumo final da sessao.",
+        'No icone IA voce pede ajuda contextual, acompanha limite de uso, consulta "O Caminho ate agora" por bloco de jogadas e gera relatorio final.',
       target: "room-menu-ai",
     },
     {
@@ -448,13 +453,13 @@ function getRoomTutorialSteps({
     {
       title: "Menu Timeline",
       description:
-        "No icone Timeline voce revisa jogadas, atalhos, cartas, registros terapeuticos e ajudas de IA por participante.",
+        "No icone Timeline voce revisa jogadas, atalhos, cartas, registros terapeuticos e saidas de IA por participante.",
       target: "room-menu-timeline",
     },
     {
       title: "Menu Resumo",
       description:
-        "No icone Resumo voce consolida caminho no tabuleiro, casas recorrentes, registros e uso de IA por jogador.",
+        "No icone Resumo voce consolida caminho no tabuleiro, casas recorrentes, registros e historico de IA por jogador.",
       target: "room-menu-summary",
     },
   ];
@@ -794,9 +799,25 @@ export function RoomClient({ code }: { code: string }) {
         const payload = await res.json().catch(() => ({}));
         if (cancelled) return;
 
+        let therapistVersionSeen = false;
+        let playerVersionSeen = false;
+        try {
+          therapistVersionSeen =
+            window.localStorage.getItem(
+              ROOM_ONBOARDING_THERAPIST_VERSION_KEY,
+            ) === ROOM_ONBOARDING_VERSION;
+          playerVersionSeen =
+            window.localStorage.getItem(ROOM_ONBOARDING_PLAYER_VERSION_KEY) ===
+            ROOM_ONBOARDING_VERSION;
+        } catch {
+          therapistVersionSeen = false;
+          playerVersionSeen = false;
+        }
+
         setRoomOnboardingSeen({
-          therapist: Boolean(payload.roomTherapistSeen),
-          player: Boolean(payload.roomPlayerSeen),
+          therapist:
+            Boolean(payload.roomTherapistSeen) && therapistVersionSeen,
+          player: Boolean(payload.roomPlayerSeen) && playerVersionSeen,
         });
       } catch {
         if (cancelled) return;
@@ -1650,8 +1671,24 @@ export function RoomClient({ code }: { code: string }) {
 
     if (roomTutorialRole === "THERAPIST") {
       setRoomOnboardingSeen((prev) => ({ ...prev, therapist: true }));
+      try {
+        window.localStorage.setItem(
+          ROOM_ONBOARDING_THERAPIST_VERSION_KEY,
+          ROOM_ONBOARDING_VERSION,
+        );
+      } catch {
+        // no-op
+      }
     } else {
       setRoomOnboardingSeen((prev) => ({ ...prev, player: true }));
+      try {
+        window.localStorage.setItem(
+          ROOM_ONBOARDING_PLAYER_VERSION_KEY,
+          ROOM_ONBOARDING_VERSION,
+        );
+      } catch {
+        // no-op
+      }
     }
 
     setShowRoomTutorial(false);

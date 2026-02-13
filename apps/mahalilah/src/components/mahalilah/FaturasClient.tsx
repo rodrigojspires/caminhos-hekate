@@ -10,10 +10,29 @@ type Invoice = {
   description?: string;
   invoiceUrl?: string;
   receiptUrl?: string;
+  reasonKind?: string;
+  reasonLabel?: string;
+  planLabel?: string;
+  billingInterval?: string;
+  billingReason?: string;
+  validityStart?: string;
+  validityEnd?: string;
   createdAt: string;
   paidAt?: string;
   subscription?: { id: string; plan?: { name?: string } };
 };
+
+function formatBillingInterval(interval?: string) {
+  if (interval === "MONTHLY") return "Mensal";
+  if (interval === "YEARLY") return "Anual";
+  return interval || "—";
+}
+
+function formatBillingReason(reason?: string) {
+  if (reason === "INITIAL") return "Primeira cobrança";
+  if (reason === "RENEWAL") return "Renovação";
+  return reason || "—";
+}
 
 export function FaturasClient() {
   const [loading, setLoading] = useState(true);
@@ -63,10 +82,24 @@ export function FaturasClient() {
             <div key={invoice.id} className="notice" style={{ display: "grid", gap: 6 }}>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <span className="pill">
-                  {invoice.subscription?.plan?.name ||
-                    invoice.description ||
-                    "Pagamento"}
+                  Motivo:{" "}
+                  <strong>{invoice.reasonLabel || invoice.description || "Pagamento"}</strong>
                 </span>
+                {invoice.planLabel && (
+                  <span className="pill">
+                    Plano: <strong>{invoice.planLabel}</strong>
+                  </span>
+                )}
+                {invoice.reasonLabel === "Plano" && (
+                  <>
+                    <span className="pill">
+                      Ciclo: <strong>{formatBillingInterval(invoice.billingInterval)}</strong>
+                    </span>
+                    <span className="pill">
+                      Cobrança: <strong>{formatBillingReason(invoice.billingReason)}</strong>
+                    </span>
+                  </>
+                )}
                 <span className="pill">
                   Valor: <strong>R$ {Number(invoice.amount || 0).toFixed(2)}</strong>
                 </span>
@@ -80,6 +113,23 @@ export function FaturasClient() {
               <span className="small-muted">
                 {new Date(invoice.createdAt).toLocaleString("pt-BR")}
               </span>
+              {invoice.reasonLabel === "Plano" &&
+                (invoice.validityStart || invoice.validityEnd) && (
+                  <span className="small-muted">
+                    Vigência do plano:{" "}
+                    <strong>
+                      {invoice.validityStart
+                        ? new Date(invoice.validityStart).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </strong>{" "}
+                    até{" "}
+                    <strong>
+                      {invoice.validityEnd
+                        ? new Date(invoice.validityEnd).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </strong>
+                  </span>
+                )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {invoice.invoiceUrl && (
                   <button
