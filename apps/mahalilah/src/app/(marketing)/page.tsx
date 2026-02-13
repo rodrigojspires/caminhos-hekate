@@ -115,7 +115,6 @@ export default async function HomePage() {
   return (
     <div>
       <Hero
-        eyebrow="Maha Lilah Online"
         title="Jogue ao vivo em um tabuleiro de autoconhecimento — com assistência de IA."
         subtitle="Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}

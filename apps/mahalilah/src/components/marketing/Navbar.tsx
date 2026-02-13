@@ -101,7 +101,7 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-3">
             <div>
               <p className="font-serif text-lg text-ink">Maha Lilah Online</p>
-              <p className="text-xs uppercase tracking-[0.28em] text-ink-muted">Jornadas ao vivo</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-ink-muted">Jornada de Autoconhecimento</p>
             </div>
           </Link>
         </div>
