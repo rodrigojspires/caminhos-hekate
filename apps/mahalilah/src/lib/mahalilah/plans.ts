@@ -1,6 +1,7 @@
 import { prisma } from '@hekate/database'
 
 export type PlanType = 'SINGLE_SESSION' | 'SUBSCRIPTION' | 'SUBSCRIPTION_LIMITED'
+export type BillingInterval = 'MONTHLY' | 'YEARLY'
 
 type PricingMode = 'UNIT_PER_PARTICIPANT' | 'FIXED_TOTAL'
 
@@ -64,6 +65,7 @@ export type PlanConfig = {
 export type ResolvedPlan = {
   planId: string
   planType: PlanType
+  billingInterval: BillingInterval
   label: string
   price: number
   maxParticipants: number
@@ -463,6 +465,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
 export async function resolvePlan(
   planType: PlanType,
   maxParticipants?: number,
+  billingInterval: BillingInterval = 'MONTHLY',
 ): Promise<ResolvedPlan> {
   const config = await getPlanConfig()
 
@@ -490,6 +493,7 @@ export async function resolvePlan(
     return {
       planId: config.singleSession.id,
       planType,
+      billingInterval: 'MONTHLY',
       label: `${config.singleSession.name} (${participants} participantes)`,
       price,
       maxParticipants: participants,
@@ -507,18 +511,27 @@ export async function resolvePlan(
       throw new Error('Plano de assinatura indisponível no momento')
     }
 
+    const isYearly = billingInterval === 'YEARLY'
+    const price = isYearly
+      ? config.subscriptionUnlimited.yearlyPrice
+      : config.subscriptionUnlimited.monthlyPrice
+    const durationDays = isYearly
+      ? config.subscriptionUnlimited.durationDays * 12
+      : config.subscriptionUnlimited.durationDays
+
     return {
       planId: config.subscriptionUnlimited.id,
       planType,
-      label: config.subscriptionUnlimited.name,
-      price: config.subscriptionUnlimited.monthlyPrice,
+      billingInterval,
+      label: `${config.subscriptionUnlimited.name}${isYearly ? ' (anual)' : ' (mensal)'}`,
+      price,
       maxParticipants: config.subscriptionUnlimited.maxParticipants,
       roomsLimit: config.subscriptionUnlimited.roomsPerMonth,
       tipsPerPlayer: config.subscriptionUnlimited.tipsPerPlayer,
       summaryLimit: config.subscriptionUnlimited.summaryLimit,
       progressSummaryEveryMoves:
         config.subscriptionUnlimited.progressSummaryEveryMoves,
-      durationDays: config.subscriptionUnlimited.durationDays,
+      durationDays,
       subscriptionPlanId: config.subscriptionUnlimited.subscriptionPlanId,
     }
   }
@@ -527,17 +540,26 @@ export async function resolvePlan(
     throw new Error('Plano de assinatura limitada indisponível no momento')
   }
 
+  const isYearly = billingInterval === 'YEARLY'
+  const price = isYearly
+    ? config.subscriptionLimited.yearlyPrice
+    : config.subscriptionLimited.monthlyPrice
+  const durationDays = isYearly
+    ? config.subscriptionLimited.durationDays * 12
+    : config.subscriptionLimited.durationDays
+
   return {
     planId: config.subscriptionLimited.id,
     planType,
-    label: config.subscriptionLimited.name,
-    price: config.subscriptionLimited.monthlyPrice,
+    billingInterval,
+    label: `${config.subscriptionLimited.name}${isYearly ? ' (anual)' : ' (mensal)'}`,
+    price,
     maxParticipants: config.subscriptionLimited.maxParticipants,
     roomsLimit: config.subscriptionLimited.roomsPerMonth,
     tipsPerPlayer: config.subscriptionLimited.tipsPerPlayer,
     summaryLimit: config.subscriptionLimited.summaryLimit,
     progressSummaryEveryMoves: config.subscriptionLimited.progressSummaryEveryMoves,
-    durationDays: config.subscriptionLimited.durationDays,
+    durationDays,
     subscriptionPlanId: config.subscriptionLimited.subscriptionPlanId,
   }
 }

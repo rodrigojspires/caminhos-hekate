@@ -28,7 +28,7 @@ const billingFaq = [
   },
   {
     question: 'Como funciona a renovação?',
-    answer: 'Planos mensais renovam automaticamente até o cancelamento.'
+    answer: 'Planos mensais e anuais renovam automaticamente até o cancelamento.'
   },
   {
     question: 'Posso cancelar quando quiser?',
@@ -47,10 +47,28 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
 
 const formatCurrency = (value: number) => currencyFormatter.format(value)
 
+const getAnnualSavingsPercent = (monthlyPrice: number, yearlyPrice: number) => {
+  if (!Number.isFinite(monthlyPrice) || !Number.isFinite(yearlyPrice)) return null
+  if (monthlyPrice <= 0 || yearlyPrice <= 0) return null
+  const annualizedMonthly = monthlyPrice * 12
+  if (annualizedMonthly <= 0) return null
+  const savings = ((annualizedMonthly - yearlyPrice) / annualizedMonthly) * 100
+  if (savings <= 0) return null
+  return Math.round(savings)
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function PlanosPage() {
   const planConfig = await getPlanConfig()
+  const unlimitedSavingsPercent = getAnnualSavingsPercent(
+    planConfig.subscriptionUnlimited.monthlyPrice,
+    planConfig.subscriptionUnlimited.yearlyPrice
+  )
+  const limitedSavingsPercent = getAnnualSavingsPercent(
+    planConfig.subscriptionLimited.monthlyPrice,
+    planConfig.subscriptionLimited.yearlyPrice
+  )
   const singleSessionLimits = planConfig.singleSession.marketing.limits.filter((item) => {
     const normalized = item.toLowerCase()
     return !normalized.includes('participante') && !normalized.includes('r$')
@@ -77,7 +95,16 @@ export default async function PlanosPage() {
     planConfig.subscriptionUnlimited.isActive
       ? {
           name: planConfig.subscriptionUnlimited.name,
-          price: `${formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês`,
+          price: (
+            <div className="flex flex-col gap-2">
+              <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
+              {unlimitedSavingsPercent !== null && (
+                <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
+                  Economize {unlimitedSavingsPercent}% no anual
+                </span>
+              )}
+            </div>
+          ),
           description: planConfig.subscriptionUnlimited.description,
           forWho: planConfig.subscriptionUnlimited.marketing.forWho,
           includes: planConfig.subscriptionUnlimited.marketing.includes,
@@ -92,7 +119,16 @@ export default async function PlanosPage() {
     planConfig.subscriptionLimited.isActive
       ? {
           name: planConfig.subscriptionLimited.name,
-          price: `${formatCurrency(planConfig.subscriptionLimited.monthlyPrice)} / mês`,
+          price: (
+            <div className="flex flex-col gap-2">
+              <span>{formatCurrency(planConfig.subscriptionLimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionLimited.yearlyPrice)} / ano</span>
+              {limitedSavingsPercent !== null && (
+                <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
+                  Economize {limitedSavingsPercent}% no anual
+                </span>
+              )}
+            </div>
+          ),
           description: planConfig.subscriptionLimited.description,
           forWho: planConfig.subscriptionLimited.marketing.forWho,
           includes: planConfig.subscriptionLimited.marketing.includes,

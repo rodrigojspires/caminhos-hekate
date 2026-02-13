@@ -4,11 +4,12 @@ import { authOptions } from '@/lib/auth'
 import { prisma, PaymentStatus } from '@hekate/database'
 import { z } from 'zod'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
-import { resolvePlan, type PlanType } from '@/lib/mahalilah/plans'
+import { resolvePlan, type BillingInterval, type PlanType } from '@/lib/mahalilah/plans'
 
 const CheckoutSchema = z.object({
   planType: z.enum(['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED']),
-  maxParticipants: z.number().int().min(1).max(12).optional()
+  maxParticipants: z.number().int().min(1).max(12).optional(),
+  billingInterval: z.enum(['MONTHLY', 'YEARLY']).optional()
 })
 
 function generateOrderNumber() {
@@ -29,8 +30,9 @@ export async function POST(request: Request) {
     const payload = await request.json()
     const data = CheckoutSchema.parse(payload)
     const planType = data.planType as PlanType
+    const billingInterval = (data.billingInterval || 'MONTHLY') as BillingInterval
 
-    const plan = await resolvePlan(planType, data.maxParticipants)
+    const plan = await resolvePlan(planType, data.maxParticipants, billingInterval)
     const baseUrl = process.env.NEXT_PUBLIC_MAHALILAH_URL || process.env.NEXTAUTH_URL || 'https://mahalilahonline.com.br'
 
     if (planType === 'SINGLE_SESSION') {
@@ -97,6 +99,7 @@ export async function POST(request: Request) {
           status: 'PENDING',
           metadata: {
             app: 'mahalilah',
+            billingInterval: plan.billingInterval,
             planType,
             maxParticipants: plan.maxParticipants,
             planId: plan.planId,
@@ -182,7 +185,7 @@ export async function POST(request: Request) {
         currentPeriodEnd: periodEnd,
         metadata: {
           app: 'mahalilah',
-          billingInterval: 'MONTHLY',
+          billingInterval: plan.billingInterval,
           recurringEnabled: true,
           mahalilah: {
             planId: plan.planId,
@@ -195,7 +198,8 @@ export async function POST(request: Request) {
             progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
             durationDays: plan.durationDays,
             price: plan.price,
-            label: plan.label
+            label: plan.label,
+            billingInterval: plan.billingInterval
           }
         }
       }
@@ -211,6 +215,7 @@ export async function POST(request: Request) {
         status: 'PENDING',
         metadata: {
           app: 'mahalilah',
+          billingInterval: plan.billingInterval,
           planType,
           planId: plan.planId,
           billingReason: 'INITIAL',
