@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { Prisma, prisma } from "@hekate/database";
 
+export const dynamic = "force-dynamic";
+
 type PaymentMetadata = {
   description?: string;
   invoiceUrl?: string;

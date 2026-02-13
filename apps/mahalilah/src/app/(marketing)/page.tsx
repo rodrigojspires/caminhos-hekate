@@ -47,23 +47,70 @@ const faqItems = [
   }
 ]
 
-export default async function HomePage() {
+type OperationalSnapshot = {
+  sessionsThisMonth: number
+  therapistsActiveThisMonth: number
+  entriesThisMonth: number
+  hasLiveData: boolean
+}
+
+const FALLBACK_OPERATIONAL_SNAPSHOT: OperationalSnapshot = {
+  sessionsThisMonth: 0,
+  therapistsActiveThisMonth: 0,
+  entriesThisMonth: 0,
+  hasLiveData: false
+}
+
+async function loadOperationalSnapshot(): Promise<OperationalSnapshot> {
+  if (process.env.SKIP_REDIS === '1') {
+    return FALLBACK_OPERATIONAL_SNAPSHOT
+  }
+
+  const databaseUrl = process.env.DATABASE_URL?.trim()
+  if (!databaseUrl) {
+    return FALLBACK_OPERATIONAL_SNAPSHOT
+  }
+
   const monthStart = new Date()
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
 
-  const [sessionsThisMonth, therapistsActiveThisMonth, entriesThisMonth] = await Promise.all([
-    prisma.mahaLilahRoom.count({
-      where: { createdAt: { gte: monthStart } }
-    }),
-    prisma.mahaLilahRoom.groupBy({
-      by: ['createdByUserId'],
-      where: { createdAt: { gte: monthStart } }
-    }).then((rows) => rows.length),
-    prisma.mahaLilahTherapyEntry.count({
-      where: { createdAt: { gte: monthStart } }
-    })
-  ])
+  try {
+    const [sessionsThisMonth, therapistsActiveThisMonth, entriesThisMonth] =
+      await Promise.all([
+        prisma.mahaLilahRoom.count({
+          where: { createdAt: { gte: monthStart } }
+        }),
+        prisma.mahaLilahRoom
+          .groupBy({
+            by: ['createdByUserId'],
+            where: { createdAt: { gte: monthStart } }
+          })
+          .then((rows) => rows.length),
+        prisma.mahaLilahTherapyEntry.count({
+          where: { createdAt: { gte: monthStart } }
+        })
+      ])
+
+    return {
+      sessionsThisMonth,
+      therapistsActiveThisMonth,
+      entriesThisMonth,
+      hasLiveData: true
+    }
+  } catch (error) {
+    console.error('Erro ao buscar indicadores operacionais (Maha Lilah):', error)
+    return FALLBACK_OPERATIONAL_SNAPSHOT
+  }
+}
+
+export default async function HomePage() {
+  const {
+    sessionsThisMonth,
+    therapistsActiveThisMonth,
+    entriesThisMonth,
+    hasLiveData
+  } = await loadOperationalSnapshot()
 
   return (
     <div>
@@ -221,7 +268,11 @@ export default async function HomePage() {
         <SectionHeader
           eyebrow="Números verificáveis"
           title="Indicadores reais do mês atual"
-          subtitle="Dados operacionais extraídos da plataforma para validar tração e uso."
+          subtitle={
+            hasLiveData
+              ? 'Dados operacionais extraídos da plataforma para validar tração e uso.'
+              : 'Indicadores em modo de fallback durante o build. Em produção, os dados carregam automaticamente.'
+          }
         />
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">

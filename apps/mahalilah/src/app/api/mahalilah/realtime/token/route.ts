@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import jwt from 'jsonwebtoken'
 import { authOptions } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
