@@ -10,7 +10,7 @@ export function CTA({
 }: {
   title: string
   subtitle: string
-  primaryCta: Cta
+  primaryCta?: Cta
   secondaryCta?: Cta
   badges?: string[]
 }) {
@@ -35,7 +35,7 @@ export function CTA({
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            <LinkButton cta={primaryCta} variant="primary" />
+            {primaryCta && <LinkButton cta={primaryCta} variant="primary" />}
             {secondaryCta && <LinkButton cta={secondaryCta} variant="secondary" />}
           </div>
         </div>

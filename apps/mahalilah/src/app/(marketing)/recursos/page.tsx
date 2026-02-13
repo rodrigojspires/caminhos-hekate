@@ -40,7 +40,7 @@ export default function RecursosPage() {
         title="Uma plataforma desenhada para sessões que as pessoas querem repetir"
         subtitle="Cada recurso foi pensado para aumentar presença, clareza e continuidade: do tabuleiro ao fechamento."
         primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
+        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Visão geral do ecossistema de recursos do Maha Lilah Online"
         highlights={['Tempo real', 'Turnos claros', 'Registros por rodada', 'IA assistida']}
       />

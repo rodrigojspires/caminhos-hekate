@@ -89,7 +89,7 @@ export function Navbar() {
     <header className="sticky top-0 z-30 border-b border-border/70 bg-[linear-gradient(180deg,rgba(10,15,24,0.95),rgba(10,15,24,0.84))] backdrop-blur">
       <div className="hidden border-b border-border/50 px-4 py-2 text-center sm:block">
         <p className="text-xs text-gold-soft">
-          Jogue ao vivo no tabuleiro ancestral do autoconhecimento — com assistência de IA.
+          Jogue ao vivo em um tabuleiro de autoconhecimento — com assistência de IA.
         </p>
         <p className="mt-0.5 text-[11px] text-ink-muted">
           Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim.
@@ -99,9 +99,6 @@ export function Navbar() {
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/60 bg-surface text-gold">
-              ML
-            </div>
             <div>
               <p className="font-serif text-lg text-ink">Maha Lilah Online</p>
               <p className="text-xs uppercase tracking-[0.28em] text-ink-muted">Jornadas ao vivo</p>
@@ -121,7 +118,7 @@ export function Navbar() {
                 href={link.href}
                 className={`whitespace-nowrap rounded-full px-2.5 py-1.5 transition ${
                   active
-                    ? 'border border-gold/35 bg-surface/85 text-ink'
+                    ? 'border border-gold/45 bg-gold/15 text-gold-soft'
                     : 'border border-transparent text-ink-muted hover:border-border/70 hover:bg-surface/65 hover:text-ink'
                 }`}
               >
@@ -197,7 +194,7 @@ export function Navbar() {
                 Entrar
               </Link>
               <Link href="/dashboard" className="btn-secondary">
-                Ver demo
+                Experimente
               </Link>
             </>
           )}
@@ -205,11 +202,7 @@ export function Navbar() {
             <Link href="/dashboard" className="btn-primary">
               Ir para dashboard
             </Link>
-          ) : (
-            <Link href="/planos" className="btn-primary">
-              Começar agora
-            </Link>
-          )}
+          ) : null}
         </div>
 
         <button
@@ -238,7 +231,7 @@ export function Navbar() {
                   href={link.href}
                   className={`rounded-xl border px-3 py-2 text-sm transition ${
                     active
-                      ? 'border-gold/35 bg-surface/80 text-ink'
+                      ? 'border-gold/45 bg-gold/15 text-gold-soft'
                       : 'border-transparent text-ink-muted hover:border-border/60 hover:bg-surface/70 hover:text-ink'
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
@@ -297,14 +290,7 @@ export function Navbar() {
                   className="btn-secondary w-full justify-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Ver demo
-                </Link>
-                <Link
-                  href="/planos"
-                  className="btn-primary w-full justify-center"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Começar agora
+                  Experimente
                 </Link>
               </div>
             )}

@@ -42,7 +42,7 @@ export default function ContatoPage() {
         title="Converse com quem entende da experiência terapêutica digital"
         subtitle="Conte seu objetivo e te ajudamos a montar o melhor caminho para começar com segurança e impacto."
         primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
+        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Atendimento humano e acompanhamento de onboarding"
         highlights={['Atendimento humano', 'Apoio comercial', 'Onboarding orientado']}
       />

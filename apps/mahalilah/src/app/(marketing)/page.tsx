@@ -116,10 +116,10 @@ export default async function HomePage() {
     <div>
       <Hero
         eyebrow="Maha Lilah Online"
-        title="Jogue ao vivo no tabuleiro ancestral do autoconhecimento — com assistência de IA."
+        title="Jogue ao vivo em um tabuleiro de autoconhecimento — com assistência de IA."
         subtitle="Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
+        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
         note="Não substitui terapia ou atendimento médico"
         highlights={['Tempo real', 'Login obrigatório', 'Consentimento registrado', 'Mercado Pago']}

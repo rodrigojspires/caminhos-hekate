@@ -26,7 +26,7 @@ export default function ParaGruposPage() {
         title="Grupos com energia alta, organização clara e profundidade"
         subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder individualidade."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
+        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Grupo em sessão ao vivo com turnos e acompanhamento"
         highlights={['Turnos individuais', 'Visão em tempo real', 'Registro por participante']}
       />

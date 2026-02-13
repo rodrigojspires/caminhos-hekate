@@ -141,7 +141,6 @@ export default function ComoFuncionaPage() {
       <CTA
         title="Agora que você viu o fluxo, é só entrar e conduzir"
         subtitle="Teste o ciclo completo na prática e sinta a diferença de uma experiência viva."
-        primaryCta={{ label: 'Começar agora', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Onboarding rápido', 'Sem setup técnico complexo']}
       />
