@@ -233,6 +233,38 @@ function extractAiReportText(content: string) {
   return repairPtBrMojibake(raw)
 }
 
+function extractProgressInterval(content: string) {
+  const raw = (content || '').trim()
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+
+    const intervalStart =
+      typeof (parsed as { intervalStart?: unknown }).intervalStart === 'number'
+        ? (parsed as { intervalStart: number }).intervalStart
+        : null
+    const intervalEnd =
+      typeof (parsed as { intervalEnd?: unknown }).intervalEnd === 'number'
+        ? (parsed as { intervalEnd: number }).intervalEnd
+        : null
+
+    if (
+      intervalStart !== null &&
+      intervalEnd !== null &&
+      Number.isFinite(intervalStart) &&
+      Number.isFinite(intervalEnd)
+    ) {
+      return `Jogadas ${intervalStart} a ${intervalEnd}`
+    }
+  } catch {
+    // Ignora quando o conteudo nao for JSON estruturado.
+  }
+
+  return null
+}
+
 function buildPdf(room: ExportRoom) {
   const pages: string[][] = []
 
@@ -483,8 +515,12 @@ function buildPdf(room: ExportRoom) {
   } else {
     room.aiReports.forEach((report, index) => {
       const owner = report.participant?.user?.name || report.participant?.user?.email || 'Sessao'
+      const progressInterval =
+        report.kind === 'PROGRESS'
+          ? extractProgressInterval(report.content)
+          : null
       addParagraph(
-        `${index + 1}. ${formatReportKind(report.kind)} | ${formatDate(report.createdAt)} | alvo: ${owner}`,
+        `${index + 1}. ${formatReportKind(report.kind)}${progressInterval ? ` (${progressInterval})` : ''} | ${formatDate(report.createdAt)} | alvo: ${owner}`,
         { font: 'F2', size: 10 }
       )
 
