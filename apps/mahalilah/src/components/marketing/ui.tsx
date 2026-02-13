@@ -31,7 +31,8 @@ export function SectionHeader({
   return (
     <header className={`flex flex-col gap-4 ${alignment}`}>
       {eyebrow && (
-        <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-surface/90 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold-soft shadow-[0_0_0_1px_rgba(255,199,93,0.1)_inset]">
+        <span className="inline-flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.26em] text-gold-soft/90">
+          <span aria-hidden className="h-px w-8 bg-gold/55 sm:w-10" />
           {eyebrow}
         </span>
       )}
