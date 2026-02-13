@@ -36,6 +36,7 @@ type Room = {
   therapistPlays: boolean;
   therapistSoloPlay?: boolean;
   isTrial?: boolean;
+  isAutoCreatedFromCheckout?: boolean;
   createdAt: string;
   invites: RoomInvite[];
   participants: RoomParticipant[];
@@ -971,6 +972,10 @@ export function DashboardClient() {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     });
+    const shouldShowNewChip =
+      Boolean(room.isAutoCreatedFromCheckout) &&
+      room.stats.rollsTotal === 0 &&
+      room.stats.moves === 0;
 
     return (
       <div
@@ -999,6 +1004,7 @@ export function DashboardClient() {
             >
               <div className="badge">Sala {room.code}</div>
               {room.isTrial && <span className="pill">Trial</span>}
+              {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
               <span className={`pill ${statusClass(room.status)}`}>
                 {room.status}
               </span>

@@ -1336,6 +1336,31 @@ export function RoomClient({ code }: { code: string }) {
     return [myParticipant];
   }, [state?.participants, myParticipant, isTherapist, isTherapistSoloPlay]);
 
+  const finalReportPromptTargets = useMemo(() => {
+    if (!state?.participants) return [];
+
+    if (isTherapistSoloPlay) {
+      return state.participants.filter(
+        (participant) => participant.role === "THERAPIST",
+      );
+    }
+
+    const players = state.participants.filter(
+      (participant) => participant.role === "PLAYER",
+    );
+    if (players.length > 0) return players;
+
+    const therapist = state.participants.find(
+      (participant) => participant.role === "THERAPIST",
+    );
+    return therapist ? [therapist] : [];
+  }, [state?.participants, isTherapistSoloPlay]);
+
+  const finalReportPromptTargetIds = useMemo(
+    () => new Set(finalReportPromptTargets.map((participant) => participant.id)),
+    [finalReportPromptTargets],
+  );
+
   const summaryParticipant = useMemo(() => {
     if (!summaryParticipantId) return null;
     return (
@@ -1999,7 +2024,7 @@ export function RoomClient({ code }: { code: string }) {
     [],
   );
 
-  const getPlayersNeedingFinalReport = useCallback(
+  const getParticipantsNeedingFinalReport = useCallback(
     (reports: TimelineAiReport[]) => {
       if (!state) return [];
       const participantsWithFinal = new Set(
@@ -2008,20 +2033,18 @@ export function RoomClient({ code }: { code: string }) {
           .map((report) => report.participant!.id),
       );
 
-      return state.participants.filter(
-        (participant) =>
-          participant.role === "PLAYER" &&
-          !participantsWithFinal.has(participant.id),
+      return finalReportPromptTargets.filter(
+        (participant) => !participantsWithFinal.has(participant.id),
       );
     },
-    [state],
+    [state, finalReportPromptTargets],
   );
 
   const shouldPromptForFinalReport = useCallback(async () => {
     const loaded = await loadTimelineData();
     const reports = loaded.ok ? loaded.aiReports : timelineReports;
-    return getPlayersNeedingFinalReport(reports).length > 0;
-  }, [loadTimelineData, timelineReports, getPlayersNeedingFinalReport]);
+    return getParticipantsNeedingFinalReport(reports).length > 0;
+  }, [loadTimelineData, timelineReports, getParticipantsNeedingFinalReport]);
 
   const handleCloseRoom = useCallback(async () => {
     if (!canCloseRoom || !state) return;
@@ -2059,7 +2082,7 @@ export function RoomClient({ code }: { code: string }) {
     const newlyCompletedParticipantIds: string[] = [];
 
     state.participants.forEach((participant) => {
-      if (participant.role !== "PLAYER") return;
+      if (!finalReportPromptTargetIds.has(participant.id)) return;
       const isCompleted = Boolean(playerStateMap.get(participant.id)?.hasCompleted);
       currentCompletion.set(participant.id, isCompleted);
 
@@ -2085,7 +2108,7 @@ export function RoomClient({ code }: { code: string }) {
       });
       return Array.from(unique);
     });
-  }, [state, canCloseRoom, playerStateMap]);
+  }, [state, canCloseRoom, playerStateMap, finalReportPromptTargetIds]);
 
   useEffect(() => {
     if (!canCloseRoom || !state) return;
@@ -2098,7 +2121,7 @@ export function RoomClient({ code }: { code: string }) {
       (item) => item.id === nextParticipantId,
     );
 
-    if (!participant || participant.role !== "PLAYER") {
+    if (!participant || !finalReportPromptTargetIds.has(participant.id)) {
       completionPromptedParticipantsRef.current.add(nextParticipantId);
       setPendingCompletedParticipantPrompts((queue) =>
         queue.filter((participantId) => participantId !== nextParticipantId),
@@ -2152,6 +2175,7 @@ export function RoomClient({ code }: { code: string }) {
     loadTimelineData,
     timelineReports,
     hasFinalReportForParticipant,
+    finalReportPromptTargetIds,
   ]);
 
   useEffect(() => {

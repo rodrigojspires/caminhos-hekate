@@ -217,6 +217,11 @@ export async function GET(request: Request) {
         where,
         orderBy: { createdAt: 'desc' },
         include: {
+          order: {
+            select: {
+              metadata: true
+            }
+          },
           invites: true,
           participants: {
             include: {
@@ -266,6 +271,10 @@ export async function GET(request: Request) {
           (sum, state) => sum + (state.rollCountUntilStart || 0),
           0
         )
+        const orderMetadata = (room.order?.metadata as any) || {}
+        const autoRoomId = orderMetadata?.mahalilah?.autoRoomId
+        const isAutoCreatedFromCheckout =
+          typeof autoRoomId === 'string' && autoRoomId === room.id
 
         return {
           id: room.id,
@@ -277,6 +286,7 @@ export async function GET(request: Request) {
           therapistPlays: room.therapistPlays,
           therapistSoloPlay: room.therapistSoloPlay,
           isTrial: isTrialRoom(room),
+          isAutoCreatedFromCheckout,
           createdAt: room.createdAt,
           invites: room.invites.map((invite) => ({
             id: invite.id,
