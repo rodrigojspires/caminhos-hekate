@@ -40,7 +40,7 @@ export default function ParaTerapeutasPage() {
         title="Seu consultório em uma sala viva, organizada e segura"
         subtitle="Conduza sessões com mais presença e menos esforço operacional: histórico por jogada, deck randômico, síntese assistida e visão completa da evolução."
         primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         mediaLabel="Terapeuta acompanhando sessão com painel em tempo real"
         highlights={['Histórico completo', 'Export rápido', 'Convites por e-mail']}
       />
@@ -159,8 +159,8 @@ export default function ParaTerapeutasPage() {
       <CTA
         title="Transforme cada sessão em continuidade real"
         subtitle="Crie sua sala, convide seus clientes e conduza com mais presença e menos fricção."
-        primaryCta={{ label: 'Criar minha sala', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Dashboard clínico', 'Registro inteligente', 'Export imediato']}
       />
     </div>

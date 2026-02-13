@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -28,8 +28,9 @@ export function SingleSessionPrice({
       .sort((a, b) => a.participants - b.participants)
   ), [pricesByParticipants])
 
-  const [participants, setParticipants] = useState(options[0]?.participants ?? 1)
-  const selected = options.find((option) => option.participants === participants) ?? options[0]
+  const lowestPrice = options.reduce((lowest, current) => (
+    current.price < lowest ? current.price : lowest
+  ), options[0]?.price ?? 0)
 
   if (!options.length) {
     return <span className="text-sm text-ink-muted">Valores indisponiveis</span>
@@ -38,22 +39,17 @@ export function SingleSessionPrice({
   return (
     <div className="flex flex-col gap-3">
       <span className="font-serif text-3xl text-ink">
-        {currencyFormatter.format(selected?.price ?? 0)}
+        a partir de {currencyFormatter.format(lowestPrice)}
       </span>
-      <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted">
-        Participantes
-        <select
-          className="rounded-full border border-border bg-[#0f141f] px-4 py-2 text-sm font-semibold text-ink"
-          value={participants}
-          onChange={(event) => setParticipants(Number(event.target.value))}
-        >
-          {options.map((option) => (
-            <option key={option.participants} value={option.participants}>
-              {formatParticipants(option.participants)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <p className="text-xs uppercase tracking-[0.18em] text-ink-muted">Faixas por participantes</p>
+      <ul className="space-y-1 text-sm text-ink-muted">
+        {options.map((option) => (
+          <li key={option.participants} className="flex items-center justify-between gap-3">
+            <span>{formatParticipants(option.participants)}</span>
+            <strong className="text-ink">{currencyFormatter.format(option.price)}</strong>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -38,6 +38,7 @@ const PlanSchema = z.object({
   roomsPerMonth: z.coerce.number().int().min(1).nullable().optional(),
   tipsPerPlayer: z.coerce.number().int().min(0),
   summaryLimit: z.coerce.number().int().min(0),
+  progressSummaryEveryMoves: z.coerce.number().int().min(0).max(200),
   durationDays: z.coerce.number().int().min(1).max(3650),
   isActive: z.boolean(),
   subscriptionPlanId: z.string().nullable().optional(),
@@ -151,6 +152,7 @@ function getDefaultMarketing(
     roomsPerMonth: number | null
     tipsPerPlayer: number
     summaryLimit: number
+    progressSummaryEveryMoves: number
     singleSessionPriceTiers: Array<{
       participantsFrom: number
       participantsTo: number
@@ -168,6 +170,9 @@ function getDefaultMarketing(
   const commonLimits = [
     `Dicas de IA: ${plan.tipsPerPlayer} por jogador/sessão`,
     `Síntese final por IA: ${plan.summaryLimit} por sessão`,
+    plan.progressSummaryEveryMoves > 0
+      ? `Síntese "O Caminho até agora": a cada ${plan.progressSummaryEveryMoves} jogadas`
+      : 'Síntese "O Caminho até agora" desativada',
   ]
 
   if (plan.planType === 'SINGLE_SESSION') {
@@ -239,6 +244,7 @@ function getPlanMarketing(plan: {
   roomsPerMonth: number | null
   tipsPerPlayer: number
   summaryLimit: number
+  progressSummaryEveryMoves: number
   singleSessionPriceTiers: Array<{
     participantsFrom: number
     participantsTo: number
@@ -357,6 +363,7 @@ async function fetchCatalog() {
       roomsPerMonth: plan.roomsPerMonth,
       tipsPerPlayer: plan.tipsPerPlayer,
       summaryLimit: plan.summaryLimit,
+      progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
       durationDays: plan.durationDays,
       isActive: plan.isActive,
       marketing: getPlanMarketing({
@@ -368,6 +375,7 @@ async function fetchCatalog() {
           plan.roomsPerMonth == null ? null : Number(plan.roomsPerMonth),
         tipsPerPlayer: Number(plan.tipsPerPlayer),
         summaryLimit: Number(plan.summaryLimit),
+        progressSummaryEveryMoves: Number(plan.progressSummaryEveryMoves),
         singleSessionPriceTiers: plan.singleSessionPriceTiers.map((tier) => ({
           participantsFrom: Number(tier.participantsFrom),
           participantsTo: Number(tier.participantsTo),
@@ -547,6 +555,7 @@ export async function PUT(request: NextRequest) {
                   : plan.roomsPerMonth ?? null,
             tipsPerPlayer: plan.tipsPerPlayer,
             summaryLimit: plan.summaryLimit,
+            progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
             durationDays: plan.durationDays,
             isActive: plan.isActive,
           },
@@ -566,6 +575,7 @@ export async function PUT(request: NextRequest) {
                   : plan.roomsPerMonth ?? null,
             tipsPerPlayer: plan.tipsPerPlayer,
             summaryLimit: plan.summaryLimit,
+            progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
             durationDays: plan.durationDays,
             isActive: plan.isActive,
           },

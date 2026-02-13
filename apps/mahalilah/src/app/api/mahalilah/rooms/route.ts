@@ -68,6 +68,7 @@ type MahaMetadata = {
   roomsUsed?: number
   tipsPerPlayer?: number
   summaryLimit?: number
+  progressSummaryEveryMoves?: number
   durationDays?: number
   active?: boolean
   expiresAt?: string | null

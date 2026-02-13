@@ -38,8 +38,8 @@ export default function PrivacidadePage() {
         eyebrow="Privacidade"
         title="Transparência no cuidado dos dados"
         subtitle="Explicamos o que coletamos, como usamos e quais direitos você tem como titular."
-        primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        secondaryCta={{ label: 'Termos de uso', href: '/termos' }}
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         mediaLabel="Imagem: privacidade e dados"
         highlights={['LGPD', 'Consentimento', 'Controle do titular']}
       />
@@ -78,6 +78,53 @@ export default function PrivacidadePage() {
           <p className="mt-3">
             A IA é fornecida por provedor externo (OpenAI API), que processa apenas o necessário para gerar
             perguntas e síntese final.
+          </p>
+        </div>
+      </SectionShell>
+
+      <SectionShell>
+        <SectionHeader
+          eyebrow="IA na prática"
+          title="O que vai / o que não vai para o provedor externo"
+          subtitle="Resumo objetivo para terapeutas e facilitadores com contexto clínico."
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
+            <h3 className="font-serif text-xl text-ink">O que vai</h3>
+            <ul className="mt-3 space-y-2">
+              {[
+                'Trechos de registro necessários para gerar perguntas e síntese.',
+                'Contexto da sessão inserido manualmente por quem conduz.',
+                'Metadados técnicos mínimos para segurança e rastreabilidade.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
+            <h3 className="font-serif text-xl text-ink">O que não vai</h3>
+            <ul className="mt-3 space-y-2">
+              {[
+                'Não exigimos documentos pessoais sensíveis para usar a IA.',
+                'Não há necessidade de inserir CPF, RG, endereço completo ou dados bancários.',
+                'Não orientamos inserir laudos completos, prontuários integrais ou dados de terceiros.'
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="mt-4 rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
+          <p className="text-ink">Orientação para terapeutas</p>
+          <p className="mt-2">
+            Sempre prefira linguagem clínica resumida e anonimizada. Em casos de alta sensibilidade,
+            registre apenas o necessário para continuidade da sessão.
           </p>
         </div>
       </SectionShell>

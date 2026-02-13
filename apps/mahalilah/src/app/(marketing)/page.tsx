@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import { prisma } from '@hekate/database'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Features } from '@/components/marketing/sections/Features'
@@ -45,14 +47,31 @@ const faqItems = [
   }
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+
+  const [sessionsThisMonth, therapistsActiveThisMonth, entriesThisMonth] = await Promise.all([
+    prisma.mahaLilahRoom.count({
+      where: { createdAt: { gte: monthStart } }
+    }),
+    prisma.mahaLilahRoom.groupBy({
+      by: ['createdByUserId'],
+      where: { createdAt: { gte: monthStart } }
+    }).then((rows) => rows.length),
+    prisma.mahaLilahTherapyEntry.count({
+      where: { createdAt: { gte: monthStart } }
+    })
+  ])
+
   return (
     <div>
       <Hero
         eyebrow="Maha Lilah Online"
-        title="Transforme cada sessão em uma experiência inesquecível"
-        subtitle="Uma plataforma viva para jornadas terapêuticas com emoção, organização e profundidade: sala em tempo real, deck randômico, registro inteligente e síntese assistida por IA."
-        primaryCta={{ label: 'Começar agora', href: '/planos' }}
+        title="Jogue ao vivo no tabuleiro ancestral do autoconhecimento — com assistência de IA."
+        subtitle="Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim."
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
         note="Não substitui terapia ou atendimento médico"
@@ -63,6 +82,23 @@ export default function HomePage() {
           { value: '100%', label: 'rastreio de jornada' }
         ]}
       />
+
+      <SectionShell>
+        <SectionHeader
+          eyebrow="O que é Maha Lilah?"
+          title="Uma plataforma para conduzir jornadas terapêuticas ao vivo"
+          subtitle="Em 30 segundos: você cria a sala, convida participantes por e-mail, conduz o tabuleiro com turnos claros e fecha com registros organizados."
+        />
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
+          <p>
+            O Maha Lilah combina experiência simbólica com estrutura prática de condução.
+            Você mantém profundidade terapêutica sem perder o ritmo da sessão.
+          </p>
+          <Link href="/como-funciona" className="mt-4 inline-flex text-sm text-gold">
+            Leitura de 30s: como funciona →
+          </Link>
+        </div>
+      </SectionShell>
 
       <Features
         eyebrow="Para quem é"
@@ -181,6 +217,56 @@ export default function HomePage() {
         ]}
       />
 
+      <SectionShell>
+        <SectionHeader
+          eyebrow="Números verificáveis"
+          title="Indicadores reais do mês atual"
+          subtitle="Dados operacionais extraídos da plataforma para validar tração e uso."
+        />
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
+            <p className="font-serif text-3xl text-gold">{sessionsThisMonth}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">salas criadas no mês</p>
+          </div>
+          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
+            <p className="font-serif text-3xl text-gold">{therapistsActiveThisMonth}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">terapeutas/facilitadores ativos</p>
+          </div>
+          <div className="rounded-3xl border border-border/70 bg-surface/70 p-5">
+            <p className="font-serif text-3xl text-gold">{entriesThisMonth}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">registros terapêuticos no mês</p>
+          </div>
+        </div>
+      </SectionShell>
+
+      <SectionShell>
+        <SectionHeader
+          eyebrow="Mini-cases"
+          title="Antes e depois do retrabalho"
+          subtitle="Contextos anonimizados para mostrar impacto operacional sem expor clientes."
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[
+            {
+              title: 'Terapeuta individual (agenda semanal)',
+              before: 'Antes: fechamento disperso e notas soltas.',
+              after: 'Depois: fechamento com síntese + histórico organizado por sessão.'
+            },
+            {
+              title: 'Facilitador de grupo (6-8 participantes)',
+              before: 'Antes: sobreposição de fala e pouca rastreabilidade.',
+              after: 'Depois: turnos claros, registro por participante e retorno mais estruturado.'
+            }
+          ].map((item) => (
+            <article key={item.title} className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted">
+              <h3 className="font-serif text-xl text-ink">{item.title}</h3>
+              <p className="mt-3">{item.before}</p>
+              <p className="mt-2 text-ink">{item.after}</p>
+            </article>
+          ))}
+        </div>
+      </SectionShell>
+
       <FAQ
         eyebrow="FAQ"
         title="Dúvidas frequentes antes de começar"
@@ -193,7 +279,7 @@ export default function HomePage() {
       <CTA
         title="Leve seu trabalho para um novo nível de presença"
         subtitle="Crie sua primeira sala agora e descubra por que facilitadores e terapeutas permanecem no Maha Lilah."
-        primaryCta={{ label: 'Quero começar', href: '/planos' }}
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Setup rápido', 'Sem curva complexa', 'Suporte humano']}
       />

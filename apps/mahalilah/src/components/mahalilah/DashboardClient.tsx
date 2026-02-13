@@ -117,6 +117,14 @@ type ParsedTip = {
   intention: string | null;
 };
 
+type ParsedProgressSummary = {
+  text: string;
+  intervalStart: number | null;
+  intervalEnd: number | null;
+  summaryEveryMoves: number | null;
+  intention: string | null;
+};
+
 type Filters = {
   status: string;
   from: string;
@@ -269,6 +277,41 @@ function parseTipReportContent(content: string): ParsedTip {
     text: content,
     turnNumber: null,
     houseNumber: null,
+    intention: null,
+  };
+}
+
+function parseProgressSummaryContent(content: string): ParsedProgressSummary {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        text: parsed.text,
+        intervalStart:
+          typeof parsed.intervalStart === "number" ? parsed.intervalStart : null,
+        intervalEnd:
+          typeof parsed.intervalEnd === "number" ? parsed.intervalEnd : null,
+        summaryEveryMoves:
+          typeof parsed.summaryEveryMoves === "number"
+            ? parsed.summaryEveryMoves
+            : null,
+        intention:
+          typeof parsed.intention === "string" ? parsed.intention : null,
+      };
+    }
+  } catch {
+    // Compatibilidade com payload texto puro.
+  }
+
+  return {
+    text: content,
+    intervalStart: null,
+    intervalEnd: null,
+    summaryEveryMoves: null,
     intention: null,
   };
 }
@@ -896,6 +939,10 @@ export function DashboardClient() {
 
     const filteredFinalReports = filteredAiReports.filter(
       (report) => report.kind === "FINAL",
+    );
+
+    const filteredProgressReports = filteredAiReports.filter(
+      (report) => report.kind === "PROGRESS",
     );
 
     const timelineTipsByMoveKey = new Map<
@@ -1652,6 +1699,65 @@ export function DashboardClient() {
                               );
                             },
                           )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="notice" style={{ display: "grid", gap: 6 }}>
+                      <strong>O Caminho até agora</strong>
+                      {filteredProgressReports.length === 0 ? (
+                        <span className="small-muted">
+                          Nenhuma síntese por intervalo registrada.
+                        </span>
+                      ) : (
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: 6,
+                            maxHeight: 220,
+                            overflow: "auto",
+                            paddingRight: 2,
+                          }}
+                        >
+                          {filteredProgressReports.map((report) => {
+                            const parsed = parseProgressSummaryContent(
+                              report.content,
+                            );
+                            const intervalLabel =
+                              parsed.intervalStart !== null &&
+                              parsed.intervalEnd !== null
+                                ? `${parsed.intervalStart}-${parsed.intervalEnd}`
+                                : "intervalo não identificado";
+                            return (
+                              <button
+                                key={report.id}
+                                className="btn-secondary"
+                                style={{
+                                  justifyContent: "flex-start",
+                                  textAlign: "left",
+                                  whiteSpace: "normal",
+                                  height: "auto",
+                                  padding: "8px 10px",
+                                }}
+                                onClick={() =>
+                                  setAiContentModal({
+                                    title: `O Caminho até agora • Jogadas ${intervalLabel}`,
+                                    subtitle: `Gerado em ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                                    content: parsed.text,
+                                  })
+                                }
+                              >
+                                <strong style={{ fontSize: 12 }}>
+                                  Jogadas {intervalLabel}
+                                </strong>
+                                <span className="small-muted">
+                                  {parsed.summaryEveryMoves
+                                    ? `Síntese automática a cada ${parsed.summaryEveryMoves} jogadas`
+                                    : "Síntese automática por intervalo"}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

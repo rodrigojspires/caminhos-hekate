@@ -87,8 +87,13 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-[linear-gradient(180deg,rgba(10,15,24,0.95),rgba(10,15,24,0.84))] backdrop-blur">
-      <div className="hidden border-b border-border/50 px-4 py-2 text-center text-xs uppercase tracking-[0.18em] text-gold-soft sm:block">
-        Experimente o fluxo ao vivo e publique sua primeira sala em menos de 5 minutos
+      <div className="hidden border-b border-border/50 px-4 py-2 text-center sm:block">
+        <p className="text-xs text-gold-soft">
+          Jogue ao vivo no tabuleiro ancestral do autoconhecimento — com assistência de IA.
+        </p>
+        <p className="mt-0.5 text-[11px] text-ink-muted">
+          Crie sua sala, convide participantes e conduza a jornada com apoio inteligente do começo ao fim.
+        </p>
       </div>
 
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">

@@ -41,8 +41,8 @@ export default function ContatoPage() {
         eyebrow="Contato"
         title="Converse com quem entende da experiência terapêutica digital"
         subtitle="Conte seu objetivo e te ajudamos a montar o melhor caminho para começar com segurança e impacto."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Ver FAQ', href: '/faq' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
+        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
         mediaLabel="Atendimento humano e acompanhamento de onboarding"
         highlights={['Atendimento humano', 'Apoio comercial', 'Onboarding orientado']}
       />
@@ -81,8 +81,8 @@ export default function ContatoPage() {
       <CTA
         title="Se preferir, você pode entrar direto na plataforma"
         subtitle="Crie uma conta, teste o fluxo e fale com a equipe quando quiser para otimizar seu uso."
-        primaryCta={{ label: 'Entrar', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Suporte ativo', 'Onboarding consultivo']}
       />
     </div>

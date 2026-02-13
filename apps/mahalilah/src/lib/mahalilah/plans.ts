@@ -32,6 +32,7 @@ type SingleSessionConfig = {
   durationDays: number
   tipsPerPlayer: number
   summaryLimit: number
+  progressSummaryEveryMoves: number
   marketing: PlanMarketingContent
   pricingTiers: SingleSessionPricingTier[]
   pricesByParticipants: Record<string, number>
@@ -50,6 +51,7 @@ type SubscriptionConfig = {
   durationDays: number
   tipsPerPlayer: number
   summaryLimit: number
+  progressSummaryEveryMoves: number
   marketing: PlanMarketingContent
 }
 
@@ -68,6 +70,7 @@ export type ResolvedPlan = {
   roomsLimit: number | null
   tipsPerPlayer: number
   summaryLimit: number
+  progressSummaryEveryMoves: number
   durationDays: number
   subscriptionPlanId?: string
   pricingTier?: SingleSessionPricingTier
@@ -195,6 +198,7 @@ function buildMarketingContent({
   roomsPerMonth,
   tipsPerPlayer,
   summaryLimit,
+  progressSummaryEveryMoves,
   pricesByParticipants,
 }: {
   planType: PlanType
@@ -204,6 +208,7 @@ function buildMarketingContent({
   roomsPerMonth: number | null
   tipsPerPlayer: number
   summaryLimit: number
+  progressSummaryEveryMoves: number
   pricesByParticipants: Record<string, number>
 }): PlanMarketingContent {
   const aiSummaryLabel = `${name}: ${tipsPerPlayer} ${pluralize(
@@ -213,6 +218,9 @@ function buildMarketingContent({
   const commonLimits = [
     `Dicas de IA: ${tipsPerPlayer} por jogador/sessão`,
     `Síntese final por IA: ${summaryLimit} por sessão`,
+    progressSummaryEveryMoves > 0
+      ? `Síntese "O Caminho até agora": a cada ${progressSummaryEveryMoves} jogadas`
+      : 'Síntese "O Caminho até agora" desativada',
   ]
 
   const fallbackByType: Record<PlanType, PlanMarketingContent> = {
@@ -322,6 +330,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const singleSessionMaxParticipants = Number(singleSession.maxParticipants)
   const singleSessionTipsPerPlayer = Number(singleSession.tipsPerPlayer)
   const singleSessionSummaryLimit = Number(singleSession.summaryLimit)
+  const singleSessionProgressSummaryEveryMoves = Number(
+    singleSession.progressSummaryEveryMoves,
+  )
   const singleSessionPricesByParticipants = buildPricesByParticipants(
     tiers,
     singleSessionMaxParticipants,
@@ -350,6 +361,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
     subscriptionUnlimited.tipsPerPlayer,
   )
   const subscriptionUnlimitedSummaryLimit = Number(subscriptionUnlimited.summaryLimit)
+  const subscriptionUnlimitedProgressSummaryEveryMoves = Number(
+    subscriptionUnlimited.progressSummaryEveryMoves,
+  )
   const subscriptionUnlimitedRoomsPerMonth =
     subscriptionUnlimited.roomsPerMonth == null
       ? null
@@ -358,6 +372,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const subscriptionLimitedMaxParticipants = Number(subscriptionLimited.maxParticipants)
   const subscriptionLimitedTipsPerPlayer = Number(subscriptionLimited.tipsPerPlayer)
   const subscriptionLimitedSummaryLimit = Number(subscriptionLimited.summaryLimit)
+  const subscriptionLimitedProgressSummaryEveryMoves = Number(
+    subscriptionLimited.progressSummaryEveryMoves,
+  )
   const subscriptionLimitedRoomsPerMonth =
     subscriptionLimited.roomsPerMonth == null
       ? null
@@ -373,6 +390,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       durationDays: Number(singleSession.durationDays),
       tipsPerPlayer: singleSessionTipsPerPlayer,
       summaryLimit: singleSessionSummaryLimit,
+      progressSummaryEveryMoves: singleSessionProgressSummaryEveryMoves,
       marketing: buildMarketingContent({
         planType: 'SINGLE_SESSION',
         name: singleSession.name,
@@ -381,6 +399,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         roomsPerMonth: 1,
         tipsPerPlayer: singleSessionTipsPerPlayer,
         summaryLimit: singleSessionSummaryLimit,
+        progressSummaryEveryMoves: singleSessionProgressSummaryEveryMoves,
         pricesByParticipants: singleSessionPricesByParticipants,
       }),
       pricingTiers: tiers,
@@ -399,6 +418,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       durationDays: Number(subscriptionUnlimited.durationDays),
       tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
       summaryLimit: subscriptionUnlimitedSummaryLimit,
+      progressSummaryEveryMoves: subscriptionUnlimitedProgressSummaryEveryMoves,
       marketing: buildMarketingContent({
         planType: 'SUBSCRIPTION',
         name: subscriptionUnlimited.name,
@@ -407,6 +427,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         roomsPerMonth: subscriptionUnlimitedRoomsPerMonth,
         tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
         summaryLimit: subscriptionUnlimitedSummaryLimit,
+        progressSummaryEveryMoves: subscriptionUnlimitedProgressSummaryEveryMoves,
         pricesByParticipants: {},
       }),
     },
@@ -423,6 +444,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       durationDays: Number(subscriptionLimited.durationDays),
       tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
       summaryLimit: subscriptionLimitedSummaryLimit,
+      progressSummaryEveryMoves: subscriptionLimitedProgressSummaryEveryMoves,
       marketing: buildMarketingContent({
         planType: 'SUBSCRIPTION_LIMITED',
         name: subscriptionLimited.name,
@@ -431,6 +453,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         roomsPerMonth: subscriptionLimitedRoomsPerMonth,
         tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
         summaryLimit: subscriptionLimitedSummaryLimit,
+        progressSummaryEveryMoves: subscriptionLimitedProgressSummaryEveryMoves,
         pricesByParticipants: {},
       }),
     },
@@ -473,6 +496,7 @@ export async function resolvePlan(
       roomsLimit: 1,
       tipsPerPlayer: config.singleSession.tipsPerPlayer,
       summaryLimit: config.singleSession.summaryLimit,
+      progressSummaryEveryMoves: config.singleSession.progressSummaryEveryMoves,
       durationDays: config.singleSession.durationDays,
       pricingTier: tier,
     }
@@ -492,6 +516,8 @@ export async function resolvePlan(
       roomsLimit: config.subscriptionUnlimited.roomsPerMonth,
       tipsPerPlayer: config.subscriptionUnlimited.tipsPerPlayer,
       summaryLimit: config.subscriptionUnlimited.summaryLimit,
+      progressSummaryEveryMoves:
+        config.subscriptionUnlimited.progressSummaryEveryMoves,
       durationDays: config.subscriptionUnlimited.durationDays,
       subscriptionPlanId: config.subscriptionUnlimited.subscriptionPlanId,
     }
@@ -510,6 +536,7 @@ export async function resolvePlan(
     roomsLimit: config.subscriptionLimited.roomsPerMonth,
     tipsPerPlayer: config.subscriptionLimited.tipsPerPlayer,
     summaryLimit: config.subscriptionLimited.summaryLimit,
+    progressSummaryEveryMoves: config.subscriptionLimited.progressSummaryEveryMoves,
     durationDays: config.subscriptionLimited.durationDays,
     subscriptionPlanId: config.subscriptionLimited.subscriptionPlanId,
   }

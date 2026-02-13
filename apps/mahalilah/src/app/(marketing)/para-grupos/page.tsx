@@ -25,8 +25,8 @@ export default function ParaGruposPage() {
         eyebrow="Para grupos"
         title="Grupos com energia alta, organização clara e profundidade"
         subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder individualidade."
-        primaryCta={{ label: 'Ver planos e limites', href: '/planos' }}
-        secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
+        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
         mediaLabel="Grupo em sessão ao vivo com turnos e acompanhamento"
         highlights={['Turnos individuais', 'Visão em tempo real', 'Registro por participante']}
       />
@@ -104,7 +104,7 @@ export default function ParaGruposPage() {
       <CTA
         title="Pronto para conduzir seu próximo grupo com mais impacto?"
         subtitle="Escolha o plano ideal para o número de participantes e comece sua jornada coletiva agora."
-        primaryCta={{ label: 'Ver planos e limites', href: '/planos' }}
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Onboarding rápido', 'Escalável para grupos', 'Experiência memorável']}
       />

@@ -66,6 +66,7 @@ type CatalogPlan = {
   roomsPerMonth: number | null;
   tipsPerPlayer: number;
   summaryLimit: number;
+  progressSummaryEveryMoves: number;
   durationDays: number;
   isActive: boolean;
   marketing: PlanMarketing;
@@ -344,6 +345,7 @@ export default function AdminMahaLilahCatalogPage() {
         roomsPerMonth: plan.roomsPerMonth,
         tipsPerPlayer: plan.tipsPerPlayer,
         summaryLimit: plan.summaryLimit,
+        progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
         durationDays: plan.durationDays,
         isActive: plan.isActive,
         subscriptionPlanId: plan.subscriptionPlanId,
@@ -516,6 +518,20 @@ export default function AdminMahaLilahCatalogPage() {
                           updatePlan("SINGLE_SESSION", (plan) => ({
                             ...plan,
                             summaryLimit: Number(event.target.value || 0),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">O Caminho até agora (a cada X jogadas)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={singleSessionPlan.progressSummaryEveryMoves}
+                        onChange={(event) =>
+                          updatePlan("SINGLE_SESSION", (plan) => ({
+                            ...plan,
+                            progressSummaryEveryMoves: Number(event.target.value || 0),
                           }))
                         }
                       />
@@ -825,6 +841,20 @@ export default function AdminMahaLilahCatalogPage() {
                           }
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">O Caminho até agora (a cada X jogadas)</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={subscriptionPlan.progressSummaryEveryMoves}
+                          onChange={(event) =>
+                            updatePlan("SUBSCRIPTION", (plan) => ({
+                              ...plan,
+                              progressSummaryEveryMoves: Number(event.target.value || 0),
+                            }))
+                          }
+                        />
+                      </div>
                     </div>
 
                     <PlanMarketingEditor
@@ -977,6 +1007,20 @@ export default function AdminMahaLilahCatalogPage() {
                             updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
                               ...plan,
                               summaryLimit: Number(event.target.value || 0),
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">O Caminho até agora (a cada X jogadas)</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={subscriptionLimitedPlan.progressSummaryEveryMoves}
+                          onChange={(event) =>
+                            updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
+                              ...plan,
+                              progressSummaryEveryMoves: Number(event.target.value || 0),
                             }))
                           }
                         />

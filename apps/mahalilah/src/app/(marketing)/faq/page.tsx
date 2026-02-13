@@ -113,8 +113,8 @@ export default function FaqPage() {
       <CTA
         title="Quer orientação específica para seu caso?"
         subtitle="Fale com a equipe e receba direcionamento claro para começar com segurança."
-        primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        primaryCta={{ label: 'Ver planos', href: '/planos' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Atendimento humano', 'Retorno em até 2 dias úteis']}
       />
     </div>

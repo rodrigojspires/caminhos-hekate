@@ -43,6 +43,9 @@ const TRIAL_POST_START_MOVE_LIMIT = Number(
 );
 const TRIAL_AI_TIPS_LIMIT = 1;
 const TRIAL_AI_SUMMARY_LIMIT = 1;
+const TRIAL_PROGRESS_SUMMARY_EVERY_MOVES = Number(
+  process.env.MAHALILAH_TRIAL_PROGRESS_SUMMARY_EVERY_MOVES || 15,
+);
 const PLAYER_INTENTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
 );
@@ -71,7 +74,14 @@ const actionCooldowns = new Map<string, number>();
 const roomUserConnections = new Map<string, Map<string, number>>();
 let planAiLimitsCache: {
   expiresAt: number;
-  byPlanType: Map<string, { tipsPerPlayer: number; summaryLimit: number }>;
+  byPlanType: Map<
+    string,
+    {
+      tipsPerPlayer: number;
+      summaryLimit: number;
+      progressSummaryEveryMoves: number;
+    }
+  >;
 } = {
   expiresAt: 0,
   byPlanType: new Map(),
@@ -89,6 +99,14 @@ function enforceCooldown(key: string, cooldownMs: number) {
 
 function randomDice() {
   return Math.floor(Math.random() * 6) + 1;
+}
+
+function isPostStartMove(move: {
+  fromPos: number;
+  toPos: number;
+  diceValue: number;
+}) {
+  return !(move.fromPos === 68 && move.toPos === 68 && move.diceValue !== 6);
 }
 
 function buildCardImageUrl(
@@ -190,10 +208,7 @@ async function buildAiContext(roomId: string, participantId: string) {
   ]);
 
   const path = moves
-    .filter(
-      (move) =>
-        !(move.fromPos === 68 && move.toPos === 68 && move.diceValue !== 6),
-    )
+    .filter(isPostStartMove)
     .map((move) => move.toPos)
     .reverse();
 
@@ -258,18 +273,24 @@ async function loadPlanAiLimitsByType() {
       planType: true,
       tipsPerPlayer: true,
       summaryLimit: true,
+      progressSummaryEveryMoves: true,
     },
   });
 
   const byPlanType = new Map<
     string,
-    { tipsPerPlayer: number; summaryLimit: number }
+    {
+      tipsPerPlayer: number;
+      summaryLimit: number;
+      progressSummaryEveryMoves: number;
+    }
   >();
 
   plans.forEach((plan) => {
     byPlanType.set(plan.planType, {
       tipsPerPlayer: Number(plan.tipsPerPlayer || 0),
       summaryLimit: Number(plan.summaryLimit || 0),
+      progressSummaryEveryMoves: Number(plan.progressSummaryEveryMoves || 0),
     });
   });
 
@@ -307,6 +328,7 @@ function parseSubscriptionMahaMetadata(raw: unknown) {
     planType?: string;
     tipsPerPlayer?: number;
     summaryLimit?: number;
+    progressSummaryEveryMoves?: number;
     durationDays?: number;
   };
 }
@@ -328,12 +350,14 @@ async function getRoomAiLimits(room: {
     return {
       tipsLimit: TRIAL_AI_TIPS_LIMIT,
       summaryLimit: TRIAL_AI_SUMMARY_LIMIT,
+      progressSummaryEveryMoves: TRIAL_PROGRESS_SUMMARY_EVERY_MOVES,
     };
   }
 
   const defaults = await getDefaultAiLimitsForPlan(room.planType);
   let tipsLimit = defaults.tipsPerPlayer;
   let summaryLimit = defaults.summaryLimit;
+  let progressSummaryEveryMoves = defaults.progressSummaryEveryMoves;
 
   if (room.orderId) {
     const order = await prisma.order.findUnique({
@@ -349,11 +373,17 @@ async function getRoomAiLimits(room: {
       const parsed = Number(meta.summaryLimit);
       if (Number.isFinite(parsed) && parsed >= 0) summaryLimit = parsed;
     }
-    return { tipsLimit, summaryLimit };
+    if (meta?.progressSummaryEveryMoves != null) {
+      const parsed = Number(meta.progressSummaryEveryMoves);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        progressSummaryEveryMoves = parsed;
+      }
+    }
+    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
   }
 
   if (room.planType !== "SUBSCRIPTION" && room.planType !== "SUBSCRIPTION_LIMITED") {
-    return { tipsLimit, summaryLimit };
+    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
   }
 
   const subscriptions = await prisma.userSubscription.findMany({
@@ -377,7 +407,7 @@ async function getRoomAiLimits(room: {
     .find((meta) => meta?.planType === room.planType);
 
   if (!activeMeta) {
-    return { tipsLimit, summaryLimit };
+    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
   }
 
   if (activeMeta.tipsPerPlayer != null) {
@@ -390,7 +420,14 @@ async function getRoomAiLimits(room: {
     if (Number.isFinite(parsed) && parsed >= 0) summaryLimit = parsed;
   }
 
-  return { tipsLimit, summaryLimit };
+  if (activeMeta.progressSummaryEveryMoves != null) {
+    const parsed = Number(activeMeta.progressSummaryEveryMoves);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      progressSummaryEveryMoves = parsed;
+    }
+  }
+
+  return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
 }
 
 async function generateFinalReportForParticipant(params: {
@@ -440,6 +477,214 @@ async function generateFinalReportForParticipant(params: {
   });
 
   return { created: true as const, content };
+}
+
+async function generateProgressSummaryIfNeeded(params: {
+  roomId: string;
+  participantId: string;
+}) {
+  const room = await prisma.mahaLilahRoom.findUnique({
+    where: { id: params.roomId },
+    select: {
+      id: true,
+      planType: true,
+      orderId: true,
+      isTrial: true,
+      createdByUserId: true,
+    },
+  });
+
+  if (!room) return { created: false as const };
+
+  const { progressSummaryEveryMoves } = await getRoomAiLimits(room);
+  const step = Number(progressSummaryEveryMoves || 0);
+  if (!Number.isFinite(step) || step <= 0) {
+    return { created: false as const };
+  }
+
+  const participant = await prisma.mahaLilahParticipant.findUnique({
+    where: { id: params.participantId },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+  });
+
+  if (!participant || participant.roomId !== room.id) {
+    return { created: false as const };
+  }
+
+  const allMoves = await prisma.mahaLilahMove.findMany({
+    where: { roomId: room.id, participantId: participant.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const postStartMoves = allMoves.filter(isPostStartMove);
+  const postStartMoveCount = postStartMoves.length;
+
+  if (postStartMoveCount === 0 || postStartMoveCount % step !== 0) {
+    return { created: false as const };
+  }
+
+  const windowEndMoveIndex = postStartMoveCount;
+  const windowStartMoveIndex =
+    windowEndMoveIndex === step
+      ? 1
+      : Math.max(1, windowEndMoveIndex - step);
+
+  const existingReport = await prisma.mahaLilahAiReport.findFirst({
+    where: {
+      roomId: room.id,
+      participantId: participant.id,
+      kind: "PROGRESS",
+      windowEndMoveIndex,
+    },
+    select: { id: true },
+  });
+
+  if (existingReport) {
+    return { created: false as const };
+  }
+
+  const postStartMoveIndexByMoveId = new Map(
+    postStartMoves.map((move, index) => [move.id, index + 1]),
+  );
+  const windowMoves = postStartMoves.filter((move) => {
+    const index = postStartMoveIndexByMoveId.get(move.id) || 0;
+    return index >= windowStartMoveIndex && index <= windowEndMoveIndex;
+  });
+  if (windowMoves.length === 0) {
+    return { created: false as const };
+  }
+
+  const windowMoveIds = windowMoves.map((move) => move.id);
+
+  const [windowTherapyEntries, windowCardDraws, globalContext] =
+    await Promise.all([
+      prisma.mahaLilahTherapyEntry.findMany({
+        where: {
+          roomId: room.id,
+          participantId: participant.id,
+          moveId: { in: windowMoveIds },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.mahaLilahCardDraw.findMany({
+        where: {
+          roomId: room.id,
+          drawnByParticipantId: participant.id,
+          moveId: { in: windowMoveIds },
+        },
+        orderBy: { createdAt: "asc" },
+        include: {
+          card: {
+            select: {
+              cardNumber: true,
+              keywords: true,
+              description: true,
+            },
+          },
+        },
+      }),
+      buildAiContext(room.id, participant.id),
+    ]);
+
+  const pathWithJumps: number[] = [];
+  windowMoves.forEach((move) => {
+    if (move.appliedJumpFrom === null || move.appliedJumpTo === null) {
+      pathWithJumps.push(move.toPos);
+      return;
+    }
+    pathWithJumps.push(move.appliedJumpFrom);
+    pathWithJumps.push(move.appliedJumpTo);
+  });
+
+  const houseFrequency: Record<string, number> = {};
+  pathWithJumps.forEach((house) => {
+    houseFrequency[String(house)] = (houseFrequency[String(house)] || 0) + 1;
+  });
+
+  const participantIntention = participant.gameIntention?.trim() || null;
+  const intervalContext = {
+    participant: {
+      id: participant.user.id,
+      name: participant.user.name || participant.user.email,
+    },
+    intention: participantIntention,
+    summaryEveryMoves: step,
+    interval: {
+      startMoveIndex: windowStartMoveIndex,
+      endMoveIndex: windowEndMoveIndex,
+    },
+    moves: windowMoves.map((move) => {
+      const postStartIndex = postStartMoveIndexByMoveId.get(move.id) || null;
+      const fromHouse = getHouseByNumber(move.fromPos);
+      const toHouse = getHouseByNumber(move.toPos);
+      return {
+        postStartMoveIndex: postStartIndex,
+        turnNumber: move.turnNumber,
+        diceValue: move.diceValue,
+        fromPos: move.fromPos,
+        fromHouseTitle: fromHouse?.title || null,
+        toPos: move.toPos,
+        toHouseTitle: toHouse?.title || null,
+        appliedJumpFrom: move.appliedJumpFrom,
+        appliedJumpTo: move.appliedJumpTo,
+        createdAt: move.createdAt,
+      };
+    }),
+    pathWithJumps,
+    recurrentHouses: Object.entries(houseFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([house, count]) => ({
+        house: Number(house),
+        title: getHouseByNumber(Number(house))?.title || null,
+        count,
+      })),
+    therapyEntries: windowTherapyEntries.map((entry) => ({
+      emotion: entry.emotion,
+      intensity: entry.intensity,
+      insight: entry.insight,
+      body: entry.body,
+      microAction: entry.microAction,
+      createdAt: entry.createdAt,
+    })),
+    cards: windowCardDraws.map((draw) => ({
+      cards: draw.cards,
+      cardNumber: draw.card?.cardNumber ?? null,
+      keywords: draw.card?.keywords ?? null,
+      description: draw.card?.description ?? null,
+      createdAt: draw.createdAt,
+    })),
+  };
+
+  const prompt = `Contexto global da sessão (JSON):\n${JSON.stringify(globalContext, null, 2)}\n\nTrecho do percurso para "O Caminho até agora" (JSON):\n${JSON.stringify(intervalContext, null, 2)}\n\nGere uma síntese em português com:\n1) o que aconteceu nesse intervalo;\n2) padrões e viradas mais relevantes;\n3) conexão direta com a intenção do jogo;\n4) três perguntas de integração;\n5) duas micro-ações para o próximo ciclo.\nSeja terapêutico, concreto e fácil de aplicar.`;
+  const content = await callOpenAI(prompt);
+
+  await prisma.mahaLilahAiReport.create({
+    data: {
+      roomId: room.id,
+      participantId: participant.id,
+      kind: "PROGRESS",
+      windowStartMoveIndex,
+      windowEndMoveIndex,
+      content: JSON.stringify({
+        text: content,
+        intention: participantIntention,
+        intervalStart: windowStartMoveIndex,
+        intervalEnd: windowEndMoveIndex,
+        summaryEveryMoves: step,
+      }),
+    },
+  });
+
+  return {
+    created: true as const,
+    content,
+    windowStartMoveIndex,
+    windowEndMoveIndex,
+  };
 }
 
 function ensureConsentAccepted(participant: {
@@ -513,6 +758,9 @@ async function buildRoomState(roomId: string) {
       },
       playerStates: true,
       aiUsages: true,
+      _count: {
+        select: { aiReports: true },
+      },
       moves: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -599,6 +847,7 @@ async function buildRoomState(roomId: string) {
       isTrial: isTrialRoom(room),
       playerIntentionLocked: room.playerIntentionLocked,
       therapistSoloPlay: room.therapistSoloPlay,
+      aiReportsCount: room._count.aiReports,
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,
       therapistOnline,
@@ -814,7 +1063,12 @@ async function rollInRoom(roomId: string, userId: string) {
         where: { id: room.id },
         data: { status: "CLOSED", closedAt: new Date() },
       });
-      return { roomId: room.id, trialClosedByLimit: true, diceValue: dice };
+      return {
+        roomId: room.id,
+        trialClosedByLimit: true,
+        diceValue: dice,
+        movedParticipantId: currentParticipant.id,
+      };
     }
 
     const allCompleted =
@@ -839,7 +1093,12 @@ async function rollInRoom(roomId: string, userId: string) {
       });
     }
 
-    return { roomId: room.id, trialClosedByLimit: false, diceValue: dice };
+    return {
+      roomId: room.id,
+      trialClosedByLimit: false,
+      diceValue: dice,
+      movedParticipantId: currentParticipant.id,
+    };
   });
 }
 
@@ -996,20 +1255,42 @@ io.on("connection", (socket: AuthedSocket) => {
       try {
         if (!socket.data.user || !socket.data.roomId)
           throw new Error("Sala não selecionada");
+        const roomId = socket.data.roomId;
         enforceCooldown(
-          `roll:${socket.data.user.id}:${socket.data.roomId}`,
+          `roll:${socket.data.user.id}:${roomId}`,
           ROLL_COOLDOWN_MS,
         );
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
-          where: { roomId: socket.data.roomId, userId: socket.data.user.id },
+          where: { roomId, userId: socket.data.user.id },
         });
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
 
-        const result = await rollInRoom(socket.data.roomId, socket.data.user.id);
-        const state = await buildRoomState(socket.data.roomId);
-        if (state) io.to(socket.data.roomId).emit("room:state", state);
+        const result = await rollInRoom(roomId, socket.data.user.id);
+        const state = await buildRoomState(roomId);
+        if (state) io.to(roomId).emit("room:state", state);
+
+        if (result?.movedParticipantId) {
+          void (async () => {
+            try {
+              const generated = await generateProgressSummaryIfNeeded({
+                roomId,
+                participantId: result.movedParticipantId,
+              });
+              if (!generated.created) return;
+              const refreshedState = await buildRoomState(roomId);
+              if (refreshedState) {
+                io.to(roomId).emit("room:state", refreshedState);
+              }
+            } catch (progressError) {
+              console.error(
+                "Erro ao gerar síntese 'O Caminho até agora':",
+                progressError,
+              );
+            }
+          })();
+        }
         callback?.({
           ok: true,
           trialClosedByLimit: Boolean(result?.trialClosedByLimit),

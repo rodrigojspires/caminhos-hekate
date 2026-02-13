@@ -3018,6 +3018,7 @@ model MahaLilahPlan {
   roomsPerMonth      Int?
   tipsPerPlayer      Int                              @default(0)
   summaryLimit       Int                              @default(0)
+  progressSummaryEveryMoves Int                       @default(15)
   durationDays       Int                              @default(30)
   isActive           Boolean                          @default(true)
   metadata           Json?
@@ -3243,6 +3244,8 @@ model MahaLilahAiReport {
   participantId String?
   kind          MahaLilahAiReportKind @default(FINAL)
   content       String
+  windowStartMoveIndex Int?
+  windowEndMoveIndex   Int?
   createdAt     DateTime              @default(now())
 
   room        MahaLilahRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -3250,6 +3253,7 @@ model MahaLilahAiReport {
 
   @@index([roomId])
   @@index([participantId])
+  @@index([roomId, participantId, kind, windowEndMoveIndex])
   @@index([createdAt])
 }
 
@@ -3286,6 +3290,7 @@ enum MahaLilahParticipantRole {
 
 enum MahaLilahAiReportKind {
   TIP
+  PROGRESS
   FINAL
 }
 

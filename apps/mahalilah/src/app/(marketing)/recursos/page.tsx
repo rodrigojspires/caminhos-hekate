@@ -39,8 +39,8 @@ export default function RecursosPage() {
         eyebrow="Recursos"
         title="Uma plataforma desenhada para sessões que as pessoas querem repetir"
         subtitle="Cada recurso foi pensado para aumentar presença, clareza e continuidade: do tabuleiro ao fechamento."
-        primaryCta={{ label: 'Experimentar', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
+        secondaryCta={{ label: 'Ver demo', href: '/como-funciona' }}
         mediaLabel="Visão geral do ecossistema de recursos do Maha Lilah Online"
         highlights={['Tempo real', 'Turnos claros', 'Registros por rodada', 'IA assistida']}
       />
@@ -181,8 +181,8 @@ export default function RecursosPage() {
       <CTA
         title="Agora é sua vez de sentir essa experiência ao vivo"
         subtitle="Entre, crie sua sala e use os recursos na prática com seu grupo."
-        primaryCta={{ label: 'Entrar', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Experiência fluida', 'Retenção por design', 'Suporte humano']}
       />
     </div>

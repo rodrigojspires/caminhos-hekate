@@ -16,6 +16,7 @@ type MahaSubscriptionMetadata = {
     roomsUsed?: number
     tipsPerPlayer?: number
     summaryLimit?: number
+    progressSummaryEveryMoves?: number
     durationDays?: number
     price?: number
     label?: string

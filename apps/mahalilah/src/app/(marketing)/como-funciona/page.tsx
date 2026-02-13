@@ -40,7 +40,7 @@ export default function ComoFuncionaPage() {
         title="Fluxo simples para sessões profundas"
         subtitle="Você entra, cria a sala, convida participantes e conduz uma experiência ao vivo com rastro terapêutico completo."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Começar agora', href: '/login' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         mediaLabel="Vídeo curto com a jornada completa em tempo real"
         highlights={['Convite por e-mail', 'Turnos organizados', 'Histórico por sessão']}
       />

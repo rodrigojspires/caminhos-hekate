@@ -41,6 +41,7 @@ type RoomState = {
     isTrial?: boolean;
     playerIntentionLocked?: boolean;
     therapistSoloPlay?: boolean;
+    aiReportsCount?: number;
     currentTurnIndex: number;
     turnParticipantId: string | null;
     therapistOnline: boolean;
@@ -142,7 +143,7 @@ type ToastMessage = {
 
 type TimelineAiReport = {
   id: string;
-  kind: "TIP" | "FINAL";
+  kind: "TIP" | "PROGRESS" | "FINAL";
   content: string;
   createdAt: string;
   participant: {
@@ -155,6 +156,14 @@ type ParsedTip = {
   text: string;
   turnNumber: number | null;
   houseNumber: number | null;
+  intention: string | null;
+};
+
+type ParsedProgressSummary = {
+  text: string;
+  intervalStart: number | null;
+  intervalEnd: number | null;
+  summaryEveryMoves: number | null;
   intention: string | null;
 };
 
@@ -561,6 +570,41 @@ function parseTipReportContent(content: string): ParsedTip {
     text: content,
     turnNumber: null,
     houseNumber: null,
+    intention: null,
+  };
+}
+
+function parseProgressSummaryContent(content: string): ParsedProgressSummary {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        text: parsed.text,
+        intervalStart:
+          typeof parsed.intervalStart === "number" ? parsed.intervalStart : null,
+        intervalEnd:
+          typeof parsed.intervalEnd === "number" ? parsed.intervalEnd : null,
+        summaryEveryMoves:
+          typeof parsed.summaryEveryMoves === "number"
+            ? parsed.summaryEveryMoves
+            : null,
+        intention:
+          typeof parsed.intention === "string" ? parsed.intention : null,
+      };
+    }
+  } catch {
+    // Compatibilidade com payload texto puro.
+  }
+
+  return {
+    text: content,
+    intervalStart: null,
+    intervalEnd: null,
+    summaryEveryMoves: null,
     intention: null,
   };
 }
@@ -1208,6 +1252,40 @@ export function RoomClient({ code }: { code: string }) {
       helpNumber: index + 1,
     }));
   }, [timelineReports, aiHistoryParticipantId]);
+
+  const progressReportsByParticipantId = useMemo(() => {
+    const reportsByParticipantId = new Map<string, TimelineAiReport[]>();
+
+    timelineReports.forEach((report) => {
+      if (report.kind !== "PROGRESS" || !report.participant?.id) return;
+      const existing = reportsByParticipantId.get(report.participant.id) || [];
+      existing.push(report);
+      reportsByParticipantId.set(report.participant.id, existing);
+    });
+
+    reportsByParticipantId.forEach((reports, participantId) => {
+      reportsByParticipantId.set(
+        participantId,
+        reports.sort((a, b) => {
+          const parsedA = parseProgressSummaryContent(a.content);
+          const parsedB = parseProgressSummaryContent(b.content);
+          const endA = parsedA.intervalEnd ?? 0;
+          const endB = parsedB.intervalEnd ?? 0;
+          if (endA !== endB) return endB - endA;
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        }),
+      );
+    });
+
+    return reportsByParticipantId;
+  }, [timelineReports]);
+
+  const selectedProgressReports = useMemo(() => {
+    if (!aiHistoryParticipantId) return [];
+    return progressReportsByParticipantId.get(aiHistoryParticipantId) || [];
+  }, [progressReportsByParticipantId, aiHistoryParticipantId]);
 
   const finalReportsByParticipantId = useMemo(() => {
     const reportsByParticipantId = new Map<string, TimelineAiReport[]>();
@@ -2090,9 +2168,14 @@ export function RoomClient({ code }: { code: string }) {
 
   useEffect(() => {
     if (!timelineLoaded) return;
-    if (!state?.lastMove?.id) return;
+    if (!state?.lastMove?.id && !state?.room.aiReportsCount) return;
     void loadTimelineData();
-  }, [timelineLoaded, state?.lastMove?.id, loadTimelineData]);
+  }, [
+    timelineLoaded,
+    state?.lastMove?.id,
+    state?.room.aiReportsCount,
+    loadTimelineData,
+  ]);
 
   useEffect(() => {
     if (!trialLimitReached) {
@@ -3236,6 +3319,69 @@ export function RoomClient({ code }: { code: string }) {
                         </span>
                       </button>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="notice" style={{ display: "grid", gap: 6 }}>
+                <strong>O Caminho até agora</strong>
+                {timelineLoading && selectedProgressReports.length === 0 ? (
+                  <span className="small-muted">Carregando sínteses...</span>
+                ) : selectedProgressReports.length === 0 ? (
+                  <span className="small-muted">
+                    Ainda não há sínteses por intervalo para este jogador.
+                  </span>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      maxHeight: 220,
+                      overflow: "auto",
+                      paddingRight: 2,
+                    }}
+                  >
+                    {selectedProgressReports.map((report) => {
+                      const parsed = parseProgressSummaryContent(report.content);
+                      const participantLabel = report.participant
+                        ? getParticipantDisplayName(report.participant)
+                        : "Jogador";
+                      const intervalLabel =
+                        parsed.intervalStart !== null &&
+                        parsed.intervalEnd !== null
+                          ? `${parsed.intervalStart}-${parsed.intervalEnd}`
+                          : "intervalo não identificado";
+
+                      return (
+                        <button
+                          key={report.id}
+                          className="btn-secondary"
+                          style={{
+                            justifyContent: "flex-start",
+                            textAlign: "left",
+                            whiteSpace: "normal",
+                            height: "auto",
+                            padding: "8px 10px",
+                          }}
+                          onClick={() =>
+                            setAiContentModal({
+                              title: `O Caminho até agora • ${participantLabel}`,
+                              subtitle: `Jogadas ${intervalLabel} • ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                              content: parsed.text,
+                            })
+                          }
+                        >
+                          <strong style={{ fontSize: 12 }}>
+                            Jogadas {intervalLabel}
+                          </strong>
+                          <span className="small-muted">
+                            {parsed.summaryEveryMoves
+                              ? `Síntese automática a cada ${parsed.summaryEveryMoves} jogadas`
+                              : "Síntese automática por intervalo"}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

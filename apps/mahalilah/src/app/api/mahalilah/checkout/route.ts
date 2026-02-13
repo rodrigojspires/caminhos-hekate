@@ -56,6 +56,7 @@ export async function POST(request: Request) {
               roomsLimit: plan.roomsLimit,
               tipsPerPlayer: plan.tipsPerPlayer,
               summaryLimit: plan.summaryLimit,
+              progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
               durationDays: plan.durationDays,
               roomsUsed: 0,
               active: false,
@@ -191,6 +192,7 @@ export async function POST(request: Request) {
             roomsUsed: 0,
             tipsPerPlayer: plan.tipsPerPlayer,
             summaryLimit: plan.summaryLimit,
+            progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
             durationDays: plan.durationDays,
             price: plan.price,
             label: plan.label

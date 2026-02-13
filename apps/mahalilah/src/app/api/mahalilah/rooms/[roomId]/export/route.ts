@@ -180,6 +180,7 @@ function formatParticipantRole(role: string) {
 
 function formatReportKind(kind: string) {
   if (kind === 'TIP') return 'Ajuda da IA'
+  if (kind === 'PROGRESS') return 'O Caminho ate agora'
   if (kind === 'FINAL') return 'Relatorio final'
   return kind
 }
@@ -241,6 +242,7 @@ function buildPdf(room: ExportRoom) {
   const totalStandaloneDeckDraws = room.cardDraws.filter((draw) => !draw.moveId).length
   const totalDeckDraws = totalDeckDrawsFromMoves + totalStandaloneDeckDraws
   const totalTips = room.aiReports.filter((report) => report.kind === 'TIP').length
+  const totalProgressReports = room.aiReports.filter((report) => report.kind === 'PROGRESS').length
   const totalFinalReports = room.aiReports.filter((report) => report.kind === 'FINAL').length
 
   const stateByParticipant = new Map<string, ExportPlayerState>(
@@ -371,7 +373,7 @@ function buildPdf(room: ExportRoom) {
   addParagraph(`Total de jogadas: ${totalMoves}`)
   addParagraph(`Total de registros terapeuticos: ${totalTherapyEntries}`)
   addParagraph(`Total de cartas reveladas: ${totalDeckDraws}`)
-  addParagraph(`Relatorios IA: ${room.aiReports.length} (Ajudas: ${totalTips} | Finais: ${totalFinalReports})`)
+  addParagraph(`Relatorios IA: ${room.aiReports.length} (Ajudas: ${totalTips} | Caminho ate agora: ${totalProgressReports} | Finais: ${totalFinalReports})`)
 
   addSpacer(20)
   addSectionTitle('1. Visao geral da sessao')

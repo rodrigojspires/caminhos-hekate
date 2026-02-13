@@ -51,6 +51,10 @@ export const dynamic = 'force-dynamic'
 
 export default async function PlanosPage() {
   const planConfig = await getPlanConfig()
+  const singleSessionLimits = planConfig.singleSession.marketing.limits.filter((item) => {
+    const normalized = item.toLowerCase()
+    return !normalized.includes('participante') && !normalized.includes('r$')
+  })
 
   const planCandidates: Array<PricingPlan | null> = [
     planConfig.singleSession.isActive
@@ -62,7 +66,7 @@ export default async function PlanosPage() {
           description: planConfig.singleSession.description,
           forWho: planConfig.singleSession.marketing.forWho,
           includes: planConfig.singleSession.marketing.includes,
-          limits: planConfig.singleSession.marketing.limits,
+          limits: singleSessionLimits,
           cta: {
             label: planConfig.singleSession.marketing.ctaLabel,
             href: planConfig.singleSession.marketing.ctaHref
@@ -110,7 +114,7 @@ export default async function PlanosPage() {
         eyebrow="Planos"
         title="Escolha o plano que acompanha seu ritmo de condução"
         subtitle="Comece leve com sessão avulsa ou escale com assinatura para ter previsibilidade, continuidade e profundidade."
-        primaryCta={{ label: 'Ir para checkout', href: '/checkout' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/checkout' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         mediaLabel="Comparativo visual de planos e benefícios"
         highlights={['Pix e cartão', 'Cancelamento sem multa', 'Upgrade quando quiser']}
@@ -127,6 +131,30 @@ export default async function PlanosPage() {
         subtitle="Escolha o que faz sentido agora e ajuste depois, sem perder histórico."
         plans={pricingPlans}
       />
+
+      <SectionShell>
+        <SectionHeader
+          eyebrow="Uso justo"
+          title="Como funciona na prática"
+          subtitle="Regras objetivas para manter estabilidade e qualidade para todos os usuários."
+        />
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
+          {[
+            `Participantes por sala: até ${planConfig.singleSession.maxParticipants} no avulso, até ${planConfig.subscriptionUnlimited.maxParticipants} no ilimitado e até ${planConfig.subscriptionLimited.maxParticipants} no plano com franquia.`,
+            planConfig.subscriptionLimited.roomsPerMonth
+              ? `Plano com franquia: até ${planConfig.subscriptionLimited.roomsPerMonth} salas por mês.`
+              : 'Plano com franquia: quantidade de salas definida em catálogo ativo.',
+            'Salas simultâneas: o uso é pensado para condução humana em tempo real; padrões anômalos de concorrência podem exigir revisão técnica.',
+            `IA com limites técnicos por sessão: ${planConfig.singleSession.tipsPerPlayer} dicas por jogador no avulso e síntese final de até ${planConfig.singleSession.summaryLimit} por sessão.`,
+            'Uso excessivo: automações em massa, compartilhamento indevido de conta ou geração anômala de salas podem passar por revisão operacional.'
+          ].map((item) => (
+            <div key={item} className="flex items-start gap-3">
+              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </SectionShell>
 
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -220,8 +248,8 @@ export default async function PlanosPage() {
       <CTA
         title="Pronto para dar o próximo passo?"
         subtitle="Escolha seu plano e comece sua primeira sessão com uma experiência de alto valor percebido."
-        primaryCta={{ label: 'Assinar agora', href: '/checkout' }}
-        secondaryCta={{ label: 'Tirar dúvidas', href: '/contato' }}
+        primaryCta={{ label: 'Criar minha primeira sala', href: '/checkout' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Pagamento seguro', 'Sem fidelidade obrigatória', 'Suporte humano']}
       />
     </div>
