@@ -2133,84 +2133,6 @@ export function DashboardClient() {
         </div>
       )}
 
-      <div
-        className="card dashboard-filters-card"
-        style={{ display: "grid", gap: 12 }}
-        data-tour-dashboard="filters"
-      >
-        <div
-          className="dashboard-filters-head"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <h2 className="section-title">Filtros de sessão</h2>
-          <button
-            className="btn-secondary"
-            onClick={() => {
-              setFilters({ status: "", from: "", to: "" });
-              loadRooms({ status: "", from: "", to: "" });
-            }}
-          >
-            Limpar filtros
-          </button>
-        </div>
-        <div
-          className="dashboard-filters-row"
-          style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-          }}
-        >
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Status</span>
-            <select
-              value={filters.status}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, status: event.target.value }))
-              }
-            >
-              <option value="">Todos</option>
-              <option value="ACTIVE">Ativas</option>
-              <option value="CLOSED">Encerradas</option>
-              <option value="COMPLETED">Concluídas</option>
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>De</span>
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, from: event.target.value }))
-              }
-            />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Até</span>
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, to: event.target.value }))
-              }
-            />
-          </label>
-          <button
-            className="btn-secondary w-fit"
-            style={{ alignSelf: "center" }}
-            onClick={() => loadRooms()}
-          >
-            Aplicar filtros
-          </button>
-        </div>
-      </div>
-
       <div className="card" style={{ display: "grid", gap: 12 }}>
         <div
           style={{
@@ -2421,6 +2343,84 @@ export function DashboardClient() {
             ))}
           </div>
         )}
+      </div>
+
+      <div
+        className="card dashboard-filters-card"
+        style={{ display: "grid", gap: 12 }}
+        data-tour-dashboard="filters"
+      >
+        <div
+          className="dashboard-filters-head"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <h2 className="section-title">Filtros de sessão</h2>
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              setFilters({ status: "", from: "", to: "" });
+              loadRooms({ status: "", from: "", to: "" });
+            }}
+          >
+            Limpar filtros
+          </button>
+        </div>
+        <div
+          className="dashboard-filters-row"
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+          }}
+        >
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>Status</span>
+            <select
+              value={filters.status}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, status: event.target.value }))
+              }
+            >
+              <option value="">Todos</option>
+              <option value="ACTIVE">Ativas</option>
+              <option value="CLOSED">Encerradas</option>
+              <option value="COMPLETED">Concluídas</option>
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>De</span>
+            <input
+              type="date"
+              value={filters.from}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, from: event.target.value }))
+              }
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>Até</span>
+            <input
+              type="date"
+              value={filters.to}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, to: event.target.value }))
+              }
+            />
+          </label>
+          <button
+            className="btn-secondary w-fit"
+            style={{ alignSelf: "center" }}
+            onClick={() => loadRooms()}
+          >
+            Aplicar filtros
+          </button>
+        </div>
       </div>
 
       <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
