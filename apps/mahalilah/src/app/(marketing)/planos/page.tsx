@@ -189,9 +189,18 @@ export default async function PlanosPage() {
           <div className="overflow-hidden rounded-2xl border border-border/70">
             <div className="grid grid-cols-[1.1fr_repeat(3,minmax(0,1fr))] bg-surface-2/70 px-4 py-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
               <span>Recurso</span>
-              <span>Avulsa</span>
-              <span>Limitado</span>
-              <span>Ilimitado</span>
+              <span className="normal-case tracking-normal text-ink-muted">
+                <strong className="block text-ink">Avulsa</strong>
+                <span>Vou testar / 1 sessão</span>
+              </span>
+              <span className="normal-case tracking-normal text-ink-muted">
+                <strong className="block text-ink">Limitado</strong>
+                <span>Tenho agenda fixa</span>
+              </span>
+              <span className="normal-case tracking-normal text-ink-muted">
+                <strong className="block text-ink">Ilimitado</strong>
+                <span>Atendo com frequência</span>
+              </span>
             </div>
             {[
               {
@@ -230,25 +239,6 @@ export default async function PlanosPage() {
               </div>
             ))}
           </div>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-border/70">
-            <div className="grid grid-cols-[1.35fr_0.65fr] bg-surface-2/70 px-4 py-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
-              <span>Cenário</span>
-              <span>Plano indicado</span>
-            </div>
-            {[
-              { scenario: 'Vou testar / 1 sessão', plan: 'Avulsa' },
-              { scenario: 'Tenho agenda fixa', plan: 'Limitado' },
-              { scenario: 'Atendo com frequência', plan: 'Ilimitado' }
-            ].map((row) => (
-              <div
-                key={row.scenario}
-                className="grid grid-cols-[1.35fr_0.65fr] border-t border-border/70 px-4 py-3 text-sm text-ink-muted"
-              >
-                <span>{row.scenario}</span>
-                <strong className="text-ink">{row.plan}</strong>
-              </div>
-            ))}
-          </div>
         </div>
       </SectionShell>
 
@@ -277,7 +267,7 @@ export default async function PlanosPage() {
       </SectionShell>
 
       <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid items-center gap-10">
           <div className="flex flex-col gap-6">
             <SectionHeader
               eyebrow="Valor percebido"
@@ -303,7 +293,6 @@ export default async function PlanosPage() {
               Precisa de ajuda para escolher? Fale com a equipe e montamos a melhor configuração para seu perfil.
             </p>
           </div>
-          <MediaPlaceholder variant="vertical" label="Painel de comparação entre planos" />
         </div>
       </SectionShell>
 
@@ -365,13 +354,7 @@ export default async function PlanosPage() {
         </div>
       </SectionShell>
 
-      <CTA
-        title="Pronto para dar o próximo passo?"
-        subtitle="Escolha seu plano e comece sua primeira sessão com uma experiência de alto valor percebido."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/checkout' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Pagamento seguro', 'Sem fidelidade obrigatória', 'Suporte humano']}
-      />
+      
     </div>
   )
 }
