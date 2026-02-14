@@ -240,9 +240,9 @@ const ACTION_ITEMS: Array<{
   },
   {
     key: "timeline",
-    label: "Timeline",
+    label: "Jornada",
     icon: "☰",
-    shortLabel: "Timeline",
+    shortLabel: "Jornada",
   },
   {
     key: "summary",
@@ -429,7 +429,7 @@ function getRoomTutorialSteps({
     {
       title: "Menu Carta",
       description:
-        "No icone Carta o jogador da vez tira cartas do deck (ate 3 por jogada), com imagem e registro automatico na timeline.",
+        "No icone Carta o jogador da vez tira cartas do deck (ate 3 por jogada), com imagem e registro automatico na jornada.",
       target: "room-menu-deck",
     },
     {
@@ -451,9 +451,9 @@ function getRoomTutorialSteps({
       target: "room-menu-players",
     },
     {
-      title: "Menu Timeline",
+      title: "Menu Jornada",
       description:
-        "No icone Timeline voce revisa jogadas, atalhos, cartas, registros terapeuticos e saidas de IA por participante.",
+        "No icone Jornada voce revisa jogadas, atalhos, cartas, registros terapeuticos e saidas de IA por participante.",
       target: "room-menu-timeline",
     },
     {
@@ -1922,7 +1922,7 @@ export function RoomClient({ code }: { code: string }) {
 
         if (!res.ok) {
           const message =
-            payload.error || "Não foi possível carregar a timeline do jogador.";
+            payload.error || "Não foi possível carregar a jornada do jogador.";
           setTimelineError(message);
           pushToast(message, "error");
           return { ok: false as const, aiReports: [] as TimelineAiReport[] };
@@ -1935,14 +1935,14 @@ export function RoomClient({ code }: { code: string }) {
         setTimelineMoves(moves);
         setTimelineReports(aiReports);
         if (showSuccessToast) {
-          pushToast("Timeline carregada.", "success");
+          pushToast("Jornada carregada.", "success");
         }
         return {
           ok: true as const,
           aiReports: aiReports as TimelineAiReport[],
         };
       } catch {
-        const message = "Não foi possível carregar a timeline do jogador.";
+        const message = "Não foi possível carregar a jornada do jogador.";
         setTimelineError(message);
         pushToast(message, "error");
         return { ok: false as const, aiReports: [] as TimelineAiReport[] };
@@ -3597,7 +3597,7 @@ export function RoomClient({ code }: { code: string }) {
 
           {activePanel === "timeline" && (
             <div className="grid" style={{ gap: 8 }}>
-              <strong>Timeline</strong>
+              <strong>Jornada</strong>
 
               {timelineParticipants.length > 1 && (
                 <select
@@ -3616,7 +3616,7 @@ export function RoomClient({ code }: { code: string }) {
               )}
 
               {timelineLoading ? (
-                <span className="small-muted">Carregando timeline...</span>
+                <span className="small-muted">Carregando jornada...</span>
               ) : timelineError ? (
                 <span className="small-muted">{timelineError}</span>
               ) : (
@@ -4289,7 +4289,7 @@ export function RoomClient({ code }: { code: string }) {
               </span>
               <span className="small-muted">
                 <strong>7.</strong> Registro terapeutico e ajudas de IA ficam
-                salvos na timeline do jogador.
+                salvos na jornada do jogador.
               </span>
             </div>
           </div>
@@ -4339,10 +4339,10 @@ export function RoomClient({ code }: { code: string }) {
             </strong>
             <span className="small-muted">
               {finalReportPrompt.mode === "close"
-                ? "Os resumos finais serão registrados na timeline da sala."
+                ? "Os resumos finais serão registrados na jornada da sala."
                 : finalReportPrompt.mode === "trialLimit"
                   ? "Após esta etapa, vamos abrir as opções para comprar sessão avulsa ou assinar um plano."
-                : "Esse resumo final ficará registrado na timeline da sala."}
+                : "Esse resumo final ficará registrado na jornada da sala."}
             </span>
 
             <div

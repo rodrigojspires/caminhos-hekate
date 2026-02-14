@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 
@@ -8,7 +9,13 @@ export type GalleryItem = {
   label: string
   variant?: 'horizontal' | 'vertical'
   description?: string
+  imageSrc?: string
 }
+
+const aspectByVariant = {
+  horizontal: 'aspect-[16/9]',
+  vertical: 'aspect-[3/4]'
+} as const
 
 export function ImageGallery({
   eyebrow,
@@ -23,10 +30,14 @@ export function ImageGallery({
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({})
   const safeItems = useMemo(
     () =>
-      items.map((item) => ({
+      items.map((item, index) => ({
         ...item,
+        imageSrc:
+          item.imageSrc ||
+          `/marketing/visao-produto/tela-${String(index + 1).padStart(2, '0')}.webp`,
         description:
           item.description ||
           'Fluxo pensado para reduzir fricção, sustentar presença e facilitar continuidade terapêutica.'
@@ -45,6 +56,8 @@ export function ImageGallery({
   }, [safeItems.length, isPaused])
 
   const currentItem = safeItems[activeIndex] ?? safeItems[0]
+  const currentVariant = currentItem?.variant ?? 'horizontal'
+  const shouldShowFallback = failedImages[activeIndex] || !currentItem?.imageSrc
 
   return (
     <SectionShell>
@@ -95,11 +108,32 @@ export function ImageGallery({
         <div className="lg:sticky lg:top-28 lg:self-start">
           <div className="overflow-hidden rounded-3xl border border-gold/25 bg-surface/40 p-1 shadow-soft">
             <div className="rounded-[1.35rem] border border-border/60 bg-surface/55 p-1">
-              <MediaPlaceholder
-                key={`${currentItem?.label || 'gallery'}-${activeIndex}`}
-                variant={currentItem?.variant ?? 'horizontal'}
-                label={currentItem?.label || 'Prévia da tela'}
-              />
+              {shouldShowFallback ? (
+                <MediaPlaceholder
+                  key={`${currentItem?.label || 'gallery'}-${activeIndex}`}
+                  variant={currentVariant}
+                  label={currentItem?.label || 'Prévia da tela'}
+                />
+              ) : (
+                <div
+                  className={`relative overflow-hidden rounded-3xl border border-border/70 bg-surface/85 shadow-soft ${aspectByVariant[currentVariant]}`}
+                >
+                  <Image
+                    key={currentItem.imageSrc}
+                    src={currentItem.imageSrc}
+                    alt={currentItem.label || 'Imagem da visão do produto'}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 58vw"
+                    onError={() =>
+                      setFailedImages((prev) => ({
+                        ...prev,
+                        [activeIndex]: true
+                      }))
+                    }
+                  />
+                </div>
+              )}
             </div>
           </div>
           <p className="mt-3 text-sm text-ink-muted">

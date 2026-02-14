@@ -215,24 +215,28 @@ export default async function HomePage() {
           {
             label: 'Sala ao vivo com tabuleiro compartilhado',
             variant: 'horizontal',
+            imageSrc: '/marketing/visao-produto/tela-01.webp',
             description:
               'Todos enxergam a mesma dinâmica em tempo real, com foco em presença, ritmo e clareza de turno.'
           },
           {
             label: 'Modo terapia com registro por jogada',
             variant: 'vertical',
+            imageSrc: '/marketing/visao-produto/tela-02.webp',
             description:
               'Cada movimento gera contexto terapêutico estruturado, sem interromper o fluxo da condução.'
           },
           {
             label: 'Resumo final e linha de evolução da sessão',
             variant: 'horizontal',
+            imageSrc: '/marketing/visao-produto/tela-03.webp',
             description:
               'Fechamento objetivo com síntese acionável, facilitando continuidade entre sessões.'
           },
           {
             label: 'Dashboard para terapeutas e facilitadores',
             variant: 'vertical',
+            imageSrc: '/marketing/visao-produto/tela-04.webp',
             description:
               'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
           }

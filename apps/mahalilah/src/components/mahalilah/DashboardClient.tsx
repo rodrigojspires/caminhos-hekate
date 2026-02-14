@@ -221,7 +221,7 @@ function getDashboardTutorialSteps({
       target: "room-tab-participants",
     },
     {
-      title: "Aba Timeline",
+      title: "Aba Jornada",
       description:
         "Revise jogadas por ordem cronologica, com dado, casa, atalhos e registros terapeuticos por participante.",
       target: "room-tab-timeline",
@@ -791,7 +791,7 @@ export function DashboardClient() {
           moves: [],
           aiReports: [],
           cardDraws: [],
-          error: payload.error || "Erro ao carregar timeline.",
+          error: payload.error || "Erro ao carregar jornada.",
         },
       }));
       return;
@@ -1138,7 +1138,7 @@ export function DashboardClient() {
                   index === 0 ? "room-tab-timeline" : undefined
                 }
               >
-                Timeline
+                Jornada
               </button>
               <button
                 className={
@@ -1360,7 +1360,7 @@ export function DashboardClient() {
                     gap: 8,
                   }}
                 >
-                  <strong>Timeline</strong>
+                  <strong>Jornada</strong>
                   <div
                     style={{
                       display: "flex",
@@ -1390,7 +1390,7 @@ export function DashboardClient() {
                   </div>
                 </div>
                 {roomDetails?.loading ? (
-                  <span className="small-muted">Carregando timeline...</span>
+                  <span className="small-muted">Carregando jornada...</span>
                 ) : roomDetails?.error ? (
                   <span className="notice">{roomDetails.error}</span>
                 ) : (
