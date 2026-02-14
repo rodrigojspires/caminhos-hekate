@@ -65,14 +65,16 @@ export function PricingCards({
                   ))}
                 </ul>
               </div>
-              <div>
-                <span className="text-ink">Limites:</span>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {plan.limits.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+              {plan.limits.length > 0 && (
+                <div>
+                  <span className="text-ink">Limites:</span>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {plan.limits.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="mt-auto">
               <LinkButton cta={plan.cta} variant={plan.highlight ? 'primary' : 'secondary'} />

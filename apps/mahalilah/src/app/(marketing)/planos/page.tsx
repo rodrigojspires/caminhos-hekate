@@ -92,30 +92,6 @@ export default async function PlanosPage() {
           highlight: planConfig.singleSession.marketing.highlight
         }
       : null,
-    planConfig.subscriptionUnlimited.isActive
-      ? {
-          name: planConfig.subscriptionUnlimited.name,
-          price: (
-            <div className="flex flex-col gap-2">
-              <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
-              {unlimitedSavingsPercent !== null && (
-                <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
-                  Economize {unlimitedSavingsPercent}% no anual
-                </span>
-              )}
-            </div>
-          ),
-          description: planConfig.subscriptionUnlimited.description,
-          forWho: planConfig.subscriptionUnlimited.marketing.forWho,
-          includes: planConfig.subscriptionUnlimited.marketing.includes,
-          limits: planConfig.subscriptionUnlimited.marketing.limits,
-          cta: {
-            label: planConfig.subscriptionUnlimited.marketing.ctaLabel,
-            href: planConfig.subscriptionUnlimited.marketing.ctaHref
-          },
-          highlight: planConfig.subscriptionUnlimited.marketing.highlight
-        }
-      : null,
     planConfig.subscriptionLimited.isActive
       ? {
           name: planConfig.subscriptionLimited.name,
@@ -138,6 +114,30 @@ export default async function PlanosPage() {
             href: planConfig.subscriptionLimited.marketing.ctaHref
           },
           highlight: planConfig.subscriptionLimited.marketing.highlight
+        }
+      : null,
+    planConfig.subscriptionUnlimited.isActive
+      ? {
+          name: planConfig.subscriptionUnlimited.name,
+          price: (
+            <div className="flex flex-col gap-2">
+              <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
+              {unlimitedSavingsPercent !== null && (
+                <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
+                  Economize {unlimitedSavingsPercent}% no anual
+                </span>
+              )}
+            </div>
+          ),
+          description: planConfig.subscriptionUnlimited.description,
+          forWho: planConfig.subscriptionUnlimited.marketing.forWho,
+          includes: planConfig.subscriptionUnlimited.marketing.includes,
+          limits: planConfig.subscriptionUnlimited.marketing.limits,
+          cta: {
+            label: planConfig.subscriptionUnlimited.marketing.ctaLabel,
+            href: planConfig.subscriptionUnlimited.marketing.ctaHref
+          },
+          highlight: planConfig.subscriptionUnlimited.marketing.highlight
         }
       : null
   ]
