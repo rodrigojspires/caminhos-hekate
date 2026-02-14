@@ -69,6 +69,19 @@ export default async function PlanosPage() {
     planConfig.subscriptionLimited.monthlyPrice,
     planConfig.subscriptionLimited.yearlyPrice
   )
+  const limitedRoomsPerMonth =
+    typeof planConfig.subscriptionLimited.roomsPerMonth === 'number' &&
+    planConfig.subscriptionLimited.roomsPerMonth > 0
+      ? planConfig.subscriptionLimited.roomsPerMonth
+      : null
+  const limitedCostPerRoom =
+    limitedRoomsPerMonth !== null
+      ? planConfig.subscriptionLimited.monthlyPrice / limitedRoomsPerMonth
+      : null
+  const unlimitedBreakEvenRooms =
+    limitedCostPerRoom !== null && limitedCostPerRoom > 0
+      ? Math.floor(planConfig.subscriptionUnlimited.monthlyPrice / limitedCostPerRoom) + 1
+      : null
   const singleSessionLimits = planConfig.singleSession.marketing.limits.filter((item) => {
     const normalized = item.toLowerCase()
     return !normalized.includes('participante') && !normalized.includes('r$')
@@ -98,6 +111,11 @@ export default async function PlanosPage() {
           price: (
             <div className="flex flex-col gap-2">
               <span>{formatCurrency(planConfig.subscriptionLimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionLimited.yearlyPrice)} / ano</span>
+              {limitedCostPerRoom !== null && limitedRoomsPerMonth !== null && (
+                <span className="text-xs text-ink-muted">
+                  {formatCurrency(limitedCostPerRoom)} por sala ({limitedRoomsPerMonth}/mês)
+                </span>
+              )}
               {limitedSavingsPercent !== null && (
                 <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
                   Economize {limitedSavingsPercent}% no anual
@@ -122,6 +140,11 @@ export default async function PlanosPage() {
           price: (
             <div className="flex flex-col gap-2">
               <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
+              <span className="text-xs text-ink-muted">
+                {unlimitedBreakEvenRooms !== null
+                  ? `Salas ilimitadas — melhor custo acima de ${unlimitedBreakEvenRooms} salas/mês`
+                  : 'Salas ilimitadas para escalar sem teto mensal'}
+              </span>
               {unlimitedSavingsPercent !== null && (
                 <span className="inline-flex w-fit items-center rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-xs uppercase tracking-[0.12em] text-gold-soft">
                   Economize {unlimitedSavingsPercent}% no anual

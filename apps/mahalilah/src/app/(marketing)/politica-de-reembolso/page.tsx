@@ -23,7 +23,8 @@ const faqItems = [
   },
   {
     question: 'E se eu cancelar a assinatura?',
-    answer: 'O cancelamento impede novas cobranças, mas não gera reembolso retroativo.'
+    answer:
+      'O cancelamento impede novas cobranças, não gera reembolso e a assinatura permanece ativa até o fim do ciclo já pago.'
   },
   {
     question: 'Como lidam com chargebacks?',
@@ -70,7 +71,8 @@ export default function PoliticaDeReembolsoPage() {
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
           <p>
             Assinaturas renovam automaticamente a cada ciclo. O cancelamento evita a próxima cobrança, mas não
-            gera reembolso proporcional do ciclo em andamento, salvo exceções previstas em lei.
+            gera reembolso proporcional do ciclo em andamento, salvo exceções previstas em lei. Após cancelar,
+            o acesso permanece liberado até a data de vencimento da assinatura atual.
           </p>
           <p className="mt-3">
             Caso tenha problemas técnicos graves, a equipe pode avaliar reembolso parcial.

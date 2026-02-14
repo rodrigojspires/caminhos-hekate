@@ -29,6 +29,16 @@ type InvoiceFilters = {
   to: string;
 };
 
+type CurrentSubscription = {
+  id: string;
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  canceledAt?: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  planName?: string;
+};
+
 function formatBillingInterval(interval?: string) {
   if (interval === "MONTHLY") return "Mensal";
   if (interval === "YEARLY") return "Anual";
@@ -59,6 +69,10 @@ export function FaturasClient() {
     from: "",
     to: "",
   });
+  const [currentSubscription, setCurrentSubscription] =
+    useState<CurrentSubscription | null>(null);
+  const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
 
   const load = useCallback(async (targetPage = 1) => {
     setLoading(true);
@@ -83,6 +97,7 @@ export function FaturasClient() {
         return;
       }
       setInvoices(Array.isArray(payload.payments) ? payload.payments : []);
+      setCurrentSubscription(payload.currentSubscription || null);
       setPage(payload.page || 1);
       setTotalPages(payload.totalPages || 1);
     } catch {
@@ -96,8 +111,93 @@ export function FaturasClient() {
     void load(1);
   }, [load, activeFilters]);
 
+  const handleCancelSubscription = async () => {
+    if (!currentSubscription || cancelingSubscription) return;
+
+    const confirmCancel = window.confirm(
+      "Tem certeza que deseja cancelar sua assinatura?\n\nNão há reembolso e o acesso permanece até a data de vencimento atual.",
+    );
+    if (!confirmCancel) return;
+
+    setCancelingSubscription(true);
+    setSubscriptionNotice(null);
+
+    try {
+      const res = await fetch("/api/mahalilah/subscriptions/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: currentSubscription.id }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSubscriptionNotice(
+          payload.error || "Não foi possível cancelar sua assinatura.",
+        );
+        return;
+      }
+
+      setSubscriptionNotice(
+        payload.message ||
+          "Assinatura cancelada. Seu acesso permanece até o vencimento.",
+      );
+      await load(page);
+    } catch {
+      setSubscriptionNotice("Não foi possível cancelar sua assinatura.");
+    } finally {
+      setCancelingSubscription(false);
+    }
+  };
+
   return (
     <div className="card" style={{ display: "grid", gap: 14 }}>
+      {currentSubscription && (
+        <div
+          className="notice"
+          style={{
+            display: "grid",
+            gap: 8,
+            borderColor: "rgba(217, 164, 65, 0.45)",
+            background: "rgba(217, 164, 65, 0.08)",
+          }}
+        >
+          <strong>Assinatura ativa</strong>
+          <span className="small-muted">
+            Plano: <strong>{currentSubscription.planName || "Assinatura Maha Lilah"}</strong>
+          </span>
+          <span className="small-muted">
+            Política de cancelamento: não há reembolso. O acesso permanece até{" "}
+            <strong>
+              {currentSubscription.currentPeriodEnd
+                ? new Date(currentSubscription.currentPeriodEnd).toLocaleDateString(
+                    "pt-BR",
+                  )
+                : "o vencimento vigente"}
+            </strong>
+            .
+          </span>
+          {currentSubscription.cancelAtPeriodEnd ? (
+            <span className="small-muted">
+              Cancelamento já programado para o fim do ciclo.
+            </span>
+          ) : (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className="btn-secondary"
+                onClick={() => void handleCancelSubscription()}
+                disabled={cancelingSubscription}
+              >
+                {cancelingSubscription
+                  ? "Cancelando assinatura..."
+                  : "Cancelar assinatura"}
+              </button>
+            </div>
+          )}
+          {subscriptionNotice ? (
+            <span className="small-muted">{subscriptionNotice}</span>
+          ) : null}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",

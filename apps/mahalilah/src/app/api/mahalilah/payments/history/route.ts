@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       where.createdAt = createdAt;
     }
 
-    const [payments, total] = await Promise.all([
+    const [payments, total, subscriptionCandidates] = await Promise.all([
       prisma.paymentTransaction.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -134,7 +134,29 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.paymentTransaction.count({ where }),
+      prisma.userSubscription.findMany({
+        where: {
+          userId,
+          status: {
+            in: ["PENDING", "ACTIVE", "TRIALING", "PAST_DUE", "PAUSED"],
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          plan: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
     ]);
+
+    const currentSubscription = subscriptionCandidates.find((subscription) => {
+      const metadata = (subscription.metadata as Record<string, any>) || {};
+      return metadata.app === "mahalilah";
+    });
 
     return NextResponse.json({
       payments: payments.map((payment) => {
@@ -205,6 +227,18 @@ export async function GET(request: NextRequest) {
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / limit)),
+      currentSubscription: currentSubscription
+        ? {
+            id: currentSubscription.id,
+            status: currentSubscription.status,
+            cancelAtPeriodEnd: Boolean(currentSubscription.cancelAtPeriodEnd),
+            canceledAt: currentSubscription.canceledAt?.toISOString(),
+            currentPeriodStart:
+              currentSubscription.currentPeriodStart?.toISOString(),
+            currentPeriodEnd: currentSubscription.currentPeriodEnd?.toISOString(),
+            planName: currentSubscription.plan?.name || "",
+          }
+        : null,
     });
   } catch (error) {
     console.error("Erro ao buscar histórico de pagamentos (Maha Lilah):", error);
