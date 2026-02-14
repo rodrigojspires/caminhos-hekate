@@ -228,7 +228,7 @@ export default async function HomePage() {
           },
           {
             label: 'Resumo final e linha de evolução da sessão',
-            variant: 'vertical',
+            variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-03.webp',
             description:
               'Fechamento objetivo com síntese acionável, facilitando continuidade entre sessões.'
@@ -242,7 +242,7 @@ export default async function HomePage() {
           },
           {
             label: 'Dashboard para terapeutas e facilitadores',
-            variant: 'vertical',
+            variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-05.webp',
             description:
               'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
