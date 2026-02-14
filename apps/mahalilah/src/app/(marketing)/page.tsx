@@ -227,18 +227,18 @@ export default async function HomePage() {
               'Cada movimento gera contexto terapêutico estruturado, sem interromper o fluxo da condução.'
           },
           {
-            label: 'Resumo final e linha de evolução da sessão',
+            label: 'Resumo final através de IA',
             variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-03.webp',
             description:
               'Fechamento objetivo com síntese acionável, facilitando continuidade entre sessões.'
           },
           {
-            label: 'Dashboard para terapeutas e facilitadores',
+            label: 'Assistência por IA',
             variant: 'vertical',
             imageSrc: '/marketing/visao-produto/tela-04.webp',
             description:
-              'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
+              'Possibilidade de pedir Ajuda, Resumo final e caminho até agora, elucidando todo o jogo.'
           },
           {
             label: 'Dashboard para terapeutas e facilitadores',
@@ -248,11 +248,11 @@ export default async function HomePage() {
               'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
           },
           {
-            label: 'Dashboard para terapeutas e facilitadores',
+            label: 'Acompanhamento da Jornada',
             variant: 'vertical',
             imageSrc: '/marketing/visao-produto/tela-06.webp',
             description:
-              'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
+              'Todo o registro da jornada fica gravado para recordar cada instante.'
           }
         ]}
       />

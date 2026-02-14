@@ -58,6 +58,7 @@ export function ImageGallery({
   const currentItem = safeItems[activeIndex] ?? safeItems[0]
   const currentVariant = currentItem?.variant ?? 'horizontal'
   const shouldShowFallback = failedImages[activeIndex] || !currentItem?.imageSrc
+  const isVertical = currentVariant === 'vertical'
 
   return (
     <SectionShell>
@@ -94,10 +95,9 @@ export function ImageGallery({
                 />
                 <div className="relative z-10">
                   <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-gold-soft">
-                    <span aria-hidden className="h-px w-5 bg-gold/60" />
-                    Tela {index + 1}
+                    <span aria-hidden className="h-px bg-gold/60" />
+                    {item.label}
                   </span>
-                  <h3 className="mt-2 font-serif text-xl leading-tight text-ink">{item.label}</h3>
                   <p className="mt-2 text-sm text-ink-muted sm:text-base">{item.description}</p>
                 </div>
               </button>
@@ -106,35 +106,35 @@ export function ImageGallery({
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <div className="overflow-hidden rounded-3xl border border-gold/25 bg-surface/40 p-1 shadow-soft">
-            <div className="rounded-[1.35rem] border border-border/60 bg-surface/55 p-1">
-              {shouldShowFallback ? (
-                <MediaPlaceholder
-                  key={`${currentItem?.label || 'gallery'}-${activeIndex}`}
-                  variant={currentVariant}
-                  label={currentItem?.label || 'Prévia da tela'}
+          <div className="overflow-hidden rounded-3xl">
+            {shouldShowFallback ? (
+              <MediaPlaceholder
+                key={`${currentItem?.label || 'gallery'}-${activeIndex}`}
+                variant={currentVariant}
+                label={currentItem?.label || 'Prévia da tela'}
+              />
+            ) : (
+              <div
+                className={`relative overflow-hidden rounded-3xl border border-border/70 bg-surface/85 shadow-soft ${aspectByVariant[currentVariant]} ${
+                  isVertical ? 'mx-auto w-full max-w-[360px] sm:max-w-[400px]' : ''
+                }`}
+              >
+                <Image
+                  key={currentItem.imageSrc}
+                  src={currentItem.imageSrc}
+                  alt={currentItem.label || 'Imagem da visão do produto'}
+                  fill
+                  className={isVertical ? 'object-contain p-2 sm:p-3' : 'object-cover'}
+                  sizes="(max-width: 1024px) 100vw, 58vw"
+                  onError={() =>
+                    setFailedImages((prev) => ({
+                      ...prev,
+                      [activeIndex]: true
+                    }))
+                  }
                 />
-              ) : (
-                <div
-                  className={`relative overflow-hidden rounded-3xl border border-border/70 bg-surface/85 shadow-soft ${aspectByVariant[currentVariant]}`}
-                >
-                  <Image
-                    key={currentItem.imageSrc}
-                    src={currentItem.imageSrc}
-                    alt={currentItem.label || 'Imagem da visão do produto'}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 58vw"
-                    onError={() =>
-                      setFailedImages((prev) => ({
-                        ...prev,
-                        [activeIndex]: true
-                      }))
-                    }
-                  />
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           <p className="mt-3 text-sm text-ink-muted">
             {currentItem ? currentItem.description : ''}
