@@ -142,7 +142,7 @@ export default async function PlanosPage() {
               <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
               <span className="text-xs text-ink-muted">
                 {unlimitedBreakEvenRooms !== null
-                  ? `Salas ilimitadas — melhor custo acima de ${unlimitedBreakEvenRooms} salas/mês`
+                  ? `Salas ilimitadas — melhor custo acima de 5 salas/mês`
                   : 'Salas ilimitadas para escalar sem teto mensal'}
               </span>
               {unlimitedSavingsPercent !== null && (
@@ -166,6 +166,11 @@ export default async function PlanosPage() {
   ]
 
   const pricingPlans = planCandidates.filter((plan): plan is PricingPlan => plan !== null)
+  const limitedRoomsLabel =
+    typeof planConfig.subscriptionLimited.roomsPerMonth === 'number' &&
+    planConfig.subscriptionLimited.roomsPerMonth > 0
+      ? String(planConfig.subscriptionLimited.roomsPerMonth)
+      : '—'
 
   return (
     <div>
@@ -175,6 +180,77 @@ export default async function PlanosPage() {
         subtitle="Escolha o que faz sentido agora e ajuste depois, sem perder histórico."
         plans={pricingPlans}
       />
+
+      <SectionShell className="pt-0 sm:pt-0 lg:pt-0">
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 sm:p-6">
+          <div className="mb-4">
+            <h2 className="font-serif text-2xl text-ink sm:text-3xl">Comparativo rápido</h2>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border/70">
+            <div className="grid grid-cols-[1.1fr_repeat(3,minmax(0,1fr))] bg-surface-2/70 px-4 py-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
+              <span>Recurso</span>
+              <span>Avulsa</span>
+              <span>Limitado</span>
+              <span>Ilimitado</span>
+            </div>
+            {[
+              {
+                feature: 'Salas/mês',
+                single: '1 sessão',
+                limited: limitedRoomsLabel,
+                unlimited: 'Ilimitadas'
+              },
+              {
+                feature: 'Participantes/sala',
+                single: String(planConfig.singleSession.maxParticipants),
+                limited: String(planConfig.subscriptionLimited.maxParticipants),
+                unlimited: String(planConfig.subscriptionUnlimited.maxParticipants)
+              },
+              {
+                feature: 'Dicas IA por jogador',
+                single: String(planConfig.singleSession.tipsPerPlayer),
+                limited: String(planConfig.subscriptionLimited.tipsPerPlayer),
+                unlimited: String(planConfig.subscriptionUnlimited.tipsPerPlayer)
+              },
+              {
+                feature: 'Síntese IA por sessão',
+                single: String(planConfig.singleSession.summaryLimit),
+                limited: String(planConfig.subscriptionLimited.summaryLimit),
+                unlimited: String(planConfig.subscriptionUnlimited.summaryLimit)
+              }
+            ].map((row) => (
+              <div
+                key={row.feature}
+                className="grid grid-cols-[1.1fr_repeat(3,minmax(0,1fr))] border-t border-border/70 px-4 py-3 text-sm text-ink-muted"
+              >
+                <span>{row.feature}</span>
+                <strong className="text-ink">{row.single}</strong>
+                <strong className="text-ink">{row.limited}</strong>
+                <strong className="text-ink">{row.unlimited}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-border/70">
+            <div className="grid grid-cols-[1.35fr_0.65fr] bg-surface-2/70 px-4 py-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
+              <span>Cenário</span>
+              <span>Plano indicado</span>
+            </div>
+            {[
+              { scenario: 'Vou testar / 1 sessão', plan: 'Avulsa' },
+              { scenario: 'Tenho agenda fixa', plan: 'Limitado' },
+              { scenario: 'Atendo com frequência', plan: 'Ilimitado' }
+            ].map((row) => (
+              <div
+                key={row.scenario}
+                className="grid grid-cols-[1.35fr_0.65fr] border-t border-border/70 px-4 py-3 text-sm text-ink-muted"
+              >
+                <span>{row.scenario}</span>
+                <strong className="text-ink">{row.plan}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionShell>
 
       <SectionShell>
         <SectionHeader
