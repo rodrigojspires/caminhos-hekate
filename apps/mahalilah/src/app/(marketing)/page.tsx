@@ -92,7 +92,7 @@ export default async function HomePage() {
   return (
     <div>
       <Hero
-        title="Jogue no tabuleiro do Maha Lilah — com assistência de IA (opcional)"
+        title="Jogue no tabuleiro do Maha Lilah — com assistência de IA"
         subtitle="Autoguiado ou em sessão terapêutica, crie uma sala, role o dado, avance pelas casas e registre o que importa — com perguntas e síntese quando você quiser."
         primaryCta={{ label: 'Experimente', href: '/como-funciona' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
@@ -212,10 +212,30 @@ export default async function HomePage() {
         title="Encantamento com propósito em cada tela"
         subtitle="Interface pensada para presença e continuidade: tabuleiro no centro, registro por jogada e fechamento claro — para você conduzir sem se perder no processo."
         items={[
-          { label: 'Sala ao vivo com tabuleiro compartilhado', variant: 'horizontal' },
-          { label: 'Modo terapia com registro por jogada', variant: 'vertical' },
-          { label: 'Resumo final e linha de evolução da sessão', variant: 'horizontal' },
-          { label: 'Dashboard para terapeutas e facilitadores', variant: 'vertical' }
+          {
+            label: 'Sala ao vivo com tabuleiro compartilhado',
+            variant: 'horizontal',
+            description:
+              'Todos enxergam a mesma dinâmica em tempo real, com foco em presença, ritmo e clareza de turno.'
+          },
+          {
+            label: 'Modo terapia com registro por jogada',
+            variant: 'vertical',
+            description:
+              'Cada movimento gera contexto terapêutico estruturado, sem interromper o fluxo da condução.'
+          },
+          {
+            label: 'Resumo final e linha de evolução da sessão',
+            variant: 'horizontal',
+            description:
+              'Fechamento objetivo com síntese acionável, facilitando continuidade entre sessões.'
+          },
+          {
+            label: 'Dashboard para terapeutas e facilitadores',
+            variant: 'vertical',
+            description:
+              'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
+          }
         ]}
       />
 

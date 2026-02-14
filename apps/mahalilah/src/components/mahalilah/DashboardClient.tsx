@@ -1838,6 +1838,111 @@ export function DashboardClient() {
     trialRoomStatus !== null &&
     trialRoomStatus !== "ACTIVE" &&
     !canCreateRoom;
+  const totalRoomsCount = rooms.length;
+  const activeRoomsCount = rooms.filter((room) => room.status === "ACTIVE").length;
+
+  const occupancyBaseRooms =
+    activeRoomsCount > 0
+      ? rooms.filter((room) => room.status === "ACTIVE")
+      : rooms;
+  const occupiedSlots = occupancyBaseRooms.reduce(
+    (sum, room) => sum + room.participantsCount,
+    0,
+  );
+  const availableSlots = occupancyBaseRooms.reduce(
+    (sum, room) => sum + room.maxParticipants,
+    0,
+  );
+  const occupancyPercent =
+    availableSlots > 0 ? Math.round((occupiedSlots / availableSlots) * 100) : 0;
+
+  const invitesSentCount = rooms.reduce((sum, room) => sum + room.invites.length, 0);
+  const invitesAcceptedCount = rooms.reduce(
+    (sum, room) =>
+      sum + room.invites.filter((invite) => Boolean(invite.acceptedAt)).length,
+    0,
+  );
+  const inviteAcceptancePercent =
+    invitesSentCount > 0
+      ? Math.round((invitesAcceptedCount / invitesSentCount) * 100)
+      : null;
+
+  const consentPendingParticipantsCount = rooms.reduce(
+    (sum, room) =>
+      sum +
+      room.participants.filter(
+        (participant) =>
+          participant.role === "PLAYER" && !participant.consentAcceptedAt,
+      ).length,
+    0,
+  );
+  const consentPendingRoomsCount = rooms.filter((room) =>
+    room.participants.some(
+      (participant) =>
+        participant.role === "PLAYER" && !participant.consentAcceptedAt,
+    ),
+  ).length;
+
+  const activeRoomsWithoutMovementCount = rooms.filter(
+    (room) => room.status === "ACTIVE" && room.stats.moves === 0,
+  ).length;
+
+  const totalMoves = rooms.reduce((sum, room) => sum + room.stats.moves, 0);
+  const totalTherapyEntries = rooms.reduce(
+    (sum, room) => sum + room.stats.therapyEntries,
+    0,
+  );
+  const totalAiReports = rooms.reduce((sum, room) => sum + room.stats.aiReports, 0);
+  const therapyEntriesPerMove =
+    totalMoves > 0 ? totalTherapyEntries / totalMoves : null;
+  const aiReportsPerMove = totalMoves > 0 ? totalAiReports / totalMoves : null;
+
+  const closedRoomsCount = rooms.filter((room) => room.status === "CLOSED").length;
+  const completedRoomsCount = rooms.filter(
+    (room) => room.status === "COMPLETED",
+  ).length;
+  const finalizedRoomsCount = closedRoomsCount + completedRoomsCount;
+  const completionRatePercent =
+    totalRoomsCount > 0
+      ? Math.round((completedRoomsCount / totalRoomsCount) * 100)
+      : 0;
+  const closedRoomsPercent =
+    finalizedRoomsCount > 0
+      ? Math.round((closedRoomsCount / finalizedRoomsCount) * 100)
+      : 0;
+  const completedRoomsPercent =
+    finalizedRoomsCount > 0
+      ? Math.round((completedRoomsCount / finalizedRoomsCount) * 100)
+      : 0;
+
+  const now = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+  const roomsCreatedLast7Days = rooms.filter((room) => {
+    const createdAt = new Date(room.createdAt).getTime();
+    return Number.isFinite(createdAt) && now - createdAt <= sevenDaysMs;
+  }).length;
+  const roomsCreatedLast30Days = rooms.filter((room) => {
+    const createdAt = new Date(room.createdAt).getTime();
+    return Number.isFinite(createdAt) && now - createdAt <= thirtyDaysMs;
+  }).length;
+
+  const dashboardAlerts: string[] = [];
+  if (consentPendingParticipantsCount > 0) {
+    dashboardAlerts.push(
+      `${consentPendingParticipantsCount} participante(s) sem consentimento em ${consentPendingRoomsCount} sala(s).`,
+    );
+  }
+  if (activeRoomsWithoutMovementCount > 0) {
+    dashboardAlerts.push(
+      `${activeRoomsWithoutMovementCount} sala(s) ativa(s) ainda sem jogadas.`,
+    );
+  }
+  if (inviteAcceptancePercent !== null && inviteAcceptancePercent < 40) {
+    dashboardAlerts.push(
+      `Taxa de aceite de convites em ${inviteAcceptancePercent}% (abaixo de 40%).`,
+    );
+  }
 
   return (
     <div className="grid dashboard-root" style={{ gap: 24 }}>
@@ -2104,6 +2209,218 @@ export function DashboardClient() {
             Aplicar filtros
           </button>
         </div>
+      </div>
+
+      <div className="card" style={{ display: "grid", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <h2 className="section-title">Indicadores do painel</h2>
+          <span className="small-muted">
+            Base: {totalRoomsCount} sala{totalRoomsCount === 1 ? "" : "s"} no filtro atual
+          </span>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Taxa de ocupação</span>
+            <strong>{occupancyPercent}%</strong>
+            <span className="small-muted">
+              {occupiedSlots}/{availableSlots} vagas preenchidas
+            </span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Convites aceitos</span>
+            <strong>
+              {inviteAcceptancePercent === null ? "--" : `${inviteAcceptancePercent}%`}
+            </strong>
+            <span className="small-muted">
+              {invitesAcceptedCount}/{invitesSentCount} convites
+            </span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Consentimento pendente</span>
+            <strong>{consentPendingParticipantsCount}</strong>
+            <span className="small-muted">
+              {consentPendingRoomsCount} sala{consentPendingRoomsCount === 1 ? "" : "s"} com pendência
+            </span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Salas ativas sem movimento</span>
+            <strong>{activeRoomsWithoutMovementCount}</strong>
+            <span className="small-muted">
+              de {activeRoomsCount} sala{activeRoomsCount === 1 ? "" : "s"} ativa
+              {activeRoomsCount === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Profundidade terapêutica</span>
+            <strong>
+              {therapyEntriesPerMove === null
+                ? "--"
+                : therapyEntriesPerMove.toFixed(2).replace(".", ",")}
+            </strong>
+            <span className="small-muted">registros por jogada</span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Uso da IA</span>
+            <strong>
+              {aiReportsPerMove === null
+                ? "--"
+                : aiReportsPerMove.toFixed(2).replace(".", ",")}
+            </strong>
+            <span className="small-muted">relatórios por jogada</span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Taxa de conclusão</span>
+            <strong>{completionRatePercent}%</strong>
+            <span className="small-muted">
+              {completedRoomsCount}/{totalRoomsCount} salas completas
+            </span>
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 4,
+            }}
+          >
+            <span className="small-muted">Ritmo de criação</span>
+            <strong>
+              7d: {roomsCreatedLast7Days} | 30d: {roomsCreatedLast30Days}
+            </strong>
+            <span className="small-muted">salas criadas</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            borderTop: "1px solid var(--border)",
+            paddingTop: 10,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 10,
+            }}
+          >
+            <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <span>Encerradas (CLOSED)</span>
+              <strong>
+                {finalizedRoomsCount > 0 ? `${closedRoomsPercent}%` : "--"} ({closedRoomsCount})
+              </strong>
+            </div>
+            <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <span>Completas (COMPLETED)</span>
+              <strong>
+                {finalizedRoomsCount > 0 ? `${completedRoomsPercent}%` : "--"} ({completedRoomsCount})
+              </strong>
+            </div>
+          </div>
+          <span className="small-muted">
+            Base comparativa: {finalizedRoomsCount} sala{finalizedRoomsCount === 1 ? "" : "s"} finalizada
+            {finalizedRoomsCount === 1 ? "" : "s"}.
+          </span>
+        </div>
+
+        {dashboardAlerts.length > 0 && (
+          <div
+            style={{
+              borderTop: "1px solid var(--border)",
+              paddingTop: 10,
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <strong>Alertas rápidos</strong>
+            {dashboardAlerts.map((alert) => (
+              <span key={alert} className="small-muted">
+                • {alert}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
