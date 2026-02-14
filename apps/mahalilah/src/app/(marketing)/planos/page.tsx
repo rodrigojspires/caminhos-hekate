@@ -301,7 +301,7 @@ export default async function PlanosPage() {
           <div className="overflow-hidden rounded-3xl border border-border/70 bg-surface/75 p-1 shadow-soft">
             <div className="relative aspect-[16/9] overflow-hidden rounded-[1.3rem]">
               <Image
-                src="/planos/ia-assistida.webp"
+                src="/marketing/planos/ia-assistida.webp"
                 alt="Fluxo de IA assistida e limites por plano"
                 fill
                 className="object-cover"
