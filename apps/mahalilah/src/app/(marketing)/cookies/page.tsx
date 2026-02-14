@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
+import { CookiePreferencesControls } from '@/components/marketing/CookiePreferencesControls'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
@@ -39,7 +40,6 @@ export default function CookiesPage() {
         subtitle="Usamos cookies para garantir login seguro e melhorar a experiência. Você controla as preferências."
         primaryCta={{ label: 'Ver privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Termos de uso', href: '/termos' }}
-        mediaLabel="Imagem: cookies e preferências"
         highlights={['Controle do usuário', 'Transparência', 'Segurança de sessão']}
       />
 
@@ -57,26 +57,24 @@ export default function CookiesPage() {
               <li>Personalização: ajustes de experiência e preferência de idioma.</li>
             </ul>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: categorias de cookies" />
         </div>
       </SectionShell>
 
+
+
       <SectionShell>
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
-          <p className="text-ink">Banner de consentimento ativo</p>
-          <div className="mt-4 rounded-2xl border border-border/70 bg-[#0b0e13]/70 p-4">
-            <p>
-              Usamos cookies para manter sua sessão segura e melhorar sua experiência. Você pode aceitar
-              todos ou ajustar preferências.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <button className="btn-primary" type="button">Aceitar tudo</button>
-              <button className="btn-secondary" type="button">Ajustar preferências</button>
+        <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col gap-6">
+            <SectionHeader
+              eyebrow="Banner de consentimento ativo"
+              title="Preferências sempre à mão"
+              subtitle="Usamos cookies para manter sua sessão segura e melhorar sua experiência. Você pode aceitar
+              todos ou ajustar preferências."
+            />
+            <div className="mt-3">
+              <CookiePreferencesControls />
             </div>
           </div>
-          <p className="mt-4 text-xs uppercase tracking-[0.2em] text-ink-muted">
-            Cookies analíticos só são ativados após consentimento.
-          </p>
         </div>
       </SectionShell>
 
@@ -84,15 +82,8 @@ export default function CookiesPage() {
         eyebrow="FAQ"
         title="Perguntas sobre cookies"
         items={faqItems}
-        ctaLabel="Falar com a equipe"
-        ctaHref="/contato"
-      />
-
-      <CTA
-        title="Controle total"
-        subtitle="Gerencie suas preferências e siga com segurança."
-        primaryCta={{ label: 'Ver privacidade', href: '/privacidade' }}
-        secondaryCta={{ label: 'Entrar', href: '/login' }}
+        ctaLabel=""
+        ctaHref=""
       />
     </div>
   )

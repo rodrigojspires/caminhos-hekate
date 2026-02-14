@@ -101,8 +101,8 @@ export default function BlogPage() {
         eyebrow="FAQ"
         title="Perguntas sobre o blog"
         items={faqItems}
-        ctaLabel="Falar com a equipe"
-        ctaHref="/contato"
+        ctaLabel=""
+        ctaHref=""
       />
 
       <CTA

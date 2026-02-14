@@ -14,8 +14,7 @@ const columns = [
     title: 'Soluções',
     links: [
       { href: '/para-terapeutas', label: 'Para terapeutas' },
-      { href: '/para-grupos', label: 'Para grupos' },
-      { href: '/seguranca-privacidade', label: 'Segurança e privacidade' }
+      { href: '/para-grupos', label: 'Para grupos' }
     ]
   },
   {

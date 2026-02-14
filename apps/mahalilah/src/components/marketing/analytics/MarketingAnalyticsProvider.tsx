@@ -3,10 +3,9 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { trackMarketingEvent } from '@/lib/marketing/analytics'
+import { CONSENT_EVENT, CONSENT_KEY, parseConsentValue } from '@/lib/marketing/cookieConsent'
 
 const SCROLL_MILESTONES = [25, 50, 75, 100]
-const CONSENT_KEY = 'mahalilah:cookie-consent:v1'
-const CONSENT_EVENT = 'ml-cookie-consent-change'
 
 function normalizeText(value: string | null | undefined) {
   if (!value) return ''
@@ -33,8 +32,8 @@ export function MarketingAnalyticsProvider() {
 
   useEffect(() => {
     const refreshConsent = () => {
-      const value = window.localStorage.getItem(CONSENT_KEY)
-      setCanTrack(value === 'accepted')
+      const consent = parseConsentValue(window.localStorage.getItem(CONSENT_KEY))
+      setCanTrack(Boolean(consent?.analytics))
     }
 
     refreshConsent()

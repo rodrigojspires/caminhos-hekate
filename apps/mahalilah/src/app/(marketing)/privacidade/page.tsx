@@ -35,13 +35,10 @@ export default function PrivacidadePage() {
   return (
     <div>
       <Hero
-        eyebrow="Privacidade"
         title="Transparência no cuidado dos dados"
         subtitle="Explicamos o que coletamos, como usamos e quais direitos você tem como titular."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        mediaLabel="Imagem: privacidade e dados"
-        highlights={['LGPD', 'Consentimento', 'Controle do titular']}
+        primaryCta={{  label: 'Falar com a equipe', href: '/contato' }}
+        highlights={['LGPD', 'Consentimento', 'Uso dos dados']}
       />
 
       <SectionShell>
@@ -60,7 +57,6 @@ export default function PrivacidadePage() {
               <li>Pagamentos processados via Mercado Pago.</li>
             </ul>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: dados essenciais" />
         </div>
       </SectionShell>
 
@@ -150,16 +146,15 @@ export default function PrivacidadePage() {
         eyebrow="FAQ"
         title="Perguntas sobre privacidade"
         items={faqItems}
-        ctaLabel="Segurança e privacidade"
-        ctaHref="/seguranca-privacidade"
+        ctaLabel=""
+        ctaHref=""
       />
 
       <CTA
         title="Confiança e transparência"
         subtitle="Estamos prontos para esclarecer qualquer dúvida sobre dados."
         primaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
-        badges={['Dados protegidos', 'Uso mínimo necessário']}
+        badges={['Dados protegidos', 'Uso mínimo necessário', 'Transparência', 'LGPD']}
       />
     </div>
   )

@@ -2,30 +2,18 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-
-const CONSENT_KEY = 'mahalilah:cookie-consent:v1'
-const CONSENT_EVENT = 'ml-cookie-consent-change'
-const CONSENT_COOKIE_NAME = 'ml_cookie_consent'
-const CONSENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 180
-
-type ConsentValue = 'accepted' | 'rejected'
-
-function persistConsent(value: ConsentValue) {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(CONSENT_KEY, value)
-    window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: value }))
-  }
-  if (typeof document !== 'undefined') {
-    document.cookie = `${CONSENT_COOKIE_NAME}=${value}; Path=/; Max-Age=${CONSENT_COOKIE_MAX_AGE}; SameSite=Lax`
-  }
-}
+import { CookiePreferencesControls } from '@/components/marketing/CookiePreferencesControls'
+import {
+  CONSENT_KEY,
+  parseConsentValue
+} from '@/lib/marketing/cookieConsent'
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const current = window.localStorage.getItem(CONSENT_KEY)
-    setVisible(!current)
+    const parsed = parseConsentValue(window.localStorage.getItem(CONSENT_KEY))
+    setVisible(!parsed)
   }, [])
 
   if (!visible) return null
@@ -39,33 +27,12 @@ export function CookieConsentBanner() {
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl text-sm text-ink-muted">
-          Usamos cookies essenciais para login e segurança. Cookies analíticos só são ativados com seu consentimento.
-          <span className="ml-1">
+          <p>O nosso site utiliza cookies para melhorar a navegação.</p>
+          <p className="mt-2">
             Veja nossa <Link href="/cookies" className="text-gold">Política de Cookies</Link>.
-          </span>
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              persistConsent('rejected')
-              setVisible(false)
-            }}
-          >
-            Rejeitar analíticos
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              persistConsent('accepted')
-              setVisible(false)
-            }}
-          >
-            Aceitar analíticos
-          </button>
-        </div>
+        <CookiePreferencesControls onDecision={() => setVisible(false)} />
       </div>
     </div>
   )

@@ -23,14 +23,16 @@ export function Hero({
   subtitle: string
   primaryCta: Cta
   secondaryCta?: Cta
-  mediaLabel: string
+  mediaLabel?: string
   note?: string
   highlights?: string[]
   metrics?: HeroMetric[]
 }) {
+  const hasMedia = Boolean(mediaLabel?.trim())
+
   return (
     <SectionShell className="pt-12 sm:pt-14 lg:pt-20">
-      <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className={hasMedia ? 'grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]' : 'grid items-center gap-12'}>
         <div className="flex flex-col gap-6">
           {eyebrow && (
             <span className="inline-flex w-fit items-center rounded-full border border-gold/35 bg-surface/90 px-3 py-1 text-xs uppercase tracking-[0.26em] text-gold-soft">
@@ -70,11 +72,13 @@ export function Hero({
             </div>
           )}
         </div>
-        <MediaPlaceholder variant="video" label={mediaLabel}>
-          <span className="rounded-full border border-gold/35 bg-surface/85 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gold-soft">
-            Prévia da experiência real
-          </span>
-        </MediaPlaceholder>
+        {hasMedia && (
+          <MediaPlaceholder variant="video" label={mediaLabel}>
+            <span className="rounded-full border border-gold/35 bg-surface/85 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gold-soft">
+              Prévia da experiência real
+            </span>
+          </MediaPlaceholder>
+        )}
       </div>
     </SectionShell>
   )

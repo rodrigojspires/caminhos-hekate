@@ -23,7 +23,7 @@ const faqItems = [
   },
   {
     question: 'Há reembolso?',
-    answer: 'Depende do tipo de plano. Consulte a política de reembolso.'
+    answer: 'Para saber mais consulte nossas Políticas de Reembolso.'
   },
   {
     question: 'Como funciona o uso de IA?',
@@ -35,12 +35,10 @@ export default function TermosPage() {
   return (
     <div>
       <Hero
-        eyebrow="Termos"
         title="Termos de uso"
         subtitle="Condições gerais para uso do Maha Lilah Online, com foco em segurança, transparência e respeito."
         primaryCta={{ label: 'Política de privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Política de reembolso', href: '/politica-de-reembolso' }}
-        mediaLabel="Imagem: termos e acordos"
         highlights={['Uso responsável', 'Consentimento', 'Transparência']}
       />
 
@@ -50,7 +48,7 @@ export default function TermosPage() {
             <SectionHeader
               eyebrow="Escopo"
               title="O que oferecemos"
-              subtitle="Uma plataforma de salas ao vivo para jornadas terapêuticas, com recursos digitais e registros." />
+              subtitle="Uma plataforma de salas ao vivo para jornadas terapêuticas utilizando o tabuleiro do Maha Lilah, com recursos digitais e registros." />
             <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
               <li>Uso do tabuleiro, deck randômico e modo terapia.</li>
               <li>Convites por e-mail com login obrigatório.</li>
@@ -58,7 +56,6 @@ export default function TermosPage() {
               <li>Síntese por IA com limites e botão dedicado.</li>
             </ul>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: escopo do serviço" />
         </div>
       </SectionShell>
 
@@ -134,16 +131,8 @@ export default function TermosPage() {
         eyebrow="FAQ"
         title="Perguntas sobre termos"
         items={faqItems}
-        ctaLabel="Falar com a equipe"
+        ctaLabel=""
         ctaHref="/contato"
-      />
-
-      <CTA
-        title="Use com clareza e segurança"
-        subtitle="Crie sua sala com responsabilidade e respeito ao grupo."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Entrar', href: '/login' }}
-        badges={['Diretrizes claras', 'Proteção de dados']}
       />
     </div>
   )

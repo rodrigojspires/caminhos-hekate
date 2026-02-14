@@ -19,16 +19,12 @@ export const metadata: Metadata = {
 const faqItems = [
   {
     question: 'Como solicito reembolso?',
-    answer: 'Entre em contato pelo formulário com dados da compra e motivo.'
+    answer: 'Entre em contato pelo formulário com dados da compra e motivo ou através do nosso suporte pelo Whatsapp.'
   },
   {
     question: 'E se eu cancelar a assinatura?',
     answer:
       'O cancelamento impede novas cobranças, não gera reembolso e a assinatura permanece ativa até o fim do ciclo já pago.'
-  },
-  {
-    question: 'Como lidam com chargebacks?',
-    answer: 'Chargebacks são analisados caso a caso, com registro e comprovantes.'
   }
 ]
 
@@ -36,30 +32,23 @@ export default function PoliticaDeReembolsoPage() {
   return (
     <div>
       <Hero
-        eyebrow="Reembolso"
         title="Política de reembolso"
         subtitle="Regras claras para garantir transparência em sessões avulsas e assinaturas."
         primaryCta={{ label: 'Falar com suporte', href: '/contato' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
-        mediaLabel="Imagem: reembolso e suporte"
-        highlights={['Transparência', 'Análise justa', 'Suporte dedicado']}
+        highlights={['Transparência', 'Suporte dedicado', 'Suporte Humanizado']}
       />
 
       <SectionShell>
-        <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-6">
-            <SectionHeader
-              eyebrow="Sessão avulsa"
-              title="Condições para sessão avulsa"
-              subtitle="Reembolso quando a sessão não foi iniciada ou dentro do prazo permitido."
-            />
-            <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
+        <SectionHeader
+          eyebrow="Sessão Avulsa"
+          title="Planos mensais"
+          subtitle="Reembolso quando a sessão não foi iniciada ou dentro do prazo permitido." />
+        <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
+        <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
               <li>Solicitações devem ser feitas em prazo razoável após a compra.</li>
               <li>Reembolso integral se a sala não foi iniciada.</li>
               <li>Se a sessão foi iniciada, avaliamos caso a caso.</li>
             </ul>
-          </div>
-          <MediaPlaceholder variant="vertical" label="Imagem: sessão avulsa" />
         </div>
       </SectionShell>
 
@@ -74,25 +63,6 @@ export default function PoliticaDeReembolsoPage() {
             gera reembolso proporcional do ciclo em andamento, salvo exceções previstas em lei. Após cancelar,
             o acesso permanece liberado até a data de vencimento da assinatura atual.
           </p>
-          <p className="mt-3">
-            Caso tenha problemas técnicos graves, a equipe pode avaliar reembolso parcial.
-          </p>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <SectionHeader
-          eyebrow="Chargebacks"
-          title="Disputas e contestações"
-          subtitle="Chargebacks são tratados com cuidado e transparência." />
-        <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
-          <p>
-            Em caso de contestação, solicitamos registros e comprovantes. O objetivo é resolver de forma justa,
-            respeitando usuários e regras do provedor de pagamento.
-          </p>
-          <p className="mt-3">
-            Consulte nossos <Link className="text-gold" href="/termos">Termos de uso</Link> para detalhes.
-          </p>
         </div>
       </SectionShell>
 
@@ -100,7 +70,7 @@ export default function PoliticaDeReembolsoPage() {
         eyebrow="FAQ"
         title="Perguntas sobre reembolso"
         items={faqItems}
-        ctaLabel="Falar com suporte"
+        ctaLabel=""
         ctaHref="/contato"
       />
 
