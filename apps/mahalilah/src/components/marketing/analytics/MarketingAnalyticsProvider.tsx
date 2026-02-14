@@ -1,10 +1,12 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { trackMarketingEvent } from '@/lib/marketing/analytics'
 
 const SCROLL_MILESTONES = [25, 50, 75, 100]
+const CONSENT_KEY = 'mahalilah:cookie-consent:v1'
+const CONSENT_EVENT = 'ml-cookie-consent-change'
 
 function normalizeText(value: string | null | undefined) {
   if (!value) return ''
@@ -22,6 +24,7 @@ function getScrollDepth() {
 
 export function MarketingAnalyticsProvider() {
   const pathname = usePathname()
+  const [canTrack, setCanTrack] = useState(false)
   const maxDepthRef = useRef(0)
   const startTimeRef = useRef(Date.now())
   const sentMilestonesRef = useRef<Set<number>>(new Set())
@@ -29,6 +32,21 @@ export function MarketingAnalyticsProvider() {
   const exitTrackedRef = useRef(false)
 
   useEffect(() => {
+    const refreshConsent = () => {
+      const value = window.localStorage.getItem(CONSENT_KEY)
+      setCanTrack(value === 'accepted')
+    }
+
+    refreshConsent()
+    window.addEventListener(CONSENT_EVENT, refreshConsent)
+
+    return () => {
+      window.removeEventListener(CONSENT_EVENT, refreshConsent)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!canTrack) return
     startTimeRef.current = Date.now()
     maxDepthRef.current = 0
     sentMilestonesRef.current = new Set()
@@ -42,9 +60,10 @@ export function MarketingAnalyticsProvider() {
         title: typeof document !== 'undefined' ? document.title : undefined
       }
     })
-  }, [pathname])
+  }, [pathname, canTrack])
 
   useEffect(() => {
+    if (!canTrack) return
     const evaluateDepth = () => {
       const depth = getScrollDepth()
       if (depth > maxDepthRef.current) {
@@ -85,9 +104,10 @@ export function MarketingAnalyticsProvider() {
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleScroll)
     }
-  }, [pathname])
+  }, [pathname, canTrack])
 
   useEffect(() => {
+    if (!canTrack) return
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null
       if (!target) return
@@ -124,9 +144,10 @@ export function MarketingAnalyticsProvider() {
 
     document.addEventListener('click', handleClick, true)
     return () => document.removeEventListener('click', handleClick, true)
-  }, [pathname])
+  }, [pathname, canTrack])
 
   useEffect(() => {
+    if (!canTrack) return
     const trackExit = () => {
       if (exitTrackedRef.current) return
       exitTrackedRef.current = true
@@ -159,7 +180,7 @@ export function MarketingAnalyticsProvider() {
       window.removeEventListener('beforeunload', trackExit)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [pathname])
+  }, [pathname, canTrack])
 
   return null
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
+import Image from 'next/image'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
@@ -298,7 +298,17 @@ export default async function PlanosPage() {
 
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="horizontal" label="Fluxo de IA assistida e limites por plano" />
+          <div className="overflow-hidden rounded-3xl border border-border/70 bg-surface/75 p-1 shadow-soft">
+            <div className="relative aspect-[16/9] overflow-hidden rounded-[1.3rem]">
+              <Image
+                src="/planos/ia-assistida.webp"
+                alt="Fluxo de IA assistida e limites por plano"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 45vw"
+              />
+            </div>
+          </div>
           <div className="flex flex-col gap-6">
             <SectionHeader
               eyebrow="IA assistida"

@@ -63,7 +63,7 @@ export default function CookiesPage() {
 
       <SectionShell>
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:p-8">
-          <p className="text-ink">Exemplo de banner de cookies (simples)</p>
+          <p className="text-ink">Banner de consentimento ativo</p>
           <div className="mt-4 rounded-2xl border border-border/70 bg-[#0b0e13]/70 p-4">
             <p>
               Usamos cookies para manter sua sessão segura e melhorar sua experiência. Você pode aceitar
@@ -75,7 +75,7 @@ export default function CookiesPage() {
             </div>
           </div>
           <p className="mt-4 text-xs uppercase tracking-[0.2em] text-ink-muted">
-            Banner de consentimento apresentado conforme evolução da experiência.
+            Cookies analíticos só são ativados após consentimento.
           </p>
         </div>
       </SectionShell>
