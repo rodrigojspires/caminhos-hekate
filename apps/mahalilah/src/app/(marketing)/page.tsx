@@ -213,46 +213,46 @@ export default async function HomePage() {
         subtitle="Interface pensada para presença e continuidade: tabuleiro no centro, registro por jogada e fechamento claro — para você conduzir sem se perder no processo."
         items={[
           {
-            label: 'Sala ao vivo com tabuleiro compartilhado',
+            label: 'Sala ao vivo (presença real)',
             variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-01.webp',
             description:
-              'Todos enxergam a mesma dinâmica em tempo real, com foco em presença, ritmo e clareza de turno.'
+              'Tabuleiro compartilhado em tempo real — todos veem o mesmo movimento e o centro da rodada fica claro.'
           },
           {
-            label: 'Modo terapia com registro por jogada',
+            label: 'Registro por jogada (sem burocracia)',
             variant: 'vertical',
             imageSrc: '/marketing/visao-produto/tela-02.webp',
             description:
-              'Cada movimento gera contexto terapêutico estruturado, sem interromper o fluxo da condução.'
+              'Em cada movimento, você registra o essencial (emoção, insight, ação). Fica leve, consistente e fácil de retomar.'
           },
           {
-            label: 'Resumo final através de IA',
+            label: 'Síntese final por IA (fechamento claro)',
             variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-03.webp',
             description:
-              'Fechamento objetivo com síntese acionável, facilitando continuidade entre sessões.'
+              'Um clique para consolidar padrões, aprendizados e próximos passos — ótimo para continuidade entre sessões.'
           },
           {
-            label: 'Assistência por IA',
+            label: 'IA durante a sessão (perguntas que destravam)',
             variant: 'vertical',
             imageSrc: '/marketing/visao-produto/tela-04.webp',
             description:
-              'Possibilidade de pedir Ajuda, Resumo final e caminho até agora, elucidando todo o jogo.'
+              'Peça sugestões na hora certa: perguntas, ângulos e provocações para aprofundar sem invadir sua condução.'
           },
           {
-            label: 'Dashboard para terapeutas e facilitadores',
+            label: 'Dashboard do terapeuta (visão profissional)',
             variant: 'horizontal',
             imageSrc: '/marketing/visao-produto/tela-05.webp',
             description:
-              'Visão consolidada de convites, participantes e indicadores para acompanhar cada jornada.'
+              'Convites, participantes e indicadores num painel só — para acompanhar evolução e consistência de condução.'
           },
           {
-            label: 'Acompanhamento da Jornada',
+            label: 'Linha da jornada (memória viva)',
             variant: 'vertical',
             imageSrc: '/marketing/visao-produto/tela-06.webp',
             description:
-              'Todo o registro da jornada fica gravado para recordar cada instante.'
+              'Histórico completo do caminho: casas visitadas, registros e momentos-chave para lembrar ‘como chegou até aqui’.'
           }
         ]}
       />

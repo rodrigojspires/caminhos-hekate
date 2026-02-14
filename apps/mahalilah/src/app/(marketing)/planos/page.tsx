@@ -146,21 +146,6 @@ export default async function PlanosPage() {
 
   return (
     <div>
-      <Hero
-        eyebrow="Planos"
-        title="Escolha o plano que acompanha seu ritmo de condução"
-        subtitle="Comece leve com sessão avulsa ou escale com assinatura para ter previsibilidade, continuidade e profundidade."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/checkout' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        mediaLabel="Comparativo visual de planos e benefícios"
-        highlights={['Pix e cartão', 'Cancelamento sem multa', 'Upgrade quando quiser']}
-        metrics={[
-          { value: '3', label: 'formatos de contratação' },
-          { value: '100%', label: 'checkout seguro' },
-          { value: '0', label: 'taxa de setup' }
-        ]}
-      />
-
       <PricingCards
         eyebrow="Planos e benefícios"
         title="Opções para diferentes momentos da sua jornada"
