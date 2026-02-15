@@ -6,6 +6,7 @@ import { ArrowLeft, Trash2, Mail, Phone, Calendar, ShoppingBag, BookOpen, MapPin
 import { UserForm } from '@/components/admin/UserForm'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { SubscriptionManager } from '@/components/admin/SubscriptionManager'
+import { MahaLilahSubscriptionManager } from '@/components/admin/MahaLilahSubscriptionManager'
 import React from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -540,6 +541,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             }}
             onUpdate={fetchUser}
           />
+          <MahaLilahSubscriptionManager userId={user.id} />
           <UserInvoices userId={user.id} />
         </div>
       )}
@@ -605,4 +607,3 @@ function UserInvoices({ userId }: { userId: string }) {
     </div>
   )
 }
-

@@ -21,7 +21,7 @@ const faqItems = [
     answer: 'Sim. O login é obrigatório para todos os participantes, garantindo identidade e histórico seguro.'
   },
   {
-    question: 'Posso usar a mesma conta do Caminhos de Hekate?',
+    question: 'Posso usar a mesma conta do Portal Caminhos de Hekate?',
     answer: 'Sim. O acesso integra o mesmo ecossistema, com autenticação segura.'
   },
   {
@@ -40,31 +40,14 @@ export default function LoginPage() {
             <div className="flex flex-col gap-3">
               <h2 className="font-serif text-3xl text-ink">Entre e retome sua jornada com um clique</h2>
               <p className="text-base text-ink-muted">
-                Use o mesmo login do Caminhos de Hekate. O acesso garante que cada participante esteja
-                identificado e que os registros fiquem vinculados ao perfil correto.
+                O Maha Lilah Online é parte integrante do Portal Caminhos de Hekate. Você pode reutilizar o seu login do Portal Caminhos de Hekate no Maha Lilah Online. 
+                <br/><br/>
+                O acesso garante que cada participante esteja identificado e que os registros fiquem vinculados ao perfil correto.
               </p>
             </div>
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem institucional: entrada na sala" />
         </div>
       </SectionShell>
-
-      <FAQ
-        eyebrow="FAQ"
-        title="Perguntas rápidas"
-        subtitle="Duas respostas antes de entrar."
-        items={faqItems}
-        ctaLabel="Ver FAQ completa"
-        ctaHref="/faq"
-      />
-
-      <CTA
-        title="Pronto para iniciar uma nova sessão?"
-        subtitle="Escolha o plano ideal ou avance para o checkout e comece em minutos."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Ir para checkout', href: '/checkout' }}
-        badges={['Login seguro', 'Histórico contínuo']}
-      />
     </div>
   )
 }

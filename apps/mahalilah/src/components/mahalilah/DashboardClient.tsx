@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getHouseByNumber, getHousePrompt } from "@hekate/mahalilah-core";
+import { HOUSE_MEANINGS } from "@/lib/mahalilah/house-meanings";
+import { HOUSE_POLARITIES } from "@/lib/mahalilah/house-polarities";
+import { HOUSE_THERAPEUTIC_TEXTS } from "@/lib/mahalilah/house-therapeutic-texts";
 
 type RoomInvite = {
   id: string;
@@ -126,6 +130,27 @@ type ParsedProgressSummary = {
   intention: string | null;
 };
 
+type HouseMeaningModalState = {
+  houseNumber: number;
+  title: string;
+  subtitle?: string;
+  jumpContext?: {
+    from: number;
+    to: number;
+    isUp: boolean;
+  };
+};
+
+type HouseDisplayInfo = {
+  number: number;
+  sanskrit: string;
+  portuguese: string;
+  meaning: string;
+  description: string;
+  keywords: string[];
+  polarity: { lightKeywords: string; lightSummary: string; shadowKeywords: string; shadowSummary: string } | null;
+};
+
 type Filters = {
   status: string;
   from: string;
@@ -169,6 +194,105 @@ const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
   "room-tab-deck": "deck",
   "room-tab-aiReports": "aiReports",
 };
+
+const HOUSE_SANSKRIT_NAMES: string[] = [
+  "Janma",
+  "Maya",
+  "Krodha",
+  "Lobha",
+  "Moha",
+  "Mada",
+  "Matsarya",
+  "Irsha",
+  "Dvesha",
+  "Klesha",
+  "Trishna",
+  "Ahamkara",
+  "Raga",
+  "Bhaya",
+  "Dukkha",
+  "Samsara",
+  "Tamas",
+  "Rajas",
+  "Sattva",
+  "Vasana",
+  "Karma",
+  "Dharma",
+  "Artha",
+  "Kama",
+  "Moksha",
+  "Shakti",
+  "Bhakti",
+  "Shraddha",
+  "Smriti",
+  "Viveka",
+  "Vairagya",
+  "Tapas",
+  "Svadhyaya",
+  "Ishvara",
+  "Ananda",
+  "Karuna",
+  "Mudita",
+  "Upeksha",
+  "Satya",
+  "Ahimsa",
+  "Asteya",
+  "Brahmacharya",
+  "Aparigraha",
+  "Saucha",
+  "Santosha",
+  "Dhyana",
+  "Samadhi",
+  "Prana",
+  "Tejas",
+  "Ojas",
+  "Manas",
+  "Buddhi",
+  "Chitta",
+  "Atman",
+  "Purusha",
+  "Prakriti",
+  "Nada",
+  "Bindu",
+  "Kala",
+  "Lila",
+  "Shri",
+  "Lakshmi",
+  "Sarasvati",
+  "Durga",
+  "Kali",
+  "Shiva",
+  "Shakti-Kundalini",
+  "Purna",
+];
+
+function stripTherapeuticPromptPrefix(prompt: string | null | undefined) {
+  if (!prompt) return "";
+  return prompt.replace(/^Pergunta Terapêutica:\s*/i, "").trim();
+}
+
+function parseHouseKeywords(description: string | null | undefined) {
+  if (!description) return [];
+  return description
+    .split(".")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
+function getHouseDisplayInfo(houseNumber: number | null | undefined) {
+  if (typeof houseNumber !== "number" || houseNumber < 1) return null;
+  const house = getHouseByNumber(houseNumber);
+  return {
+    number: houseNumber,
+    sanskrit: HOUSE_SANSKRIT_NAMES[houseNumber - 1] || "",
+    portuguese: house?.title || `Casa ${houseNumber}`,
+    meaning: HOUSE_MEANINGS[houseNumber] || house?.description || "",
+    description: house?.description || "",
+    keywords: parseHouseKeywords(house?.description),
+    polarity: HOUSE_POLARITIES[houseNumber] || null,
+  } satisfies HouseDisplayInfo;
+}
 
 function getDashboardTutorialSteps({
   canCreateRoom,
@@ -463,6 +587,8 @@ export function DashboardClient() {
     content: string;
     subtitle?: string;
   } | null>(null);
+  const [houseMeaningModal, setHouseMeaningModal] =
+    useState<HouseMeaningModalState | null>(null);
   const dashboardTutorialSteps = useMemo(
     () =>
       getDashboardTutorialSteps({
@@ -474,6 +600,25 @@ export function DashboardClient() {
       }),
     [canCreateRoom, rooms],
   );
+
+  const modalHouseInfo = houseMeaningModal
+    ? getHouseDisplayInfo(houseMeaningModal.houseNumber)
+    : null;
+  const modalHouseQuestion = houseMeaningModal
+    ? stripTherapeuticPromptPrefix(getHousePrompt(houseMeaningModal.houseNumber))
+    : "";
+  const modalHouseTherapeutic = houseMeaningModal
+    ? HOUSE_THERAPEUTIC_TEXTS[houseMeaningModal.houseNumber] || null
+    : null;
+
+  const openHouseMeaningModal = ({
+    houseNumber,
+    title,
+    subtitle,
+    jumpContext,
+  }: HouseMeaningModalState) => {
+    setHouseMeaningModal({ houseNumber, title, subtitle, jumpContext });
+  };
 
   const pushToast = useCallback(
     (message: string, kind: DashboardToastKind = "info") => {
@@ -1424,7 +1569,7 @@ export function DashboardClient() {
                               {move.participant.user.name ||
                                 move.participant.user.email}
                             </strong>
-                            <div
+                            <button
                               className="btn-secondary"
                               style={{
                                 justifyContent: "flex-start",
@@ -1434,11 +1579,30 @@ export function DashboardClient() {
                                 padding: "6px 8px",
                                 overflowWrap: "anywhere",
                                 wordBreak: "break-word",
-                                cursor: "default",
                               }}
+                              onClick={() =>
+                                openHouseMeaningModal({
+                                  houseNumber: hasJump
+                                    ? move.appliedJumpTo!
+                                    : move.toPos,
+                                  title: `Significado da casa ${hasJump ? move.appliedJumpTo : move.toPos}`,
+                                  subtitle: !hasJump
+                                    ? `Jogada #${move.turnNumber} • Dado ${move.diceValue}`
+                                    : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • Atalho ${move.appliedJumpFrom} ${move.appliedJumpTo! > move.appliedJumpFrom! ? "↗" : "↘"} ${move.appliedJumpTo}`,
+                                  jumpContext: hasJump
+                                    ? {
+                                        from: move.appliedJumpFrom!,
+                                        to: move.appliedJumpTo!,
+                                        isUp:
+                                          move.appliedJumpTo! >
+                                          move.appliedJumpFrom!,
+                                      }
+                                    : undefined,
+                                })
+                              }
                             >
                               {movementText}
-                            </div>
+                            </button>
                             <span className="small-muted">
                               {new Date(move.createdAt).toLocaleString("pt-BR")}
                             </span>
@@ -2568,6 +2732,154 @@ export function DashboardClient() {
             <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
               {aiContentModal.content}
             </div>
+          </div>
+        </div>
+      )}
+
+      {houseMeaningModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setHouseMeaningModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <strong>{houseMeaningModal.title}</strong>
+                {houseMeaningModal.subtitle && (
+                  <span className="small-muted">{houseMeaningModal.subtitle}</span>
+                )}
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setHouseMeaningModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
+
+            {houseMeaningModal.jumpContext && (
+              <div className="notice" style={{ display: "grid", gap: 8 }}>
+                <span className="small-muted">
+                  Contexto de atalho: casa {houseMeaningModal.jumpContext.from}{" "}
+                  {houseMeaningModal.jumpContext.isUp ? "↗" : "↘"} casa{" "}
+                  {houseMeaningModal.jumpContext.to} (
+                  {houseMeaningModal.jumpContext.isUp ? "subida" : "descida"})
+                </span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    className="btn-secondary"
+                    onClick={() =>
+                      setHouseMeaningModal((prev) =>
+                        prev?.jumpContext
+                          ? {
+                              ...prev,
+                              houseNumber: prev.jumpContext.from,
+                              title: `Significado da casa ${prev.jumpContext.from}`,
+                            }
+                          : prev,
+                      )
+                    }
+                  >
+                    Ver casa {houseMeaningModal.jumpContext.from}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() =>
+                      setHouseMeaningModal((prev) =>
+                        prev?.jumpContext
+                          ? {
+                              ...prev,
+                              houseNumber: prev.jumpContext.to,
+                              title: `Significado da casa ${prev.jumpContext.to}`,
+                            }
+                          : prev,
+                      )
+                    }
+                  >
+                    Ver casa {houseMeaningModal.jumpContext.to}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {modalHouseInfo ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>
+                    Casa {modalHouseInfo.number} • {modalHouseInfo.sanskrit || "—"} •{" "}
+                    {modalHouseInfo.portuguese}
+                  </strong>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Significado</strong>
+                  <span className="small-muted">
+                    {modalHouseInfo.meaning || modalHouseInfo.portuguese}
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Palavras-chave gerais</strong>
+                  <span className="small-muted">
+                    {modalHouseInfo.keywords.length
+                      ? modalHouseInfo.keywords.join(" • ")
+                      : modalHouseInfo.description || "—"}
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Lado Luz</strong>
+                  <span className="small-muted">
+                    {modalHouseInfo.polarity
+                      ? `Palavras-chave: ${modalHouseInfo.polarity.lightKeywords}. ${modalHouseInfo.polarity.lightSummary}`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Lado Sombra</strong>
+                  <span className="small-muted">
+                    {modalHouseInfo.polarity
+                      ? `Palavras-chave: ${modalHouseInfo.polarity.shadowKeywords}. ${modalHouseInfo.polarity.shadowSummary}`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Texto Terapêutico</strong>
+                  <span className="small-muted">
+                    {modalHouseTherapeutic
+                      ? `${modalHouseTherapeutic.text} Pergunta: ${modalHouseTherapeutic.question}`
+                      : modalHouseQuestion}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <span className="small-muted">
+                Sem dados de significado para esta casa.
+              </span>
+            )}
           </div>
         </div>
       )}
