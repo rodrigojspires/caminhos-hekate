@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { Prisma, prisma } from '@hekate/database'
 import { HOUSES } from '@hekate/mahalilah-core'
+import { readFile } from 'fs/promises'
+import { createRequire } from 'module'
+import { join } from 'path'
 
 interface RouteParams {
   params: { roomId: string }
@@ -193,9 +196,20 @@ function formatReportKind(kind: string) {
   return kind
 }
 
-function buildCardImageUrl(deckId: string, imageExtension: string, cardNumber: number) {
-  const normalizedExtension = imageExtension.replace(/^\./, '')
-  return `/api/mahalilah/decks/${deckId}/images/${cardNumber}.${normalizedExtension}`
+function getDeckImagesRoot() {
+  const configured = process.env.DECK_IMAGES_ROOT?.trim()
+  if (configured) return configured
+  return join(
+    process.cwd(),
+    'apps',
+    'mahalilah',
+    'private_uploads',
+    'deck-images'
+  )
+}
+
+function isSafeSegment(value: string) {
+  return /^[a-z0-9][a-z0-9_-]{1,79}$/i.test(value)
 }
 
 function repairPtBrMojibake(value: string) {
@@ -524,22 +538,12 @@ function buildPdf(room: ExportRoom) {
         })
 
         if (card) {
-          const imageUrl = buildCardImageUrl(
-            card.deck.id,
-            card.deck.imageExtension,
-            card.cardNumber
-          )
-          addParagraph(`Foto: ${imageUrl}`, { indent: 28, size: 10 })
           addParagraph(`Descricao: ${card.description || '-'}`, { indent: 28, size: 10 })
           addParagraph(`Palavras-chave: ${card.keywords || '-'}`, { indent: 28, size: 10 })
           if (card.observation) {
             addParagraph(`Observacao: ${card.observation}`, { indent: 28, size: 10 })
           }
         } else {
-          addParagraph(`Foto: carta nao encontrada para o numero ${cardNumber ?? '-'}`, {
-            indent: 28,
-            size: 10
-          })
           addParagraph('Descricao: -', { indent: 28, size: 10 })
           addParagraph('Palavras-chave: -', { indent: 28, size: 10 })
         }
@@ -639,6 +643,192 @@ function buildPdf(room: ExportRoom) {
   return Buffer.from(pdf, 'binary')
 }
 
+async function appendDeckCardsWithImagesPdf(
+  basePdfBuffer: Buffer,
+  room: ExportRoom
+) {
+  try {
+    const requireFromWeb = createRequire(join(process.cwd(), 'apps', 'web', 'package.json'))
+    const { PDFDocument, StandardFonts, rgb } = requireFromWeb('pdf-lib') as any
+
+    const pdfDoc = await PDFDocument.load(basePdfBuffer)
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+    const pageWidth = 595.28
+    const pageHeight = 841.89
+    const marginLeft = 44
+    const marginRight = 44
+    const topStart = 62
+    const bottomLimit = 56
+
+    let page = pdfDoc.addPage([pageWidth, pageHeight])
+    let cursorTop = topStart
+
+    const drawTopText = (
+      text: string,
+      x: number,
+      top: number,
+      opts?: {
+        size?: number
+        bold?: boolean
+        color?: [number, number, number]
+      }
+    ) => {
+      const size = opts?.size ?? 11
+      const color = opts?.color ?? [0.09, 0.13, 0.17]
+      page.drawText(toPdfSafeText(text), {
+        x,
+        y: pageHeight - top - size,
+        size,
+        font: opts?.bold ? fontBold : fontRegular,
+        color: rgb(color[0], color[1], color[2])
+      })
+    }
+
+    const ensureSpace = (height: number) => {
+      if (cursorTop + height > pageHeight - bottomLimit) {
+        page = pdfDoc.addPage([pageWidth, pageHeight])
+        cursorTop = topStart
+      }
+    }
+
+    const drawWrapped = (
+      text: string,
+      x: number,
+      opts?: { size?: number; bold?: boolean; maxChars?: number; lineHeight?: number }
+    ) => {
+      const size = opts?.size ?? 10
+      const lineHeight = opts?.lineHeight ?? Math.max(14, size + 4)
+      const maxChars = opts?.maxChars ?? 90
+      const lines = wrapText(text, maxChars)
+      lines.forEach((line) => {
+        ensureSpace(lineHeight)
+        drawTopText(line, x, cursorTop, { size, bold: opts?.bold })
+        cursorTop += lineHeight
+      })
+    }
+
+    const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
+    if (movesWithDraws.length === 0) {
+      return basePdfBuffer
+    }
+
+    drawTopText('Deck randomico com miniaturas', marginLeft, cursorTop, {
+      size: 16,
+      bold: true,
+      color: [0.1, 0.26, 0.31]
+    })
+    cursorTop += 24
+    drawWrapped(
+      'Esta secao detalha cada jogada com miniatura da carta e os mesmos textos da modal.',
+      marginLeft,
+      { size: 10, maxChars: 96 }
+    )
+    cursorTop += 4
+
+    for (const move of movesWithDraws) {
+      ensureSpace(28)
+      drawTopText(`Jogada #${move.turnNumber}`, marginLeft, cursorTop, {
+        size: 12,
+        bold: true
+      })
+      cursorTop += 20
+
+      for (const draw of move.cardDraws) {
+        const card = draw.card
+        const cardNumber = card?.cardNumber ?? draw.cards[0] ?? null
+        ensureSpace(144)
+
+        drawTopText(`Carta ${cardNumber ?? '-'}`, marginLeft + 10, cursorTop, {
+          size: 11,
+          bold: true
+        })
+        cursorTop += 16
+
+        const imageTop = cursorTop
+        const imageX = marginLeft + 14
+        const imageW = 76
+        const imageH = 108
+
+        let imageDrawn = false
+        if (
+          card &&
+          card.deck?.imageDirectory &&
+          isSafeSegment(card.deck.imageDirectory)
+        ) {
+          const extension = card.deck.imageExtension.replace(/^\./, '').toLowerCase()
+          const filename = `${card.cardNumber}.${extension}`
+          const imagePath = join(getDeckImagesRoot(), card.deck.imageDirectory, filename)
+          try {
+            const bytes = await readFile(imagePath)
+            if (extension === 'png') {
+              const png = await pdfDoc.embedPng(bytes)
+              page.drawImage(png, {
+                x: imageX,
+                y: pageHeight - imageTop - imageH,
+                width: imageW,
+                height: imageH
+              })
+              imageDrawn = true
+            } else if (extension === 'jpg' || extension === 'jpeg') {
+              const jpg = await pdfDoc.embedJpg(bytes)
+              page.drawImage(jpg, {
+                x: imageX,
+                y: pageHeight - imageTop - imageH,
+                width: imageW,
+                height: imageH
+              })
+              imageDrawn = true
+            }
+          } catch {
+            imageDrawn = false
+          }
+        }
+
+        if (!imageDrawn) {
+          page.drawRectangle({
+            x: imageX,
+            y: pageHeight - imageTop - imageH,
+            width: imageW,
+            height: imageH,
+            borderColor: rgb(0.78, 0.82, 0.86),
+            borderWidth: 1
+          })
+          drawTopText('Imagem indisponivel', imageX + 6, imageTop + 48, {
+            size: 8
+          })
+        }
+
+        const textX = imageX + imageW + 14
+        const maxTextChars = Math.max(30, Math.floor((pageWidth - marginRight - textX) / 5.4))
+
+        const drawMeta = (label: string, value: string | null | undefined) => {
+          drawWrapped(`${label}: ${value && value.trim() ? value : '-'}`, textX, {
+            size: 10,
+            maxChars: maxTextChars
+          })
+        }
+
+        drawMeta('Descricao', card?.description || null)
+        drawMeta('Palavras-chave', card?.keywords || null)
+        drawMeta('Observacao', card?.observation || null)
+
+        const minNextTop = imageTop + imageH + 10
+        if (cursorTop < minNextTop) cursorTop = minNextTop
+      }
+
+      cursorTop += 6
+    }
+
+    const bytes = await pdfDoc.save()
+    return Buffer.from(bytes)
+  } catch (error) {
+    console.error('Nao foi possivel anexar miniaturas no PDF de exportacao:', error)
+    return basePdfBuffer
+  }
+}
+
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions)
@@ -733,7 +923,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         } as ExportRoom)
       : room
 
-    const pdfBuffer = buildPdf(exportRoom)
+    const basePdfBuffer = buildPdf(exportRoom)
+    const pdfBuffer = await appendDeckCardsWithImagesPdf(basePdfBuffer, exportRoom)
 
     const targetParticipant = scopedParticipantId
       ? room.participants.find((participant) => participant.id === scopedParticipantId)
