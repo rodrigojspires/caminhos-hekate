@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { Prisma, prisma } from '@hekate/database'
 import { HOUSES } from '@hekate/mahalilah-core'
 import { readFile } from 'fs/promises'
+import { readdirSync } from 'fs'
 import { createRequire } from 'module'
 import { join } from 'path'
 
@@ -196,20 +197,143 @@ function formatReportKind(kind: string) {
   return kind
 }
 
-function getDeckImagesRoot() {
-  const configured = process.env.DECK_IMAGES_ROOT?.trim()
-  if (configured) return configured
-  return join(
-    process.cwd(),
-    'apps',
-    'mahalilah',
-    'private_uploads',
-    'deck-images'
-  )
-}
-
 function isSafeSegment(value: string) {
   return /^[a-z0-9][a-z0-9_-]{1,79}$/i.test(value)
+}
+
+function getDeckImagesRoots() {
+  const roots = new Set<string>()
+  const configured = process.env.DECK_IMAGES_ROOT?.trim()
+  if (configured) roots.add(configured)
+
+  // Monorepo root (default local)
+  roots.add(join(process.cwd(), 'apps', 'mahalilah', 'private_uploads', 'deck-images'))
+  // When process cwd is already apps/mahalilah
+  roots.add(join(process.cwd(), 'private_uploads', 'deck-images'))
+  // Extra fallback for scripted runs
+  roots.add(join(process.cwd(), '..', 'private_uploads', 'deck-images'))
+
+  return Array.from(roots)
+}
+
+function normalizeImageExtension(value: string | null | undefined) {
+  return (value || '').replace(/^\./, '').toLowerCase()
+}
+
+function getCardImageExtensionCandidates(primary: string) {
+  const defaults = ['png', 'jpg', 'jpeg']
+  const preferred = normalizeImageExtension(primary)
+  const candidates = preferred ? [preferred, ...defaults] : defaults
+  return Array.from(new Set(candidates))
+}
+
+function inferPdfImageFormatFromExtension(extension: string) {
+  if (extension === 'png') return 'png' as const
+  if (extension === 'jpg' || extension === 'jpeg') return 'jpg' as const
+  return null
+}
+
+function inferPdfImageFormatFromContentType(contentType: string | null) {
+  const normalized = (contentType || '').toLowerCase()
+  if (normalized.includes('image/png')) return 'png' as const
+  if (normalized.includes('image/jpeg') || normalized.includes('image/jpg')) {
+    return 'jpg' as const
+  }
+  return null
+}
+
+function loadPdfLibRuntime() {
+  const attempts = [
+    () => createRequire(join(process.cwd(), 'package.json'))('pdf-lib'),
+    () => createRequire(join(process.cwd(), 'apps', 'mahalilah', 'package.json'))('pdf-lib'),
+    () => createRequire(join(process.cwd(), 'apps', 'web', 'package.json'))('pdf-lib')
+  ]
+
+  for (const attempt of attempts) {
+    try {
+      const loaded = attempt()
+      if (loaded?.PDFDocument) return loaded
+    } catch {
+      // try next source
+    }
+  }
+
+  try {
+    const pnpmRoot = join(process.cwd(), 'node_modules', '.pnpm')
+    const candidates = readdirSync(pnpmRoot)
+      .filter((entry) => entry.startsWith('pdf-lib@'))
+      .sort()
+      .reverse()
+
+    for (const candidate of candidates) {
+      try {
+        const absoluteModulePath = join(
+          pnpmRoot,
+          candidate,
+          'node_modules',
+          'pdf-lib'
+        )
+        const loaded = createRequire(join(process.cwd(), 'package.json'))(
+          absoluteModulePath
+        )
+        if (loaded?.PDFDocument) return loaded
+      } catch {
+        // try next candidate
+      }
+    }
+  } catch {
+    // no pnpm folder available
+  }
+
+  return null
+}
+
+async function loadCardImageForPdf(
+  card: NonNullable<ExportRoom['moves'][number]['cardDraws'][number]['card']>,
+  requestOrigin: string
+) {
+  if (!card.deck?.imageDirectory || !isSafeSegment(card.deck.imageDirectory)) {
+    return null
+  }
+
+  const extensionCandidates = getCardImageExtensionCandidates(card.deck.imageExtension)
+  const roots = getDeckImagesRoots()
+
+  for (const extension of extensionCandidates) {
+    const format = inferPdfImageFormatFromExtension(extension)
+    if (!format) continue
+    const filename = `${card.cardNumber}.${extension}`
+    for (const root of roots) {
+      try {
+        const filePath = join(root, card.deck.imageDirectory, filename)
+        const bytes = await readFile(filePath)
+        return { bytes, format }
+      } catch {
+        // try next root/extension
+      }
+    }
+  }
+
+  // Fallback to local HTTP route when filesystem root is uncertain.
+  for (const extension of extensionCandidates) {
+    const formatFromExtension = inferPdfImageFormatFromExtension(extension)
+    if (!formatFromExtension) continue
+    try {
+      const imageUrl = `${requestOrigin}/api/mahalilah/decks/${card.deck.id}/images/${card.cardNumber}.${extension}`
+      const response = await fetch(imageUrl, { cache: 'no-store' })
+      if (!response.ok) continue
+      const arrayBuffer = await response.arrayBuffer()
+      const bytes = Buffer.from(arrayBuffer)
+      const format =
+        inferPdfImageFormatFromContentType(response.headers.get('content-type')) ||
+        formatFromExtension
+      return { bytes, format }
+    } catch {
+      // try next extension
+    }
+  }
+
+  return null
 }
 
 function repairPtBrMojibake(value: string) {
@@ -522,6 +646,11 @@ function buildPdf(room: ExportRoom) {
 
   addSpacer(16)
   addSectionTitle('4. Deck randomico')
+  addParagraph(
+    'Miniaturas e detalhamento visual das cartas: ver secao "Deck randomico com miniaturas" nas paginas finais.',
+    { size: 10 }
+  )
+  addSpacer(4)
   const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
   if (movesWithDraws.length === 0) {
     addParagraph('Nao houve tiragem randomica nesta sessao.')
@@ -645,11 +774,16 @@ function buildPdf(room: ExportRoom) {
 
 async function appendDeckCardsWithImagesPdf(
   basePdfBuffer: Buffer,
-  room: ExportRoom
+  room: ExportRoom,
+  requestOrigin: string
 ) {
   try {
-    const requireFromWeb = createRequire(join(process.cwd(), 'apps', 'web', 'package.json'))
-    const { PDFDocument, StandardFonts, rgb } = requireFromWeb('pdf-lib') as any
+    const pdfLib = loadPdfLibRuntime()
+    if (!pdfLib) {
+      console.warn('pdf-lib indisponivel no runtime do MahaLilah. PDF sera gerado sem miniaturas.')
+      return basePdfBuffer
+    }
+    const { PDFDocument, StandardFonts, rgb } = pdfLib as any
 
     const pdfDoc = await PDFDocument.load(basePdfBuffer)
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -752,37 +886,26 @@ async function appendDeckCardsWithImagesPdf(
         const imageH = 108
 
         let imageDrawn = false
-        if (
-          card &&
-          card.deck?.imageDirectory &&
-          isSafeSegment(card.deck.imageDirectory)
-        ) {
-          const extension = card.deck.imageExtension.replace(/^\./, '').toLowerCase()
-          const filename = `${card.cardNumber}.${extension}`
-          const imagePath = join(getDeckImagesRoot(), card.deck.imageDirectory, filename)
-          try {
-            const bytes = await readFile(imagePath)
-            if (extension === 'png') {
-              const png = await pdfDoc.embedPng(bytes)
-              page.drawImage(png, {
-                x: imageX,
-                y: pageHeight - imageTop - imageH,
-                width: imageW,
-                height: imageH
-              })
-              imageDrawn = true
-            } else if (extension === 'jpg' || extension === 'jpeg') {
-              const jpg = await pdfDoc.embedJpg(bytes)
-              page.drawImage(jpg, {
-                x: imageX,
-                y: pageHeight - imageTop - imageH,
-                width: imageW,
-                height: imageH
-              })
-              imageDrawn = true
-            }
-          } catch {
-            imageDrawn = false
+        if (card) {
+          const imageData = await loadCardImageForPdf(card, requestOrigin)
+          if (imageData?.format === 'png') {
+            const png = await pdfDoc.embedPng(imageData.bytes)
+            page.drawImage(png, {
+              x: imageX,
+              y: pageHeight - imageTop - imageH,
+              width: imageW,
+              height: imageH
+            })
+            imageDrawn = true
+          } else if (imageData?.format === 'jpg') {
+            const jpg = await pdfDoc.embedJpg(imageData.bytes)
+            page.drawImage(jpg, {
+              x: imageX,
+              y: pageHeight - imageTop - imageH,
+              width: imageW,
+              height: imageH
+            })
+            imageDrawn = true
           }
         }
 
@@ -924,7 +1047,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       : room
 
     const basePdfBuffer = buildPdf(exportRoom)
-    const pdfBuffer = await appendDeckCardsWithImagesPdf(basePdfBuffer, exportRoom)
+    const requestOrigin = new URL(request.url).origin
+    const pdfBuffer = await appendDeckCardsWithImagesPdf(
+      basePdfBuffer,
+      exportRoom,
+      requestOrigin
+    )
 
     const targetParticipant = scopedParticipantId
       ? room.participants.find((participant) => participant.id === scopedParticipantId)
