@@ -71,6 +71,21 @@ type ExportPlayerState = {
   rollCountUntilStart: number
 }
 
+type DeckInlineImageSlot = {
+  pageIndex: number
+  x: number
+  topY: number
+  width: number
+  height: number
+  cardNumber: number | null
+  card: NonNullable<ExportRoom['moves'][number]['cardDraws'][number]['card']> | null
+}
+
+type BuildPdfResult = {
+  buffer: Buffer
+  deckImageSlots: DeckInlineImageSlot[]
+}
+
 function formatHouseName(number: number) {
   const house = HOUSES[number - 1]
   return house ? `${number} (${house.title})` : String(number)
@@ -416,8 +431,9 @@ function extractProgressInterval(content: string) {
   return null
 }
 
-function buildPdf(room: ExportRoom) {
+function buildPdf(room: ExportRoom): BuildPdfResult {
   const pages: string[][] = []
+  const deckImageSlots: DeckInlineImageSlot[] = []
 
   const totalMoves = room.moves.length
   const totalTherapyEntries = room.moves.reduce((sum, move) => sum + move.therapyEntries.length, 0)
@@ -646,11 +662,6 @@ function buildPdf(room: ExportRoom) {
 
   addSpacer(16)
   addSectionTitle('4. Deck randomico')
-  addParagraph(
-    'Miniaturas e detalhamento visual das cartas: ver secao "Deck randomico com miniaturas" nas paginas finais.',
-    { size: 10 }
-  )
-  addSpacer(4)
   const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
   if (movesWithDraws.length === 0) {
     addParagraph('Nao houve tiragem randomica nesta sessao.')
@@ -665,6 +676,22 @@ function buildPdf(room: ExportRoom) {
           font: 'F2',
           size: 11
         })
+
+        const imageX = MARGIN_LEFT + 28
+        const imageWidth = 76
+        const imageHeight = 108
+        ensureSpace(imageHeight + 6)
+        const imageTop = cursorY
+        deckImageSlots.push({
+          pageIndex: pages.length - 1,
+          x: imageX,
+          topY: imageTop,
+          width: imageWidth,
+          height: imageHeight,
+          cardNumber,
+          card: card || null
+        })
+        cursorY += imageHeight + 6
 
         if (card) {
           addParagraph(`Descricao: ${card.description || '-'}`, { indent: 28, size: 10 })
@@ -769,15 +796,21 @@ function buildPdf(room: ExportRoom) {
   }
   pdf += `trailer\n<< /Size ${maxObjectId + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
 
-  return Buffer.from(pdf, 'binary')
+  return {
+    buffer: Buffer.from(pdf, 'binary'),
+    deckImageSlots
+  }
 }
 
 async function appendDeckCardsWithImagesPdf(
   basePdfBuffer: Buffer,
-  room: ExportRoom,
-  requestOrigin: string
+  requestOrigin: string,
+  deckImageSlots: DeckInlineImageSlot[]
 ) {
   try {
+    if (deckImageSlots.length === 0) {
+      return basePdfBuffer
+    }
     const pdfLib = loadPdfLibRuntime()
     if (!pdfLib) {
       console.warn('pdf-lib indisponivel no runtime do MahaLilah. PDF sera gerado sem miniaturas.')
@@ -787,161 +820,53 @@ async function appendDeckCardsWithImagesPdf(
 
     const pdfDoc = await PDFDocument.load(basePdfBuffer)
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-    const pageWidth = 595.28
-    const pageHeight = 841.89
-    const marginLeft = 44
-    const marginRight = 44
-    const topStart = 62
-    const bottomLimit = 56
+    for (const slot of deckImageSlots) {
+      const page = pdfDoc.getPage(slot.pageIndex)
+      if (!page) continue
+      const pageHeight = page.getHeight()
 
-    let page = pdfDoc.addPage([pageWidth, pageHeight])
-    let cursorTop = topStart
-
-    const drawTopText = (
-      text: string,
-      x: number,
-      top: number,
-      opts?: {
-        size?: number
-        bold?: boolean
-        color?: [number, number, number]
+      let imageDrawn = false
+      if (slot.card) {
+        const imageData = await loadCardImageForPdf(slot.card, requestOrigin)
+        if (imageData?.format === 'png') {
+          const png = await pdfDoc.embedPng(imageData.bytes)
+          page.drawImage(png, {
+            x: slot.x,
+            y: pageHeight - slot.topY - slot.height,
+            width: slot.width,
+            height: slot.height
+          })
+          imageDrawn = true
+        } else if (imageData?.format === 'jpg') {
+          const jpg = await pdfDoc.embedJpg(imageData.bytes)
+          page.drawImage(jpg, {
+            x: slot.x,
+            y: pageHeight - slot.topY - slot.height,
+            width: slot.width,
+            height: slot.height
+          })
+          imageDrawn = true
+        }
       }
-    ) => {
-      const size = opts?.size ?? 11
-      const color = opts?.color ?? [0.09, 0.13, 0.17]
-      page.drawText(toPdfSafeText(text), {
-        x,
-        y: pageHeight - top - size,
-        size,
-        font: opts?.bold ? fontBold : fontRegular,
-        color: rgb(color[0], color[1], color[2])
-      })
-    }
 
-    const ensureSpace = (height: number) => {
-      if (cursorTop + height > pageHeight - bottomLimit) {
-        page = pdfDoc.addPage([pageWidth, pageHeight])
-        cursorTop = topStart
-      }
-    }
-
-    const drawWrapped = (
-      text: string,
-      x: number,
-      opts?: { size?: number; bold?: boolean; maxChars?: number; lineHeight?: number }
-    ) => {
-      const size = opts?.size ?? 10
-      const lineHeight = opts?.lineHeight ?? Math.max(14, size + 4)
-      const maxChars = opts?.maxChars ?? 90
-      const lines = wrapText(text, maxChars)
-      lines.forEach((line) => {
-        ensureSpace(lineHeight)
-        drawTopText(line, x, cursorTop, { size, bold: opts?.bold })
-        cursorTop += lineHeight
-      })
-    }
-
-    const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
-    if (movesWithDraws.length === 0) {
-      return basePdfBuffer
-    }
-
-    drawTopText('Deck randomico com miniaturas', marginLeft, cursorTop, {
-      size: 16,
-      bold: true,
-      color: [0.1, 0.26, 0.31]
-    })
-    cursorTop += 24
-    drawWrapped(
-      'Esta secao detalha cada jogada com miniatura da carta e os mesmos textos da modal.',
-      marginLeft,
-      { size: 10, maxChars: 96 }
-    )
-    cursorTop += 4
-
-    for (const move of movesWithDraws) {
-      ensureSpace(28)
-      drawTopText(`Jogada #${move.turnNumber}`, marginLeft, cursorTop, {
-        size: 12,
-        bold: true
-      })
-      cursorTop += 20
-
-      for (const draw of move.cardDraws) {
-        const card = draw.card
-        const cardNumber = card?.cardNumber ?? draw.cards[0] ?? null
-        ensureSpace(144)
-
-        drawTopText(`Carta ${cardNumber ?? '-'}`, marginLeft + 10, cursorTop, {
-          size: 11,
-          bold: true
+      if (!imageDrawn) {
+        page.drawRectangle({
+          x: slot.x,
+          y: pageHeight - slot.topY - slot.height,
+          width: slot.width,
+          height: slot.height,
+          borderColor: rgb(0.78, 0.82, 0.86),
+          borderWidth: 1
         })
-        cursorTop += 16
-
-        const imageTop = cursorTop
-        const imageX = marginLeft + 14
-        const imageW = 76
-        const imageH = 108
-
-        let imageDrawn = false
-        if (card) {
-          const imageData = await loadCardImageForPdf(card, requestOrigin)
-          if (imageData?.format === 'png') {
-            const png = await pdfDoc.embedPng(imageData.bytes)
-            page.drawImage(png, {
-              x: imageX,
-              y: pageHeight - imageTop - imageH,
-              width: imageW,
-              height: imageH
-            })
-            imageDrawn = true
-          } else if (imageData?.format === 'jpg') {
-            const jpg = await pdfDoc.embedJpg(imageData.bytes)
-            page.drawImage(jpg, {
-              x: imageX,
-              y: pageHeight - imageTop - imageH,
-              width: imageW,
-              height: imageH
-            })
-            imageDrawn = true
-          }
-        }
-
-        if (!imageDrawn) {
-          page.drawRectangle({
-            x: imageX,
-            y: pageHeight - imageTop - imageH,
-            width: imageW,
-            height: imageH,
-            borderColor: rgb(0.78, 0.82, 0.86),
-            borderWidth: 1
-          })
-          drawTopText('Imagem indisponivel', imageX + 6, imageTop + 48, {
-            size: 8
-          })
-        }
-
-        const textX = imageX + imageW + 14
-        const maxTextChars = Math.max(30, Math.floor((pageWidth - marginRight - textX) / 5.4))
-
-        const drawMeta = (label: string, value: string | null | undefined) => {
-          drawWrapped(`${label}: ${value && value.trim() ? value : '-'}`, textX, {
-            size: 10,
-            maxChars: maxTextChars
-          })
-        }
-
-        drawMeta('Descricao', card?.description || null)
-        drawMeta('Palavras-chave', card?.keywords || null)
-        drawMeta('Observacao', card?.observation || null)
-
-        const minNextTop = imageTop + imageH + 10
-        if (cursorTop < minNextTop) cursorTop = minNextTop
+        page.drawText('Imagem indisponivel', {
+          x: slot.x + 6,
+          y: pageHeight - slot.topY - 56,
+          size: 8,
+          font: fontRegular,
+          color: rgb(0.45, 0.5, 0.54)
+        })
       }
-
-      cursorTop += 6
     }
 
     const bytes = await pdfDoc.save()
@@ -1046,12 +971,12 @@ export async function GET(request: Request, { params }: RouteParams) {
         } as ExportRoom)
       : room
 
-    const basePdfBuffer = buildPdf(exportRoom)
+    const { buffer: basePdfBuffer, deckImageSlots } = buildPdf(exportRoom)
     const requestOrigin = new URL(request.url).origin
     const pdfBuffer = await appendDeckCardsWithImagesPdf(
       basePdfBuffer,
-      exportRoom,
-      requestOrigin
+      requestOrigin,
+      deckImageSlots
     )
 
     const targetParticipant = scopedParticipantId
