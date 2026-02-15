@@ -27,7 +27,15 @@ const roomExportInclude = Prisma.validator<Prisma.MahaLilahRoomInclude>()({
     include: {
       participant: { include: { user: { select: { id: true, name: true, email: true } } } },
       therapyEntries: true,
-      cardDraws: true
+      cardDraws: {
+        include: {
+          card: {
+            include: {
+              deck: true
+            }
+          }
+        }
+      }
     }
   },
   cardDraws: {
@@ -183,6 +191,11 @@ function formatReportKind(kind: string) {
   if (kind === 'PROGRESS') return 'O Caminho ate agora'
   if (kind === 'FINAL') return 'Relatorio final'
   return kind
+}
+
+function buildCardImageUrl(deckId: string, imageExtension: string, cardNumber: number) {
+  const normalizedExtension = imageExtension.replace(/^\./, '')
+  return `/api/mahalilah/decks/${deckId}/images/${cardNumber}.${normalizedExtension}`
 }
 
 function repairPtBrMojibake(value: string) {
@@ -495,26 +508,44 @@ function buildPdf(room: ExportRoom) {
 
   addSpacer(16)
   addSectionTitle('4. Deck randomico')
-  const deckDraws = room.moves.flatMap((move) =>
-    move.cardDraws.map((draw) => ({
-      createdAt: draw.createdAt,
-      cards: draw.cards,
-      actor: move.participant.user.name || move.participant.user.email || 'Sem identificacao',
-      moveTurnNumber: move.turnNumber
-    }))
-  )
-  const sortedDeckDraws = deckDraws.sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-  )
-
-  if (sortedDeckDraws.length === 0) {
+  const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
+  if (movesWithDraws.length === 0) {
     addParagraph('Nao houve tiragem randomica nesta sessao.')
   } else {
-    sortedDeckDraws.forEach((draw, index) => {
-      addParagraph(
-        `${index + 1}. ${formatDate(draw.createdAt)} | ${draw.actor} | Jogada #${draw.moveTurnNumber} | cartas: ${draw.cards.join(', ')}`,
-        { size: 10 }
-      )
+    movesWithDraws.forEach((move) => {
+      addParagraph(`Jogada #${move.turnNumber}`, { font: 'F2', size: 12 })
+      move.cardDraws.forEach((draw) => {
+        const card = draw.card
+        const cardNumber = card?.cardNumber ?? draw.cards[0] ?? null
+        addParagraph(`Carta ${cardNumber ?? '-'}`, {
+          indent: 14,
+          font: 'F2',
+          size: 11
+        })
+
+        if (card) {
+          const imageUrl = buildCardImageUrl(
+            card.deck.id,
+            card.deck.imageExtension,
+            card.cardNumber
+          )
+          addParagraph(`Foto: ${imageUrl}`, { indent: 28, size: 10 })
+          addParagraph(`Descricao: ${card.description || '-'}`, { indent: 28, size: 10 })
+          addParagraph(`Palavras-chave: ${card.keywords || '-'}`, { indent: 28, size: 10 })
+          if (card.observation) {
+            addParagraph(`Observacao: ${card.observation}`, { indent: 28, size: 10 })
+          }
+        } else {
+          addParagraph(`Foto: carta nao encontrada para o numero ${cardNumber ?? '-'}`, {
+            indent: 28,
+            size: 10
+          })
+          addParagraph('Descricao: -', { indent: 28, size: 10 })
+          addParagraph('Palavras-chave: -', { indent: 28, size: 10 })
+        }
+        addSpacer(4)
+      })
+      addSpacer(8)
     })
   }
 
