@@ -3,9 +3,18 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@hekate/database'
 import { ResetPasswordSchema } from '@/lib/validations/auth'
+import { applyRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimited = applyRateLimit({
+      request,
+      scope: 'auth:reset-password',
+      limit: 10,
+      windowMs: 15 * 60 * 1000
+    })
+    if (rateLimited) return rateLimited
+
     const body = await request.json()
     const validatedData = ResetPasswordSchema.parse(body)
     const { token, password } = validatedData

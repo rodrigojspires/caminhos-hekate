@@ -41,7 +41,7 @@ export function RegisterForm() {
         return
       }
 
-      setSuccess('Conta criada com sucesso. Faça login para continuar.')
+      setSuccess('Conta criada. Verifique seu e-mail para ativar o acesso.')
       setLoading(false)
       setName('')
       setEmail('')

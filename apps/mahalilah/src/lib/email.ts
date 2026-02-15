@@ -169,3 +169,41 @@ Se você não solicitou essa ação, ignore este email.
     fromName
   })
 }
+
+export async function sendEmailVerificationEmail(params: { to: string; verificationToken: string }) {
+  const { fromEmail, fromName } = getMahaLilahFromAddress()
+  const verifyUrl = `${getMahaLilahBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(params.verificationToken)}`
+
+  const subject = 'Confirme seu e-mail - Maha Lilah Online'
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+      <h2>Confirmar e-mail</h2>
+      <p>Para ativar sua conta, confirme seu e-mail clicando no botão abaixo:</p>
+      <p>
+        <a href="${verifyUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+          Confirmar e-mail
+        </a>
+      </p>
+      <p>Este link expira em 24 horas.</p>
+      <p style="font-size:12px;color:#5d6b75;">Se você não criou esta conta, ignore este e-mail.</p>
+    </div>
+  `
+
+  const text = `
+Confirme seu e-mail - Maha Lilah Online
+
+Para ativar sua conta, acesse:
+${verifyUrl}
+
+Este link expira em 24 horas.
+  `
+
+  return sendViaSmtp({
+    to: params.to,
+    subject,
+    html,
+    text,
+    fromEmail,
+    fromName
+  })
+}

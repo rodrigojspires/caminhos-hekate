@@ -198,6 +198,7 @@ export async function POST(request: Request) {
     const validation = validateSignature(raw, signature, secret)
     if (secret && !validation.isValid) {
       console.warn('Assinatura MercadoPago inválida', validation.error)
+      return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
     }
 
     if (payload.type !== 'payment' || !payload?.data?.id) {

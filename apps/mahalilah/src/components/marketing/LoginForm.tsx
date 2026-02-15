@@ -18,6 +18,7 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const rawCallback = searchParams.get('callbackUrl')
   const queryError = searchParams.get('error')
+  const verifiedStatus = searchParams.get('verified')
   const safeCallback = (() => {
     if (!rawCallback) return '/dashboard'
     if (rawCallback.startsWith('/')) return rawCallback
@@ -73,6 +74,21 @@ export function LoginForm() {
       {!error && queryError && (
         <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
           {authErrorMessage(queryError)}
+        </div>
+      )}
+      {!error && !queryError && verifiedStatus === 'success' && (
+        <div className="notice good">
+          E-mail confirmado com sucesso. Você já pode entrar.
+        </div>
+      )}
+      {!error && !queryError && verifiedStatus === 'expired' && (
+        <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
+          Link de confirmação expirado. Faça um novo cadastro para receber outro link.
+        </div>
+      )}
+      {!error && !queryError && verifiedStatus === 'invalid' && (
+        <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
+          Link de confirmação inválido.
         </div>
       )}
       <button type="submit" className="btn-primary w-full sm:w-fit" disabled={loading}>

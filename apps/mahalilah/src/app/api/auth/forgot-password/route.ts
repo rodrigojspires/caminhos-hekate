@@ -4,9 +4,18 @@ import { prisma } from '@hekate/database'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { generatePasswordResetToken } from '@/lib/tokens'
 import { ForgotPasswordSchema } from '@/lib/validations/auth'
+import { applyRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimited = applyRateLimit({
+      request,
+      scope: 'auth:forgot-password',
+      limit: 5,
+      windowMs: 15 * 60 * 1000
+    })
+    if (rateLimited) return rateLimited
+
     const body = await request.json()
     const validatedData = ForgotPasswordSchema.parse(body)
 

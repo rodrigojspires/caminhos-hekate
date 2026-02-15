@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@hekate/database'
+import { generateEmailVerificationToken } from '@/lib/tokens'
+import { sendEmailVerificationEmail } from '@/lib/email'
+import { applyRateLimit } from '@/lib/security/rate-limit'
 
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -9,17 +12,44 @@ const RegisterSchema = z.object({
   password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres')
 })
 
+const GENERIC_REGISTER_MESSAGE =
+  'Se o e-mail puder ser utilizado, você receberá as instruções para ativar a conta.'
+
 export async function POST(request: NextRequest) {
   try {
+    const rateLimited = applyRateLimit({
+      request,
+      scope: 'auth:register',
+      limit: 5,
+      windowMs: 15 * 60 * 1000
+    })
+    if (rateLimited) return rateLimited
+
     const body = await request.json()
     const data = RegisterSchema.parse(body)
+    const normalizedEmail = data.email.trim().toLowerCase()
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: data.email }
+      where: { email: normalizedEmail }
     })
 
     if (existingUser) {
-      return NextResponse.json({ message: 'Usuário já existe com este email' }, { status: 400 })
+      if (!existingUser.emailVerified) {
+        try {
+          const verificationToken = await generateEmailVerificationToken(existingUser.email)
+          await sendEmailVerificationEmail({
+            to: existingUser.email,
+            verificationToken
+          })
+        } catch (emailError) {
+          console.error('Erro ao reenviar verificação de email (Maha Lilah):', emailError)
+        }
+      }
+
+      return NextResponse.json(
+        { message: GENERIC_REGISTER_MESSAGE },
+        { status: 200 }
+      )
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12)
@@ -27,11 +57,11 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name: data.name,
-        email: data.email,
+        email: normalizedEmail,
         password: hashedPassword,
         role: 'MEMBER',
         registrationPortal: 'MAHA_LILAH',
-        emailVerified: new Date()
+        emailVerified: null
       },
       select: {
         id: true,
@@ -40,7 +70,20 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ message: 'Conta criada com sucesso.', user }, { status: 201 })
+    try {
+      const verificationToken = await generateEmailVerificationToken(user.email)
+      await sendEmailVerificationEmail({
+        to: user.email,
+        verificationToken
+      })
+    } catch (emailError) {
+      console.error('Erro ao enviar verificação de email (Maha Lilah):', emailError)
+    }
+
+    return NextResponse.json(
+      { message: GENERIC_REGISTER_MESSAGE },
+      { status: 200 }
+    )
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

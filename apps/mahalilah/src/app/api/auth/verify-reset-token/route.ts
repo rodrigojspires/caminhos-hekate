@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@hekate/database'
 import { VerifyResetTokenSchema } from '@/lib/validations/auth'
+import { applyRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimited = applyRateLimit({
+      request,
+      scope: 'auth:verify-reset-token',
+      limit: 30,
+      windowMs: 15 * 60 * 1000
+    })
+    if (rateLimited) return rateLimited
+
     const body = await request.json()
     const validatedData = VerifyResetTokenSchema.parse(body)
 
