@@ -79,6 +79,7 @@ export async function GET(request: Request, { params }: RouteParams) {
             },
           },
           cardDraws: {
+            orderBy: { createdAt: "asc" },
             include: {
               card: {
                 include: {

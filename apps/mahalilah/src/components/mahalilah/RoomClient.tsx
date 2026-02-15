@@ -178,6 +178,25 @@ type HouseMeaningModalState = {
   };
 };
 
+type CardPreviewModalState = {
+  card: {
+    id: string;
+    cardNumber: number;
+    description: string;
+    keywords: string;
+    observation: string | null;
+    imageUrl: string;
+    deck: {
+      id: string;
+      name: string;
+      imageDirectory: string;
+      imageExtension: string;
+    };
+  };
+  title: string;
+  subtitle?: string;
+};
+
 type RoomTutorialTarget =
   | "room-header"
   | "room-controls"
@@ -716,6 +735,8 @@ export function RoomClient({ code }: { code: string }) {
     useState(false);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
+  const [cardPreviewModal, setCardPreviewModal] =
+    useState<CardPreviewModalState | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
   const syncedIntentionRef = useRef("");
@@ -1831,13 +1852,67 @@ export function RoomClient({ code }: { code: string }) {
     !actionsBlockedByConsent && !isViewerInTherapistSoloPlay,
   );
 
-  const latestDrawnCard = useMemo(() => {
-    if (!myParticipant || !state?.deckHistory?.length) return null;
-    const mine = state.deckHistory
-      .filter((draw) => draw.drawnBy.id === myParticipant.id && draw.card)
-      .slice(-1)[0];
-    return mine?.card || null;
-  }, [myParticipant, state?.deckHistory]);
+  const timelineMoveTurnById = useMemo(() => {
+    const byId = new Map<string, number>();
+    timelineMoves.forEach((move) => {
+      byId.set(move.id, move.turnNumber);
+    });
+    return byId;
+  }, [timelineMoves]);
+
+  const currentMoveDeckCards = useMemo(() => {
+    if (!state?.lastMove) return [];
+    return state.deckHistory.filter(
+      (draw) => draw.moveId === state.lastMove?.id && Boolean(draw.card),
+    );
+  }, [state?.deckHistory, state?.lastMove]);
+
+  const deckHistoryByMove = useMemo(() => {
+    if (!state?.deckHistory?.length) return [];
+
+    const grouped: Array<{
+      key: string;
+      moveId: string | null;
+      createdAt: string;
+      drawnBy: { id: string; user: { name: string | null; email: string } };
+      draws: typeof state.deckHistory;
+    }> = [];
+
+    state.deckHistory.forEach((draw) => {
+      const key = draw.moveId ? `move:${draw.moveId}` : `standalone:${draw.id}`;
+      const last = grouped[grouped.length - 1];
+
+      if (last && last.key === key) {
+        last.draws.push(draw);
+        return;
+      }
+
+      grouped.push({
+        key,
+        moveId: draw.moveId,
+        createdAt: draw.createdAt,
+        drawnBy: draw.drawnBy,
+        draws: [draw],
+      });
+    });
+
+    return grouped;
+  }, [state?.deckHistory]);
+
+  const openCardPreview = useCallback(
+    ({
+      card,
+      title,
+      subtitle,
+    }: {
+      card: CardPreviewModalState["card"];
+      title: string;
+      subtitle?: string;
+    }) => {
+      setCardPreviewModal({ card, title, subtitle });
+    },
+    [],
+  );
 
   const handleDraw = () => {
     if (!socket || !state || !myParticipant) return;
@@ -1863,6 +1938,13 @@ export function RoomClient({ code }: { code: string }) {
             `Carta #${cardNumber} tirada${counter ? ` (${counter})` : ""}.`,
             "success",
           );
+          if (resp?.card) {
+            openCardPreview({
+              card: resp.card,
+              title: `Carta #${resp.card.cardNumber}`,
+              subtitle: `Jogada #${state.lastMove?.turnNumber ?? "—"}${counter ? ` • ${counter}` : ""}`,
+            });
+          }
         } else {
           pushToast("Carta tirada com sucesso.", "success");
         }
@@ -3024,43 +3106,59 @@ export function RoomClient({ code }: { code: string }) {
                 </span>
               )}
 
-              {latestDrawnCard && (
+              {currentMoveDeckCards.length > 0 && (
                 <div
                   className="notice"
                   style={{
                     display: "grid",
                     gap: 8,
-                    gridTemplateColumns: "68px minmax(0, 1fr)",
-                    alignItems: "start",
                   }}
                 >
-                  <img
-                    src={latestDrawnCard.imageUrl}
-                    alt={`Carta ${latestDrawnCard.cardNumber}`}
+                  <strong style={{ fontSize: 12 }}>Cartas da jogada atual</strong>
+                  <div
                     style={{
-                      width: 68,
-                      height: 92,
-                      objectFit: "cover",
-                      borderRadius: 10,
-                      border: "1px solid rgba(217, 164, 65, 0.35)",
-                      background: "rgba(9, 15, 24, 0.7)",
+                      display: "flex",
+                      gap: 8,
+                      overflowX: "auto",
+                      paddingBottom: 2,
                     }}
-                  />
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <strong style={{ fontSize: 13 }}>
-                      Carta #{latestDrawnCard.cardNumber}
-                    </strong>
-                    <span className="small-muted">
-                      {latestDrawnCard.description}
-                    </span>
-                    <span className="small-muted">
-                      Palavras-chave: {latestDrawnCard.keywords}
-                    </span>
-                    {latestDrawnCard.observation && (
-                      <span className="small-muted">
-                        Observação: {latestDrawnCard.observation}
-                      </span>
-                    )}
+                  >
+                    {currentMoveDeckCards.map((draw) => {
+                      if (!draw.card) return null;
+                      return (
+                        <button
+                          key={draw.id}
+                          className="btn-secondary"
+                          style={{
+                            padding: 0,
+                            borderRadius: 10,
+                            overflow: "hidden",
+                            width: 84,
+                            minWidth: 84,
+                            height: 120,
+                            borderColor: "rgba(217, 164, 65, 0.35)",
+                            background: "rgba(9, 15, 24, 0.7)",
+                          }}
+                          onClick={() =>
+                            openCardPreview({
+                              card: draw.card!,
+                              title: `Carta #${draw.card!.cardNumber}`,
+                              subtitle: `Jogada #${state.lastMove?.turnNumber ?? "—"}`,
+                            })
+                          }
+                        >
+                          <img
+                            src={draw.card.imageUrl}
+                            alt={`Carta ${draw.card.cardNumber}`}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -3079,57 +3177,83 @@ export function RoomClient({ code }: { code: string }) {
                     Nenhuma carta puxada ainda.
                   </span>
                 ) : (
-                  state.deckHistory.map((draw) => (
+                  deckHistoryByMove.map((group) => (
                     <div
-                      key={draw.id}
+                      key={group.key}
                       className="notice"
-                      style={{ display: "grid", gap: 4 }}
+                      style={{ display: "grid", gap: 6 }}
                     >
                       <strong style={{ fontSize: 12 }}>
-                        {draw.drawnBy.user.name || draw.drawnBy.user.email}
+                        {group.drawnBy.user.name || group.drawnBy.user.email}
                       </strong>
                       <span className="small-muted">
-                        {new Date(draw.createdAt).toLocaleString("pt-BR")}
+                        {new Date(group.createdAt).toLocaleString("pt-BR")}
                       </span>
-                      {draw.moveId && (
-                        <span className="small-muted">Jogada vinculada</span>
-                      )}
-                      {draw.card ? (
-                        <div
-                          style={{
-                            display: "grid",
-                            gap: 6,
-                            gridTemplateColumns: "54px minmax(0, 1fr)",
-                            alignItems: "start",
-                          }}
-                        >
-                          <img
-                            src={draw.card.imageUrl}
-                            alt={`Carta ${draw.card.cardNumber}`}
-                            style={{
-                              width: 54,
-                              height: 72,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                              border: "1px solid rgba(217, 164, 65, 0.3)",
-                              background: "rgba(9, 15, 24, 0.7)",
-                            }}
-                          />
-                          <div style={{ display: "grid", gap: 3 }}>
-                            <span className="small-muted">
-                              Carta #{draw.card.cardNumber}
-                            </span>
-                            <span className="small-muted">
-                              {draw.card.description}
-                            </span>
-                            <span className="small-muted">
-                              Palavras-chave: {draw.card.keywords}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
+                      {group.moveId && (
                         <span className="small-muted">
-                          Carta(s): {draw.cards.join(", ")}
+                          {timelineMoveTurnById.has(group.moveId)
+                            ? `Jogada #${timelineMoveTurnById.get(group.moveId)}`
+                            : "Jogada vinculada"}
+                        </span>
+                      )}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          overflowX: "auto",
+                          paddingBottom: 2,
+                        }}
+                      >
+                        {group.draws
+                          .filter((draw) => Boolean(draw.card))
+                          .map((draw) => (
+                            <button
+                              key={draw.id}
+                              className="btn-secondary"
+                              style={{
+                                padding: 0,
+                                borderRadius: 9,
+                                overflow: "hidden",
+                                width: 66,
+                                minWidth: 66,
+                                height: 92,
+                                borderColor: "rgba(217, 164, 65, 0.3)",
+                                background: "rgba(9, 15, 24, 0.7)",
+                              }}
+                              onClick={() =>
+                                draw.card
+                                  ? openCardPreview({
+                                      card: draw.card,
+                                      title: `Carta #${draw.card.cardNumber}`,
+                                      subtitle: group.moveId
+                                        ? timelineMoveTurnById.has(group.moveId)
+                                          ? `Jogada #${timelineMoveTurnById.get(group.moveId)}`
+                                          : "Jogada vinculada"
+                                        : "Sem jogada vinculada",
+                                    })
+                                  : undefined
+                              }
+                            >
+                              {draw.card && (
+                                <img
+                                  src={draw.card.imageUrl}
+                                  alt={`Carta ${draw.card.cardNumber}`}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              )}
+                            </button>
+                          ))}
+                      </div>
+                      {group.draws.every((draw) => !draw.card) && (
+                        <span className="small-muted">
+                          Carta(s):{" "}
+                          {group.draws
+                            .flatMap((draw) => draw.cards)
+                            .join(", ")}
                         </span>
                       )}
                     </div>
@@ -3695,13 +3819,53 @@ export function RoomClient({ code }: { code: string }) {
                             {new Date(move.createdAt).toLocaleString("pt-BR")}
                           </span>
                           {move.cardDraws.length > 0 && (
-                            <div style={{ display: "grid", gap: 2 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                overflowX: "auto",
+                                paddingBottom: 2,
+                              }}
+                            >
                               {move.cardDraws.map((draw) => (
-                                <span key={draw.id} className="small-muted">
-                                  {draw.card
-                                    ? `Carta #${draw.card.cardNumber} • ${draw.card.keywords}`
-                                    : `Carta(s): ${draw.cards.join(", ")}`}
-                                </span>
+                                <div key={draw.id}>
+                                  {draw.card ? (
+                                    <button
+                                      className="btn-secondary"
+                                      style={{
+                                        padding: 0,
+                                        borderRadius: 9,
+                                        overflow: "hidden",
+                                        width: 66,
+                                        minWidth: 66,
+                                        height: 92,
+                                        borderColor: "rgba(217, 164, 65, 0.3)",
+                                        background: "rgba(9, 15, 24, 0.7)",
+                                      }}
+                                      onClick={() =>
+                                        openCardPreview({
+                                          card: draw.card,
+                                          title: `Carta #${draw.card.cardNumber}`,
+                                          subtitle: `Jogada #${move.turnNumber}`,
+                                        })
+                                      }
+                                    >
+                                      <img
+                                        src={draw.card.imageUrl}
+                                        alt={`Carta ${draw.card.cardNumber}`}
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                          objectFit: "cover",
+                                        }}
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="small-muted">
+                                      Carta(s): {draw.cards.join(", ")}
+                                    </span>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}
@@ -4065,6 +4229,100 @@ export function RoomClient({ code }: { code: string }) {
             </div>
             <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
               {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cardPreviewModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setCardPreviewModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <strong>{cardPreviewModal.title}</strong>
+                {cardPreviewModal.subtitle && (
+                  <span className="small-muted">{cardPreviewModal.subtitle}</span>
+                )}
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setCardPreviewModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <div
+                className="notice"
+                style={{
+                  display: "grid",
+                  justifyItems: "center",
+                  padding: 12,
+                }}
+              >
+                <img
+                  src={cardPreviewModal.card.imageUrl}
+                  alt={`Carta ${cardPreviewModal.card.cardNumber}`}
+                  style={{
+                    width: "min(420px, 88vw)",
+                    maxHeight: "60vh",
+                    objectFit: "contain",
+                    borderRadius: 12,
+                    border: "1px solid rgba(217, 164, 65, 0.35)",
+                    background: "rgba(9, 15, 24, 0.7)",
+                  }}
+                />
+              </div>
+              <div className="notice" style={{ display: "grid", gap: 4 }}>
+                <strong>Descrição</strong>
+                <span className="small-muted">
+                  {cardPreviewModal.card.description}
+                </span>
+              </div>
+              <div className="notice" style={{ display: "grid", gap: 4 }}>
+                <strong>Palavras-chave</strong>
+                <span className="small-muted">
+                  {cardPreviewModal.card.keywords}
+                </span>
+              </div>
+              {cardPreviewModal.card.observation && (
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Observação</strong>
+                  <span className="small-muted">
+                    {cardPreviewModal.card.observation}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

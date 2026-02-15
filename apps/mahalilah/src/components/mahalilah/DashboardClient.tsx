@@ -105,14 +105,6 @@ type AiReport = {
 
 type StandaloneCardDraw = TimelineCardDraw;
 
-type DeckTimelineEntry = {
-  id: string;
-  cards: number[];
-  createdAt: string;
-  turnNumber: number | null;
-  drawnBy: { id: string; user: { name: string | null; email: string } };
-};
-
 type DashboardToastKind = "info" | "success" | "warning" | "error";
 type DashboardToast = { id: number; message: string; kind: DashboardToastKind };
 type ParsedTip = {
@@ -139,6 +131,25 @@ type HouseMeaningModalState = {
     to: number;
     isUp: boolean;
   };
+};
+
+type CardPreviewModalState = {
+  card: {
+    id: string;
+    cardNumber: number;
+    description: string;
+    keywords: string;
+    observation: string | null;
+    imageUrl: string;
+    deck: {
+      id: string;
+      name: string;
+      imageDirectory: string;
+      imageExtension: string;
+    };
+  };
+  title: string;
+  subtitle?: string;
 };
 
 type HouseDisplayInfo = {
@@ -587,6 +598,8 @@ export function DashboardClient() {
     content: string;
     subtitle?: string;
   } | null>(null);
+  const [cardPreviewModal, setCardPreviewModal] =
+    useState<CardPreviewModalState | null>(null);
   const [houseMeaningModal, setHouseMeaningModal] =
     useState<HouseMeaningModalState | null>(null);
   const dashboardTutorialSteps = useMemo(
@@ -619,6 +632,21 @@ export function DashboardClient() {
   }: HouseMeaningModalState) => {
     setHouseMeaningModal({ houseNumber, title, subtitle, jumpContext });
   };
+
+  const openCardPreview = useCallback(
+    ({
+      card,
+      title,
+      subtitle,
+    }: {
+      card: CardPreviewModalState["card"];
+      title: string;
+      subtitle?: string;
+    }) => {
+      setCardPreviewModal({ card, title, subtitle });
+    },
+    [],
+  );
 
   const pushToast = useCallback(
     (message: string, kind: DashboardToastKind = "info") => {
@@ -1057,38 +1085,36 @@ export function DashboardClient() {
         : true,
     );
 
-    const deckDrawsFromMoves: DeckTimelineEntry[] = (
-      roomDetails?.moves || []
-    ).flatMap((move) =>
-      move.cardDraws.map((draw) => ({
-        id: draw.id,
-        cards: draw.cards,
-        createdAt: draw.createdAt,
-        turnNumber: move.turnNumber,
-        drawnBy: draw.drawnBy,
-      })),
+    const deckHistoryByMove = [
+      ...filteredMoves
+        .filter((move) => move.cardDraws.length > 0)
+        .map((move) => ({
+          key: `move:${move.id}`,
+          createdAt: move.cardDraws[0]?.createdAt || move.createdAt,
+          turnNumber: move.turnNumber,
+          drawnBy: move.participant,
+          draws: move.cardDraws,
+        })),
+      ...(roomDetails?.cardDraws || [])
+        .filter((draw) => !draw.moveId)
+        .filter((draw) =>
+          selectedParticipantId ? draw.drawnBy.id === selectedParticipantId : true,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        )
+        .map((draw) => ({
+          key: `standalone:${draw.id}`,
+          createdAt: draw.createdAt,
+          turnNumber: null as number | null,
+          drawnBy: draw.drawnBy,
+          draws: [draw],
+        })),
+    ].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-
-    const standaloneDeckDraws: DeckTimelineEntry[] = (
-      roomDetails?.cardDraws || []
-    ).map((draw) => ({
-      id: draw.id,
-      cards: draw.cards,
-      createdAt: draw.createdAt,
-      turnNumber: null,
-      drawnBy: draw.drawnBy,
-    }));
-
-    const filteredDeckDraws = [...deckDrawsFromMoves, ...standaloneDeckDraws]
-      .filter((draw) =>
-        selectedParticipantId
-          ? draw.drawnBy.id === selectedParticipantId
-          : true,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      );
 
     const filteredAiReports = (roomDetails?.aiReports || []).filter((report) =>
       selectedParticipantId
@@ -1607,14 +1633,57 @@ export function DashboardClient() {
                               {new Date(move.createdAt).toLocaleString("pt-BR")}
                             </span>
                             {move.cardDraws.length > 0 && (
-                              <div style={{ display: "grid", gap: 2 }}>
-                                {move.cardDraws.map((draw) => (
-                                  <span key={draw.id} className="small-muted">
-                                    {draw.card
-                                      ? `Carta #${draw.card.cardNumber} • ${draw.card.keywords}`
-                                      : `Carta(s): ${draw.cards.join(", ")}`}
-                                  </span>
-                                ))}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 8,
+                                  overflowX: "auto",
+                                  paddingBottom: 2,
+                                }}
+                              >
+                                {move.cardDraws.map((draw) => {
+                                  const card = draw.card;
+                                  return (
+                                    <div key={draw.id}>
+                                      {card ? (
+                                        <button
+                                          className="btn-secondary"
+                                          style={{
+                                            padding: 0,
+                                            borderRadius: 9,
+                                            overflow: "hidden",
+                                            width: 66,
+                                            minWidth: 66,
+                                            height: 92,
+                                            borderColor: "rgba(217, 164, 65, 0.3)",
+                                            background: "rgba(9, 15, 24, 0.7)",
+                                          }}
+                                          onClick={() =>
+                                            openCardPreview({
+                                              card,
+                                              title: `Carta #${card.cardNumber}`,
+                                              subtitle: `Jogada #${move.turnNumber}`,
+                                            })
+                                          }
+                                        >
+                                          <img
+                                            src={card.imageUrl}
+                                            alt={`Carta ${card.cardNumber}`}
+                                            style={{
+                                              width: "100%",
+                                              height: "100%",
+                                              objectFit: "cover",
+                                            }}
+                                          />
+                                        </button>
+                                      ) : (
+                                        <span className="small-muted">
+                                          Carta(s): {draw.cards.join(", ")}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             {move.therapyEntries.length > 0 && (
@@ -1698,33 +1767,86 @@ export function DashboardClient() {
                     )}
                   </div>
                 </div>
-                {filteredDeckDraws.length ? (
+                {deckHistoryByMove.length ? (
                   <div style={{ display: "grid", gap: 6 }}>
-                    {filteredDeckDraws.map((draw) => (
+                    {deckHistoryByMove.map((group) => (
                       <div
-                        key={draw.id}
+                        key={group.key}
                         style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 10,
+                          display: "grid",
+                          gap: 6,
                           padding: "10px 12px",
                           borderRadius: 12,
                           border: "1px solid var(--border)",
                           background: "hsl(var(--temple-surface-2))",
                         }}
                       >
-                        <div>
+                        <div style={{ display: "grid", gap: 2 }}>
                           <strong>
-                            {draw.drawnBy.user.name || draw.drawnBy.user.email}
+                            {group.drawnBy.user.name || group.drawnBy.user.email}
                           </strong>
                           <div className="small-muted">
-                            {new Date(draw.createdAt).toLocaleString("pt-BR")}
-                            {draw.turnNumber
-                              ? ` • Jogada #${draw.turnNumber}`
-                              : " • Sem jogada"}{" "}
-                            • {draw.cards.join(", ")}
+                            {new Date(group.createdAt).toLocaleString("pt-BR")}
+                            {group.turnNumber
+                              ? ` • Jogada #${group.turnNumber}`
+                              : " • Sem jogada"}
                           </div>
                         </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            overflowX: "auto",
+                            paddingBottom: 2,
+                          }}
+                        >
+                          {group.draws
+                            .filter((draw) => Boolean(draw.card))
+                            .map((draw) => {
+                              const card = draw.card;
+                              if (!card) return null;
+                              return (
+                                <button
+                                  key={draw.id}
+                                  className="btn-secondary"
+                                  style={{
+                                    padding: 0,
+                                    borderRadius: 9,
+                                    overflow: "hidden",
+                                    width: 66,
+                                    minWidth: 66,
+                                    height: 92,
+                                    borderColor: "rgba(217, 164, 65, 0.3)",
+                                    background: "rgba(9, 15, 24, 0.7)",
+                                  }}
+                                  onClick={() =>
+                                    openCardPreview({
+                                      card,
+                                      title: `Carta #${card.cardNumber}`,
+                                      subtitle: group.turnNumber
+                                        ? `Jogada #${group.turnNumber}`
+                                        : "Sem jogada vinculada",
+                                    })
+                                  }
+                                >
+                                  <img
+                                    src={card.imageUrl}
+                                    alt={`Carta ${card.cardNumber}`}
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                </button>
+                              );
+                            })}
+                        </div>
+                        {group.draws.every((draw) => !draw.card) && (
+                          <span className="small-muted">
+                            Carta(s): {group.draws.flatMap((draw) => draw.cards).join(", ")}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2731,6 +2853,100 @@ export function DashboardClient() {
             </div>
             <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
               {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cardPreviewModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setCardPreviewModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <strong>{cardPreviewModal.title}</strong>
+                {cardPreviewModal.subtitle && (
+                  <span className="small-muted">{cardPreviewModal.subtitle}</span>
+                )}
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setCardPreviewModal(null)}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <div
+                className="notice"
+                style={{
+                  display: "grid",
+                  justifyItems: "center",
+                  padding: 12,
+                }}
+              >
+                <img
+                  src={cardPreviewModal.card.imageUrl}
+                  alt={`Carta ${cardPreviewModal.card.cardNumber}`}
+                  style={{
+                    width: "min(420px, 88vw)",
+                    maxHeight: "60vh",
+                    objectFit: "contain",
+                    borderRadius: 12,
+                    border: "1px solid rgba(217, 164, 65, 0.35)",
+                    background: "rgba(9, 15, 24, 0.7)",
+                  }}
+                />
+              </div>
+              <div className="notice" style={{ display: "grid", gap: 4 }}>
+                <strong>Descrição</strong>
+                <span className="small-muted">
+                  {cardPreviewModal.card.description}
+                </span>
+              </div>
+              <div className="notice" style={{ display: "grid", gap: 4 }}>
+                <strong>Palavras-chave</strong>
+                <span className="small-muted">
+                  {cardPreviewModal.card.keywords}
+                </span>
+              </div>
+              {cardPreviewModal.card.observation && (
+                <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <strong>Observação</strong>
+                  <span className="small-muted">
+                    {cardPreviewModal.card.observation}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
