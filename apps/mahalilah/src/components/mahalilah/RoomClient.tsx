@@ -1158,10 +1158,13 @@ export function RoomClient({ code }: { code: string }) {
   );
 
   const timelineParticipants = useMemo(() => {
-    if (!state?.participants) return [];
+    if (!state?.participants || !myParticipant) return [];
+    if (myParticipant.role !== "THERAPIST") return [myParticipant];
     if (!isTherapistSoloPlay) return state.participants;
-    return state.participants.filter((participant) => participant.role === "THERAPIST");
-  }, [state?.participants, isTherapistSoloPlay]);
+    return state.participants.filter(
+      (participant) => participant.role === "THERAPIST",
+    );
+  }, [state?.participants, myParticipant, isTherapistSoloPlay]);
 
   const boardParticipants = useMemo(() => {
     if (!state?.participants) return [];
@@ -1185,11 +1188,7 @@ export function RoomClient({ code }: { code: string }) {
       return;
     }
 
-    const targetId =
-      isTherapistSoloPlay && therapistParticipantInRoom
-        ? therapistParticipantInRoom.id
-        : myParticipant.id;
-    setTimelineTargetParticipantId(targetId);
+    setTimelineTargetParticipantId(myParticipant.id);
   }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   useEffect(() => {
@@ -1239,18 +1238,26 @@ export function RoomClient({ code }: { code: string }) {
   }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   const filteredTimelineMoves = useMemo(() => {
-    if (!timelineTargetParticipantId) return timelineMoves;
+    const effectiveTargetId =
+      myParticipant?.role === "THERAPIST"
+        ? timelineTargetParticipantId
+        : myParticipant?.id || "__no-participant__";
+    if (!effectiveTargetId) return timelineMoves;
     return timelineMoves.filter(
-      (move) => move.participant.id === timelineTargetParticipantId,
+      (move) => move.participant.id === effectiveTargetId,
     );
-  }, [timelineMoves, timelineTargetParticipantId]);
+  }, [timelineMoves, timelineTargetParticipantId, myParticipant]);
 
   const filteredTimelineReports = useMemo(() => {
-    if (!timelineTargetParticipantId) return timelineReports;
+    const effectiveTargetId =
+      myParticipant?.role === "THERAPIST"
+        ? timelineTargetParticipantId
+        : myParticipant?.id || "__no-participant__";
+    if (!effectiveTargetId) return timelineReports;
     return timelineReports.filter(
-      (report) => report.participant?.id === timelineTargetParticipantId,
+      (report) => report.participant?.id === effectiveTargetId,
     );
-  }, [timelineReports, timelineTargetParticipantId]);
+  }, [timelineReports, timelineTargetParticipantId, myParticipant]);
 
   const timelineTipsByMoveKey = useMemo(() => {
     const tipsByKey = new Map<

@@ -1055,9 +1055,18 @@ export function DashboardClient() {
         : requestedTab || (canManageInvites ? "invites" : "participants");
     const roomDetails = details[room.id];
     const selectedParticipantId = timelineParticipantFilters[room.id] || "";
+    const isTherapistViewer = room.viewerRole === "THERAPIST";
     const currentUserParticipant = room.participants.find(
       (participant) => participant.user.id === currentUserId,
     );
+    const timelineFilterParticipants = isTherapistViewer
+      ? room.participants
+      : currentUserParticipant
+        ? [currentUserParticipant]
+        : [];
+    const effectiveSelectedParticipantId = isTherapistViewer
+      ? selectedParticipantId
+      : currentUserParticipant?.id || "__no-participant__";
     const playerParticipants = room.participants.filter(
       (participant) => participant.role === "PLAYER",
     );
@@ -1080,8 +1089,8 @@ export function DashboardClient() {
             : [];
 
     const filteredMoves = (roomDetails?.moves || []).filter((move) =>
-      selectedParticipantId
-        ? move.participant.id === selectedParticipantId
+      effectiveSelectedParticipantId
+        ? move.participant.id === effectiveSelectedParticipantId
         : true,
     );
 
@@ -1098,7 +1107,9 @@ export function DashboardClient() {
       ...(roomDetails?.cardDraws || [])
         .filter((draw) => !draw.moveId)
         .filter((draw) =>
-          selectedParticipantId ? draw.drawnBy.id === selectedParticipantId : true,
+          effectiveSelectedParticipantId
+            ? draw.drawnBy.id === effectiveSelectedParticipantId
+            : true,
         )
         .sort(
           (a, b) =>
@@ -1117,8 +1128,8 @@ export function DashboardClient() {
     );
 
     const filteredAiReports = (roomDetails?.aiReports || []).filter((report) =>
-      selectedParticipantId
-        ? report.participant?.id === selectedParticipantId
+      effectiveSelectedParticipantId
+        ? report.participant?.id === effectiveSelectedParticipantId
         : true,
     );
 
@@ -1540,9 +1551,9 @@ export function DashboardClient() {
                       alignItems: "center",
                     }}
                   >
-                    {room.participants.length > 1 && (
+                    {isTherapistViewer && timelineFilterParticipants.length > 1 && (
                       <select
-                        value={selectedParticipantId}
+                        value={effectiveSelectedParticipantId}
                         onChange={(event) =>
                           setTimelineParticipantFilters((prev) => ({
                             ...prev,
@@ -1551,7 +1562,7 @@ export function DashboardClient() {
                         }
                       >
                         <option value="">Todos os jogadores</option>
-                        {room.participants.map((participant) => (
+                        {timelineFilterParticipants.map((participant) => (
                           <option key={participant.id} value={participant.id}>
                             {participant.user.name || participant.user.email}
                           </option>
@@ -1568,7 +1579,7 @@ export function DashboardClient() {
                   <div style={{ display: "grid", gap: 8 }}>
                     {filteredMoves.length === 0 ? (
                       <span className="small-muted">
-                        {selectedParticipantId
+                        {effectiveSelectedParticipantId
                           ? "Nenhuma jogada para o jogador selecionado."
                           : "Ainda não há jogadas."}
                       </span>
@@ -1747,9 +1758,9 @@ export function DashboardClient() {
                       alignItems: "center",
                     }}
                   >
-                    {room.participants.length > 1 && (
+                    {isTherapistViewer && timelineFilterParticipants.length > 1 && (
                       <select
-                        value={selectedParticipantId}
+                        value={effectiveSelectedParticipantId}
                         onChange={(event) =>
                           setTimelineParticipantFilters((prev) => ({
                             ...prev,
@@ -1758,7 +1769,7 @@ export function DashboardClient() {
                         }
                       >
                         <option value="">Todos os jogadores</option>
-                        {room.participants.map((participant) => (
+                        {timelineFilterParticipants.map((participant) => (
                           <option key={participant.id} value={participant.id}>
                             {participant.user.name || participant.user.email}
                           </option>
@@ -1852,7 +1863,7 @@ export function DashboardClient() {
                   </div>
                 ) : (
                   <span className="small-muted">
-                    {selectedParticipantId
+                    {effectiveSelectedParticipantId
                       ? "Nenhuma tiragem para o jogador selecionado."
                       : "Nenhuma tiragem registrada."}
                   </span>
@@ -1879,9 +1890,9 @@ export function DashboardClient() {
                       alignItems: "center",
                     }}
                   >
-                    {room.participants.length > 1 && (
+                    {isTherapistViewer && timelineFilterParticipants.length > 1 && (
                       <select
-                        value={selectedParticipantId}
+                        value={effectiveSelectedParticipantId}
                         onChange={(event) =>
                           setTimelineParticipantFilters((prev) => ({
                             ...prev,
@@ -1890,7 +1901,7 @@ export function DashboardClient() {
                         }
                       >
                         <option value="">Todos os jogadores</option>
-                        {room.participants.map((participant) => (
+                        {timelineFilterParticipants.map((participant) => (
                           <option key={participant.id} value={participant.id}>
                             {participant.user.name || participant.user.email}
                           </option>
@@ -2073,7 +2084,7 @@ export function DashboardClient() {
                   </div>
                 ) : (
                   <span className="small-muted">
-                    {selectedParticipantId
+                    {effectiveSelectedParticipantId
                       ? "Nenhum relatório para o jogador selecionado."
                       : "Nenhum relatório ainda."}
                   </span>
