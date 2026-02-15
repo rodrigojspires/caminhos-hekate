@@ -66,6 +66,7 @@ type RoomState = {
   deckHistory: Array<{
     id: string;
     moveId: string | null;
+    moveTurnNumber: number | null;
     cards: number[];
     createdAt: string;
     drawnBy: { id: string; user: { name: string | null; email: string } };
@@ -1873,8 +1874,7 @@ export function RoomClient({ code }: { code: string }) {
     const grouped: Array<{
       key: string;
       moveId: string | null;
-      createdAt: string;
-      drawnBy: { id: string; user: { name: string | null; email: string } };
+      moveTurnNumber: number | null;
       draws: typeof state.deckHistory;
     }> = [];
 
@@ -1890,8 +1890,7 @@ export function RoomClient({ code }: { code: string }) {
       grouped.push({
         key,
         moveId: draw.moveId,
-        createdAt: draw.createdAt,
-        drawnBy: draw.drawnBy,
+        moveTurnNumber: draw.moveTurnNumber,
         draws: [draw],
       });
     });
@@ -3183,18 +3182,18 @@ export function RoomClient({ code }: { code: string }) {
                       className="notice"
                       style={{ display: "grid", gap: 6 }}
                     >
-                      <strong style={{ fontSize: 12 }}>
-                        {group.drawnBy.user.name || group.drawnBy.user.email}
-                      </strong>
-                      <span className="small-muted">
-                        {new Date(group.createdAt).toLocaleString("pt-BR")}
-                      </span>
-                      {group.moveId && (
-                        <span className="small-muted">
-                          {timelineMoveTurnById.has(group.moveId)
-                            ? `Jogada #${timelineMoveTurnById.get(group.moveId)}`
-                            : "Jogada vinculada"}
-                        </span>
+                      {group.moveId ? (
+                        <strong style={{ fontSize: 12 }}>
+                          {`Jogada #${
+                            group.moveTurnNumber ??
+                            timelineMoveTurnById.get(group.moveId) ??
+                            "—"
+                          }`}
+                        </strong>
+                      ) : (
+                        <strong style={{ fontSize: 12 }}>
+                          Sem jogada vinculada
+                        </strong>
                       )}
                       <div
                         style={{
@@ -3226,9 +3225,11 @@ export function RoomClient({ code }: { code: string }) {
                                       card: draw.card,
                                       title: `Carta #${draw.card.cardNumber}`,
                                       subtitle: group.moveId
-                                        ? timelineMoveTurnById.has(group.moveId)
-                                          ? `Jogada #${timelineMoveTurnById.get(group.moveId)}`
-                                          : "Jogada vinculada"
+                                        ? `Jogada #${
+                                            group.moveTurnNumber ??
+                                            timelineMoveTurnById.get(group.moveId) ??
+                                            "—"
+                                          }`
                                         : "Sem jogada vinculada",
                                     })
                                   : undefined

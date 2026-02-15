@@ -495,14 +495,24 @@ function buildPdf(room: ExportRoom) {
 
   addSpacer(16)
   addSectionTitle('4. Deck randomico')
-  const standaloneDraws = room.cardDraws.filter((draw) => !draw.moveId)
-  if (standaloneDraws.length === 0) {
-    addParagraph('Nao houve tiragem randomica fora da timeline de jogadas.')
+  const deckDraws = room.moves.flatMap((move) =>
+    move.cardDraws.map((draw) => ({
+      createdAt: draw.createdAt,
+      cards: draw.cards,
+      actor: move.participant.user.name || move.participant.user.email || 'Sem identificacao',
+      moveTurnNumber: move.turnNumber
+    }))
+  )
+  const sortedDeckDraws = deckDraws.sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+  )
+
+  if (sortedDeckDraws.length === 0) {
+    addParagraph('Nao houve tiragem randomica nesta sessao.')
   } else {
-    standaloneDraws.forEach((draw, index) => {
-      const actor = draw.drawnBy?.user?.name || draw.drawnBy?.user?.email || 'Sem identificacao'
+    sortedDeckDraws.forEach((draw, index) => {
       addParagraph(
-        `${index + 1}. ${formatDate(draw.createdAt)} | ${actor} | cartas: ${draw.cards.join(', ')}`,
+        `${index + 1}. ${formatDate(draw.createdAt)} | ${draw.actor} | Jogada #${draw.moveTurnNumber} | cartas: ${draw.cards.join(', ')}`,
         { size: 10 }
       )
     })
@@ -680,11 +690,11 @@ export async function GET(request: Request, { params }: RouteParams) {
                 (entry) => entry.participantId === scopedParticipantId
               ),
               cardDraws: move.cardDraws.filter(
-                (draw) => draw.drawnById === scopedParticipantId
+                (draw) => draw.drawnByParticipantId === scopedParticipantId
               )
             })),
           cardDraws: room.cardDraws.filter(
-            (draw) => draw.moveId === null && draw.drawnById === scopedParticipantId
+            (draw) => draw.moveId === null && draw.drawnByParticipantId === scopedParticipantId
           ),
           aiReports: room.aiReports.filter(
             (report) => report.participantId === scopedParticipantId

@@ -775,6 +775,11 @@ async function buildRoomState(roomId: string) {
       cardDraws: {
         orderBy: { createdAt: "desc" },
         include: {
+          move: {
+            select: {
+              turnNumber: true,
+            },
+          },
           card: {
             include: {
               deck: true,
@@ -882,6 +887,7 @@ async function buildRoomState(roomId: string) {
       .map((draw) => ({
         id: draw.id,
         moveId: draw.moveId,
+        moveTurnNumber: draw.move?.turnNumber ?? null,
         cards: draw.cards,
         createdAt: draw.createdAt,
         drawnBy: draw.drawnBy,
