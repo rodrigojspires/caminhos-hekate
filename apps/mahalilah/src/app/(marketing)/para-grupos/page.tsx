@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { CTA } from '@/components/marketing/sections/CTA'
+import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Features } from '@/components/marketing/sections/Features'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { Testimonials } from '@/components/marketing/sections/Testimonials'
@@ -18,15 +18,31 @@ export const metadata: Metadata = {
   }
 }
 
+const faqItems = [
+  {
+    question: 'Quantas pessoas posso conduzir por sessão?',
+    answer:
+      'Você pode adaptar conforme o plano, mas grupos entre 3 e 8 pessoas costumam manter melhor equilíbrio entre profundidade e tempo de fala.'
+  },
+  {
+    question: 'O facilitador também joga durante a sessão?',
+    answer:
+      'Sim, quando fizer sentido para o formato do grupo. Você pode conduzir apenas como facilitador ou participar da jornada.'
+  },
+  {
+    question: 'Consigo acompanhar o histórico por participante?',
+    answer:
+      'Sim. A plataforma organiza registros por jogada e por participante, facilitando retomadas e acompanhamento.'
+  }
+]
+
 export default function ParaGruposPage() {
   return (
     <div>
       <Hero
-        eyebrow="Para grupos"
         title="Grupos com energia alta, organização clara e profundidade"
         subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder individualidade."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
+        primaryCta={{ label: 'Experimente', href: '/dashboard' }}
         mediaLabel="Grupo em sessão ao vivo com turnos e acompanhamento"
         highlights={['Turnos individuais', 'Visão em tempo real', 'Registro por participante']}
       />
@@ -56,28 +72,23 @@ export default function ParaGruposPage() {
       />
 
       <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-6">
-            <SectionHeader
-              eyebrow="Dimensionamento"
-              title="Como definir o tamanho ideal do grupo"
-              subtitle="Escolher a quantidade certa de participantes melhora retenção e qualidade da condução."
-            />
-            <ul className="space-y-3 text-sm text-ink-muted">
-              {[
-                '3 a 5 pessoas: profundidade individual mais alta.',
+        <SectionHeader
+          eyebrow="Dimensionamento"
+          title="Como definir o tamanho ideal do grupo"
+          subtitle="Escolher a quantidade certa de participantes melhora retenção e qualidade da condução."
+        />
+        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
+          {[
+            '3 a 5 pessoas: profundidade individual mais alta.',
                 '6 a 8 pessoas: equilíbrio entre diversidade e tempo de fala.',
                 'Acima de 8: exige blocos de tempo e acordos bem definidos.',
                 'Sempre planeje tempo de abertura, desenvolvimento e fechamento.'
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <MediaPlaceholder variant="vertical" label="Planejamento de grupo e distribuição de turnos" />
+          ].map((item) => (
+            <div key={item} className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-teal" />
+              <span>{item}</span>
+            </div>
+          ))}
         </div>
       </SectionShell>
 
@@ -101,12 +112,10 @@ export default function ParaGruposPage() {
         ]}
       />
 
-      <CTA
-        title="Pronto para conduzir seu próximo grupo com mais impacto?"
-        subtitle="Escolha o plano ideal para o número de participantes e comece sua jornada coletiva agora."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Onboarding rápido', 'Escalável para grupos', 'Experiência memorável']}
+      <FAQ
+        eyebrow="FAQ"
+        title="Perguntas sobre grupos"
+        items={faqItems}
       />
     </div>
   )
