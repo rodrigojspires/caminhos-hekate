@@ -323,8 +323,13 @@ export async function GET(request: Request) {
           id: room.id,
           code: room.code,
           status: room.status,
+          planType: room.planType,
           viewerRole,
           canManage: room.createdByUserId === session.user.id,
+          canDelete:
+            room.createdByUserId === session.user.id &&
+            room._count.moves === 0 &&
+            room.planType !== MahaLilahPlanType.SINGLE_SESSION,
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
           therapistSoloPlay: room.therapistSoloPlay,

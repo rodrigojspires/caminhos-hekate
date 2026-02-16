@@ -34,8 +34,10 @@ type Room = {
   id: string;
   code: string;
   status: string;
+  planType: string;
   viewerRole: "THERAPIST" | "PLAYER";
   canManage: boolean;
+  canDelete: boolean;
   maxParticipants: number;
   therapistPlays: boolean;
   therapistSoloPlay?: boolean;
@@ -550,6 +552,7 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [creatingTrial, setCreatingTrial] = useState(false);
+  const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
   const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
@@ -844,6 +847,14 @@ export function DashboardClient() {
       return;
     }
 
+    const payload = await res.json().catch(() => ({}));
+    const roomCode = payload?.room?.code;
+    pushToast(
+      roomCode
+        ? `Sala ${roomCode} criada com sucesso.`
+        : "Sala criada com sucesso.",
+      "success",
+    );
     await loadRooms();
     setCreating(false);
   };
@@ -865,13 +876,54 @@ export function DashboardClient() {
 
     const payload = await res.json().catch(() => ({}));
     const roomCode = payload?.room?.code;
+    pushToast(
+      roomCode
+        ? `Sala trial ${roomCode} criada com sucesso.`
+        : "Sala trial criada com sucesso.",
+      "success",
+    );
     if (roomCode) {
-      window.location.href = `/rooms/${roomCode}`;
+      window.setTimeout(() => {
+        window.location.href = `/rooms/${roomCode}`;
+      }, 450);
       return;
     }
 
     await loadRooms();
     setCreatingTrial(false);
+  };
+
+  const handleDeleteRoom = async (room: Room) => {
+    if (!room.canDelete) return;
+
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir a sala ${room.code}? Esta ação não pode ser desfeita.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingRoomIds((prev) => ({ ...prev, [room.id]: true }));
+    const res = await fetch(`/api/mahalilah/rooms/${room.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      pushToast(payload.error || "Erro ao excluir sala.", "error");
+      setDeletingRoomIds((prev) => {
+        const next = { ...prev };
+        delete next[room.id];
+        return next;
+      });
+      return;
+    }
+
+    pushToast("Sala excluída com sucesso.", "success");
+    await loadRooms();
+    setDeletingRoomIds((prev) => {
+      const next = { ...prev };
+      delete next[room.id];
+      return next;
+    });
   };
 
   const handleSendInvites = async (
@@ -1180,6 +1232,7 @@ export function DashboardClient() {
       Boolean(room.isAutoCreatedFromCheckout) &&
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
+    const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
 
     return (
       <div
@@ -1244,6 +1297,19 @@ export function DashboardClient() {
             >
               {isOpen ? "Fechar detalhes" : "Ver detalhes"}
             </button>
+            {room.canDelete && (
+              <button
+                className="btn-secondary"
+                onClick={() => handleDeleteRoom(room)}
+                disabled={isDeletingRoom}
+                style={{
+                  borderColor: "rgba(255, 107, 107, 0.45)",
+                  color: "#ff9f9f",
+                }}
+              >
+                {isDeletingRoom ? "Excluindo..." : "Excluir sala"}
+              </button>
+            )}
           </div>
         </div>
 
