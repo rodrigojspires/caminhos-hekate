@@ -91,7 +91,8 @@ function formatHouseName(number: number) {
 }
 
 function toPdfSafeText(value: string) {
-  return value
+  const repaired = repairPtBrMojibake(value || '')
+  return repaired
     .normalize('NFC')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ')
@@ -323,8 +324,8 @@ function repairPtBrMojibake(value: string) {
 
   // Correcoes pontuais observadas em alguns relatorios
   fixed = fixed
-    .replace(/Œ/g, 'ê')
-    .replace(/Ø/g, 'é')
+    .replace(/[Œœ]/g, 'ê')
+    .replace(/[Øø]/g, 'é')
     .replace(/ª/g, 'ã')
 
   return fixed.normalize('NFC')
