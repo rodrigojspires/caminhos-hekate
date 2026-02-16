@@ -36,12 +36,9 @@ export default function ParaTerapeutasPage() {
   return (
     <div>
       <Hero
-        eyebrow="Para terapeutas"
         title="Seu consultório em uma sala viva, organizada e segura"
         subtitle="Conduza sessões com mais presença e menos esforço operacional: histórico por jogada, deck randômico, síntese assistida e visão completa da evolução."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        mediaLabel="Terapeuta acompanhando sessão com painel em tempo real"
+        primaryCta={{ label: 'Experimente já', href: '/dashboard' }}
         highlights={['Histórico completo', 'Export rápido', 'Convites por e-mail']}
       />
 
@@ -57,13 +54,12 @@ export default function ParaTerapeutasPage() {
               Menos tempo organizando contexto e mais tempo conduzindo com qualidade e presença terapêutica.
             </p>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Dashboard de sessões e andamento clínico" />
         </div>
       </SectionShell>
 
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Convites por e-mail com controle de acesso" />
+          
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Confiança"
@@ -83,19 +79,17 @@ export default function ParaTerapeutasPage() {
             <SectionHeader
               eyebrow="Registro terapêutico"
               title="Anote o essencial sem perder fluidez"
-              subtitle="Emoção, intensidade, corpo, insight e micro-ação com estrutura objetiva."
+              subtitle="Emoção, intensidade, corpo, insight e ação com estrutura objetiva."
             />
             <p className="text-sm text-ink-muted">
               Você mantém linguagem viva da pessoa e ganha consistência para sessões futuras.
             </p>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Registro por jogada no modo terapia" />
         </div>
       </SectionShell>
 
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Síntese assistida por IA no fechamento" />
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Síntese final"
@@ -113,56 +107,32 @@ export default function ParaTerapeutasPage() {
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="flex flex-col gap-5">
             <SectionHeader
-              eyebrow="Export e continuidade"
+              eyebrow="Relatório em PDF"
               title="Leve seu histórico para onde precisar"
-              subtitle="Exporte os dados da sessão e integre ao seu processo clínico sem retrabalho."
+              subtitle="Gere um relatório da sessão que pode ser compartilhado com o seu assistido."
             />
             <p className="text-sm text-ink-muted">
               Continuidade fácil aumenta percepção de valor e recorrência do acompanhamento.
             </p>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Export de dados terapêuticos em TXT e JSON" />
         </div>
       </SectionShell>
 
-      <SectionShell>
-        <SectionHeader
-          eyebrow="Casos de uso"
-          title="Situações em que terapeutas mais usam o Maha Lilah"
-          subtitle="Estrutura para trabalhar profundidade com segurança e progressão."
-        />
-        <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
-          {[
-            'Travas recorrentes e padrões de repetição',
-            'Momentos de decisão com conflito emocional',
-            'Reconstrução de limites em relações',
-            'Integração entre insight e ação concreta',
-            'Condução de grupos terapêuticos pequenos',
-            'Sessões de continuidade com histórico comparável'
-          ].map((item) => (
-            <div key={item} className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-gold" />
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      </SectionShell>
+      <CTA
+        title="Veja todos os nossos recursos disponíveis"
+        subtitle="Existem outros recursos que você pode saber que a plataforma entrega."
+        primaryCta={{ label: 'Veja todos os recursos', href: '/recursos' }}
+        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
+        badges={['Dashboard integrado', 'Registro inteligente', 'Relatório em PDF']}
+      />
 
       <FAQ
         eyebrow="FAQ"
         title="Perguntas de terapeutas"
         items={faqItems}
-        ctaLabel="Ver planos"
-        ctaHref="/planos"
       />
 
-      <CTA
-        title="Transforme cada sessão em continuidade real"
-        subtitle="Crie sua sala, convide seus clientes e conduza com mais presença e menos fricção."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Dashboard clínico', 'Registro inteligente', 'Export imediato']}
-      />
+      
     </div>
   )
 }
