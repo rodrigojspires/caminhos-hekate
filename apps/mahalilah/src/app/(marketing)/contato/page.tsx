@@ -40,7 +40,8 @@ export default function ContatoPage() {
     <div>
       <Hero
         title="Converse com quem entende da experiência terapêutica digital"
-        subtitle="Conte seu objetivo e nós ajudamos você a montar o melhor caminho para começar com segurança e impacto."
+        subtitle="Conte seu objetivo e nós ajudamos você a montar o melhor caminho para começar com segurança e impacto. O Portal Maha Lilah Online faz parte do ecossistema Caminhos de Hekate.
+O suporte e a cobrança são atendidos pelo mesmo time."
         primaryCta={{ label: 'Fale no WhatsApp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voc%C3%AAs!' }}
         highlights={['Atendimento humano', 'Apoio comercial', 'Onboarding orientado']}
       />
@@ -57,10 +58,10 @@ export default function ContatoPage() {
             />
             <div className="flex flex-col gap-2 text-sm text-ink-muted">
               <Link href="mailto:mahalilahonline@caminhosdehekate.com.br" className="text-gold">
-                mahalilahonline@caminhosdehekate.com.br
+                mahalilahonline@caminhosdehekate.com.br (canal oficial de suporte do Maha Lilah Online)
               </Link>
               <Link href="https://instagram.com/caminhoshekate" className="text-gold">
-                instagram.com/caminhoshekate
+                instagram.com/caminhoshekate (perfil do grupo/portais integrados)
               </Link>
             </div>
           </div>

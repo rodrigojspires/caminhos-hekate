@@ -37,7 +37,7 @@ export default function TermosPage() {
     <div>
       <Hero
         title="Termos de uso"
-        subtitle="Condições gerais para uso do Maha Lilah Online, com foco em segurança, transparência e respeito."
+        subtitle="Condições gerais para uso do Maha Lilah Online, com foco em segurança, transparência e respeito. O Maha Lilah Online é um produto integrado ao ecossistema do Portal Caminhos de Hekate."
         primaryCta={{ label: 'Política de privacidade', href: '/privacidade' }}
         secondaryCta={{ label: 'Política de reembolso', href: '/politica-de-reembolso' }}
         highlights={['Uso responsável', 'Consentimento', 'Transparência']}

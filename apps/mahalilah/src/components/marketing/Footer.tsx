@@ -89,7 +89,7 @@ export function Footer() {
         <div className="flex flex-col gap-4 border-t border-border/60 pt-6 text-xs text-ink-muted">
           <p>
             Maha Lilah Online é uma plataforma de apoio terapêutico. Não substitui terapia, atendimento médico
-            ou emergência. Resultados variam conforme contexto e condução.
+            ou emergência. Resultados variam conforme contexto e condução. Um produto Caminhos de Hekate. (portais integrados e mesmo time de suporte)
           </p>
           <p>© 2026 Maha Lilah Online. Todos os direitos reservados.</p>
         </div>
