@@ -1,4 +1,4 @@
-import { prisma } from "../packages/database/index";
+import { Prisma, prisma } from "../packages/database/index";
 
 type DeckCardRow = {
   id: string;
@@ -171,7 +171,6 @@ async function main() {
     return;
   }
 
-  const where = args.deckId ? { deckId: args.deckId } : {};
   const pageSize = 200;
   const sample: ProposedChange[] = [];
 
@@ -193,20 +192,31 @@ async function main() {
 
     if (take <= 0) break;
 
-    const rows = (await prisma.cardDeckCard.findMany({
-      where,
-      orderBy: { id: "asc" },
-      take,
-      ...(cursor ? { cursor, skip: 1 } : {}),
-      select: {
-        id: true,
-        deckId: true,
-        cardNumber: true,
-        description: true,
-        keywords: true,
-        observation: true,
-      },
-    })) as DeckCardRow[];
+    const filters: Prisma.Sql[] = [];
+    if (args.deckId) {
+      filters.push(Prisma.sql`"deckId" = ${args.deckId}`);
+    }
+    if (cursor?.id) {
+      filters.push(Prisma.sql`id > ${cursor.id}`);
+    }
+    const whereSql =
+      filters.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(filters, Prisma.sql` AND `)}`
+        : Prisma.empty;
+
+    const rows = (await prisma.$queryRaw(Prisma.sql`
+      SELECT
+        id,
+        "deckId",
+        "cardNumber",
+        description,
+        keywords,
+        observation
+      FROM "CardDeckCard"
+      ${whereSql}
+      ORDER BY id ASC
+      LIMIT ${take}
+    `)) as DeckCardRow[];
 
     if (rows.length === 0) break;
     scanned += rows.length;
@@ -223,14 +233,14 @@ async function main() {
 
     if (args.apply && batchChanges.length > 0) {
       for (const item of batchChanges) {
-        await prisma.cardDeckCard.update({
-          where: { id: item.id },
-          data: {
-            description: item.after.description,
-            keywords: item.after.keywords,
-            observation: item.after.observation,
-          },
-        });
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE "CardDeckCard"
+          SET
+            description = ${item.after.description},
+            keywords = ${item.after.keywords},
+            observation = ${item.after.observation}
+          WHERE id = ${item.id}
+        `);
       }
       applied += batchChanges.length;
     }
