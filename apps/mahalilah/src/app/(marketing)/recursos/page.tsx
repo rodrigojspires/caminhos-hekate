@@ -143,7 +143,7 @@ export default function RecursosPage() {
               {[
                 'Menos textos longos, mais clareza operacional.',
                 'Histórico automaticamente vinculado ao facilitador.',
-                'Export para continuidade fora da plataforma.'
+                'Relatório em PDF para continuidade fora da plataforma.'
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gold" />

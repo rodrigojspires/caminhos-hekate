@@ -20,7 +20,7 @@ export const metadata: Metadata = withSeoDefaults({
 const faqItems = [
   {
     question: 'Posso exportar os registros?',
-    answer: 'Sim. O export em TXT/JSON facilita integração ao seu fluxo de acompanhamento.'
+    answer: 'Sim. Você pode gerar e baixar o relatório completo da sessão em PDF para continuidade no acompanhamento e para compartilhar com o assistido quando fizer sentido.'
   },
   {
     question: 'A IA substitui o terapeuta?',
@@ -39,7 +39,7 @@ export default function ParaTerapeutasPage() {
         title="Seu consultório em uma sala viva, organizada e segura"
         subtitle="Conduza sessões com mais presença e menos esforço operacional: histórico por jogada, deck randômico, síntese assistida e visão completa da evolução."
         primaryCta={{ label: 'Experimente já', href: '/dashboard' }}
-        highlights={['Histórico completo', 'Export rápido', 'Convites por e-mail']}
+        highlights={['Histórico completo', 'Relatório em PDF', 'Convites por e-mail']}
       />
 
       <SectionShell>

@@ -133,7 +133,7 @@ export default async function HomePage() {
           },
           {
             title: 'Terapeuta + assistido',
-            description: 'Para sessões 1:1: sala com link seguro, condução no tabuleiro ao vivo, registro por jogada e histórico exportável para acompanhar o processo.'
+            description: 'Para sessões 1:1: sala com link seguro, condução no tabuleiro ao vivo, registro por jogada e histórico com relatório em PDF para acompanhar o processo.'
           },
           {
             title: 'Grupos e vivências',
@@ -158,7 +158,7 @@ export default async function HomePage() {
             'IA opcional (no momento certo): perguntas melhores na casa certa + síntese final para integrar',
             'Cartas de apoio: novas perspectivas sem forçar significado',
             'Registro leve por jogada: o essencial fica guardado sem burocracia',
-            'Histórico seguro e exportável: confiança para continuar e acompanhar',
+            'Histórico seguro + relatório em PDF confiança para continuar e acompanhar',
             'Para terapeutas: memória por sessão + exportação para continuidade',
             'Ao vivo quando precisar: sala com link e presença em tempo real',
             'Clareza de turno (para grupos): o centro da rodada fica evidente'        
@@ -204,7 +204,7 @@ export default async function HomePage() {
           'Cartas/apoios no momento certo para destravar a sessão',
           'Assistência de IA opcional: sugere perguntas e amplia perspectivas',
           'Síntese final por um clique (fechamento claro e acionável)',
-          'Histórico por sessão com exportação para continuidade terapêutica'
+          'Histórico por sessão com relatório em PDF para continuidade terapêutica'
         ]}
       />
 

@@ -53,7 +53,7 @@ export default function TermosPage() {
             <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
               <li>Uso do tabuleiro, deck randômico e modo terapia.</li>
               <li>Convites por e-mail com login obrigatório.</li>
-              <li>Histórico e export de registros.</li>
+              <li>Histórico e geração de relatório em PDF.</li>
               <li>Síntese por IA com limites e botão dedicado.</li>
             </ul>
           </div>
