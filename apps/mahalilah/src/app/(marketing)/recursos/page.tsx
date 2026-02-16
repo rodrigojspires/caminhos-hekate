@@ -63,12 +63,20 @@ export default function RecursosPage() {
               ))}
             </ul>
           </div>
+          <MediaPlaceholder variant="vertical" label="Sincronia do tabuleiro entre todos os jogadores" 
+          imageSrc="/marketing/recursos/recurso-05.webp"
+          imageAlt="Sincronia do tabuleiro entre todos os jogadores"/>
         </div>
       </SectionShell>
 
       <SectionShell>
         <div id="turnos" className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Controle de turnos e rolagens" />
+          <MediaPlaceholder
+            variant="vertical"
+            label="Controle de turnos e rolagens"
+            imageSrc="/marketing/recursos/recurso-01.webp"
+            imageAlt="Controle de turnos e rolagens"
+          />
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Turnos"
@@ -112,13 +120,18 @@ export default function RecursosPage() {
               ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Deck randômico dentro da sala" />
+          <MediaPlaceholder variant="horizontal" 
+          label="Deck randômico dentro da sala" 
+          imageSrc="/marketing/recursos/recurso-02.webp"
+            imageAlt="Deck randômico dentro da sala"/>
         </div>
       </SectionShell>
 
       <SectionShell>
         <div id="modo-terapia" className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <MediaPlaceholder variant="vertical" label="Modo terapia e campos estruturados" />
+          <MediaPlaceholder variant="vertical" label="Modo terapia e campos estruturados" 
+          imageSrc="/marketing/recursos/recurso-03.webp"
+          imageAlt="Registre seus sentimentos durante o jogo"/>
           <div className="flex flex-col gap-5">
             <SectionHeader
               eyebrow="Modo terapia"
@@ -162,7 +175,9 @@ export default function RecursosPage() {
               ))}
             </ul>
           </div>
-          <MediaPlaceholder variant="horizontal" label="Painel de IA assistida para perguntas e síntese" />
+          <MediaPlaceholder variant="horizontal" label="Painel de IA assistida para perguntas e síntese" 
+          imageSrc="/marketing/recursos/recurso-04.webp"
+          imageAlt="Painel de IA assistida para perguntas e síntese"/>
         </div>
       </SectionShell>
 
@@ -170,17 +185,10 @@ export default function RecursosPage() {
         eyebrow="FAQ"
         title="Perguntas sobre recursos"
         items={faqItems}
-        ctaLabel="Ver planos"
-        ctaHref="/planos"
+        
       />
 
-      <CTA
-        title="Agora é sua vez de sentir essa experiência ao vivo"
-        subtitle="Entre, crie sua sala e use os recursos na prática com seu grupo."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Experiência fluida', 'Retenção por design', 'Suporte humano']}
-      />
+     
     </div>
   )
 }
