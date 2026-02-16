@@ -159,7 +159,7 @@ export default async function HomePage() {
             'Cartas de apoio: novas perspectivas sem forçar significado',
             'Registro leve por jogada: o essencial fica guardado sem burocracia',
             'Histórico seguro + relatório em PDF: confiança para continuar e acompanhar',
-            'Para terapeutas: memória por sessão + exportação para continuidade',
+            'Para terapeutas: memória por sessão + relatório em PDF',
             'Ao vivo quando precisar: sala com link e presença em tempo real',
             'Clareza de turno (para grupos): o centro da rodada fica evidente'        
           ].map((item) => (
