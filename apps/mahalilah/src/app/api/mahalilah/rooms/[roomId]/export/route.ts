@@ -690,8 +690,9 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
   const pageStreams = pages.map((ops) => ops.join('\n'))
   const objectMap: Record<number, string> = {
     1: '<< /Type /Catalog /Pages 2 0 R >>',
-    3: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    4: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'
+    // WinAnsiEncoding garante mapeamento correto de acentos latinos no PDF Type1.
+    3: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    4: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'
   }
 
   const pageObjectIds: number[] = []
