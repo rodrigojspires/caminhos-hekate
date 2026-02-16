@@ -4,9 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { Prisma, prisma } from '@hekate/database'
 import { HOUSES } from '@hekate/mahalilah-core'
 import { readFile } from 'fs/promises'
-import { readdirSync } from 'fs'
-import { createRequire } from 'module'
 import { join } from 'path'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 interface RouteParams {
   params: { roomId: string }
@@ -254,52 +253,6 @@ function inferPdfImageFormatFromContentType(contentType: string | null) {
   if (normalized.includes('image/jpeg') || normalized.includes('image/jpg')) {
     return 'jpg' as const
   }
-  return null
-}
-
-function loadPdfLibRuntime() {
-  const attempts = [
-    () => createRequire(join(process.cwd(), 'package.json'))('pdf-lib'),
-    () => createRequire(join(process.cwd(), 'apps', 'mahalilah', 'package.json'))('pdf-lib'),
-    () => createRequire(join(process.cwd(), 'apps', 'web', 'package.json'))('pdf-lib')
-  ]
-
-  for (const attempt of attempts) {
-    try {
-      const loaded = attempt()
-      if (loaded?.PDFDocument) return loaded
-    } catch {
-      // try next source
-    }
-  }
-
-  try {
-    const pnpmRoot = join(process.cwd(), 'node_modules', '.pnpm')
-    const candidates = readdirSync(pnpmRoot)
-      .filter((entry) => entry.startsWith('pdf-lib@'))
-      .sort()
-      .reverse()
-
-    for (const candidate of candidates) {
-      try {
-        const absoluteModulePath = join(
-          pnpmRoot,
-          candidate,
-          'node_modules',
-          'pdf-lib'
-        )
-        const loaded = createRequire(join(process.cwd(), 'package.json'))(
-          absoluteModulePath
-        )
-        if (loaded?.PDFDocument) return loaded
-      } catch {
-        // try next candidate
-      }
-    }
-  } catch {
-    // no pnpm folder available
-  }
-
   return null
 }
 
@@ -811,12 +764,6 @@ async function appendDeckCardsWithImagesPdf(
     if (deckImageSlots.length === 0) {
       return basePdfBuffer
     }
-    const pdfLib = loadPdfLibRuntime()
-    if (!pdfLib) {
-      console.warn('pdf-lib indisponivel no runtime do MahaLilah. PDF sera gerado sem miniaturas.')
-      return basePdfBuffer
-    }
-    const { PDFDocument, StandardFonts, rgb } = pdfLib as any
 
     const pdfDoc = await PDFDocument.load(basePdfBuffer)
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
