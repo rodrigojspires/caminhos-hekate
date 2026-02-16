@@ -633,7 +633,8 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
         const imageX = MARGIN_LEFT + 28
         const imageWidth = 76
         const imageHeight = 108
-        ensureSpace(imageHeight + 6)
+        const imageBottomSpacing = 14
+        ensureSpace(imageHeight + imageBottomSpacing)
         const imageTop = cursorY
         deckImageSlots.push({
           pageIndex: pages.length - 1,
@@ -644,7 +645,7 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
           cardNumber,
           card: card || null
         })
-        cursorY += imageHeight + 6
+        cursorY += imageHeight + imageBottomSpacing
 
         if (card) {
           addParagraph(`Descricao: ${card.description || '-'}`, { indent: 28, size: 10 })
