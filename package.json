@@ -19,6 +19,7 @@
     "db:seed": "turbo db:seed",
     "db:seed:dev": "turbo db:seed:dev",
     "db:seed:prod": "turbo db:seed:prod",
+    "mahalilah:backfill:deck-encoding": "tsx scripts/backfill-mahalilah-deck-card-encoding.ts",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f"

@@ -114,6 +114,65 @@ function parseCardNumber(value: unknown) {
   return integer;
 }
 
+function applyLegacyGlyphFixes(value: string) {
+  return value
+    .replace(/(?<=[A-Za-zÀ-ÿ])[Œœ](?=[A-Za-zÀ-ÿ])/g, "ê")
+    .replace(/(^|[\s([{])([Øø])(?=$|[\s)\]}.,;:!?])/g, "$1é")
+    .replace(/(?<=[A-Za-zÀ-ÿ])[Øø](?=[A-Za-zÀ-ÿ])/g, "é")
+    .replace(/(?<!Ã)(?<=[A-Za-zÀ-ÿ])ª(?=[A-Za-zÀ-ÿ])/g, "ã");
+}
+
+function repairLikelyMojibakeChunks(value: string) {
+  return value.replace(
+    /(?:Ã[\u0080-\u00BF]|Â[\u0080-\u00BF]|â[\u0080-\u00BF])+/g,
+    (chunk) => {
+      const decoded = Buffer.from(chunk, "latin1").toString("utf8");
+      if (!decoded || /[\uFFFD]/.test(decoded)) return chunk;
+      return decoded;
+    },
+  );
+}
+
+function scoreTextEncodingQuality(value: string) {
+  const count = (regex: RegExp) => value.match(regex)?.length ?? 0;
+  let score = 0;
+
+  score -= count(/\uFFFD/g) * 60;
+  score -= count(/Ã[\u0080-\u00BF]/g) * 14;
+  score -= count(/Â[\u0080-\u00BF]/g) * 10;
+  score -= count(/â[\u0080-\u00BF]/g) * 10;
+  score -= count(/[\u0080-\u009F]/g) * 6;
+  score -= count(/[ØøŒœ]/g) * 6;
+  score += count(/[áàâãäéêëíïóôõöúüçÁÀÂÃÄÉÊËÍÏÓÔÕÖÚÜÇ]/g);
+
+  return score;
+}
+
+function repairPtBrMojibake(value: string) {
+  const source = (value || "").normalize("NFC");
+  if (!source) return "";
+
+  const original = applyLegacyGlyphFixes(source);
+  const chunkRepaired = applyLegacyGlyphFixes(repairLikelyMojibakeChunks(source));
+  const utf8Candidate = applyLegacyGlyphFixes(
+    Buffer.from(source, "latin1").toString("utf8"),
+  );
+
+  const originalScore = scoreTextEncodingQuality(original);
+  const chunkRepairedScore = scoreTextEncodingQuality(chunkRepaired);
+  const utf8Score = scoreTextEncodingQuality(utf8Candidate);
+  let best = original;
+  let bestScore = originalScore;
+  if (chunkRepairedScore > bestScore) {
+    best = chunkRepaired;
+    bestScore = chunkRepairedScore;
+  }
+  if (utf8Score > bestScore) {
+    best = utf8Candidate;
+  }
+  return best.normalize("NFC");
+}
+
 function parseRecord(record: Record<string, unknown>) {
   const normalized = new Map<string, unknown>();
   Object.entries(record).forEach(([key, value]) => {
@@ -135,7 +194,7 @@ function parseRecord(record: Record<string, unknown>) {
     normalized.get("descritivo") ??
     normalized.get("descricao") ??
     normalized.get("texto");
-  const description = String(descriptionValue || "").trim();
+  const description = repairPtBrMojibake(String(descriptionValue || "")).trim();
   if (!description) return null;
 
   const keywordsValue =
@@ -143,7 +202,7 @@ function parseRecord(record: Record<string, unknown>) {
     normalized.get("palavrachave") ??
     normalized.get("palavraschave") ??
     normalized.get("keyword");
-  const keywords = String(keywordsValue || "").trim();
+  const keywords = repairPtBrMojibake(String(keywordsValue || "")).trim();
   if (!keywords) return null;
 
   const observationValue =
@@ -155,7 +214,7 @@ function parseRecord(record: Record<string, unknown>) {
     cardNumber,
     description,
     keywords,
-    observation: String(observationValue || "").trim() || null,
+    observation: repairPtBrMojibake(String(observationValue || "")).trim() || null,
   } satisfies ImportedCard;
 }
 

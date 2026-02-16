@@ -306,29 +306,69 @@ async function loadCardImageForPdf(
   return null
 }
 
-function repairPtBrMojibake(value: string) {
-  let fixed = value
+function applyLegacyGlyphFixes(value: string) {
+  return value
+    // "prudŒncia" -> "prudência" (apenas dentro de palavra)
+    .replace(/(?<=[A-Za-zÀ-ÿ])[Œœ](?=[A-Za-zÀ-ÿ])/g, 'ê')
+    // "Ø" vindo no lugar de "é" isolado ou dentro de palavra
+    .replace(/(^|[\s([{])([Øø])(?=$|[\s)\]}.,;:!?])/g, '$1é')
+    .replace(/(?<=[A-Za-zÀ-ÿ])[Øø](?=[A-Za-zÀ-ÿ])/g, 'é')
+    // Evita quebrar "1ª"; corrige só quando "ª" aparece dentro de palavra
+    // e não faz parte da sequência mojibake "Ãª".
+    .replace(/(?<!Ã)(?<=[A-Za-zÀ-ÿ])ª(?=[A-Za-zÀ-ÿ])/g, 'ã')
+}
 
-  // Corrige apenas quando ha padrao real de mojibake (ex.: "Ã£", "Ã§", "â€™"),
-  // evitando converter palavras validas com acentos (ex.: "âmbito").
-  const hasLikelyMojibake =
-    /Ã[\x80-\xBF]/.test(fixed) ||
-    /Â[\x80-\xBF]/.test(fixed) ||
-    /â[\x80-\xBF]/.test(fixed)
-  if (hasLikelyMojibake) {
-    const utf8Candidate = Buffer.from(fixed, 'latin1').toString('utf8')
-    if (utf8Candidate && !/[\uFFFD]/.test(utf8Candidate)) {
-      fixed = utf8Candidate
+function repairLikelyMojibakeChunks(value: string) {
+  return value.replace(
+    /(?:Ã[\u0080-\u00BF]|Â[\u0080-\u00BF]|â[\u0080-\u00BF])+/g,
+    (chunk) => {
+      const decoded = Buffer.from(chunk, 'latin1').toString('utf8')
+      if (!decoded || /[\uFFFD]/.test(decoded)) return chunk
+      return decoded
     }
+  )
+}
+
+function scoreTextEncodingQuality(value: string) {
+  const count = (regex: RegExp) => (value.match(regex)?.length ?? 0)
+  let score = 0
+
+  score -= count(/\uFFFD/g) * 60 // caractere de substituicao -> forte indicio de decodificacao ruim
+  score -= count(/Ã[\u0080-\u00BF]/g) * 14
+  score -= count(/Â[\u0080-\u00BF]/g) * 10
+  score -= count(/â[\u0080-\u00BF]/g) * 10
+  score -= count(/[\u0080-\u009F]/g) * 6
+  score -= count(/[ØøŒœ]/g) * 6
+  score += count(/[áàâãäéêëíïóôõöúüçÁÀÂÃÄÉÊËÍÏÓÔÕÖÚÜÇ]/g)
+
+  return score
+}
+
+function repairPtBrMojibake(value: string) {
+  const source = (value || '').normalize('NFC')
+  if (!source) return ''
+
+  const original = applyLegacyGlyphFixes(source)
+  const chunkRepaired = applyLegacyGlyphFixes(repairLikelyMojibakeChunks(source))
+  const utf8Candidate = applyLegacyGlyphFixes(
+    Buffer.from(source, 'latin1').toString('utf8')
+  )
+
+  const originalScore = scoreTextEncodingQuality(original)
+  const chunkRepairedScore = scoreTextEncodingQuality(chunkRepaired)
+  const utf8Score = scoreTextEncodingQuality(utf8Candidate)
+
+  // Troca para o recode apenas quando melhora de fato a qualidade do texto.
+  let best = original
+  let bestScore = originalScore
+  if (chunkRepairedScore > bestScore) {
+    best = chunkRepaired
+    bestScore = chunkRepairedScore
   }
-
-  // Correcoes pontuais observadas em alguns relatorios
-  fixed = fixed
-    .replace(/[Œœ]/g, 'ê')
-    .replace(/[Øø]/g, 'é')
-    .replace(/ª/g, 'ã')
-
-  return fixed.normalize('NFC')
+  if (utf8Score > bestScore) {
+    best = utf8Candidate
+  }
+  return best.normalize('NFC')
 }
 
 function extractAiReportText(content: string) {

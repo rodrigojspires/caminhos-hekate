@@ -81,6 +81,37 @@ const CARD_IMPORT_CSV_TEMPLATE = [
   '2,"Outro descritivo da carta","palavra-chave 3; palavra-chave 4",""',
 ].join("\n");
 
+function scoreDecodedTextQuality(value: string) {
+  const count = (regex: RegExp) => value.match(regex)?.length ?? 0;
+  let score = 0;
+
+  score -= count(/\uFFFD/g) * 60;
+  score -= count(/Ã[\u0080-\u00BF]/g) * 14;
+  score -= count(/Â[\u0080-\u00BF]/g) * 10;
+  score -= count(/â[\u0080-\u00BF]/g) * 10;
+  score -= count(/[\u0080-\u009F]/g) * 6;
+  score -= count(/[ØøŒœ]/g) * 6;
+  score += count(/[áàâãäéêëíïóôõöúüçÁÀÂÃÄÉÊËÍÏÓÔÕÖÚÜÇ]/g);
+
+  return score;
+}
+
+async function readImportFileContent(file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+
+  let windows1252Text = utf8Text;
+  try {
+    windows1252Text = new TextDecoder("windows-1252").decode(bytes);
+  } catch {
+    // Fallback para ambientes que não suportem windows-1252.
+  }
+
+  const utf8Score = scoreDecodedTextQuality(utf8Text);
+  const windows1252Score = scoreDecodedTextQuality(windows1252Text);
+  return windows1252Score > utf8Score ? windows1252Text : utf8Text;
+}
+
 export default function DeckEditPage({ params }: DeckEditPageProps) {
   const router = useRouter();
 
@@ -331,7 +362,7 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
   const handleImport = async () => {
     if (!deck) return;
     const textContent = importFile
-      ? await importFile.text()
+      ? await readImportFileContent(importFile)
       : importText.trim();
     if (!textContent) {
       toast.error("Selecione um arquivo ou cole o conteudo para importar");
