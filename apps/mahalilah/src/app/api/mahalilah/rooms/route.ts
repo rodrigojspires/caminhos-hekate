@@ -55,6 +55,7 @@ type Entitlement = {
   source: 'ORDER' | 'USER_SUBSCRIPTION'
   planType: MahaLilahPlanType
   maxParticipants: number
+  allowTherapistSoloPlay: boolean
   roomsLimit: number | null
   roomsUsed: number
   orderId?: string
@@ -64,6 +65,7 @@ type Entitlement = {
 type MahaMetadata = {
   planType?: string
   maxParticipants?: number
+  allowTherapistSoloPlay?: boolean
   roomsLimit?: number | null
   roomsUsed?: number
   tipsPerPlayer?: number
@@ -100,7 +102,40 @@ function isSubscriptionExpired(currentPeriodEnd?: Date | null) {
   return currentPeriodEnd.getTime() < Date.now()
 }
 
-async function findEntitlement(userId: string, requestedMax: number) {
+async function getPlanTherapistSoloPlayByType() {
+  const db = prisma as any
+  const plans = await db.mahaLilahPlan.findMany({
+    where: {
+      planType: { in: ['SINGLE_SESSION', 'SUBSCRIPTION', 'SUBSCRIPTION_LIMITED'] }
+    },
+    select: {
+      planType: true,
+      allowTherapistSoloPlay: true
+    }
+  })
+
+  return new Map(plans.map((plan: any) => [plan.planType as MahaLilahPlanType, Boolean(plan.allowTherapistSoloPlay)]))
+}
+
+function resolveAllowTherapistSoloPlay(params: {
+  metadataValue: unknown
+  planType: MahaLilahPlanType
+  byPlanType: Map<MahaLilahPlanType, boolean>
+}) {
+  if (typeof params.metadataValue === 'boolean') {
+    return params.metadataValue
+  }
+  if (params.byPlanType.has(params.planType)) {
+    return Boolean(params.byPlanType.get(params.planType))
+  }
+  return true
+}
+
+async function findEntitlement(
+  userId: string,
+  requestedMax: number,
+  planTherapistSoloPlayByType: Map<MahaLilahPlanType, boolean>
+) {
   const subscriptions = await prisma.userSubscription.findMany({
     where: {
       userId,
@@ -140,6 +175,11 @@ async function findEntitlement(userId: string, requestedMax: number) {
       userSubscriptionId: subscription.id,
       planType,
       maxParticipants,
+      allowTherapistSoloPlay: resolveAllowTherapistSoloPlay({
+        metadataValue: meta.allowTherapistSoloPlay,
+        planType,
+        byPlanType: planTherapistSoloPlayByType
+      }),
       roomsLimit: roomsLimit !== null && Number.isFinite(roomsLimit) ? roomsLimit : null,
       roomsUsed
     } satisfies Entitlement
@@ -169,6 +209,11 @@ async function findEntitlement(userId: string, requestedMax: number) {
       orderId: order.id,
       planType,
       maxParticipants: Number(meta.maxParticipants || 0),
+      allowTherapistSoloPlay: resolveAllowTherapistSoloPlay({
+        metadataValue: meta.allowTherapistSoloPlay,
+        planType,
+        byPlanType: planTherapistSoloPlayByType
+      }),
       roomsLimit:
         meta.roomsLimit === null || meta.roomsLimit === undefined
           ? null
@@ -178,11 +223,6 @@ async function findEntitlement(userId: string, requestedMax: number) {
   }
 
   return null
-}
-
-async function hasActiveSubscription(userId: string) {
-  const entitlement = await findEntitlement(userId, 1)
-  return Boolean(entitlement)
 }
 
 export async function GET(request: Request) {
@@ -212,7 +252,9 @@ export async function GET(request: Request) {
       where.createdAt = createdAtRange
     }
 
-    const [rooms, canCreateRoom, trialRoom] = await Promise.all([
+    const planTherapistSoloPlayByType = await getPlanTherapistSoloPlayByType()
+
+    const [rooms, entitlementForCreate, trialRoom] = await Promise.all([
       prisma.mahaLilahRoom.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -239,7 +281,7 @@ export async function GET(request: Request) {
           }
         }
       }),
-      hasActiveSubscription(session.user.id),
+      findEntitlement(session.user.id, 1, planTherapistSoloPlayByType),
       prisma.mahaLilahRoom.findFirst({
         where: {
           createdByUserId: session.user.id,
@@ -252,7 +294,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       currentUserId: session.user.id,
-      canCreateRoom,
+      canCreateRoom: Boolean(entitlementForCreate),
+      canUseTherapistSoloPlay: Boolean(entitlementForCreate?.allowTherapistSoloPlay),
       hasUsedTrial: Boolean(trialRoom),
       trialRoomStatus: trialRoom?.status ?? null,
       rooms: rooms.map((room) => {
@@ -332,8 +375,10 @@ export async function POST(request: Request) {
 
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
-    const therapistSoloPlay = Boolean(data.therapistSoloPlay)
-    const therapistPlays = therapistSoloPlay ? true : data.therapistPlays
+    const planTherapistSoloPlayByType = await getPlanTherapistSoloPlayByType()
+
+    let therapistSoloPlay = Boolean(data.therapistSoloPlay)
+    let therapistPlays = therapistSoloPlay ? true : data.therapistPlays
 
     const code = await ensureUniqueCode()
     const consentTextVersion = process.env.MAHALILAH_CONSENT_VERSION || 'v1'
@@ -385,10 +430,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ room: trialRoom })
     }
 
-    const entitlement = await findEntitlement(session.user.id, data.maxParticipants)
+    const entitlement = await findEntitlement(
+      session.user.id,
+      data.maxParticipants,
+      planTherapistSoloPlayByType
+    )
     if (!entitlement) {
       return NextResponse.json({ error: 'Sem plano ativo. Finalize a compra para criar a sala.' }, { status: 402 })
     }
+    if (therapistSoloPlay && !entitlement.allowTherapistSoloPlay) {
+      return NextResponse.json(
+        { error: 'Seu plano não permite o modo somente visualização para jogadores.' },
+        { status: 403 }
+      )
+    }
+    therapistSoloPlay = entitlement.allowTherapistSoloPlay ? therapistSoloPlay : false
+    therapistPlays = therapistSoloPlay ? true : data.therapistPlays
 
     const room = await prisma.$transaction(async (tx) => {
       const created = await tx.mahaLilahRoom.create({

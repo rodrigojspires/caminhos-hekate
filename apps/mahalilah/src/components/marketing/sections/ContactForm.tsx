@@ -58,9 +58,9 @@ export function ContactForm() {
           subtitle="Descreva seu contexto, tamanho de grupo e objetivo. Nossa equipe retorna em até 2 dias úteis."
         />
         {sent ? (
-          <div className="flex flex-col gap-3 rounded-3xl border border-emerald-300/50 bg-emerald-50/70 p-5 shadow-soft sm:p-6">
-            <p className="text-sm font-semibold text-emerald-800">Mensagem enviada com sucesso.</p>
-            <p className="text-sm text-emerald-700">Em breve retornaremos para você.</p>
+          <div className="flex flex-col gap-3 rounded-3xl border border-gold/30 bg-surface/70 p-5 shadow-soft sm:p-6">
+            <p className="text-sm font-semibold text-ink">Mensagem enviada com sucesso.</p>
+            <p className="text-sm text-ink-muted">Em breve retornaremos para você.</p>
           </div>
         ) : (
           <form

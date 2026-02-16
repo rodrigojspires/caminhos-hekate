@@ -55,8 +55,8 @@ export default function ContatoPage() {
               subtitle="Você pode usar o canal que for mais confortável para seu momento."
             />
             <div className="flex flex-col gap-2 text-sm text-ink-muted">
-              <Link href="mailto:contato@caminhosdehekate.com.br" className="text-gold">
-                contato@caminhosdehekate.com.br
+              <Link href="mailto:mahalilahonline@caminhosdehekate.com.br" className="text-gold">
+                mahalilahonline@caminhosdehekate.com.br
               </Link>
               <Link href="https://instagram.com/caminhoshekate" className="text-gold">
                 instagram.com/caminhoshekate

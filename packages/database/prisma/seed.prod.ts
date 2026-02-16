@@ -171,7 +171,9 @@ async function ensureMahaLilahCatalog(
 
   const singleSessionPlan = await db.mahaLilahPlan.upsert({
     where: { planType: 'SINGLE_SESSION' as any },
-    update: {},
+    update: {
+      allowTherapistSoloPlay: true,
+    },
     create: {
       name: 'Sessão avulsa',
       description: 'Pagamento único para uma sala com preço por faixa de participantes.',
@@ -182,6 +184,7 @@ async function ensureMahaLilahCatalog(
       tipsPerPlayer: 3,
       summaryLimit: 1,
       durationDays: 30,
+      allowTherapistSoloPlay: true,
       metadata: {
         app: 'mahalilah',
         checkout: 'single_session',
@@ -210,7 +213,9 @@ async function ensureMahaLilahCatalog(
 
   await db.mahaLilahPlan.upsert({
     where: { planType: 'SUBSCRIPTION' as any },
-    update: {},
+    update: {
+      allowTherapistSoloPlay: true,
+    },
     create: {
       name: 'Assinatura ilimitada',
       description: 'Assinatura mensal com salas ilimitadas.',
@@ -222,6 +227,7 @@ async function ensureMahaLilahCatalog(
       tipsPerPlayer: 5,
       summaryLimit: 2,
       durationDays: 30,
+      allowTherapistSoloPlay: true,
       metadata: {
         app: 'mahalilah',
         checkout: 'subscription_unlimited',
@@ -250,7 +256,9 @@ async function ensureMahaLilahCatalog(
 
   await db.mahaLilahPlan.upsert({
     where: { planType: 'SUBSCRIPTION_LIMITED' as any },
-    update: {},
+    update: {
+      allowTherapistSoloPlay: true,
+    },
     create: {
       name: 'Assinatura limitada',
       description: 'Assinatura mensal com limite de salas.',
@@ -262,6 +270,7 @@ async function ensureMahaLilahCatalog(
       tipsPerPlayer: 3,
       summaryLimit: 1,
       durationDays: 30,
+      allowTherapistSoloPlay: true,
       metadata: {
         app: 'mahalilah',
         checkout: 'subscription_limited',

@@ -241,6 +241,7 @@ async function main() {
         tipsPerPlayer: 3,
         summaryLimit: 1,
         durationDays: 30,
+        allowTherapistSoloPlay: true,
         metadata: {
           app: 'mahalilah',
           checkout: 'single_session',
@@ -309,6 +310,7 @@ async function main() {
         tipsPerPlayer: 5,
         summaryLimit: 2,
         durationDays: 30,
+        allowTherapistSoloPlay: true,
         metadata: {
           app: 'mahalilah',
           checkout: 'subscription_unlimited',
@@ -346,6 +348,7 @@ async function main() {
         tipsPerPlayer: 3,
         summaryLimit: 1,
         durationDays: 30,
+        allowTherapistSoloPlay: true,
         metadata: {
           app: 'mahalilah',
           checkout: 'subscription_limited',

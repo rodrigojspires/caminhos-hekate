@@ -553,6 +553,7 @@ export function DashboardClient() {
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
   const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
+  const [canUseTherapistSoloPlay, setCanUseTherapistSoloPlay] = useState(true);
   const [toasts, setToasts] = useState<DashboardToast[]>([]);
   const [canCreateRoom, setCanCreateRoom] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({});
@@ -689,6 +690,10 @@ export function DashboardClient() {
       setCurrentUserId(data.currentUserId || null);
       setRooms(data.rooms || []);
       setCanCreateRoom(Boolean(data.canCreateRoom));
+      setCanUseTherapistSoloPlay(Boolean(data.canUseTherapistSoloPlay));
+      if (!data.canUseTherapistSoloPlay) {
+        setTherapistSoloPlay(false);
+      }
       setHasUsedTrial(Boolean(data.hasUsedTrial));
       setTrialRoomStatus(data.trialRoomStatus || null);
       setLoading(false);
@@ -2393,27 +2398,29 @@ export function DashboardClient() {
               />
               <span>Terapeuta joga junto</span>
             </label>
-            <label
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                paddingTop: 22,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={therapistSoloPlay}
-                onChange={(event) => {
-                  const enabled = event.target.checked;
-                  setTherapistSoloPlay(enabled);
-                  if (enabled) {
-                    setTherapistPlays(true);
-                  }
+            {canUseTherapistSoloPlay && (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  paddingTop: 22,
                 }}
-              />
-              <span>Só o terapeuta joga (demais visualizam)</span>
-            </label>
+              >
+                <input
+                  type="checkbox"
+                  checked={therapistSoloPlay}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setTherapistSoloPlay(enabled);
+                    if (enabled) {
+                      setTherapistPlays(true);
+                    }
+                  }}
+                />
+                <span>Só o terapeuta joga (demais visualizam)</span>
+              </label>
+            )}
             <button
               className="btn-primary"
               onClick={handleCreateRoom}
@@ -2424,8 +2431,10 @@ export function DashboardClient() {
           </div>
           <p className="small-muted">
             Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
-            vaga de jogador. No modo "só o terapeuta joga", os demais entram
-            apenas como visualizadores da mesma partida.
+            vaga de jogador.
+            {canUseTherapistSoloPlay
+              ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
+              : ' O modo de jogadores somente visualização não está disponível no seu plano atual.'}
           </p>
         </div>
       )}

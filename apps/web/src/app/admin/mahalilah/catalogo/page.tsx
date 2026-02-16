@@ -63,6 +63,7 @@ type CatalogPlan = {
   billingType: "ONE_TIME" | "RECURRING";
   subscriptionPlanId: string | null;
   maxParticipants: number;
+  allowTherapistSoloPlay: boolean;
   roomsPerMonth: number | null;
   tipsPerPlayer: number;
   summaryLimit: number;
@@ -342,6 +343,7 @@ export default function AdminMahaLilahCatalogPage() {
         name: plan.name,
         description: plan.description,
         maxParticipants: plan.maxParticipants,
+        allowTherapistSoloPlay: plan.allowTherapistSoloPlay,
         roomsPerMonth: plan.roomsPerMonth,
         tipsPerPlayer: plan.tipsPerPlayer,
         summaryLimit: plan.summaryLimit,
@@ -481,6 +483,23 @@ export default function AdminMahaLilahCatalogPage() {
                           }))
                         }
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Modo visualização para jogadores</label>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Switch
+                          checked={singleSessionPlan.allowTherapistSoloPlay}
+                          onCheckedChange={(value) =>
+                            updatePlan("SINGLE_SESSION", (plan) => ({
+                              ...plan,
+                              allowTherapistSoloPlay: value,
+                            }))
+                          }
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          Permitir "Só o terapeuta joga (demais visualizam)"
+                        </span>
+                      </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <label className="text-sm font-medium">Descrição</label>
@@ -814,6 +833,23 @@ export default function AdminMahaLilahCatalogPage() {
                         />
                       </div>
                       <div className="space-y-2">
+                        <label className="text-sm font-medium">Modo visualização para jogadores</label>
+                        <div className="flex items-center gap-2 pt-2">
+                          <Switch
+                            checked={subscriptionPlan.allowTherapistSoloPlay}
+                            onCheckedChange={(value) =>
+                              updatePlan("SUBSCRIPTION", (plan) => ({
+                                ...plan,
+                                allowTherapistSoloPlay: value,
+                              }))
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            Permitir "Só o terapeuta joga (demais visualizam)"
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-sm font-medium">Dicas IA / jogador</label>
                         <Input
                           type="number"
@@ -982,6 +1018,23 @@ export default function AdminMahaLilahCatalogPage() {
                             }))
                           }
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Modo visualização para jogadores</label>
+                        <div className="flex items-center gap-2 pt-2">
+                          <Switch
+                            checked={subscriptionLimitedPlan.allowTherapistSoloPlay}
+                            onCheckedChange={(value) =>
+                              updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
+                                ...plan,
+                                allowTherapistSoloPlay: value,
+                              }))
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            Permitir "Só o terapeuta joga (demais visualizam)"
+                          </span>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Dicas IA / jogador</label>

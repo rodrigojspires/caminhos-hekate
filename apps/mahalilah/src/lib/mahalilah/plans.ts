@@ -30,6 +30,7 @@ type SingleSessionConfig = {
   description: string
   isActive: boolean
   maxParticipants: number
+  allowTherapistSoloPlay: boolean
   durationDays: number
   tipsPerPlayer: number
   summaryLimit: number
@@ -48,6 +49,7 @@ type SubscriptionConfig = {
   monthlyPrice: number
   yearlyPrice: number
   maxParticipants: number
+  allowTherapistSoloPlay: boolean
   roomsPerMonth: number | null
   durationDays: number
   tipsPerPlayer: number
@@ -69,6 +71,7 @@ export type ResolvedPlan = {
   label: string
   price: number
   maxParticipants: number
+  allowTherapistSoloPlay: boolean
   roomsLimit: number | null
   tipsPerPlayer: number
   summaryLimit: number
@@ -335,6 +338,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const singleSessionProgressSummaryEveryMoves = Number(
     singleSession.progressSummaryEveryMoves,
   )
+  const singleSessionAllowTherapistSoloPlay = Boolean(
+    (singleSession as any).allowTherapistSoloPlay ?? true,
+  )
   const singleSessionPricesByParticipants = buildPricesByParticipants(
     tiers,
     singleSessionMaxParticipants,
@@ -366,6 +372,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const subscriptionUnlimitedProgressSummaryEveryMoves = Number(
     subscriptionUnlimited.progressSummaryEveryMoves,
   )
+  const subscriptionUnlimitedAllowTherapistSoloPlay = Boolean(
+    (subscriptionUnlimited as any).allowTherapistSoloPlay ?? true,
+  )
   const subscriptionUnlimitedRoomsPerMonth =
     subscriptionUnlimited.roomsPerMonth == null
       ? null
@@ -376,6 +385,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const subscriptionLimitedSummaryLimit = Number(subscriptionLimited.summaryLimit)
   const subscriptionLimitedProgressSummaryEveryMoves = Number(
     subscriptionLimited.progressSummaryEveryMoves,
+  )
+  const subscriptionLimitedAllowTherapistSoloPlay = Boolean(
+    (subscriptionLimited as any).allowTherapistSoloPlay ?? true,
   )
   const subscriptionLimitedRoomsPerMonth =
     subscriptionLimited.roomsPerMonth == null
@@ -389,6 +401,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       description: singleSession.description,
       isActive: singleSession.isActive,
       maxParticipants: singleSessionMaxParticipants,
+      allowTherapistSoloPlay: singleSessionAllowTherapistSoloPlay,
       durationDays: Number(singleSession.durationDays),
       tipsPerPlayer: singleSessionTipsPerPlayer,
       summaryLimit: singleSessionSummaryLimit,
@@ -416,6 +429,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       monthlyPrice: Number(unlimitedSubscriptionPlan.monthlyPrice),
       yearlyPrice: Number(unlimitedSubscriptionPlan.yearlyPrice),
       maxParticipants: subscriptionUnlimitedMaxParticipants,
+      allowTherapistSoloPlay: subscriptionUnlimitedAllowTherapistSoloPlay,
       roomsPerMonth: subscriptionUnlimitedRoomsPerMonth,
       durationDays: Number(subscriptionUnlimited.durationDays),
       tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
@@ -442,6 +456,7 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       monthlyPrice: Number(limitedSubscriptionPlan.monthlyPrice),
       yearlyPrice: Number(limitedSubscriptionPlan.yearlyPrice),
       maxParticipants: subscriptionLimitedMaxParticipants,
+      allowTherapistSoloPlay: subscriptionLimitedAllowTherapistSoloPlay,
       roomsPerMonth: subscriptionLimitedRoomsPerMonth,
       durationDays: Number(subscriptionLimited.durationDays),
       tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
@@ -497,6 +512,7 @@ export async function resolvePlan(
       label: `${config.singleSession.name} (${participants} participantes)`,
       price,
       maxParticipants: participants,
+      allowTherapistSoloPlay: config.singleSession.allowTherapistSoloPlay,
       roomsLimit: 1,
       tipsPerPlayer: config.singleSession.tipsPerPlayer,
       summaryLimit: config.singleSession.summaryLimit,
@@ -526,6 +542,7 @@ export async function resolvePlan(
       label: `${config.subscriptionUnlimited.name}${isYearly ? ' (anual)' : ' (mensal)'}`,
       price,
       maxParticipants: config.subscriptionUnlimited.maxParticipants,
+      allowTherapistSoloPlay: config.subscriptionUnlimited.allowTherapistSoloPlay,
       roomsLimit: config.subscriptionUnlimited.roomsPerMonth,
       tipsPerPlayer: config.subscriptionUnlimited.tipsPerPlayer,
       summaryLimit: config.subscriptionUnlimited.summaryLimit,
@@ -555,6 +572,7 @@ export async function resolvePlan(
     label: `${config.subscriptionLimited.name}${isYearly ? ' (anual)' : ' (mensal)'}`,
     price,
     maxParticipants: config.subscriptionLimited.maxParticipants,
+    allowTherapistSoloPlay: config.subscriptionLimited.allowTherapistSoloPlay,
     roomsLimit: config.subscriptionLimited.roomsPerMonth,
     tipsPerPlayer: config.subscriptionLimited.tipsPerPlayer,
     summaryLimit: config.subscriptionLimited.summaryLimit,

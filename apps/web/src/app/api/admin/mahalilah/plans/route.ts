@@ -35,6 +35,7 @@ const PlanSchema = z.object({
   name: z.string().min(2),
   description: z.string().min(2),
   maxParticipants: z.coerce.number().int().min(1).max(30),
+  allowTherapistSoloPlay: z.boolean(),
   roomsPerMonth: z.coerce.number().int().min(1).nullable().optional(),
   tipsPerPlayer: z.coerce.number().int().min(0),
   summaryLimit: z.coerce.number().int().min(0),
@@ -360,6 +361,7 @@ async function fetchCatalog() {
       billingType: plan.billingType,
       subscriptionPlanId: plan.subscriptionPlanId,
       maxParticipants: plan.maxParticipants,
+      allowTherapistSoloPlay: (plan as any).allowTherapistSoloPlay ?? true,
       roomsPerMonth: plan.roomsPerMonth,
       tipsPerPlayer: plan.tipsPerPlayer,
       summaryLimit: plan.summaryLimit,
@@ -547,6 +549,7 @@ export async function PUT(request: NextRequest) {
             subscriptionPlanId:
               planType === 'SINGLE_SESSION' ? null : plan.subscriptionPlanId,
             maxParticipants: plan.maxParticipants,
+            allowTherapistSoloPlay: plan.allowTherapistSoloPlay,
             roomsPerMonth:
               planType === 'SUBSCRIPTION'
                 ? null
@@ -567,6 +570,7 @@ export async function PUT(request: NextRequest) {
             subscriptionPlanId:
               planType === 'SINGLE_SESSION' ? null : plan.subscriptionPlanId,
             maxParticipants: plan.maxParticipants,
+            allowTherapistSoloPlay: plan.allowTherapistSoloPlay,
             roomsPerMonth:
               planType === 'SUBSCRIPTION'
                 ? null

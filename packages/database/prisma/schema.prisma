@@ -3020,6 +3020,7 @@ model MahaLilahPlan {
   summaryLimit       Int                              @default(0)
   progressSummaryEveryMoves Int                       @default(15)
   durationDays       Int                              @default(30)
+  allowTherapistSoloPlay Boolean                      @default(true)
   isActive           Boolean                          @default(true)
   metadata           Json?
   createdAt          DateTime                         @default(now())
