@@ -3,6 +3,8 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import path from "path";
+import { randomUUID } from "crypto";
+import Redis from "ioredis";
 import { prisma } from "@hekate/database";
 import {
   applyMove,
@@ -28,6 +30,38 @@ const SOCKET_SECRET =
   "mahalilah-secret";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const DEFAULT_DEV_REDIS_URL = "redis://localhost:6379";
+const REDIS_URL =
+  process.env.REDIS_URL ||
+  (process.env.NODE_ENV !== "production" ? DEFAULT_DEV_REDIS_URL : undefined);
+const USER_SESSION_TTL_MS = Number(
+  process.env.MAHALILAH_USER_SESSION_TTL_MS || 90_000,
+);
+const USER_SESSION_HEARTBEAT_MS = Number(
+  process.env.MAHALILAH_USER_SESSION_HEARTBEAT_MS || 25_000,
+);
+const REALTIME_INSTANCE_ID =
+  process.env.MAHALILAH_REALTIME_INSTANCE_ID || randomUUID();
+const USER_ACTIVE_SESSION_KEY_PREFIX = "mahalilah:realtime:user-active-session";
+
+if (!REDIS_URL) {
+  throw new Error(
+    "REDIS_URL não configurada para o realtime do Maha Lilah. Configure REDIS_URL para garantir sessão única por usuário.",
+  );
+}
+
+const redis = new Redis(REDIS_URL, {
+  maxRetriesPerRequest: null,
+  lazyConnect: true,
+  retryStrategy: (attempt: number) => Math.min(attempt * 100, 2000),
+  reconnectOnError: () => true,
+});
+
+redis.on("error", (error: unknown) => {
+  console.error("[mahalilah-realtime][redis] erro de conexão:", error);
+});
+
+let redisConnectPromise: Promise<void> | null = null;
 
 const ROLL_COOLDOWN_MS = Number(process.env.MAHALILAH_ROLL_COOLDOWN_MS || 1200);
 const AI_COOLDOWN_MS = Number(process.env.MAHALILAH_AI_COOLDOWN_MS || 4000);
@@ -151,6 +185,176 @@ function hasTherapistOnline(
   );
 }
 
+function buildSocketError(message: string, code?: string) {
+  const error = new Error(message) as Error & { code?: string };
+  if (code) error.code = code;
+  return error;
+}
+
+function buildUserActiveSessionKey(userId: string) {
+  return `${USER_ACTIVE_SESSION_KEY_PREFIX}:${userId}`;
+}
+
+async function ensureRedisConnected() {
+  if (redis.status === "ready" || redis.status === "connect") return;
+  if (redis.status === "connecting" || redis.status === "reconnecting") return;
+  if (!redisConnectPromise) {
+    redisConnectPromise = redis
+      .connect()
+      .catch((error: unknown) => {
+        const message = String((error as any)?.message || "");
+        if (message.includes("already connecting/connected")) return;
+        throw error;
+      })
+      .finally(() => {
+        redisConnectPromise = null;
+      });
+  }
+  await redisConnectPromise;
+}
+
+type ClaimUserSessionResult =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      existingRoomId: string | null;
+      existingSocketId: string | null;
+    };
+
+async function claimUserActiveSession(
+  userId: string,
+  roomId: string,
+  socketId: string,
+): Promise<ClaimUserSessionResult> {
+  await ensureRedisConnected();
+  const key = buildUserActiveSessionKey(userId);
+  const raw = await redis.eval(
+    `
+      local key = KEYS[1]
+      local socketId = ARGV[1]
+      local roomId = ARGV[2]
+      local instanceId = ARGV[3]
+      local updatedAt = ARGV[4]
+      local ttlMs = tonumber(ARGV[5])
+
+      if redis.call('EXISTS', key) == 0 then
+        redis.call('HSET', key,
+          'socketId', socketId,
+          'roomId', roomId,
+          'instanceId', instanceId,
+          'updatedAt', updatedAt
+        )
+        redis.call('PEXPIRE', key, ttlMs)
+        return {1, '', ''}
+      end
+
+      local existingSocketId = redis.call('HGET', key, 'socketId')
+      if existingSocketId == socketId then
+        redis.call('HSET', key,
+          'socketId', socketId,
+          'roomId', roomId,
+          'instanceId', instanceId,
+          'updatedAt', updatedAt
+        )
+        redis.call('PEXPIRE', key, ttlMs)
+        return {1, '', ''}
+      end
+
+      local existingRoomId = redis.call('HGET', key, 'roomId') or ''
+      return {0, existingRoomId, existingSocketId or ''}
+    `,
+    1,
+    key,
+    socketId,
+    roomId,
+    REALTIME_INSTANCE_ID,
+    new Date().toISOString(),
+    String(USER_SESSION_TTL_MS),
+  );
+
+  const normalized = Array.isArray(raw) ? raw : [raw];
+  const allowed = Number(normalized[0]) === 1;
+  if (allowed) {
+    return { ok: true };
+  }
+
+  const existingRoomIdRaw = normalized[1];
+  const existingSocketIdRaw = normalized[2];
+  return {
+    ok: false,
+    existingRoomId: existingRoomIdRaw ? String(existingRoomIdRaw) : null,
+    existingSocketId: existingSocketIdRaw ? String(existingSocketIdRaw) : null,
+  };
+}
+
+async function refreshUserActiveSession(
+  userId: string,
+  socketId: string,
+  roomId: string,
+) {
+  await ensureRedisConnected();
+  const key = buildUserActiveSessionKey(userId);
+  await redis.eval(
+    `
+      local key = KEYS[1]
+      local socketId = ARGV[1]
+      local roomId = ARGV[2]
+      local updatedAt = ARGV[3]
+      local ttlMs = tonumber(ARGV[4])
+
+      if redis.call('EXISTS', key) == 0 then
+        return 0
+      end
+
+      local existingSocketId = redis.call('HGET', key, 'socketId')
+      if existingSocketId ~= socketId then
+        return 0
+      end
+
+      redis.call('HSET', key,
+        'roomId', roomId,
+        'updatedAt', updatedAt
+      )
+      redis.call('PEXPIRE', key, ttlMs)
+      return 1
+    `,
+    1,
+    key,
+    socketId,
+    roomId,
+    new Date().toISOString(),
+    String(USER_SESSION_TTL_MS),
+  );
+}
+
+async function releaseUserActiveSession(userId: string, socketId: string) {
+  await ensureRedisConnected();
+  const key = buildUserActiveSessionKey(userId);
+  await redis.eval(
+    `
+      local key = KEYS[1]
+      local socketId = ARGV[1]
+
+      if redis.call('EXISTS', key) == 0 then
+        return 1
+      end
+
+      local existingSocketId = redis.call('HGET', key, 'socketId')
+      if existingSocketId == socketId then
+        redis.call('DEL', key)
+        return 1
+      end
+
+      return 0
+    `,
+    1,
+    key,
+    socketId,
+  );
+}
+
 async function callOpenAI(prompt: string) {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY não configurada");
@@ -181,7 +385,7 @@ async function callOpenAI(prompt: string) {
     throw new Error(`Erro OpenAI: ${text}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content?.trim() || "Sem resposta.";
 }
 
@@ -1216,41 +1420,85 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket: AuthedSocket) => {
+  const sessionHeartbeat = setInterval(() => {
+    const userId = socket.data.user?.id;
+    const roomId = socket.data.roomId;
+    if (!userId || !roomId) return;
+    void refreshUserActiveSession(userId, socket.id, roomId).catch((error) => {
+      console.error(
+        "[mahalilah-realtime][redis] falha ao renovar sessão ativa:",
+        error,
+      );
+    });
+  }, USER_SESSION_HEARTBEAT_MS);
+
   socket.on(
     "room:join",
     async ({ code }: { code: string }, callback?: (payload: any) => void) => {
       try {
-        if (!socket.data.user) throw new Error("Usuário não autenticado");
-
+        const currentUser = socket.data.user;
+        if (!currentUser) throw new Error("Usuário não autenticado");
+        const userId = currentUser.id;
+        const previousRoomId = socket.data.roomId || null;
         const room = await prisma.mahaLilahRoom.findUnique({ where: { code } });
         if (!room) throw new Error("Sala não encontrada");
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
-          where: { roomId: room.id, userId: socket.data.user.id },
+          where: { roomId: room.id, userId },
         });
         if (!participant) throw new Error("Sem acesso à sala");
 
-        const previousRoomId = socket.data.roomId || null;
-        if (previousRoomId) {
-          removeRoomConnection(previousRoomId, socket.data.user.id);
-          if (previousRoomId !== room.id) {
-            socket.leave(previousRoomId);
-            const previousState = await buildRoomState(previousRoomId);
-            if (previousState)
-              io.to(previousRoomId).emit("room:state", previousState);
-          }
+        const claimed = await claimUserActiveSession(userId, room.id, socket.id);
+        if (!claimed.ok) {
+          const sameRoom = claimed.existingRoomId === room.id;
+          throw buildSocketError(
+            sameRoom
+              ? "Você já está conectado nesta sala em outra aba/dispositivo."
+              : "Você já está conectado em outra sala. Feche a sessão ativa antes de entrar em uma nova sala.",
+            "CONCURRENT_ROOM_SESSION",
+          );
         }
 
-        socket.join(room.id);
-        socket.data.roomId = room.id;
-        addRoomConnection(room.id, socket.data.user.id);
+        try {
+          if (previousRoomId) {
+            removeRoomConnection(previousRoomId, userId);
+            if (previousRoomId !== room.id) {
+              socket.leave(previousRoomId);
+              const previousState = await buildRoomState(previousRoomId);
+              if (previousState)
+                io.to(previousRoomId).emit("room:state", previousState);
+            }
+          }
 
-        const state = await buildRoomState(room.id);
-        if (!state) throw new Error("Sala não encontrada");
-        callback?.({ ok: true, state });
-        io.to(room.id).emit("room:state", state);
+          socket.join(room.id);
+          socket.data.roomId = room.id;
+          addRoomConnection(room.id, userId);
+
+          const state = await buildRoomState(room.id);
+          if (!state) throw new Error("Sala não encontrada");
+          callback?.({ ok: true, state });
+          io.to(room.id).emit("room:state", state);
+        } catch (joinError) {
+          try {
+            if (previousRoomId) {
+              await claimUserActiveSession(userId, previousRoomId, socket.id);
+            } else {
+              await releaseUserActiveSession(userId, socket.id);
+            }
+          } catch (restoreError) {
+            console.error(
+              "[mahalilah-realtime][redis] falha ao restaurar sessão após erro de join:",
+              restoreError,
+            );
+          }
+          throw joinError;
+        }
       } catch (error: any) {
-        callback?.({ ok: false, error: error.message });
+        callback?.({
+          ok: false,
+          error: error?.message || "Não foi possível entrar na sala.",
+          code: error?.code || null,
+        });
       }
     },
   );
@@ -1911,12 +2159,19 @@ io.on("connection", (socket: AuthedSocket) => {
   );
 
   socket.on("disconnect", async () => {
+    clearInterval(sessionHeartbeat);
     try {
-      if (!socket.data.user?.id || !socket.data.roomId) return;
+      if (!socket.data.user?.id) return;
       const roomId = socket.data.roomId;
-      removeRoomConnection(roomId, socket.data.user.id);
-      const state = await buildRoomState(roomId);
-      if (state) io.to(roomId).emit("room:state", state);
+      const userId = socket.data.user.id;
+
+      await releaseUserActiveSession(userId, socket.id);
+
+      if (roomId) {
+        removeRoomConnection(roomId, userId);
+        const state = await buildRoomState(roomId);
+        if (state) io.to(roomId).emit("room:state", state);
+      }
     } catch {
       // no-op
     }

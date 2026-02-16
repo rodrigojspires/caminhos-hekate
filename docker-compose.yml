@@ -178,6 +178,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://hekate:hekate123@postgres:5432/hekate_db?schema=public
+      REDIS_URL: redis://redis:6379
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       MAHALILAH_REALTIME_PORT: 4010
       NEXT_PUBLIC_MAHALILAH_URL: http://localhost:3002
@@ -185,6 +186,8 @@ services:
       - "4010:4010"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command:
       ["sh", "-lc", "exec pnpm --filter @hekate/mahalilah-realtime start"]
