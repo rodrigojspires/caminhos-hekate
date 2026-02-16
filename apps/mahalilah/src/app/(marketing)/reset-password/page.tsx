@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { ResetPasswordForm } from '@/components/marketing/ResetPasswordForm'
 import { SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Nova senha',
   description: 'Defina uma nova senha para sua conta no Maha Lilah Online.',
   openGraph: {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     description: 'Defina uma nova senha para sua conta no Maha Lilah Online.',
     url: '/reset-password'
   }
-}
+}, { noIndex: true })
 
 type ResetPasswordPageProps = {
   searchParams?: {

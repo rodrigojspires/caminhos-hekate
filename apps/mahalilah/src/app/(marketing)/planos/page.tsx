@@ -8,8 +8,9 @@ import { PricingCards, type PricingPlan } from '@/components/marketing/sections/
 import { SingleSessionPrice } from '@/components/marketing/SingleSessionPrice'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
 import { getPlanConfig } from '@/lib/mahalilah/plans'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Planos',
   description:
     'Planos flexíveis para quem quer experimentar, escalar atendimentos ou conduzir grupos recorrentes.',
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
       'Planos flexíveis para quem quer experimentar, escalar atendimentos ou conduzir grupos recorrentes.',
     url: '/planos'
   }
-}
+})
 
 const billingFaq = [
   {

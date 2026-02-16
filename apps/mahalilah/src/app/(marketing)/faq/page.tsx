@@ -5,8 +5,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'FAQ',
   description:
     'Perguntas e respostas sobre uso da plataforma, planos, IA, segurança e privacidade no Maha Lilah Online.',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
       'Perguntas e respostas sobre uso da plataforma, planos, IA, segurança e privacidade no Maha Lilah Online.',
     url: '/faq'
   }
-}
+})
 
 const faqItems = [
   {

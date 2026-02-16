@@ -11,8 +11,9 @@ import { Steps } from '@/components/marketing/sections/Steps'
 import { Testimonials } from '@/components/marketing/sections/Testimonials'
 import { VideoSection } from '@/components/marketing/sections/VideoSection'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Maha Lilah Online',
   description:
     'Conduza jornadas terapêuticas ao vivo com experiência encantadora, registro inteligente e segurança de ponta.',
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
       'Conduza jornadas terapêuticas ao vivo com experiência encantadora, registro inteligente e segurança de ponta.',
     url: '/'
   }
-}
+})
 
 type OperationalSnapshot = {
   sessionsThisMonth: number
@@ -94,7 +95,7 @@ export default async function HomePage() {
       <Hero
         title="Jogue no tabuleiro do Maha Lilah — com assistência de IA"
         subtitle="Autoguiado ou em sessão terapêutica, crie uma sala, role o dado, avance pelas casas e registre o que importa — com perguntas e síntese quando você quiser."
-        primaryCta={{ label: 'Experimente', href: '/como-funciona' }}
+        primaryCta={{ label: 'Experimente', href: '/dashboard' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
         note="Com assistência de IA, eu consigo me autoguiar com perguntas, sínteses e resumos"
         highlights={['Autoguiado', 'Autoconhecimento', 'Expansão da Consciência']}

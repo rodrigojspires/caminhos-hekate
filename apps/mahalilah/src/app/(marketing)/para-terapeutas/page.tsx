@@ -3,8 +3,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Para terapeutas',
   description:
     'Conduza atendimentos e grupos com mais presença, menos retrabalho e continuidade entre sessões.',
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
       'Conduza atendimentos e grupos com mais presença, menos retrabalho e continuidade entre sessões.',
     url: '/para-terapeutas'
   }
-}
+})
 
 const faqItems = [
   {

@@ -26,6 +26,21 @@ const nextConfig = {
         destination: '/planos',
         permanent: true,
       },
+      {
+        source: '/maha-lilah',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/mahalilah',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/jogo-maha-lilah',
+        destination: '/como-funciona',
+        permanent: true,
+      },
     ];
   },
 };

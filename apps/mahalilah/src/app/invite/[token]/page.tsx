@@ -1,13 +1,30 @@
+import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma, MahaLilahParticipantRole } from '@hekate/database'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
 interface InvitePageProps {
   params: { token: string }
 }
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = withSeoDefaults(
+  {
+    title: 'Convite para sala',
+    description:
+      'Página de convite para entrada em salas privadas do Maha Lilah Online.',
+    openGraph: {
+      title: 'Convite Maha Lilah Online',
+      description:
+        'Página de convite para entrada em salas privadas do Maha Lilah Online.',
+      url: '/invite'
+    }
+  },
+  { noIndex: true, canonicalPath: '/invite' }
+)
 
 export default async function InvitePage({ params }: InvitePageProps) {
   const session = await getServerSession(authOptions)

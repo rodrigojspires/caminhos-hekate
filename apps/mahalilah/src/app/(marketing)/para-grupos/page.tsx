@@ -5,8 +5,9 @@ import { Features } from '@/components/marketing/sections/Features'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { Testimonials } from '@/components/marketing/sections/Testimonials'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Para grupos',
   description:
     'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
       'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
     url: '/para-grupos'
   }
-}
+})
 
 const faqItems = [
   {

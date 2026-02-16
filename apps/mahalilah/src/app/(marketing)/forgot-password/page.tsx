@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { ForgotPasswordForm } from '@/components/marketing/ForgotPasswordForm'
 import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Recuperar senha',
   description: 'Solicite um link para redefinir sua senha no Maha Lilah Online.',
   openGraph: {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     description: 'Solicite um link para redefinir sua senha no Maha Lilah Online.',
     url: '/forgot-password'
   }
-}
+}, { noIndex: true })
 
 export default function ForgotPasswordPage() {
   return (

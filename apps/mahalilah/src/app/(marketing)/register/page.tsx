@@ -4,8 +4,9 @@ import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Criar conta',
   description: 'Crie sua conta para acessar salas, convites e registros terapêuticos do Maha Lilah Online.',
   openGraph: {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     description: 'Crie sua conta para acessar salas, convites e registros terapêuticos do Maha Lilah Online.',
     url: '/register'
   }
-}
+}, { noIndex: true })
 
 export default function RegisterPage() {
   return (

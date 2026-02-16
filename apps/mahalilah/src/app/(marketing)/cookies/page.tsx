@@ -5,8 +5,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Cookies',
   description: 'Entenda como usamos cookies e como você pode gerenciar suas preferências.',
   openGraph: {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     description: 'Entenda como usamos cookies e como você pode gerenciar suas preferências.',
     url: '/cookies'
   }
-}
+})
 
 const faqItems = [
   {

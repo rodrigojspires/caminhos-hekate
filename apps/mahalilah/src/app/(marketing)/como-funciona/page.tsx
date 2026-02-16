@@ -5,8 +5,9 @@ import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SessionFlowTimeline } from '@/components/marketing/sections/SessionFlowTimeline'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Como funciona',
   description:
     'Entenda o fluxo completo do Maha Lilah Online, do convite ao fechamento com síntese assistida.',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
       'Entenda o fluxo completo do Maha Lilah Online, do convite ao fechamento com síntese assistida.',
     url: '/como-funciona'
   }
-}
+})
 
 const faqItems = [
   {

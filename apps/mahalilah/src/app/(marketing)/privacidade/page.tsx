@@ -5,8 +5,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Privacidade',
   description: 'Como coletamos, usamos e protegemos dados no Maha Lilah Online.',
   openGraph: {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     description: 'Como coletamos, usamos e protegemos dados no Maha Lilah Online.',
     url: '/privacidade'
   }
-}
+})
 
 const faqItems = [
   {

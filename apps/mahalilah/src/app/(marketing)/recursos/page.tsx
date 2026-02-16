@@ -4,8 +4,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Recursos',
   description:
     'Conheça os recursos que tornam o Maha Lilah Online envolvente, seguro e com alto potencial de retenção.',
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
       'Conheça os recursos que tornam o Maha Lilah Online envolvente, seguro e com alto potencial de retenção.',
     url: '/recursos'
   }
-}
+})
 
 const faqItems = [
   {

@@ -6,8 +6,9 @@ import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Contato',
   description:
     'Fale com o time do Maha Lilah Online para onboarding, dúvidas comerciais e orientações de uso.',
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
       'Fale com o time do Maha Lilah Online para onboarding, dúvidas comerciais e orientações de uso.',
     url: '/contato'
   }
-}
+})
 
 const faqItems = [
   {

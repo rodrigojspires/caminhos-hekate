@@ -6,8 +6,9 @@ import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
 import { SectionHeader, SectionShell, Pill } from '@/components/marketing/ui'
 import { blogCategories, blogPosts } from '@/lib/marketing/blog'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Blog',
   description:
     'Artigos práticos para terapeutas e facilitadores sobre condução de grupos, presença e segurança emocional.',
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
       'Artigos práticos para terapeutas e facilitadores sobre condução de grupos, presença e segurança emocional.',
     url: '/blog'
   }
-}
+})
 
 export default function BlogPage() {
   const faqItems = [

@@ -4,13 +4,18 @@ import { Navbar } from '@/components/marketing/Navbar'
 import { CookieConsentBanner } from '@/components/marketing/CookieConsentBanner'
 import { WhatsAppCta } from '@/components/marketing/WhatsAppCta'
 import { MarketingAnalyticsProvider } from '@/components/marketing/analytics/MarketingAnalyticsProvider'
-import { OrganizationJsonLd, ProductJsonLd } from '@/components/marketing/StructuredData'
+import {
+  OrganizationJsonLd,
+  SoftwareApplicationJsonLd,
+  WebSiteJsonLd
+} from '@/components/marketing/StructuredData'
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="marketing-shell">
       <OrganizationJsonLd />
-      <ProductJsonLd />
+      <WebSiteJsonLd />
+      <SoftwareApplicationJsonLd />
       <MarketingAnalyticsProvider />
       <div className="marketing-orb marketing-orb--one" aria-hidden />
       <div className="marketing-orb marketing-orb--two" aria-hidden />

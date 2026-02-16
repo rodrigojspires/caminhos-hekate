@@ -4,8 +4,9 @@ import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { SectionShell } from '@/components/marketing/ui'
+import { withSeoDefaults } from '@/lib/marketing/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSeoDefaults({
   title: 'Entrar',
   description: 'Acesse sua conta para criar salas, convidar participantes e acompanhar registros terapêuticos.',
   openGraph: {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     description: 'Acesse sua conta para criar salas, convidar participantes e acompanhar registros terapêuticos.',
     url: '/login'
   }
-}
+}, { noIndex: true })
 
 const faqItems = [
   {
