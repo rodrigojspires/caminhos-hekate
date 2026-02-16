@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/admin/LoadingSpinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -107,6 +107,10 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
   const [deckImageFiles, setDeckImageFiles] = useState<string[]>([]);
   const [loadingDeckImages, setLoadingDeckImages] = useState(false);
   const [uploadingDeckImages, setUploadingDeckImages] = useState(false);
+  const [deletingDeckImageName, setDeletingDeckImageName] = useState<
+    string | null
+  >(null);
+  const [deletingAllDeckImages, setDeletingAllDeckImages] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   const loadDeck = useCallback(async () => {
@@ -431,6 +435,66 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
       toast.error("Erro ao enviar imagens");
     } finally {
       setUploadingDeckImages(false);
+    }
+  };
+
+  const handleDeleteDeckImage = async (fileName: string) => {
+    if (!deck) return;
+    const confirmed = window.confirm(`Excluir o arquivo "${fileName}"?`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingDeckImageName(fileName);
+      const response = await fetch(
+        `/api/admin/mahalilah/decks/${deck.id}/images?file=${encodeURIComponent(fileName)}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        toast.error(data.error || "Erro ao excluir arquivo");
+        return;
+      }
+
+      toast.success(data.message || "Arquivo excluido");
+      await loadDeckImages();
+    } catch {
+      toast.error("Erro ao excluir arquivo");
+    } finally {
+      setDeletingDeckImageName(null);
+    }
+  };
+
+  const handleDeleteAllDeckImages = async () => {
+    if (!deck || deckImageFiles.length === 0) return;
+    const confirmed = window.confirm(
+      `Apagar todos os ${deckImageFiles.length} arquivo(s) deste baralho?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingAllDeckImages(true);
+      const response = await fetch(
+        `/api/admin/mahalilah/decks/${deck.id}/images?all=true`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        toast.error(data.error || "Erro ao apagar arquivos");
+        return;
+      }
+
+      toast.success(data.message || "Arquivos apagados");
+      await loadDeckImages();
+    } catch {
+      toast.error("Erro ao apagar arquivos");
+    } finally {
+      setDeletingAllDeckImages(false);
     }
   };
 
@@ -916,7 +980,22 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="text-sm font-medium">Arquivos no diretorio</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-medium">Arquivos no diretorio</div>
+                <button
+                  type="button"
+                  onClick={handleDeleteAllDeckImages}
+                  disabled={deletingAllDeckImages || deckImageFiles.length === 0}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-red-700 dark:text-red-300 bg-white dark:bg-gray-900 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
+                >
+                  {deletingAllDeckImages ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Apagar tudo
+                </button>
+              </div>
               {loadingDeckImages ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   Carregando imagens...
@@ -928,9 +1007,29 @@ export default function DeckEditPage({ params }: DeckEditPageProps) {
               ) : (
                 <div className="grid gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-3 max-h-56 overflow-auto">
                   {deckImageFiles.map((fileName) => (
-                    <code key={fileName} className="text-xs">
-                      {fileName}
-                    </code>
+                    <div
+                      key={fileName}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <code className="text-xs">{fileName}</code>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDeckImage(fileName)}
+                        disabled={
+                          deletingAllDeckImages ||
+                          deletingDeckImageName === fileName
+                        }
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30 disabled:opacity-50"
+                        aria-label={`Excluir ${fileName}`}
+                        title={`Excluir ${fileName}`}
+                      >
+                        {deletingDeckImageName === fileName ? (
+                          <LoadingSpinner size="sm" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
