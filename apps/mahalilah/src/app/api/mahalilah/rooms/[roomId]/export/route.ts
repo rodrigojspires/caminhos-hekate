@@ -92,6 +92,7 @@ function formatHouseName(number: number) {
 
 function toPdfSafeText(value: string) {
   return value
+    .normalize('NFC')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -307,8 +308,13 @@ async function loadCardImageForPdf(
 function repairPtBrMojibake(value: string) {
   let fixed = value
 
-  // Correcoes comuns de texto UTF-8 mal decodificado para PT-BR
-  if (/[ÃÂâ]/.test(fixed)) {
+  // Corrige apenas quando ha padrao real de mojibake (ex.: "Ã£", "Ã§", "â€™"),
+  // evitando converter palavras validas com acentos (ex.: "âmbito").
+  const hasLikelyMojibake =
+    /Ã[\x80-\xBF]/.test(fixed) ||
+    /Â[\x80-\xBF]/.test(fixed) ||
+    /â[\x80-\xBF]/.test(fixed)
+  if (hasLikelyMojibake) {
     const utf8Candidate = Buffer.from(fixed, 'latin1').toString('utf8')
     if (utf8Candidate && !/[\uFFFD]/.test(utf8Candidate)) {
       fixed = utf8Candidate
