@@ -48,8 +48,8 @@ const faqItems = [
     answer: 'O limite varia por plano e aparece com clareza no checkout.'
   },
   {
-    question: 'Posso exportar os registros?',
-    answer: 'Sim. Você pode exportar em TXT/JSON para continuidade do trabalho.'
+    question: 'Posso gerar relatório da sessão?',
+    answer: 'Sim. Você pode exportar o relatório completo da sessão para um PDF.'
   },
   {
     question: 'Quais informações ficam salvas?',
@@ -65,7 +65,7 @@ const faqItems = [
   },
   {
     question: 'Posso ter várias salas ativas ao mesmo tempo?',
-    answer: 'Depende do plano contratado. O limite aparece antes da compra.'
+    answer: 'Não. O login é único por sala e não permite salas simultâneas com o mesmo login.'
   },
   {
     question: 'Login é obrigatório?',
@@ -82,41 +82,15 @@ export default function FaqPage() {
     <div>
       <FaqJsonLd items={faqItems} />
       <Hero
-        eyebrow="FAQ"
         title="Tudo que você precisa saber antes de começar"
-        subtitle="Respostas diretas para escolher o plano certo e conduzir com confiança desde a primeira sessão."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        mediaLabel="Equipe de suporte e experiência acolhedora"
+        subtitle="Respostas diretas para escolher o plano certo e conduzir com confiança desde a primeira sessão. Essa FAQ foi pensada para reduzir dúvida e acelerar decisão"
+        primaryCta={{ label: 'Experimente', href: '/dashboard' }}
+        secondaryCta={{ label: 'Fale no Whatsapp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voces!' }}
         highlights={['Resposta rápida', 'Transparência total', 'Suporte humano']}
       />
 
-      <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-6">
-            <SectionHeader
-              eyebrow="Visão geral"
-              title="FAQ pensada para reduzir dúvida e acelerar decisão"
-              subtitle="Se preferir, nossa equipe também pode te orientar por contexto de uso."
-            />
-            <p className="text-sm text-ink-muted">
-              Respondemos contatos em até 2 dias úteis com orientação personalizada para terapeutas,
-              facilitadores e grupos.
-            </p>
-          </div>
-          <MediaPlaceholder variant="vertical" label="Suporte humano e orientação para escolha de plano" />
-        </div>
-      </SectionShell>
-
       <FAQ eyebrow="FAQ completa" title="Perguntas e respostas" items={faqItems} />
 
-      <CTA
-        title="Quer orientação específica para seu caso?"
-        subtitle="Fale com a equipe e receba direcionamento claro para começar com segurança."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Atendimento humano', 'Retorno em até 2 dias úteis']}
-      />
     </div>
   )
 }
