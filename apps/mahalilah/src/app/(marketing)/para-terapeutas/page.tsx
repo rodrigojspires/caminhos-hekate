@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { MediaPlaceholder } from '@/components/marketing/MediaPlaceholder'
 import { CTA } from '@/components/marketing/sections/CTA'
 import { FAQ } from '@/components/marketing/sections/FAQ'
 import { Hero } from '@/components/marketing/sections/Hero'
@@ -43,78 +42,57 @@ export default function ParaTerapeutasPage() {
       />
 
       <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-5">
+        <div className="grid gap-6 md:grid-cols-2">
+          <article className="rounded-3xl border border-border/70 bg-surface/85 p-6 shadow-soft md:p-8">
             <SectionHeader
-              eyebrow="Dashboard clínico"
+              eyebrow="Dashboard integrado"
               title="Visão clara de tudo que está em andamento"
               subtitle="Acompanhe sessões ativas, concluídas e próximas ações em um único painel."
             />
-            <p className="text-sm text-ink-muted">
+            <p className="mt-3 text-base text-ink-muted">
               Menos tempo organizando contexto e mais tempo conduzindo com qualidade e presença terapêutica.
             </p>
-          </div>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          
-          <div className="flex flex-col gap-5">
+          </article>
+          <article className="rounded-3xl border border-border/70 bg-surface/85 p-6 shadow-soft md:p-8">
             <SectionHeader
               eyebrow="Confiança"
               title="Convites com identidade confirmada"
               subtitle="Cada participante entra com conta vinculada ao e-mail, preservando segurança e rastreabilidade."
             />
-            <p className="text-sm text-ink-muted">
+            <p className="mt-3 text-base text-ink-muted">
               Esse controle reduz ruído na sessão e aumenta segurança para temas sensíveis.
             </p>
-          </div>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-5">
+          </article>
+          <article className="rounded-3xl border border-border/70 bg-surface/85 p-6 shadow-soft md:p-8">
             <SectionHeader
               eyebrow="Registro terapêutico"
               title="Anote o essencial sem perder fluidez"
               subtitle="Emoção, intensidade, corpo, insight e ação com estrutura objetiva."
             />
-            <p className="text-sm text-ink-muted">
+            <p className="mt-3 text-base text-ink-muted">
               Você mantém linguagem viva da pessoa e ganha consistência para sessões futuras.
             </p>
-          </div>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="flex flex-col gap-5">
+          </article>
+          <article className="rounded-3xl border border-border/70 bg-surface/85 p-6 shadow-soft md:p-8">
             <SectionHeader
               eyebrow="Síntese final"
               title="Feche a sessão com mais clareza"
               subtitle="Organize pontos-chave em segundos para apoiar devolutivas e continuidade."
             />
-            <p className="text-sm text-ink-muted">
+            <p className="mt-3 text-base text-ink-muted">
               IA com limites e supervisão humana para preservar qualidade da sua escuta.
             </p>
-          </div>
-        </div>
-      </SectionShell>
-
-      <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="flex flex-col gap-5">
+          </article>
+          <article className="rounded-3xl border border-border/70 bg-surface/85 p-6 shadow-soft md:col-span-2 md:p-8">
             <SectionHeader
               eyebrow="Relatório em PDF"
               title="Leve seu histórico para onde precisar"
               subtitle="Gere um relatório da sessão que pode ser compartilhado com o seu assistido."
             />
-            <p className="text-sm text-ink-muted">
+            <p className="mt-3 text-base text-ink-muted">
               Continuidade fácil aumenta percepção de valor e recorrência do acompanhamento.
             </p>
-          </div>
+          </article>
         </div>
       </SectionShell>
 
