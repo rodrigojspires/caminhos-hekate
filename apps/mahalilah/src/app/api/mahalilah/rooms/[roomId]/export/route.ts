@@ -91,8 +91,7 @@ function formatHouseName(number: number) {
 }
 
 function toPdfSafeText(value: string) {
-  const repaired = repairPtBrMojibake(value || '')
-  return repaired
+  return (value || '')
     .normalize('NFC')
     .replace(/[\u2013\u2014]/g, '-')
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ')
@@ -306,71 +305,6 @@ async function loadCardImageForPdf(
   return null
 }
 
-function applyLegacyGlyphFixes(value: string) {
-  return value
-    // "prudŒncia" -> "prudência" (apenas dentro de palavra)
-    .replace(/(?<=[A-Za-zÀ-ÿ])[Œœ](?=[A-Za-zÀ-ÿ])/g, 'ê')
-    // "Ø" vindo no lugar de "é" isolado ou dentro de palavra
-    .replace(/(^|[\s([{])([Øø])(?=$|[\s)\]}.,;:!?])/g, '$1é')
-    .replace(/(?<=[A-Za-zÀ-ÿ])[Øø](?=[A-Za-zÀ-ÿ])/g, 'é')
-    // Evita quebrar "1ª"; corrige só quando "ª" aparece dentro de palavra
-    // e não faz parte da sequência mojibake "Ãª".
-    .replace(/(?<!Ã)(?<=[A-Za-zÀ-ÿ])ª(?=[A-Za-zÀ-ÿ])/g, 'ã')
-}
-
-function repairLikelyMojibakeChunks(value: string) {
-  return value.replace(
-    /(?:Ã[\u0080-\u00BF]|Â[\u0080-\u00BF]|â[\u0080-\u00BF])+/g,
-    (chunk) => {
-      const decoded = Buffer.from(chunk, 'latin1').toString('utf8')
-      if (!decoded || /[\uFFFD]/.test(decoded)) return chunk
-      return decoded
-    }
-  )
-}
-
-function scoreTextEncodingQuality(value: string) {
-  const count = (regex: RegExp) => (value.match(regex)?.length ?? 0)
-  let score = 0
-
-  score -= count(/\uFFFD/g) * 60 // caractere de substituicao -> forte indicio de decodificacao ruim
-  score -= count(/Ã[\u0080-\u00BF]/g) * 14
-  score -= count(/Â[\u0080-\u00BF]/g) * 10
-  score -= count(/â[\u0080-\u00BF]/g) * 10
-  score -= count(/[\u0080-\u009F]/g) * 6
-  score -= count(/[ØøŒœ]/g) * 6
-  score += count(/[áàâãäéêëíïóôõöúüçÁÀÂÃÄÉÊËÍÏÓÔÕÖÚÜÇ]/g)
-
-  return score
-}
-
-function repairPtBrMojibake(value: string) {
-  const source = (value || '').normalize('NFC')
-  if (!source) return ''
-
-  const original = applyLegacyGlyphFixes(source)
-  const chunkRepaired = applyLegacyGlyphFixes(repairLikelyMojibakeChunks(source))
-  const utf8Candidate = applyLegacyGlyphFixes(
-    Buffer.from(source, 'latin1').toString('utf8')
-  )
-
-  const originalScore = scoreTextEncodingQuality(original)
-  const chunkRepairedScore = scoreTextEncodingQuality(chunkRepaired)
-  const utf8Score = scoreTextEncodingQuality(utf8Candidate)
-
-  // Troca para o recode apenas quando melhora de fato a qualidade do texto.
-  let best = original
-  let bestScore = originalScore
-  if (chunkRepairedScore > bestScore) {
-    best = chunkRepaired
-    bestScore = chunkRepairedScore
-  }
-  if (utf8Score > bestScore) {
-    best = utf8Candidate
-  }
-  return best.normalize('NFC')
-}
-
 function extractAiReportText(content: string) {
   const raw = (content || '').trim()
   if (!raw) return ''
@@ -379,7 +313,7 @@ function extractAiReportText(content: string) {
     const parsed = JSON.parse(raw)
 
     if (typeof parsed === 'string') {
-      return repairPtBrMojibake(parsed)
+      return parsed.normalize('NFC')
     }
 
     if (parsed && typeof parsed === 'object') {
@@ -390,13 +324,13 @@ function extractAiReportText(content: string) {
             ? (parsed as { content: string }).content
             : ''
 
-      if (text) return repairPtBrMojibake(text)
+      if (text) return text.normalize('NFC')
     }
   } catch {
     // Se nao for JSON, segue com o proprio conteudo.
   }
 
-  return repairPtBrMojibake(raw)
+  return raw.normalize('NFC')
 }
 
 function extractProgressInterval(content: string) {
