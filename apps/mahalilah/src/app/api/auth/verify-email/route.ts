@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { applyRateLimit } from '@/lib/security/rate-limit'
 
+export const dynamic = 'force-dynamic'
+
 function loginRedirect(request: NextRequest, status: 'success' | 'invalid' | 'expired') {
   const url = new URL('/login', request.url)
   url.searchParams.set('verified', status)
