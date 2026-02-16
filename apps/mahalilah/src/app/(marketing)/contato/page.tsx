@@ -26,7 +26,7 @@ const faqItems = [
   },
   {
     question: 'Posso agendar uma demonstração?',
-    answer: 'Sim. Envie contexto do seu trabalho e retornamos com possibilidades.'
+    answer: 'Sim. Envie contexto do seu trabalho e retornamos com possibilidades. Mas caso queira temos uma sala experimental para degustar do nosso tabuleiro.'
   },
   {
     question: 'Vocês ajudam a escolher o plano ideal?',
@@ -38,12 +38,9 @@ export default function ContatoPage() {
   return (
     <div>
       <Hero
-        eyebrow="Contato"
         title="Converse com quem entende da experiência terapêutica digital"
         subtitle="Conte seu objetivo e te ajudamos a montar o melhor caminho para começar com segurança e impacto."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Experimente', href: '/como-funciona' }}
-        mediaLabel="Atendimento humano e acompanhamento de onboarding"
+        primaryCta={{ label: 'Fale no Whatsapp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voces!' }}
         highlights={['Atendimento humano', 'Apoio comercial', 'Onboarding orientado']}
       />
 
@@ -58,15 +55,14 @@ export default function ContatoPage() {
               subtitle="Você pode usar o canal que for mais confortável para seu momento."
             />
             <div className="flex flex-col gap-2 text-sm text-ink-muted">
-              <Link href="mailto:contato@mahalilahonline.com.br" className="text-gold">
-                contato@mahalilahonline.com.br
+              <Link href="mailto:contato@caminhosdehekate.com.br" className="text-gold">
+                contato@caminhosdehekate.com.br
               </Link>
-              <Link href="https://instagram.com/mahalilahonline" className="text-gold">
-                instagram.com/mahalilahonline
+              <Link href="https://instagram.com/caminhoshekate" className="text-gold">
+                instagram.com/caminhoshekate
               </Link>
             </div>
           </div>
-          <MediaPlaceholder variant="vertical" label="Equipe de atendimento e acompanhamento personalizado" />
         </div>
       </SectionShell>
 
@@ -74,16 +70,6 @@ export default function ContatoPage() {
         eyebrow="FAQ"
         title="Dúvidas frequentes sobre atendimento"
         items={faqItems}
-        ctaLabel="Ver FAQ completa"
-        ctaHref="/faq"
-      />
-
-      <CTA
-        title="Se preferir, você pode entrar direto na plataforma"
-        subtitle="Crie uma conta, teste o fluxo e fale com a equipe quando quiser para otimizar seu uso."
-        primaryCta={{ label: 'Criar minha primeira sala', href: '/login' }}
-        secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Suporte ativo', 'Onboarding consultivo']}
       />
     </div>
   )

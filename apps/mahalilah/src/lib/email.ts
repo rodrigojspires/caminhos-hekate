@@ -57,6 +57,15 @@ function getMahaLilahFromAddress() {
   }
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function sendInviteEmail(params: {
   to: string
   therapistName: string
@@ -201,6 +210,55 @@ Este link expira em 24 horas.
   return sendViaSmtp({
     to: params.to,
     subject,
+    html,
+    text,
+    fromEmail,
+    fromName
+  })
+}
+
+export async function sendMarketingContactEmail(params: {
+  name: string
+  email: string
+  subject: string
+  message: string
+}) {
+  const { fromEmail, fromName } = getMahaLilahFromAddress()
+  const to = 'contato@caminhosdehekate.com.br'
+  const composedSubject = `[Maha Lilah] ${params.subject}`
+
+  const safeName = escapeHtml(params.name)
+  const safeEmail = escapeHtml(params.email)
+  const safeSubject = escapeHtml(params.subject)
+  const safeMessage = escapeHtml(params.message).replace(/\n/g, '<br />')
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+      <h2>Novo contato pelo site institucional</h2>
+      <p><strong>Nome:</strong> ${safeName}</p>
+      <p><strong>E-mail:</strong> ${safeEmail}</p>
+      <p><strong>Assunto:</strong> ${safeSubject}</p>
+      <p><strong>Mensagem:</strong></p>
+      <p>${safeMessage}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
+      <p style="font-size:12px;color:#5d6b75;">Enviado pelo formulário de contato do Maha Lilah Online.</p>
+    </div>
+  `
+
+  const text = `
+Novo contato pelo site institucional
+
+Nome: ${params.name}
+E-mail: ${params.email}
+Assunto: ${params.subject}
+
+Mensagem:
+${params.message}
+  `.trim()
+
+  return sendViaSmtp({
+    to,
+    subject: composedSubject,
     html,
     text,
     fromEmail,
