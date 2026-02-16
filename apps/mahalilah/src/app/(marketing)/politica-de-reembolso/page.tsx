@@ -20,7 +20,7 @@ export const metadata: Metadata = withSeoDefaults({
 const faqItems = [
   {
     question: 'Como solicito reembolso?',
-    answer: 'Entre em contato pelo formulário com dados da compra e motivo ou através do nosso suporte pelo Whatsapp.'
+    answer: 'Entre em contato pelo formulário com os dados da compra e o motivo, ou por meio do nosso suporte via WhatsApp.'
   },
   {
     question: 'E se eu cancelar a assinatura?',
@@ -36,14 +36,14 @@ export default function PoliticaDeReembolsoPage() {
         title="Política de reembolso"
         subtitle="Regras claras para garantir transparência em sessões avulsas e assinaturas."
         primaryCta={{ label: 'Falar com suporte', href: '/contato' }}
-        highlights={['Transparência', 'Suporte dedicado', 'Suporte Humanizado']}
+        highlights={['Transparência', 'Suporte dedicado', 'Suporte humanizado']}
       />
 
       <SectionShell>
         <SectionHeader
-          eyebrow="Sessão Avulsa"
-          title="Planos mensais"
-          subtitle="Reembolso quando a sessão não foi iniciada ou dentro do prazo permitido." />
+          eyebrow="Sessões avulsas"
+          title="Regras de reembolso"
+          subtitle="Reembolso quando a sessão não foi iniciada ou quando estiver dentro do prazo permitido." />
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
         <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
               <li>Solicitações devem ser feitas em prazo razoável após a compra.</li>
@@ -56,7 +56,7 @@ export default function PoliticaDeReembolsoPage() {
       <SectionShell>
         <SectionHeader
           eyebrow="Assinaturas"
-          title="Planos mensais"
+          title="Planos mensais e anuais"
           subtitle="Regras para renovação e cancelamento." />
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
           <p>

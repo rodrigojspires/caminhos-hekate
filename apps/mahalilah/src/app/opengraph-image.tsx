@@ -43,8 +43,8 @@ export default function OpenGraphImage() {
             Jornada de Autoconhecimento
           </p>
           <p style={{ margin: 0, fontSize: 34, color: '#d7deef', maxWidth: 960 }}>
-            Tabuleiro ao vivo, registro por jogada e assistencia por IA para sessoes
-            terapeuticas com mais clareza.
+            Tabuleiro ao vivo, registro por jogada e assistência por IA para sessões
+            terapêuticas com mais clareza.
           </p>
         </div>
         <div style={{ fontSize: 28, color: '#e3c78f' }}>mahalilahonline.com.br</div>

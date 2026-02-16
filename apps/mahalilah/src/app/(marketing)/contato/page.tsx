@@ -27,7 +27,7 @@ const faqItems = [
   },
   {
     question: 'Posso agendar uma demonstração?',
-    answer: 'Sim. Envie contexto do seu trabalho e retornamos com possibilidades. Mas caso queira temos uma sala experimental para degustar do nosso tabuleiro.'
+    answer: 'Sim. Envie o contexto do seu trabalho e retornaremos com possibilidades. Se preferir, também temos uma sala experimental para você vivenciar o nosso tabuleiro.'
   },
   {
     question: 'Vocês ajudam a escolher o plano ideal?',
@@ -40,8 +40,8 @@ export default function ContatoPage() {
     <div>
       <Hero
         title="Converse com quem entende da experiência terapêutica digital"
-        subtitle="Conte seu objetivo e te ajudamos a montar o melhor caminho para começar com segurança e impacto."
-        primaryCta={{ label: 'Fale no Whatsapp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voces!' }}
+        subtitle="Conte seu objetivo e nós ajudamos você a montar o melhor caminho para começar com segurança e impacto."
+        primaryCta={{ label: 'Fale no WhatsApp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voc%C3%AAs!' }}
         highlights={['Atendimento humano', 'Apoio comercial', 'Onboarding orientado']}
       />
 

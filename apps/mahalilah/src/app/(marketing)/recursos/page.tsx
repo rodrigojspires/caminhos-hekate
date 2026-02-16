@@ -21,7 +21,7 @@ export const metadata: Metadata = withSeoDefaults({
 const faqItems = [
   {
     question: 'Posso puxar cartas em qualquer momento?',
-    answer: 'Sim. O deck randômico funciona como gatilho de reflexão no momento em que fizer sentido.'
+    answer: 'Sim. O deck randômico funciona como gatilho de reflexão a qualquer momento.'
   },
   {
     question: 'O modo terapia é obrigatório?',

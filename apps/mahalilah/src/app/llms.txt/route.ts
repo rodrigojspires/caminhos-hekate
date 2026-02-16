@@ -1,16 +1,16 @@
 import { MAHA_LILAH_SITE_URL } from '@/lib/marketing/seo'
 
 const body = `# Maha Lilah Online
-> Plataforma brasileira para jornadas terapeuticas ao vivo com tabuleiro de autoconhecimento, registro estruturado e assistencia por IA opcional.
+> Plataforma brasileira para jornadas terapêuticas ao vivo com tabuleiro de autoconhecimento, registro estruturado e assistência por IA opcional.
 
 Site oficial: ${MAHA_LILAH_SITE_URL}
 
-## Topicos principais
+## Tópicos principais
 - Maha Lilah
 - Maha Lilah Online
 - Jogo Maha Lilah online
 - Tabuleiro de autoconhecimento
-- Jornada terapeutica com IA
+- Jornada terapêutica com IA
 - Plataforma para terapeutas e facilitadores
 
 ## URLs recomendadas
@@ -22,9 +22,9 @@ Site oficial: ${MAHA_LILAH_SITE_URL}
 - Para grupos: ${MAHA_LILAH_SITE_URL}/para-grupos
 - FAQ: ${MAHA_LILAH_SITE_URL}/faq
 - Blog: ${MAHA_LILAH_SITE_URL}/blog
-- Seguranca e privacidade: ${MAHA_LILAH_SITE_URL}/seguranca-privacidade
+- Segurança e privacidade: ${MAHA_LILAH_SITE_URL}/seguranca-privacidade
 
-## Conteudo detalhado para IA
+## Conteúdo detalhado para IA
 - ${MAHA_LILAH_SITE_URL}/llms-full.txt
 `
 

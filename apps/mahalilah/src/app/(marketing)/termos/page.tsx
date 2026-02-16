@@ -24,7 +24,7 @@ const faqItems = [
   },
   {
     question: 'Há reembolso?',
-    answer: 'Para saber mais consulte nossas Políticas de Reembolso.'
+    answer: 'Para saber mais, consulte nossa Política de Reembolso.'
   },
   {
     question: 'Como funciona o uso de IA?',
@@ -91,7 +91,7 @@ export default function TermosPage() {
         <div className="rounded-3xl border border-border/70 bg-surface/70 p-6 text-sm text-ink-muted">
           <p>
             Assinaturas renovam automaticamente até cancelamento. A sessão avulsa dá direito a uma sala, conforme
-            participantes definidos no checkout. Cancelamentos podem ser feitos na área da conta.
+            o número de participantes definido no checkout. Cancelamentos podem ser feitos na área da conta.
           </p>
           <p className="mt-3">
             Consulte a <Link className="text-gold" href="/politica-de-reembolso">Política de Reembolso</Link>

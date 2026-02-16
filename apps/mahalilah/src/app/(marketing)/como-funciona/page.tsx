@@ -74,7 +74,7 @@ export default function ComoFuncionaPage() {
     <div>
       <Hero
         title="Fluxo simples para sessões profundas"
-        subtitle="Você entra, cria a sala, se for sala em grupo convida participantes e conduz uma experiência ao vivo com rastro terapêutico completo."
+        subtitle="Você entra, cria a sala e, se for uma sessão em grupo, convida participantes para conduzir uma experiência ao vivo com rastro terapêutico completo."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         mediaLabel="Vídeo curto com a jornada completa em tempo real"

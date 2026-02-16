@@ -10,11 +10,11 @@ import { withSeoDefaults } from '@/lib/marketing/seo'
 export const metadata: Metadata = withSeoDefaults({
   title: 'Para grupos',
   description:
-    'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
+    'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta a participação.',
   openGraph: {
     title: 'Maha Lilah Online para grupos',
     description:
-      'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta participação.',
+      'Conduza grupos com ritmo, segurança emocional e uma experiência que aumenta a participação.',
     url: '/para-grupos'
   }
 })
@@ -42,7 +42,7 @@ export default function ParaGruposPage() {
     <div>
       <Hero
         title="Grupos com energia alta, organização clara e profundidade"
-        subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder individualidade."
+        subtitle="Cada participante entra com login, joga no próprio turno e vivencia uma jornada coletiva sem perder a individualidade."
         primaryCta={{ label: 'Experimente', href: '/dashboard' }}
         mediaLabel="Grupo em sessão ao vivo com turnos e acompanhamento"
         highlights={['Turnos individuais', 'Visão em tempo real', 'Registro por participante']}
@@ -76,7 +76,7 @@ export default function ParaGruposPage() {
         <SectionHeader
           eyebrow="Dimensionamento"
           title="Como definir o tamanho ideal do grupo"
-          subtitle="Escolher a quantidade certa de participantes melhora retenção e qualidade da condução."
+          subtitle="Escolher a quantidade certa de participantes melhora a retenção e a qualidade da condução."
         />
         <div className="grid gap-4 rounded-3xl border border-border/70 bg-surface/70 p-5 text-sm text-ink-muted sm:grid-cols-2 sm:p-8">
           {[

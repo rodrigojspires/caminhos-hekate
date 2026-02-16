@@ -111,14 +111,14 @@ export default async function HomePage() {
         subtitle="Crie sua primeira sala agora e descubra por que facilitadores e terapeutas utilizam o Maha Lilah Online."
         primaryCta={{ label: 'Ver planos', href: '/planos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
-        badges={['Inicio rápido', 'Suporte humano', 'Assistência com IA', 'Deck exclusivo para o Jogo']}
+        badges={['Início rápido', 'Suporte humano', 'Assistência com IA', 'Deck exclusivo para o jogo']}
       />
 
       <SectionShell>
         <SectionHeader
           eyebrow="O que é Maha Lilah?"
           title="Mais que um jogo: uma jornada de autoconhecimento no tabuleiro"
-          subtitle="Maha Lilah é um tabuleiro hindu de autoconhecimento com 72 casas em 8 níveis. Você lança o dado e avança: escadas elevam o caminho e serpentes mostram quedas e aprendizados. A jornada espelha o seu momento e ajuda a encontrar clareza e próximo passo — até a casa 68 (Consciência Cósmica)."
+          subtitle="Maha Lilah é um tabuleiro hindu de autoconhecimento com 72 casas em 8 níveis. Você lança o dado e avança: escadas elevam o caminho e serpentes mostram quedas e aprendizados. A jornada espelha o seu momento e ajuda a encontrar clareza e o próximo passo — até a casa 68 (Consciência Cósmica)."
         />
       </SectionShell>
 
@@ -158,7 +158,7 @@ export default async function HomePage() {
             'IA opcional (no momento certo): perguntas melhores na casa certa + síntese final para integrar',
             'Cartas de apoio: novas perspectivas sem forçar significado',
             'Registro leve por jogada: o essencial fica guardado sem burocracia',
-            'Histórico seguro + relatório em PDF confiança para continuar e acompanhar',
+            'Histórico seguro + relatório em PDF: confiança para continuar e acompanhar',
             'Para terapeutas: memória por sessão + exportação para continuidade',
             'Ao vivo quando precisar: sala com link e presença em tempo real',
             'Clareza de turno (para grupos): o centro da rodada fica evidente'        
@@ -174,7 +174,7 @@ export default async function HomePage() {
       <Steps
         eyebrow="Como começa"
         title="Em 3 passos, você já está jogando e conduzindo"
-        subtitle="Tudo pronto para autoguiado e para sessões com clientes - sem curva longa de aprendizado."
+        subtitle="Tudo pronto para autoguiado e para sessões com clientes, sem curva longa de aprendizado."
         steps={[
           {
             title: 'Escolha o seu modo',
@@ -194,7 +194,7 @@ export default async function HomePage() {
       <VideoSection
         eyebrow="Demonstração"
         title="Veja o ciclo completo em menos de 90 segundos"
-        subtitle="Da criação da sala ao fechamento: tabuleiro ao vivo e online, registro e síntese - com ritmo, beleza e clareza"
+        subtitle="Da criação da sala ao fechamento: tabuleiro ao vivo e online, registro e síntese — com ritmo, beleza e clareza."
         mediaLabel="Vídeo curto mostrando criação da sala, convites, jogadas, cartas e síntese"
         bullets={[
           'Criação de sala em segundos (sem configuração técnica)',

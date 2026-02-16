@@ -57,7 +57,7 @@ const faqItems = [
     answer: 'Jogadas, cartas, registros terapêuticos e sínteses acionadas durante a sessão.'
   },
   {
-    question: 'Como cancelar assinatura?',
+    question: 'Como cancelar a assinatura?',
     answer: 'O cancelamento é feito na conta e impede a próxima cobrança.'
   },
   {
@@ -84,9 +84,9 @@ export default function FaqPage() {
       <FaqJsonLd items={faqItems} />
       <Hero
         title="Tudo que você precisa saber antes de começar"
-        subtitle="Respostas diretas para escolher o plano certo e conduzir com confiança desde a primeira sessão. Essa FAQ foi pensada para reduzir dúvida e acelerar decisão"
+        subtitle="Respostas diretas para escolher o plano certo e conduzir com confiança desde a primeira sessão. Esta FAQ foi pensada para reduzir dúvidas e acelerar a decisão."
         primaryCta={{ label: 'Experimente', href: '/dashboard' }}
-        secondaryCta={{ label: 'Fale no Whatsapp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voces!' }}
+        secondaryCta={{ label: 'Fale no WhatsApp', href: 'https://wa.me/5511961460883?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20Maha%20Lilah%20e%20quero%20falar%20com%20voc%C3%AAs!' }}
         highlights={['Resposta rápida', 'Transparência total', 'Suporte humano']}
       />
 

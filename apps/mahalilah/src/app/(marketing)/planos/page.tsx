@@ -47,6 +47,8 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
 })
 
 const formatCurrency = (value: number) => currencyFormatter.format(value)
+const pluralize = (value: number, singular: string, plural: string) =>
+  value === 1 ? singular : plural
 
 const getAnnualSavingsPercent = (monthlyPrice: number, yearlyPrice: number) => {
   if (!Number.isFinite(monthlyPrice) || !Number.isFinite(yearlyPrice)) return null
@@ -143,7 +145,7 @@ export default async function PlanosPage() {
               <span>{formatCurrency(planConfig.subscriptionUnlimited.monthlyPrice)} / mês ou {formatCurrency(planConfig.subscriptionUnlimited.yearlyPrice)} / ano</span>
               <span className="text-xs text-ink-muted">
                 {unlimitedBreakEvenRooms !== null
-                  ? `Salas ilimitadas — melhor custo acima de 5 salas/mês`
+                  ? `Salas ilimitadas — melhor custo acima de ${unlimitedBreakEvenRooms} ${pluralize(unlimitedBreakEvenRooms, 'sala', 'salas')}/mês`
                   : 'Salas ilimitadas para escalar sem teto mensal'}
               </span>
               {unlimitedSavingsPercent !== null && (
@@ -206,7 +208,7 @@ export default async function PlanosPage() {
             {[
               {
                 feature: 'Salas/mês',
-                single: '1 sessão',
+                single: '1 sala',
                 limited: limitedRoomsLabel,
                 unlimited: 'Ilimitadas'
               },
@@ -256,7 +258,7 @@ export default async function PlanosPage() {
               ? `Plano com franquia: até ${planConfig.subscriptionLimited.roomsPerMonth} salas por mês.`
               : 'Plano com franquia: quantidade de salas definida em catálogo ativo.',
             'Salas simultâneas: o uso é pensado para condução humana em tempo real; padrões anômalos de concorrência podem exigir revisão técnica.',
-            `IA com limites técnicos por sessão: ${planConfig.singleSession.tipsPerPlayer} dicas por jogador no avulso e síntese final de até ${planConfig.singleSession.summaryLimit} por sessão.`,
+            `IA com limites técnicos por sessão: ${planConfig.singleSession.tipsPerPlayer} ${pluralize(planConfig.singleSession.tipsPerPlayer, 'dica', 'dicas')} por jogador no avulso e até ${planConfig.singleSession.summaryLimit} ${pluralize(planConfig.singleSession.summaryLimit, 'síntese final', 'sínteses finais')} por sessão.`,
             'Uso excessivo: automações em massa, compartilhamento indevido de conta ou geração anômala de salas podem passar por revisão operacional.'
           ].map((item) => (
             <div key={item} className="flex items-start gap-3">

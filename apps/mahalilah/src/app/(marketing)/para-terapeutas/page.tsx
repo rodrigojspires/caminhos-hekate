@@ -99,7 +99,7 @@ export default function ParaTerapeutasPage() {
 
       <CTA
         title="Veja todos os nossos recursos disponíveis"
-        subtitle="Existem outros recursos que você pode saber que a plataforma entrega."
+        subtitle="Conheça outros recursos que a plataforma oferece para apoiar sua condução."
         primaryCta={{ label: 'Veja todos os recursos', href: '/recursos' }}
         secondaryCta={{ label: 'Falar com a equipe', href: '/contato' }}
         badges={['Dashboard integrado', 'Registro inteligente', 'Relatório em PDF']}
