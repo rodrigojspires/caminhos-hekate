@@ -2692,10 +2692,6 @@ export function DashboardClient() {
           }}
         >
           <h2 className="section-title">Indicadores do painel</h2>
-          <span className="small-muted">
-            Base: {totalRoomsCount} sala{totalRoomsCount === 1 ? "" : "s"} criada
-            {totalRoomsCount === 1 ? "" : "s"} no filtro atual
-          </span>
         </div>
 
         <div
@@ -2900,10 +2896,6 @@ export function DashboardClient() {
               </strong>
             </div>
           </div>
-          <span className="small-muted">
-            Base comparativa: {finalizedRoomsCount} sala{finalizedRoomsCount === 1 ? "" : "s"} finalizada
-            {finalizedRoomsCount === 1 ? "" : "s"}.
-          </span>
         </div>
 
         {dashboardAlerts.length > 0 && (
