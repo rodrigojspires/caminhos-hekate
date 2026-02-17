@@ -1056,6 +1056,7 @@ async function buildRoomState(roomId: string) {
       isTrial: isTrialRoom(room),
       playerIntentionLocked: room.playerIntentionLocked,
       therapistSoloPlay: room.therapistSoloPlay,
+      therapistSummary: room.therapistSummary,
       aiReportsCount: room._count.aiReports,
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,

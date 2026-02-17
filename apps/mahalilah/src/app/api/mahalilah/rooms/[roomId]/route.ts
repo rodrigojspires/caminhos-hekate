@@ -8,9 +8,19 @@ interface RouteParams {
   params: { roomId: string }
 }
 
-const UpdateRoomSchema = z.object({
-  isVisibleToPlayers: z.boolean()
-})
+const UpdateRoomSchema = z
+  .object({
+    isVisibleToPlayers: z.boolean().optional(),
+    therapistSummary: z.string().max(8000).nullable().optional()
+  })
+  .refine(
+    (payload) =>
+      payload.isVisibleToPlayers !== undefined ||
+      payload.therapistSummary !== undefined,
+    {
+      message: 'Nada para atualizar.'
+    }
+  )
 
 function decrementMahaRoomsUsed(rawMetadata: unknown) {
   if (!rawMetadata || typeof rawMetadata !== 'object') return null
@@ -176,14 +186,32 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       )
     }
 
+    const normalizedSummary =
+      data.therapistSummary === undefined
+        ? undefined
+        : data.therapistSummary?.trim()
+          ? data.therapistSummary.trim()
+          : null
+
+    const updateData: {
+      isVisibleToPlayers?: boolean
+      therapistSummary?: string | null
+    } = {}
+
+    if (data.isVisibleToPlayers !== undefined) {
+      updateData.isVisibleToPlayers = data.isVisibleToPlayers
+    }
+    if (normalizedSummary !== undefined) {
+      updateData.therapistSummary = normalizedSummary
+    }
+
     const updated = await prisma.mahaLilahRoom.update({
       where: { id: room.id },
-      data: {
-        isVisibleToPlayers: data.isVisibleToPlayers
-      },
+      data: updateData,
       select: {
         id: true,
-        isVisibleToPlayers: true
+        isVisibleToPlayers: true,
+        therapistSummary: true
       }
     })
 

@@ -3065,6 +3065,7 @@ model MahaLilahRoom {
   isVisibleToPlayers Boolean             @default(false)
   isTrial            Boolean             @default(false)
   playerIntentionLocked Boolean          @default(false)
+  therapistSummary   String?
   planType           MahaLilahPlanType   @default(SINGLE_SESSION)
   orderId            String?
   subscriptionId     String?

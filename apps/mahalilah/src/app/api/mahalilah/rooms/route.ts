@@ -479,6 +479,7 @@ export async function GET(request: Request) {
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
           therapistSoloPlay: room.therapistSoloPlay,
+          therapistSummary: room.therapistSummary,
           isVisibleToPlayers: room.isVisibleToPlayers,
           isTrial: isTrialRoom(room),
           isAutoCreatedFromCheckout,

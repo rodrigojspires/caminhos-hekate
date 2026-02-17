@@ -41,6 +41,7 @@ type RoomState = {
     isTrial?: boolean;
     playerIntentionLocked?: boolean;
     therapistSoloPlay?: boolean;
+    therapistSummary?: string | null;
     aiReportsCount?: number;
     currentTurnIndex: number;
     turnParticipantId: string | null;
@@ -684,6 +685,10 @@ export function RoomClient({ code }: { code: string }) {
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
+  const [therapistSummaryDraft, setTherapistSummaryDraft] = useState("");
+  const [therapistSummaryModalOpen, setTherapistSummaryModalOpen] =
+    useState(false);
+  const [therapistSummarySaving, setTherapistSummarySaving] = useState(false);
   const [showBoardNames, setShowBoardNames] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [diceAnimationEnabled, setDiceAnimationEnabled] = useState(true);
@@ -974,6 +979,11 @@ export function RoomClient({ code }: { code: string }) {
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
   }, [state?.room.id, clearDiceTimers]);
+
+  useEffect(() => {
+    if (!state?.room) return;
+    setTherapistSummaryDraft(state.room.therapistSummary || "");
+  }, [state?.room.id, state?.room.therapistSummary]);
 
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
@@ -2041,6 +2051,59 @@ export function RoomClient({ code }: { code: string }) {
     },
     [state?.room.id, pushToast],
   );
+
+  const handleSaveTherapistSummary = useCallback(async () => {
+    if (!state?.room.id || !isTherapist) return false;
+
+    setTherapistSummarySaving(true);
+    try {
+      const res = await fetch(`/api/mahalilah/rooms/${state.room.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ therapistSummary: therapistSummaryDraft }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showSocketError(
+          payload.error || "Erro ao salvar síntese do terapeuta.",
+          payload,
+        );
+        return false;
+      }
+
+      const nextSummary =
+        typeof payload?.room?.therapistSummary === "string"
+          ? payload.room.therapistSummary
+          : "";
+
+      setTherapistSummaryDraft(nextSummary);
+      setState((prev) =>
+        prev
+          ? {
+              ...prev,
+              room: {
+                ...prev.room,
+                therapistSummary: nextSummary || null,
+              },
+            }
+          : prev,
+      );
+      pushToast("Síntese do terapeuta atualizada.", "success");
+      return true;
+    } catch {
+      pushToast("Erro ao salvar síntese do terapeuta.", "error");
+      return false;
+    } finally {
+      setTherapistSummarySaving(false);
+    }
+  }, [
+    state?.room.id,
+    therapistSummaryDraft,
+    isTherapist,
+    showSocketError,
+    pushToast,
+  ]);
 
   const closeRoom = useCallback(() => {
     if (!socket) return;
@@ -3400,48 +3463,59 @@ export function RoomClient({ code }: { code: string }) {
                 </strong>
               </span>
 
-              <button
-                className="secondary"
-                disabled={!canUseAiActions || aiTipLoading}
-                onClick={() =>
-                  (() => {
-                    if (!socket) return;
-                    setAiTipLoading(true);
-                    socket.emit(
-                      "ai:tip",
-                      {},
-                      async (resp: any) => {
-                        setAiTipLoading(false);
-                        if (!resp?.ok) {
-                          showSocketError("Erro ao gerar dica", resp);
-                        } else {
-                          if (
-                            typeof resp.tipsUsed === "number" &&
-                            typeof resp.tipsLimit === "number"
-                          ) {
-                            setAiTipUsage({
-                              used: resp.tipsUsed,
-                              limit: resp.tipsLimit,
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="secondary"
+                  disabled={!canUseAiActions || aiTipLoading}
+                  onClick={() =>
+                    (() => {
+                      if (!socket) return;
+                      setAiTipLoading(true);
+                      socket.emit(
+                        "ai:tip",
+                        {},
+                        async (resp: any) => {
+                          setAiTipLoading(false);
+                          if (!resp?.ok) {
+                            showSocketError("Erro ao gerar dica", resp);
+                          } else {
+                            if (
+                              typeof resp.tipsUsed === "number" &&
+                              typeof resp.tipsLimit === "number"
+                            ) {
+                              setAiTipUsage({
+                                used: resp.tipsUsed,
+                                limit: resp.tipsLimit,
+                              });
+                            }
+                            setAiContentModal({
+                              title: "Ajuda da IA",
+                              subtitle: `Gerada em ${new Date().toLocaleString("pt-BR")}`,
+                              content:
+                                typeof resp.content === "string"
+                                  ? resp.content
+                                  : "Sem conteúdo disponível.",
                             });
+                            await loadTimelineData();
+                            pushToast("Dica da IA gerada.", "success");
                           }
-                          setAiContentModal({
-                            title: "Ajuda da IA",
-                            subtitle: `Gerada em ${new Date().toLocaleString("pt-BR")}`,
-                            content:
-                              typeof resp.content === "string"
-                                ? resp.content
-                                : "Sem conteúdo disponível.",
-                          });
-                          await loadTimelineData();
-                          pushToast("Dica da IA gerada.", "success");
-                        }
-                      },
-                    );
-                  })()
-                }
-              >
-                {aiTipLoading ? "Processando ajuda..." : "IA: me ajuda agora"}
-              </button>
+                        },
+                      );
+                    })()
+                  }
+                >
+                  {aiTipLoading ? "Processando ajuda..." : "IA: me ajuda agora"}
+                </button>
+                {isTherapist && (
+                  <button
+                    className="secondary"
+                    disabled={therapistSummarySaving}
+                    onClick={() => setTherapistSummaryModalOpen(true)}
+                  >
+                    Observações do terapeuta
+                  </button>
+                )}
+              </div>
 
               {aiTipLoading && (
                 <span className="small-muted">
@@ -4236,6 +4310,96 @@ export function RoomClient({ code }: { code: string }) {
             </div>
             <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
               {aiContentModal.content}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {therapistSummaryModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (therapistSummarySaving) return;
+            setTherapistSummaryModalOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <strong>Síntese do terapeuta</strong>
+              <button
+                className="btn-secondary"
+                disabled={therapistSummarySaving}
+                onClick={() => setTherapistSummaryModalOpen(false)}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <span className="small-muted">
+              Essas observações são compartilhadas com o campo de síntese da sala no dashboard.
+            </span>
+
+            <textarea
+              rows={10}
+              maxLength={8000}
+              value={therapistSummaryDraft}
+              onChange={(event) => setTherapistSummaryDraft(event.target.value)}
+              placeholder="Registre aqui os principais pontos da condução terapêutica."
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-ghost"
+                disabled={therapistSummarySaving}
+                onClick={() => setTherapistSummaryDraft("")}
+              >
+                Limpar
+              </button>
+              <button
+                className="btn-primary"
+                disabled={therapistSummarySaving}
+                onClick={async () => {
+                  const ok = await handleSaveTherapistSummary();
+                  if (!ok) return;
+                  setTherapistSummaryModalOpen(false);
+                }}
+              >
+                {therapistSummarySaving ? "Salvando..." : "Salvar síntese"}
+              </button>
             </div>
           </div>
         </div>

@@ -41,6 +41,7 @@ type Room = {
   maxParticipants: number;
   therapistPlays: boolean;
   therapistSoloPlay?: boolean;
+  therapistSummary?: string | null;
   isVisibleToPlayers?: boolean;
   isTrial?: boolean;
   isAutoCreatedFromCheckout?: boolean;
@@ -618,6 +619,11 @@ export function DashboardClient() {
   const [creating, setCreating] = useState(false);
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
+  const [savingTherapistSummaryByRoomId, setSavingTherapistSummaryByRoomId] =
+    useState<Record<string, boolean>>({});
+  const [therapistSummaries, setTherapistSummaries] = useState<
+    Record<string, string>
+  >({});
   const [roomQuota, setRoomQuota] = useState<RoomQuota | null>(null);
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
@@ -760,8 +766,18 @@ export function DashboardClient() {
         return;
       }
       const data = await res.json();
+      const nextRooms = data.rooms || [];
       setCurrentUserId(data.currentUserId || null);
-      setRooms(data.rooms || []);
+      setRooms(nextRooms);
+      setTherapistSummaries(
+        nextRooms.reduce(
+          (acc: Record<string, string>, room: Room) => {
+            acc[room.id] = room.therapistSummary || "";
+            return acc;
+          },
+          {} as Record<string, string>,
+        ),
+      );
       setRoomQuota(data.roomQuota || null);
       setCanCreateRoom(Boolean(data.canCreateRoom));
       setCanUseTherapistSoloPlay(Boolean(data.canUseTherapistSoloPlay));
@@ -1038,6 +1054,46 @@ export function DashboardClient() {
       "success",
     );
     await loadRooms();
+  };
+
+  const handleSaveTherapistSummary = async (room: Room) => {
+    if (!room.canManage) return;
+    const therapistSummary = therapistSummaries[room.id] ?? "";
+
+    setSavingTherapistSummaryByRoomId((prev) => ({ ...prev, [room.id]: true }));
+    try {
+      const res = await fetch(`/api/mahalilah/rooms/${room.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ therapistSummary }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        pushToast(payload.error || "Erro ao salvar síntese do terapeuta.", "error");
+        return;
+      }
+
+      const payload = await res.json().catch(() => ({}));
+      const updatedSummary =
+        typeof payload?.room?.therapistSummary === "string"
+          ? payload.room.therapistSummary
+          : "";
+
+      setRooms((prev) =>
+        prev.map((item) =>
+          item.id === room.id
+            ? { ...item, therapistSummary: updatedSummary }
+            : item,
+        ),
+      );
+      setTherapistSummaries((prev) => ({ ...prev, [room.id]: updatedSummary }));
+      pushToast("Síntese do terapeuta salva.", "success");
+    } catch {
+      pushToast("Erro ao salvar síntese do terapeuta.", "error");
+    } finally {
+      setSavingTherapistSummaryByRoomId((prev) => ({ ...prev, [room.id]: false }));
+    }
   };
 
   const handleSendInvites = async (
@@ -1360,6 +1416,11 @@ export function DashboardClient() {
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
     const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
+    const isSavingTherapistSummary = Boolean(
+      savingTherapistSummaryByRoomId[room.id],
+    );
+    const therapistSummaryValue =
+      therapistSummaries[room.id] ?? room.therapistSummary ?? "";
 
     return (
       <div
@@ -1489,6 +1550,48 @@ export function DashboardClient() {
               paddingTop: 12,
             }}
           >
+            {room.canManage && (
+              <div className="notice" style={{ display: "grid", gap: 8 }}>
+                <strong>Síntese do terapeuta</strong>
+                <textarea
+                  rows={5}
+                  maxLength={8000}
+                  value={therapistSummaryValue}
+                  onChange={(event) =>
+                    setTherapistSummaries((prev) => ({
+                      ...prev,
+                      [room.id]: event.target.value,
+                    }))
+                  }
+                  placeholder="Registre observações centrais da sessão, pontos de atenção e próximos passos."
+                />
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    className="btn-secondary"
+                    disabled={isSavingTherapistSummary}
+                    onClick={() => handleSaveTherapistSummary(room)}
+                  >
+                    {isSavingTherapistSummary ? "Salvando..." : "Salvar síntese"}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    disabled={isSavingTherapistSummary}
+                    onClick={() =>
+                      setTherapistSummaries((prev) => ({
+                        ...prev,
+                        [room.id]: "",
+                      }))
+                    }
+                  >
+                    Limpar texto
+                  </button>
+                </div>
+                <span className="small-muted">
+                  Esse conteúdo pode ser atualizado a qualquer momento e também durante a partida.
+                </span>
+              </div>
+            )}
+
             <div
               className="dashboard-room-tabs"
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { Prisma, prisma } from '@hekate/database'
-import { HOUSES } from '@hekate/mahalilah-core'
+import { HOUSES, getHouseByNumber } from '@hekate/mahalilah-core'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
@@ -18,7 +18,7 @@ const PAGE_HEIGHT = 841.89
 const MARGIN_LEFT = 44
 const MARGIN_RIGHT = 44
 const PAGE_TOP = 88
-const PAGE_BOTTOM = 58
+const PAGE_BOTTOM = 94
 
 const roomExportInclude = Prisma.validator<Prisma.MahaLilahRoomInclude>()({
   participants: {
@@ -43,6 +43,11 @@ const roomExportInclude = Prisma.validator<Prisma.MahaLilahRoomInclude>()({
   },
   cardDraws: {
     include: {
+      card: {
+        include: {
+          deck: true
+        }
+      },
       drawnBy: {
         include: {
           user: { select: { id: true, name: true, email: true } }
@@ -83,6 +88,13 @@ type DeckInlineImageSlot = {
 type BuildPdfResult = {
   buffer: Buffer
   deckImageSlots: DeckInlineImageSlot[]
+}
+
+type BuildPdfOptions = {
+  therapistName: string
+  playerName: string
+  focusParticipantId: string | null
+  generatedAt: Date
 }
 
 function formatHouseName(number: number) {
@@ -365,67 +377,231 @@ function extractProgressInterval(content: string) {
   return null
 }
 
-function buildPdf(room: ExportRoom): BuildPdfResult {
+function extractTipData(content: string) {
+  const parsedText = extractAiReportText(content)
+  try {
+    const parsed = JSON.parse(content)
+    if (!parsed || typeof parsed !== 'object') {
+      return { text: parsedText, turnNumber: null as number | null }
+    }
+    const turnNumber =
+      typeof (parsed as { turnNumber?: unknown }).turnNumber === 'number'
+        ? (parsed as { turnNumber: number }).turnNumber
+        : null
+    return { text: parsedText, turnNumber }
+  } catch {
+    return { text: parsedText, turnNumber: null as number | null }
+  }
+}
+
+function extractProgressData(content: string) {
+  const parsedText = extractAiReportText(content)
+  try {
+    const parsed = JSON.parse(content)
+    if (!parsed || typeof parsed !== 'object') {
+      return {
+        text: parsedText,
+        intervalStart: null as number | null,
+        intervalEnd: null as number | null
+      }
+    }
+
+    const intervalStart =
+      typeof (parsed as { intervalStart?: unknown }).intervalStart === 'number'
+        ? (parsed as { intervalStart: number }).intervalStart
+        : null
+    const intervalEnd =
+      typeof (parsed as { intervalEnd?: unknown }).intervalEnd === 'number'
+        ? (parsed as { intervalEnd: number }).intervalEnd
+        : null
+
+    return {
+      text: parsedText,
+      intervalStart,
+      intervalEnd
+    }
+  } catch {
+    return {
+      text: parsedText,
+      intervalStart: null as number | null,
+      intervalEnd: null as number | null
+    }
+  }
+}
+
+function isPostStartMove(move: {
+  fromPos: number
+  toPos: number
+  diceValue: number
+}) {
+  return !(move.fromPos === 68 && move.toPos === 68 && move.diceValue !== 6)
+}
+
+function formatDurationBetween(startDate: Date | null, endDate: Date | null) {
+  if (!startDate || !endDate) return '-'
+  const diffMs = endDate.getTime() - startDate.getTime()
+  if (!Number.isFinite(diffMs) || diffMs < 0) return '-'
+
+  const totalMinutes = Math.floor(diffMs / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${hours}h ${minutes}min`
+}
+
+function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const pages: string[][] = []
   const deckImageSlots: DeckInlineImageSlot[] = []
 
-  const totalMoves = room.moves.length
-  const totalTherapyEntries = room.moves.reduce((sum, move) => sum + move.therapyEntries.length, 0)
-  const totalDeckDrawsFromMoves = room.moves.reduce((sum, move) => sum + move.cardDraws.length, 0)
-  const totalStandaloneDeckDraws = room.cardDraws.filter((draw) => !draw.moveId).length
-  const totalDeckDraws = totalDeckDrawsFromMoves + totalStandaloneDeckDraws
-  const totalTips = room.aiReports.filter((report) => report.kind === 'TIP').length
-  const totalProgressReports = room.aiReports.filter((report) => report.kind === 'PROGRESS').length
-  const totalFinalReports = room.aiReports.filter((report) => report.kind === 'FINAL').length
+  const focusParticipant =
+    (options.focusParticipantId
+      ? room.participants.find((participant) => participant.id === options.focusParticipantId)
+      : null) ||
+    room.participants.find((participant) => participant.role !== 'THERAPIST') ||
+    room.participants[0] ||
+    null
+  const focusParticipantId = focusParticipant?.id || null
 
-  const stateByParticipant = new Map<string, ExportPlayerState>(
-    room.playerStates.map((state) => [state.participantId, state as ExportPlayerState])
-  )
+  const participantMoves = focusParticipantId
+    ? room.moves.filter((move) => move.participantId === focusParticipantId)
+    : room.moves
+  const participantState = focusParticipantId
+    ? room.playerStates.find((state) => state.participantId === focusParticipantId) || null
+    : room.playerStates[0] || null
+  const participantReports = focusParticipantId
+    ? room.aiReports.filter((report) => report.participantId === focusParticipantId)
+    : room.aiReports
+  const standaloneDraws = focusParticipantId
+    ? room.cardDraws.filter((draw) => draw.moveId === null && draw.drawnByParticipantId === focusParticipantId)
+    : room.cardDraws.filter((draw) => draw.moveId === null)
+
+  const totalMoves = participantMoves.length
+  const totalTherapyEntries = participantMoves.reduce((sum, move) => sum + move.therapyEntries.length, 0)
+  const totalCardDraws = participantMoves.reduce((sum, move) => sum + move.cardDraws.length, 0) + standaloneDraws.length
+  const tipReports = participantReports.filter((report) => report.kind === 'TIP')
+  const progressReports = participantReports.filter((report) => report.kind === 'PROGRESS')
+  const finalReports = participantReports
+    .filter((report) => report.kind === 'FINAL')
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+  const firstPostStartMove =
+    participantMoves.find((move) => isPostStartMove(move)) || null
+  const lastMove = participantMoves.length ? participantMoves[participantMoves.length - 1] : null
+  const startDate = firstPostStartMove?.createdAt ? new Date(firstPostStartMove.createdAt) : null
+  const endDate = lastMove?.createdAt ? new Date(lastMove.createdAt) : null
+  const durationLabel = formatDurationBetween(startDate, endDate)
+  const currentHouseNumber = participantState ? participantState.position + 1 : 68
+  const currentHouse = getHouseByNumber(currentHouseNumber)
+
+  const tipByTurn = new Map<number, Array<{ text: string; createdAt: Date }>>()
+  const extraTips: Array<{ text: string; createdAt: Date; turnNumber: number | null }> = []
+  const existingTurnNumbers = new Set(participantMoves.map((move) => move.turnNumber))
+  tipReports.forEach((report) => {
+    const parsed = extractTipData(report.content)
+    if (
+      parsed.turnNumber === null ||
+      !Number.isFinite(parsed.turnNumber) ||
+      !existingTurnNumbers.has(parsed.turnNumber)
+    ) {
+      extraTips.push({
+        text: parsed.text,
+        createdAt: new Date(report.createdAt),
+        turnNumber: parsed.turnNumber
+      })
+      return
+    }
+    const current = tipByTurn.get(parsed.turnNumber) || []
+    current.push({
+      text: parsed.text,
+      createdAt: new Date(report.createdAt)
+    })
+    tipByTurn.set(parsed.turnNumber, current)
+  })
+
+  const progressByIntervalEnd = new Map<
+    number,
+    Array<{ id: string; text: string; intervalStart: number | null; intervalEnd: number | null; createdAt: Date }>
+  >()
+  const extraProgressReports: Array<{
+    id: string
+    text: string
+    intervalStart: number | null
+    intervalEnd: number | null
+    createdAt: Date
+  }> = []
+  progressReports.forEach((report) => {
+    const parsed = extractProgressData(report.content)
+    if (parsed.intervalEnd === null || !Number.isFinite(parsed.intervalEnd)) {
+      extraProgressReports.push({
+        id: report.id,
+        text: parsed.text,
+        intervalStart: parsed.intervalStart,
+        intervalEnd: parsed.intervalEnd,
+        createdAt: new Date(report.createdAt)
+      })
+      return
+    }
+    const current = progressByIntervalEnd.get(parsed.intervalEnd) || []
+    current.push({
+      id: report.id,
+      text: parsed.text,
+      intervalStart: parsed.intervalStart,
+      intervalEnd: parsed.intervalEnd,
+      createdAt: new Date(report.createdAt)
+    })
+    progressByIntervalEnd.set(parsed.intervalEnd, current)
+  })
+
+  const pathHouses: number[] = []
+  if (participantMoves.length > 0) {
+    pathHouses.push(participantMoves[0].fromPos)
+    participantMoves.forEach((move) => {
+      if (move.appliedJumpFrom !== null && move.appliedJumpTo !== null) {
+        pathHouses.push(move.appliedJumpFrom, move.appliedJumpTo)
+      } else {
+        pathHouses.push(move.toPos)
+      }
+    })
+  }
+
+  const recurringMap = new Map<number, number>()
+  pathHouses.forEach((houseNumber) => {
+    recurringMap.set(houseNumber, (recurringMap.get(houseNumber) || 0) + 1)
+  })
+  const recurringHouses = Array.from(recurringMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
 
   const coverPage: string[] = []
   pages.push(coverPage)
 
-  drawRect(coverPage, 0, 0, PAGE_WIDTH, 190, [0.10, 0.26, 0.31])
-  drawRect(coverPage, 0, 190, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
-  drawText(coverPage, 'Maha Lilah', 52, 84, { font: 'F2', size: 30, color: [1, 1, 1] })
-  drawText(coverPage, 'Relatorio de Sessao', 52, 118, { font: 'F2', size: 18, color: [0.91, 0.95, 0.97] })
-  drawText(coverPage, `Sala ${room.code}`, 52, 150, { font: 'F1', size: 12, color: [0.91, 0.95, 0.97] })
-  drawText(coverPage, `Gerado em ${formatDate(new Date())}`, 52, 170, { font: 'F1', size: 11, color: [0.91, 0.95, 0.97] })
+  drawRect(coverPage, 0, 0, PAGE_WIDTH, 220, [0.10, 0.26, 0.31])
+  drawRect(coverPage, 0, 220, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
+  drawText(coverPage, 'Maha Lilah Online', 52, 74, { font: 'F2', size: 30, color: [1, 1, 1] })
+  drawText(coverPage, 'Relatorio de Sessao', 52, 108, { font: 'F2', size: 18, color: [0.92, 0.95, 0.97] })
 
-  drawText(coverPage, 'Resumo rapido', 52, 236, { font: 'F2', size: 18, color: [0.10, 0.26, 0.31] })
-  drawLine(coverPage, 52, 246, PAGE_WIDTH - 52, [0.75, 0.80, 0.83], 1.2)
-
-  const coverCards = [
-    { label: 'Participantes', value: `${room.participants.length}/${room.maxParticipants}` },
-    { label: 'Jogadas', value: String(totalMoves) },
-    { label: 'Registros terapeuticos', value: String(totalTherapyEntries) },
-    { label: 'Relatorios IA', value: String(room.aiReports.length) }
-  ]
-
-  coverCards.forEach((card, index) => {
-    const column = index % 2
-    const row = Math.floor(index / 2)
-    const x = 52 + column * 248
-    const topY = 270 + row * 98
-    drawRect(coverPage, x, topY, 220, 80, [0.95, 0.97, 0.98])
-    drawText(coverPage, card.label, x + 14, topY + 28, { font: 'F1', size: 10, color: [0.33, 0.40, 0.45] })
-    drawText(coverPage, card.value, x + 14, topY + 58, { font: 'F2', size: 24, color: [0.10, 0.26, 0.31] })
+  const headerRoomLine =
+    `Sala ${room.code} - Status: ${formatRoomStatus(room.status)} - criada em ${formatDate(room.createdAt)}` +
+    (room.isTrial ? ' - Trial' : '')
+  drawText(coverPage, headerRoomLine, 52, 138, {
+    font: 'F1',
+    size: 11,
+    color: [0.92, 0.95, 0.97]
   })
-
-  drawText(
-    coverPage,
-    `Status da sala: ${formatRoomStatus(room.status)}  |  Trial: ${room.isTrial ? 'Sim' : 'Nao'}  |  Criada em ${formatDate(room.createdAt)}`,
-    52,
-    500,
-    { font: 'F1', size: 11, color: [0.26, 0.33, 0.38] }
-  )
-  drawText(
-    coverPage,
-    'Este documento consolida a sessao com participantes, timeline de jogadas, deck randomico e relatorios de IA.',
-    52,
-    528,
-    { font: 'F1', size: 10, color: [0.33, 0.40, 0.45] }
-  )
+  drawText(coverPage, `Terapeuta: ${options.therapistName}`, 52, 160, {
+    font: 'F1',
+    size: 11,
+    color: [0.92, 0.95, 0.97]
+  })
+  drawText(coverPage, `Nome do Jogador: ${options.playerName}`, 52, 182, {
+    font: 'F1',
+    size: 11,
+    color: [0.92, 0.95, 0.97]
+  })
+  drawText(coverPage, `Gerado em ${formatDate(options.generatedAt)}`, 52, 204, {
+    font: 'F1',
+    size: 10,
+    color: [0.92, 0.95, 0.97]
+  })
 
   let currentPage: string[] = []
   let cursorY = PAGE_TOP
@@ -434,17 +610,6 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
   const startBodyPage = (title?: string) => {
     currentPage = []
     pages.push(currentPage)
-    drawRect(currentPage, 0, 0, PAGE_WIDTH, 44, [0.95, 0.97, 0.98])
-    drawText(currentPage, `Maha Lilah | Sala ${room.code}`, MARGIN_LEFT, 28, {
-      font: 'F2',
-      size: 11,
-      color: [0.10, 0.26, 0.31]
-    })
-    drawText(currentPage, formatDate(new Date()), PAGE_WIDTH - MARGIN_RIGHT - 140, 28, {
-      font: 'F1',
-      size: 9,
-      color: [0.38, 0.44, 0.49]
-    })
     cursorY = PAGE_TOP
     if (title) {
       addSectionTitle(title)
@@ -458,7 +623,7 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
   }
 
   const addSectionTitle = (title: string) => {
-    ensureSpace(36)
+    ensureSpace(38)
     drawText(currentPage, title, MARGIN_LEFT, cursorY, {
       font: 'F2',
       size: 16,
@@ -469,12 +634,15 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
     cursorY += 14
   }
 
-  const addParagraph = (value: string, options?: { font?: 'F1' | 'F2'; size?: number; indent?: number; color?: [number, number, number] }) => {
+  const addParagraph = (
+    value: string,
+    options?: { font?: 'F1' | 'F2'; size?: number; indent?: number; color?: [number, number, number] }
+  ) => {
     const size = options?.size ?? 11
     const lineHeight = Math.max(14, size + 4)
     const indent = options?.indent ?? 0
     const textWidth = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT - indent
-    const maxChars = Math.max(34, Math.floor(textWidth / (size * 0.54)))
+    const maxChars = Math.max(30, Math.floor(textWidth / (size * 0.54)))
     const lines = wrapText(value, maxChars)
 
     lines.forEach((line) => {
@@ -488,209 +656,336 @@ function buildPdf(room: ExportRoom): BuildPdfResult {
     })
   }
 
+  const addMultilineParagraph = (value: string, options?: { indent?: number; size?: number; font?: 'F1' | 'F2' }) => {
+    const lines = (value || '')
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (lines.length === 0) {
+      addParagraph('Sem conteudo.', { indent: options?.indent ?? 0, size: options?.size ?? 10 })
+      return
+    }
+
+    lines.forEach((line) =>
+      addParagraph(line, {
+        indent: options?.indent ?? 0,
+        size: options?.size ?? 10,
+        font: options?.font ?? 'F1'
+      })
+    )
+  }
+
   const addSpacer = (height = 8) => {
     ensureSpace(height)
     cursorY += height
   }
 
-  startBodyPage('Sumario')
-  const sumarioItems = [
-    '1. Visao geral da sessao',
-    '2. Participantes e progresso',
-    '3. Timeline de jogadas',
-    '4. Deck randomico',
-    '5. Relatorios de IA'
-  ]
-  sumarioItems.forEach((item) => addParagraph(item, { size: 12 }))
-  addSpacer(10)
-  addParagraph(`Total de jogadas: ${totalMoves}`)
-  addParagraph(`Total de registros terapeuticos: ${totalTherapyEntries}`)
-  addParagraph(`Total de cartas reveladas: ${totalDeckDraws}`)
-  addParagraph(`Relatorios IA: ${room.aiReports.length} (Ajudas: ${totalTips} | Caminho ate agora: ${totalProgressReports} | Finais: ${totalFinalReports})`)
+  const addCardWithSideText = (params: {
+    card: NonNullable<ExportRoom['moves'][number]['cardDraws'][number]['card']> | null
+    cards: number[]
+    titlePrefix?: string
+  }) => {
+    const cardNumber = params.card?.cardNumber ?? params.cards[0] ?? null
+    const imageX = MARGIN_LEFT + 16
+    const imageWidth = 84
+    const imageHeight = 120
+    const textX = imageX + imageWidth + 14
+    const textWidth = PAGE_WIDTH - MARGIN_RIGHT - textX
+    const textMaxChars = Math.max(28, Math.floor(textWidth / (10 * 0.54)))
 
-  addSpacer(20)
-  addSectionTitle('1. Visao geral da sessao')
-  addParagraph(`Codigo da sala: ${room.code}`)
-  addParagraph(`Criada em: ${formatDate(room.createdAt)}`)
-  addParagraph(`Status atual: ${formatRoomStatus(room.status)}`)
-  addParagraph(`Participantes: ${room.participants.length} de ${room.maxParticipants}`)
-  addParagraph(`Plano: ${formatPlanType(room.planType)} | Sala trial: ${room.isTrial ? 'Sim' : 'Nao'}`)
-  addParagraph(`Terapeuta joga: ${room.therapistPlays ? 'Sim' : 'Nao'}`)
-  addParagraph(`Intencao bloqueada para jogadores: ${room.playerIntentionLocked ? 'Sim' : 'Nao'}`)
+    const lineEntries: string[] = []
+    lineEntries.push(`${params.titlePrefix || 'Carta'} #${cardNumber ?? '-'}`)
+    lineEntries.push(`Descricao: ${params.card?.description || '-'}`)
+    lineEntries.push(`Palavras-chave: ${params.card?.keywords || '-'}`)
+    if (params.card?.observation) {
+      lineEntries.push(`Observacao: ${params.card.observation}`)
+    }
 
-  addSpacer(16)
-  addSectionTitle('2. Participantes e progresso')
-  if (room.participants.length === 0) {
-    addParagraph('Nenhum participante encontrado para esta sessao.')
-  } else {
-    room.participants.forEach((participant, index) => {
-      const label = participant.user.name || participant.user.email
-      const state = stateByParticipant.get(participant.id)
-      addParagraph(`${index + 1}. ${label}`, { font: 'F2', size: 12 })
-      addParagraph(`Papel: ${formatParticipantRole(participant.role)}`, { indent: 14 })
-      addParagraph(
-        `Consentimento: ${participant.consentAcceptedAt ? formatDate(participant.consentAcceptedAt) : 'Nao aceito'}`,
-        { indent: 14 }
-      )
-      addParagraph(
-        `Intencao de jogo: ${participant.gameIntention || 'Nao informada'}`,
-        { indent: 14 }
-      )
-      if (!state) {
-        addParagraph('Estado: sem dados de progresso.', { indent: 14 })
-      } else {
-        addParagraph(`Casa atual: ${formatHouseName(state.position + 1)}`, { indent: 14 })
-        addParagraph(`Rolagens totais: ${state.rollCountTotal}`, { indent: 14 })
-        addParagraph(`Rolagens ate iniciar: ${state.rollCountUntilStart}`, { indent: 14 })
-        addParagraph(`Concluiu partida: ${state.hasCompleted ? 'Sim' : 'Nao'}`, { indent: 14 })
-      }
-      addSpacer(6)
+    const wrappedLines = lineEntries.flatMap((line) => wrapText(line, textMaxChars))
+    const lineHeight = 12
+    const textHeight = Math.max(24, wrappedLines.length * lineHeight + 4)
+    const blockHeight = Math.max(imageHeight + 6, textHeight + 8)
+
+    ensureSpace(blockHeight + 8)
+    const blockTop = cursorY
+    drawRect(
+      currentPage,
+      MARGIN_LEFT,
+      blockTop,
+      PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT,
+      blockHeight,
+      [0.96, 0.97, 0.98]
+    )
+
+    deckImageSlots.push({
+      pageIndex: pages.length - 1,
+      x: imageX,
+      topY: blockTop + 4,
+      width: imageWidth,
+      height: imageHeight,
+      cardNumber,
+      card: params.card
     })
+
+    let textY = blockTop + 18
+    wrappedLines.forEach((line, index) => {
+      drawText(currentPage, line, textX, textY, {
+        font: index === 0 ? 'F2' : 'F1',
+        size: 10,
+        color: [0.11, 0.17, 0.22]
+      })
+      textY += lineHeight
+    })
+
+    cursorY += blockHeight + 8
   }
 
-  addSpacer(16)
-  addSectionTitle('3. Timeline de jogadas')
-  if (room.moves.length === 0) {
-    addParagraph('Ainda nao ha jogadas registradas nesta sala.')
+  startBodyPage('1. Resumo rapido')
+  addParagraph(`Quantidade de jogadas: ${totalMoves}`)
+  addParagraph(`Quantidade ate inicio: ${participantState?.rollCountUntilStart ?? 0}`)
+  addParagraph(`Registros terapeuticos: ${totalTherapyEntries}`)
+  addParagraph(`Assistencia de IA: ${tipReports.length}`)
+  addParagraph(`Tiragens de cartas: ${totalCardDraws}`)
+
+  addSpacer(12)
+  addSectionTitle('2. Visao geral da sessao')
+  addParagraph(`Terapeuta joga: ${room.therapistPlays ? 'Sim' : 'Nao'}`)
+  addParagraph(`Intencao do jogador: ${focusParticipant?.gameIntention?.trim() || 'Nao informada'}`)
+  addParagraph(`Consentimento: ${focusParticipant?.consentAcceptedAt ? formatDate(focusParticipant.consentAcceptedAt) : 'Nao aceito'}`)
+  addParagraph(`Casa atual: ${currentHouseNumber} (${currentHouse?.title || '-'})`)
+  addParagraph(`Concluiu partida: ${participantState?.hasCompleted ? 'Sim' : 'Nao'}`)
+  addParagraph(`Inicio da partida: ${startDate ? formatDate(startDate) : '-'}`)
+  addParagraph(`Fim da partida: ${endDate ? formatDate(endDate) : '-'}`)
+  addParagraph(`Tempo da partida: ${durationLabel}`)
+
+  addSpacer(12)
+  addSectionTitle('3. Jornada')
+  if (participantMoves.length === 0) {
+    addParagraph('Ainda nao ha jogadas registradas para este jogador nesta sessao.')
   } else {
-    room.moves.forEach((move, index) => {
-      const name = move.participant.user.name || move.participant.user.email
-      const jumpText = move.appliedJumpFrom
-        ? ` | atalho ${move.appliedJumpFrom} -> ${move.appliedJumpTo}`
-        : ''
+    let postStartMoveIndex = 0
+    const consumedProgressIds = new Set<string>()
+
+    participantMoves.forEach((move) => {
+      const hadJump = move.appliedJumpFrom !== null && move.appliedJumpTo !== null
+      if (isPostStartMove(move)) {
+        postStartMoveIndex += 1
+      }
+
+      const journeyTitle = hadJump
+        ? `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.appliedJumpFrom || move.toPos)} -> ${formatHouseName(move.appliedJumpTo || move.toPos)}`
+        : `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.toPos)}`
+      addParagraph(journeyTitle, { font: 'F2', size: 11 })
+      addParagraph(`Data/hora: ${formatDate(move.createdAt)}`, { indent: 14, size: 10 })
+      addParagraph(`Casa atual: ${formatHouseName(move.toPos)}`, { indent: 14, size: 10 })
       addParagraph(
-        `${index + 1}. ${formatDate(move.createdAt)} | ${name} | dado ${move.diceValue} | ${formatHouseName(
-          move.fromPos
-        )} -> ${formatHouseName(move.toPos)}${jumpText}`,
-        { font: 'F2', size: 10 }
+        `Explicacao da casa: ${getHouseByNumber(move.toPos)?.description || '-'}`,
+        { indent: 14, size: 10 }
       )
 
-      if (move.cardDraws.length > 0) {
-        addParagraph(`Cartas da jogada: ${move.cardDraws.map((draw) => draw.cards.join(', ')).join(' | ')}`, {
-          indent: 14,
-          size: 10
-        })
+      if (hadJump) {
+        const jumpFrom = move.appliedJumpFrom as number
+        const jumpTo = move.appliedJumpTo as number
+        addParagraph(
+          `Atalho: ${formatHouseName(jumpFrom)} -> ${formatHouseName(jumpTo)} (${jumpTo > jumpFrom ? 'subida' : 'descida'})`,
+          { indent: 14, size: 10 }
+        )
+        addParagraph(
+          `Explicacao do atalho: ${getHouseByNumber(jumpFrom)?.description || '-'} | destino: ${getHouseByNumber(jumpTo)?.description || '-'}`,
+          { indent: 14, size: 10 }
+        )
       }
 
       if (move.therapyEntries.length > 0) {
-        move.therapyEntries.forEach((entry, therapyIndex) => {
-          addParagraph(`Registro terapeutico ${therapyIndex + 1}:`, {
+        addParagraph('Registros terapeuticos:', { indent: 14, size: 10, font: 'F2' })
+        move.therapyEntries.forEach((entry, index) => {
+          addParagraph(`Registro ${index + 1}:`, { indent: 28, size: 10, font: 'F2' })
+          if (entry.emotion) {
+            addParagraph(
+              `Emocao: ${entry.emotion}${entry.intensity ? ` (${entry.intensity}/10)` : ''}`,
+              { indent: 42, size: 10 }
+            )
+          }
+          if (entry.insight) addParagraph(`Insight: ${entry.insight}`, { indent: 42, size: 10 })
+          if (entry.body) addParagraph(`Corpo: ${entry.body}`, { indent: 42, size: 10 })
+          if (entry.microAction) addParagraph(`Acao: ${entry.microAction}`, { indent: 42, size: 10 })
+        })
+      }
+
+      const tipsForMove = tipByTurn.get(move.turnNumber) || []
+      if (tipsForMove.length > 0) {
+        addParagraph('Ajudas da IA:', { indent: 14, size: 10, font: 'F2' })
+        tipsForMove.forEach((tip, index) => {
+          addParagraph(`Ajuda ${index + 1} (${formatDate(tip.createdAt)}):`, {
+            indent: 28,
+            size: 10,
+            font: 'F2'
+          })
+          addMultilineParagraph(tip.text, { indent: 42, size: 10 })
+        })
+      }
+
+      if (move.cardDraws.length > 0) {
+        addParagraph('Cartas tiradas:', { indent: 14, size: 10, font: 'F2' })
+        move.cardDraws.forEach((draw) => {
+          addCardWithSideText({
+            card: draw.card || null,
+            cards: draw.cards,
+            titlePrefix: 'Carta'
+          })
+        })
+      }
+
+      const progressForMove = progressByIntervalEnd.get(postStartMoveIndex) || []
+      if (progressForMove.length > 0) {
+        progressForMove.forEach((progressReport) => {
+          consumedProgressIds.add(progressReport.id)
+          const intervalLabel =
+            progressReport.intervalStart !== null && progressReport.intervalEnd !== null
+              ? `${progressReport.intervalStart} - ${progressReport.intervalEnd}`
+              : extractProgressInterval(progressReport.text) || '-'
+          addParagraph(`Caminho ate agora (${intervalLabel})`, {
             indent: 14,
             size: 10,
             font: 'F2'
           })
-          if (entry.emotion) {
-            addParagraph(
-              `Emocao: ${entry.emotion}${entry.intensity ? ` (${entry.intensity}/10)` : ''}`,
-              { indent: 28, size: 10 }
-            )
-          }
-          if (entry.insight) addParagraph(`Insight: ${entry.insight}`, { indent: 28, size: 10 })
-          if (entry.body) addParagraph(`Corpo: ${entry.body}`, { indent: 28, size: 10 })
-          if (entry.microAction) addParagraph(`Micro-acao: ${entry.microAction}`, { indent: 28, size: 10 })
+          addMultilineParagraph(progressReport.text, { indent: 28, size: 10 })
         })
       }
-      addSpacer(4)
-    })
-  }
 
-  addSpacer(16)
-  addSectionTitle('4. Deck randomico')
-  const movesWithDraws = room.moves.filter((move) => move.cardDraws.length > 0)
-  if (movesWithDraws.length === 0) {
-    addParagraph('Nao houve tiragem randomica nesta sessao.')
-  } else {
-    movesWithDraws.forEach((move) => {
-      addParagraph(`Jogada #${move.turnNumber}`, { font: 'F2', size: 12 })
-      move.cardDraws.forEach((draw) => {
-        const card = draw.card
-        const cardNumber = card?.cardNumber ?? draw.cards[0] ?? null
-        addParagraph(`Carta ${cardNumber ?? '-'}`, {
-          indent: 14,
-          font: 'F2',
-          size: 11
-        })
-
-        const imageX = MARGIN_LEFT + 28
-        const imageWidth = 76
-        const imageHeight = 108
-        const imageBottomSpacing = 14
-        ensureSpace(imageHeight + imageBottomSpacing)
-        const imageTop = cursorY
-        deckImageSlots.push({
-          pageIndex: pages.length - 1,
-          x: imageX,
-          topY: imageTop,
-          width: imageWidth,
-          height: imageHeight,
-          cardNumber,
-          card: card || null
-        })
-        cursorY += imageHeight + imageBottomSpacing
-
-        if (card) {
-          addParagraph(`Descricao: ${card.description || '-'}`, { indent: 28, size: 10 })
-          addParagraph(`Palavras-chave: ${card.keywords || '-'}`, { indent: 28, size: 10 })
-          if (card.observation) {
-            addParagraph(`Observacao: ${card.observation}`, { indent: 28, size: 10 })
-          }
-        } else {
-          addParagraph('Descricao: -', { indent: 28, size: 10 })
-          addParagraph('Palavras-chave: -', { indent: 28, size: 10 })
-        }
-        addSpacer(4)
-      })
       addSpacer(8)
     })
+
+    if (standaloneDraws.length > 0) {
+      addParagraph('Tiragens sem jogada vinculada:', { font: 'F2', size: 11 })
+      standaloneDraws.forEach((draw) => {
+        addCardWithSideText({
+          card: draw.card || null,
+          cards: draw.cards,
+          titlePrefix: 'Carta'
+        })
+      })
+    }
+
+    if (extraTips.length > 0) {
+      addParagraph('Ajudas da IA sem jogada vinculada:', { font: 'F2', size: 11 })
+      extraTips.forEach((tip, index) => {
+        addParagraph(
+          `Ajuda ${index + 1}${tip.turnNumber ? ` (jogada ${tip.turnNumber})` : ''} - ${formatDate(tip.createdAt)}`,
+          { indent: 14, size: 10, font: 'F2' }
+        )
+        addMultilineParagraph(tip.text, { indent: 28, size: 10 })
+      })
+    }
+
+    const unmatchedProgressReports = [
+      ...Array.from(progressByIntervalEnd.values())
+        .flat()
+        .filter((report) => !consumedProgressIds.has(report.id)),
+      ...extraProgressReports
+    ]
+    if (unmatchedProgressReports.length > 0) {
+      addParagraph('Caminho ate agora sem intervalo vinculado:', {
+        font: 'F2',
+        size: 11
+      })
+      unmatchedProgressReports.forEach((progressReport, index) => {
+        const intervalLabel =
+          progressReport.intervalStart !== null && progressReport.intervalEnd !== null
+            ? `${progressReport.intervalStart} - ${progressReport.intervalEnd}`
+            : '-'
+        addParagraph(
+          `Caminho ${index + 1} (intervalo ${intervalLabel}) - ${formatDate(progressReport.createdAt)}`,
+          { indent: 14, size: 10, font: 'F2' }
+        )
+        addMultilineParagraph(progressReport.text, { indent: 28, size: 10 })
+      })
+    }
   }
 
-  addSpacer(16)
-  addSectionTitle('5. Relatorios de IA')
-  if (room.aiReports.length === 0) {
-    addParagraph('Nenhum relatorio de IA foi emitido nesta sessao.')
+  addSpacer(12)
+  addSectionTitle('4. Resumo da Jornada')
+  if (pathHouses.length === 0) {
+    addParagraph('Sem caminho registrado ate o momento.')
   } else {
-    room.aiReports.forEach((report, index) => {
-      const owner = report.participant?.user?.name || report.participant?.user?.email || 'Sessao'
-      const progressInterval =
-        report.kind === 'PROGRESS'
-          ? extractProgressInterval(report.content)
-          : null
-      addParagraph(
-        `${index + 1}. ${formatReportKind(report.kind)}${progressInterval ? ` (${progressInterval})` : ''} | ${formatDate(report.createdAt)} | alvo: ${owner}`,
-        { font: 'F2', size: 10 }
-      )
+    addParagraph(`Caminho completo: ${pathHouses.map((house) => formatHouseName(house)).join(' -> ')}`)
+  }
 
-      const reportText = extractAiReportText(report.content)
-      const contentLines = reportText
-        .split(/\r?\n/g)
-        .map((line) => line.trim())
-        .filter(Boolean)
+  if (recurringHouses.length === 0) {
+    addParagraph('Casas mais recorrentes: sem dados.')
+  } else {
+    addParagraph('Casas mais recorrentes:', { font: 'F2', size: 11 })
+    recurringHouses.forEach(([houseNumber, count], index) => {
+      addParagraph(`${index + 1}. ${formatHouseName(houseNumber)} - ${count} vez(es)`, { indent: 14, size: 10 })
+    })
+  }
 
-      if (contentLines.length === 0) {
-        addParagraph('Conteudo vazio.', { indent: 14, size: 10 })
-      } else {
-        contentLines.forEach((line) => addParagraph(line, { indent: 14, size: 10 }))
-      }
+  addSpacer(12)
+  addSectionTitle('5. Sintese Final pela IA')
+  if (finalReports.length === 0) {
+    addParagraph('Nenhum relatorio final da IA foi registrado para este jogador.')
+  } else {
+    finalReports.forEach((report, index) => {
+      addParagraph(`Relatorio final ${index + 1} - ${formatDate(report.createdAt)}`, {
+        font: 'F2',
+        size: 11
+      })
+      addMultilineParagraph(extractAiReportText(report.content), { indent: 14, size: 10 })
       addSpacer(6)
     })
   }
 
+  addSpacer(12)
+  addSectionTitle('6. Sintese final pelo Terapeuta')
+  addMultilineParagraph(room.therapistSummary || 'Sem sintese final registrada pelo terapeuta para esta sessao.', {
+    size: 10
+  })
+
   const totalPages = pages.length
+  const footerLineOne =
+    'Maha Lilah Online e uma plataforma de apoio terapeutico. Nao substitui terapia, atendimento medico ou emergencia. Resultados variam conforme contexto e conducao.'
+  const footerLineTwo =
+    'Os dados deste relatorio sao gerados por IA e pelo terapeuta. Toda informacao deve ser revisada e validada com acompanhamento profissional antes de qualquer decisao.'
+
   pages.forEach((page, index) => {
-    drawLine(page, MARGIN_LEFT, PAGE_HEIGHT - 36, PAGE_WIDTH - MARGIN_RIGHT, [0.87, 0.90, 0.92], 0.8)
-    drawText(
-      page,
-      `Pagina ${index + 1} de ${totalPages}`,
-      PAGE_WIDTH - MARGIN_RIGHT - 88,
-      PAGE_HEIGHT - 20,
-      { font: 'F1', size: 9, color: [0.45, 0.50, 0.54] }
+    const headerColor: [number, number, number] = index === 0 ? [1, 1, 1] : [0.10, 0.26, 0.31]
+    const headerLineColor: [number, number, number] = index === 0 ? [0.30, 0.45, 0.50] : [0.87, 0.90, 0.92]
+
+    drawText(page, `Maha Lilah Online - Sala ${room.code} - ${options.playerName}`, MARGIN_LEFT, 24, {
+      font: 'F2',
+      size: 10,
+      color: headerColor
+    })
+    drawLine(page, MARGIN_LEFT, 36, PAGE_WIDTH - MARGIN_RIGHT, headerLineColor, 0.8)
+
+    const footerTop = PAGE_HEIGHT - 76
+    drawLine(page, MARGIN_LEFT, footerTop, PAGE_WIDTH - MARGIN_RIGHT, [0.87, 0.90, 0.92], 0.8)
+    const footerMaxChars = Math.max(
+      74,
+      Math.floor((PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT) / (8 * 0.56))
     )
+    const footerLines = [
+      ...wrapText(footerLineOne, footerMaxChars),
+      ...wrapText(footerLineTwo, footerMaxChars)
+    ]
+    footerLines.forEach((line, lineIndex) => {
+      drawText(page, line, MARGIN_LEFT, footerTop + 16 + lineIndex * 11, {
+        font: 'F1',
+        size: 8,
+        color: [0.41, 0.46, 0.51]
+      })
+    })
+    drawText(page, `Pagina ${index + 1} de ${totalPages}`, PAGE_WIDTH - MARGIN_RIGHT - 88, PAGE_HEIGHT - 18, {
+      font: 'F1',
+      size: 9,
+      color: [0.45, 0.50, 0.54]
+    })
   })
 
   const pageStreams = pages.map((ops) => ops.join('\n'))
   const objectMap: Record<number, string> = {
     1: '<< /Type /Catalog /Pages 2 0 R >>',
-    // WinAnsiEncoding garante mapeamento correto de acentos latinos no PDF Type1.
     3: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
     4: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'
   }
@@ -901,7 +1196,24 @@ export async function GET(request: Request, { params }: RouteParams) {
         } as ExportRoom)
       : room
 
-    const { buffer: basePdfBuffer, deckImageSlots } = buildPdf(exportRoom)
+    const targetParticipant =
+      (scopedParticipantId
+        ? room.participants.find((participant) => participant.id === scopedParticipantId)
+        : null) ||
+      room.participants.find((participant) => participant.role !== 'THERAPIST') ||
+      room.participants[0] ||
+      null
+    const therapistName =
+      therapistParticipant?.user.name || therapistParticipant?.user.email || 'Nao identificado'
+    const playerName =
+      targetParticipant?.user.name || targetParticipant?.user.email || 'Sessao completa'
+
+    const { buffer: basePdfBuffer, deckImageSlots } = buildPdf(exportRoom, {
+      therapistName,
+      playerName,
+      focusParticipantId: targetParticipant?.id || scopedParticipantId || null,
+      generatedAt: new Date()
+    })
     const requestOrigin = new URL(request.url).origin
     const pdfBuffer = await appendDeckCardsWithImagesPdf(
       basePdfBuffer,
@@ -909,9 +1221,6 @@ export async function GET(request: Request, { params }: RouteParams) {
       deckImageSlots
     )
 
-    const targetParticipant = scopedParticipantId
-      ? room.participants.find((participant) => participant.id === scopedParticipantId)
-      : null
     const participantSuffix = targetParticipant
       ? `_${toFilenamePart(targetParticipant.user.name || targetParticipant.user.email)}`
       : ''
