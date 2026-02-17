@@ -1437,7 +1437,7 @@ export function DashboardClient() {
               className="btn-secondary"
               onClick={() => toggleRoom(room.id)}
             >
-              {isOpen ? "Fechar detalhes" : "Ver detalhes"}
+              {isOpen ? "Fechar detalhes" : "Detalhes"}
             </button>
             {room.canDelete && (
               <button
@@ -1449,7 +1449,7 @@ export function DashboardClient() {
                   color: "#ff9f9f",
                 }}
               >
-                {isDeletingRoom ? "Excluindo..." : "Excluir sala"}
+                {isDeletingRoom ? "Excluindo..." : "Excluir"}
               </button>
             )}
           </div>
@@ -2358,19 +2358,23 @@ export function DashboardClient() {
     roomQuota?.planType === "SUBSCRIPTION_LIMITED" &&
     roomQuota.roomsRemaining !== null &&
     roomQuota.roomsRemaining <= 0;
-  const hasSingleSessionOrPlan = canCreateRoom || rooms.some((room) => !room.isTrial);
+  const hasSingleSessionOrPlan =
+    canCreateRoom || createdRooms.some((room) => !room.isTrial);
   const showTrialUpgradeCard =
     hasUsedTrial === true &&
     trialRoomStatus !== null &&
     trialRoomStatus !== "ACTIVE" &&
     !canCreateRoom;
-  const totalRoomsCount = rooms.length;
-  const activeRoomsCount = rooms.filter((room) => room.status === "ACTIVE").length;
+  const indicatorRooms = createdRooms;
+  const totalRoomsCount = indicatorRooms.length;
+  const activeRoomsCount = indicatorRooms.filter(
+    (room) => room.status === "ACTIVE",
+  ).length;
 
   const occupancyBaseRooms =
     activeRoomsCount > 0
-      ? rooms.filter((room) => room.status === "ACTIVE")
-      : rooms;
+      ? indicatorRooms.filter((room) => room.status === "ACTIVE")
+      : indicatorRooms;
   const occupiedSlots = occupancyBaseRooms.reduce(
     (sum, room) => sum + room.participantsCount,
     0,
@@ -2382,8 +2386,11 @@ export function DashboardClient() {
   const occupancyPercent =
     availableSlots > 0 ? Math.round((occupiedSlots / availableSlots) * 100) : 0;
 
-  const invitesSentCount = rooms.reduce((sum, room) => sum + room.invites.length, 0);
-  const invitesAcceptedCount = rooms.reduce(
+  const invitesSentCount = indicatorRooms.reduce(
+    (sum, room) => sum + room.invites.length,
+    0,
+  );
+  const invitesAcceptedCount = indicatorRooms.reduce(
     (sum, room) =>
       sum + room.invites.filter((invite) => Boolean(invite.acceptedAt)).length,
     0,
@@ -2393,7 +2400,7 @@ export function DashboardClient() {
       ? Math.round((invitesAcceptedCount / invitesSentCount) * 100)
       : null;
 
-  const consentPendingParticipantsCount = rooms.reduce(
+  const consentPendingParticipantsCount = indicatorRooms.reduce(
     (sum, room) =>
       sum +
       room.participants.filter(
@@ -2402,29 +2409,34 @@ export function DashboardClient() {
       ).length,
     0,
   );
-  const consentPendingRoomsCount = rooms.filter((room) =>
+  const consentPendingRoomsCount = indicatorRooms.filter((room) =>
     room.participants.some(
       (participant) =>
         participant.role === "PLAYER" && !participant.consentAcceptedAt,
     ),
   ).length;
 
-  const activeRoomsWithoutMovementCount = rooms.filter(
+  const activeRoomsWithoutMovementCount = indicatorRooms.filter(
     (room) => room.status === "ACTIVE" && room.stats.moves === 0,
   ).length;
 
-  const totalMoves = rooms.reduce((sum, room) => sum + room.stats.moves, 0);
-  const totalTherapyEntries = rooms.reduce(
+  const totalMoves = indicatorRooms.reduce((sum, room) => sum + room.stats.moves, 0);
+  const totalTherapyEntries = indicatorRooms.reduce(
     (sum, room) => sum + room.stats.therapyEntries,
     0,
   );
-  const totalAiReports = rooms.reduce((sum, room) => sum + room.stats.aiReports, 0);
+  const totalAiReports = indicatorRooms.reduce(
+    (sum, room) => sum + room.stats.aiReports,
+    0,
+  );
   const therapyEntriesPerMove =
     totalMoves > 0 ? totalTherapyEntries / totalMoves : null;
   const aiReportsPerMove = totalMoves > 0 ? totalAiReports / totalMoves : null;
 
-  const closedRoomsCount = rooms.filter((room) => room.status === "CLOSED").length;
-  const completedRoomsCount = rooms.filter(
+  const closedRoomsCount = indicatorRooms.filter(
+    (room) => room.status === "CLOSED",
+  ).length;
+  const completedRoomsCount = indicatorRooms.filter(
     (room) => room.status === "COMPLETED",
   ).length;
   const finalizedRoomsCount = closedRoomsCount + completedRoomsCount;
@@ -2444,11 +2456,11 @@ export function DashboardClient() {
   const now = Date.now();
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  const roomsCreatedLast7Days = rooms.filter((room) => {
+  const roomsCreatedLast7Days = indicatorRooms.filter((room) => {
     const createdAt = new Date(room.createdAt).getTime();
     return Number.isFinite(createdAt) && now - createdAt <= sevenDaysMs;
   }).length;
-  const roomsCreatedLast30Days = rooms.filter((room) => {
+  const roomsCreatedLast30Days = indicatorRooms.filter((room) => {
     const createdAt = new Date(room.createdAt).getTime();
     return Number.isFinite(createdAt) && now - createdAt <= thirtyDaysMs;
   }).length;
@@ -2684,7 +2696,8 @@ export function DashboardClient() {
         >
           <h2 className="section-title">Indicadores do painel</h2>
           <span className="small-muted">
-            Base: {totalRoomsCount} sala{totalRoomsCount === 1 ? "" : "s"} no filtro atual
+            Base: {totalRoomsCount} sala{totalRoomsCount === 1 ? "" : "s"} criada
+            {totalRoomsCount === 1 ? "" : "s"} no filtro atual
           </span>
         </div>
 
