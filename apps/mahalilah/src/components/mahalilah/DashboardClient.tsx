@@ -209,6 +209,56 @@ type TutorialStep = {
   target: DashboardTutorialTarget;
 };
 
+function ToggleSwitch({
+  checked,
+  disabled,
+  onToggle,
+  ariaLabel,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={onToggle}
+      style={{
+        width: 42,
+        height: 24,
+        borderRadius: 999,
+        border: "1px solid var(--border)",
+        background: checked
+          ? "rgba(106, 211, 176, 0.35)"
+          : "hsl(var(--temple-surface-2))",
+        display: "inline-flex",
+        alignItems: "center",
+        padding: 2,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.6 : 1,
+        transition: "background 140ms ease",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          background: checked ? "#6ad3b0" : "rgba(255, 255, 255, 0.68)",
+          transform: checked ? "translateX(18px)" : "translateX(0)",
+          transition: "transform 140ms ease, background 140ms ease",
+        }}
+      />
+    </button>
+  );
+}
+
 const DASHBOARD_ONBOARDING_VERSION = "2026-02-feature-pack";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
@@ -1367,17 +1417,17 @@ export function DashboardClient() {
                   padding: "0 4px",
                 }}
               >
-                <input
-                  type="checkbox"
+                <ToggleSwitch
                   checked={Boolean(room.isVisibleToPlayers)}
-                  onChange={(event) =>
+                  ariaLabel="Disponibilizar para jogadores"
+                  onToggle={() =>
                     handleToggleRoomPlayerVisibility(
                       room,
-                      event.target.checked,
+                      !Boolean(room.isVisibleToPlayers),
                     )
                   }
                 />
-                <span>Disponível para visualização do jogador</span>
+                <span>Disponibilizar para jogadores</span>
               </label>
             )}
             {room.status === "ACTIVE" && (
