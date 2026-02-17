@@ -94,6 +94,30 @@ export const GAMIFICATION_POINT_SETTINGS: GamificationPointSetting[] = [
     section: 'commerce'
   },
   {
+    key: 'GAMIFICATION_MAHALILAH_ROOM_PURCHASE_POINTS',
+    field: 'mahalilahRoomPurchasePoints',
+    label: 'Compra de sala Maha Lilah',
+    description: 'Pontos ao confirmar pagamento de sessão avulsa no Maha Lilah.',
+    defaultValue: 120,
+    section: 'commerce'
+  },
+  {
+    key: 'GAMIFICATION_MAHALILAH_SUBSCRIPTION_SIGNUP_POINTS',
+    field: 'mahalilahSubscriptionSignupPoints',
+    label: 'Assinatura Maha Lilah (inicial)',
+    description: 'Pontos ao confirmar a primeira assinatura do Maha Lilah.',
+    defaultValue: 200,
+    section: 'commerce'
+  },
+  {
+    key: 'GAMIFICATION_MAHALILAH_SUBSCRIPTION_RENEWAL_POINTS',
+    field: 'mahalilahSubscriptionRenewalPoints',
+    label: 'Assinatura Maha Lilah (renovação)',
+    description: 'Pontos ao confirmar renovação de assinatura no Maha Lilah.',
+    defaultValue: 80,
+    section: 'commerce'
+  },
+  {
     key: 'GAMIFICATION_PAID_EVENT_ENROLL_POINTS',
     field: 'paidEventEnrollPoints',
     label: 'Inscricao em evento pago',

@@ -121,7 +121,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       }),
       prisma.mahaLilahCardDraw.findMany({
         where: participantScopeId
-          ? { roomId: room.id, moveId: null, drawnById: participantScopeId }
+          ? { roomId: room.id, moveId: null, drawnByParticipantId: participantScopeId }
           : { roomId: room.id, moveId: null },
         orderBy: { createdAt: "asc" },
         include: {

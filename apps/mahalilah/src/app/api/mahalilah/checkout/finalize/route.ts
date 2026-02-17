@@ -11,6 +11,10 @@ import { authOptions } from '@/lib/auth'
 import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 import { sendRoomCreatedEmail } from '@/lib/email'
+import {
+  awardMahaGamificationPoints,
+  getMahaGamificationPointSettings
+} from '@/lib/gamification'
 
 export const dynamic = 'force-dynamic'
 
@@ -182,6 +186,26 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         console.warn('Falha ao enviar e-mail de sala criada (checkout/finalize):', error)
+      }
+    }
+
+    if (order.userId) {
+      try {
+        const pointSettings = await getMahaGamificationPointSettings()
+        await awardMahaGamificationPoints({
+          userId: order.userId,
+          points: pointSettings.roomPurchasePoints,
+          eventType: 'MAHALILAH_ROOM_PURCHASED',
+          reasonLabel: 'Compra de sala Maha Lilah',
+          uniqueKey: `mahalilah_single_session_purchase_${order.id}`,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            source: 'checkout_finalize'
+          }
+        })
+      } catch (error) {
+        console.warn('Falha ao conceder pontos de compra Maha Lilah (finalize):', error)
       }
     }
 

@@ -11,6 +11,10 @@ import {
 import { MercadoPagoService } from '@/lib/payments/mercadopago'
 import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { sendRoomCreatedEmail } from '@/lib/email'
+import {
+  awardMahaGamificationPoints,
+  getMahaGamificationPointSettings
+} from '@/lib/gamification'
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELED' | 'REFUNDED'
 
@@ -226,6 +230,14 @@ export async function POST(request: Request) {
     }
 
     const now = new Date()
+    let pointSettingsCache:
+      | Awaited<ReturnType<typeof getMahaGamificationPointSettings>>
+      | null = null
+    const loadPointSettings = async () => {
+      if (pointSettingsCache) return pointSettingsCache
+      pointSettingsCache = await getMahaGamificationPointSettings()
+      return pointSettingsCache
+    }
     const transactionMetadata = (transaction.metadata as any) || {}
     const updatedTransaction = await prisma.paymentTransaction.update({
       where: { id: transaction.id },
@@ -337,6 +349,37 @@ export async function POST(request: Request) {
                 }
               })
             }
+          }
+
+          try {
+            const pointSettings = await loadPointSettings()
+            const billingReason = String(transactionMetadata?.billingReason || 'INITIAL')
+            const isRenewal = billingReason === 'RENEWAL'
+            const pointsToAward = isRenewal
+              ? pointSettings.subscriptionRenewalPoints
+              : pointSettings.subscriptionSignupPoints
+
+            await awardMahaGamificationPoints({
+              userId: transaction.subscription.userId,
+              points: pointsToAward,
+              eventType: isRenewal
+                ? 'MAHALILAH_SUBSCRIPTION_RENEWAL'
+                : 'MAHALILAH_SUBSCRIPTION_SIGNUP',
+              reasonLabel: isRenewal
+                ? 'Renovação de assinatura Maha Lilah'
+                : 'Assinatura Maha Lilah',
+              uniqueKey: isRenewal
+                ? `mahalilah_subscription_renewal_${updatedTransaction.id}`
+                : `mahalilah_subscription_signup_${transaction.subscription.id}`,
+              metadata: {
+                subscriptionId: transaction.subscription.id,
+                billingReason,
+                transactionId: updatedTransaction.id,
+                planType: subscriptionMetadata.mahalilah.planType
+              }
+            })
+          } catch (error) {
+            console.error('Falha ao conceder pontos de assinatura Maha Lilah:', error)
           }
         } else if (status === 'FAILED' || status === 'CANCELED') {
           await prisma.userSubscription.update({
@@ -452,6 +495,27 @@ export async function POST(request: Request) {
             } catch (error) {
               console.warn('Falha ao enviar e-mail de sala criada (webhook):', error)
             }
+          }
+
+          try {
+            if (maha.planType === 'SINGLE_SESSION' && order.userId) {
+              const pointSettings = await loadPointSettings()
+              await awardMahaGamificationPoints({
+                userId: order.userId,
+                points: pointSettings.roomPurchasePoints,
+                eventType: 'MAHALILAH_ROOM_PURCHASED',
+                reasonLabel: 'Compra de sala Maha Lilah',
+                uniqueKey: `mahalilah_single_session_purchase_${order.id}`,
+                metadata: {
+                  orderId: order.id,
+                  orderNumber: order.orderNumber,
+                  planType: maha.planType,
+                  transactionId: updatedTransaction.id
+                }
+              })
+            }
+          } catch (error) {
+            console.error('Falha ao conceder pontos de compra Maha Lilah:', error)
           }
         } else if (status === 'FAILED' || status === 'CANCELED') {
           await prisma.order.update({
