@@ -787,6 +787,98 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
     cursorY += totalHeight + 6
   }
 
+  const addOverviewCards = (
+    items: Array<{
+      label: string
+      value: string
+    }>
+  ) => {
+    if (items.length === 0) return
+
+    const columns = 2
+    const gapX = 10
+    const gapY = 10
+    const paddingX = 10
+    const contentWidth = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
+    const cardWidth = (contentWidth - gapX * (columns - 1)) / columns
+    const labelSize = 9
+    const labelLineHeight = 11
+    const valueSize = 11
+    const valueLineHeight = 13
+    const labelChars = Math.max(14, Math.floor((cardWidth - paddingX * 2) / (labelSize * 0.54)))
+    const valueChars = Math.max(18, Math.floor((cardWidth - paddingX * 2) / (valueSize * 0.54)))
+    const palette: Array<[number, number, number]> = [
+      [0.91, 0.95, 0.99],
+      [0.93, 0.96, 0.92],
+      [0.98, 0.95, 0.91],
+      [0.95, 0.94, 0.98]
+    ]
+
+    const rowEntries: Array<{
+      entries: Array<{ labelLines: string[]; valueLines: string[] }>
+      rowHeight: number
+    }> = []
+
+    const rows = Math.ceil(items.length / columns)
+    for (let row = 0; row < rows; row += 1) {
+      const start = row * columns
+      const rowItems = items.slice(start, start + columns)
+      let rowHeight = 0
+      const entries = rowItems.map((item) => {
+        const labelLines = wrapText(item.label, labelChars)
+        const valueLines = wrapText(item.value || '-', valueChars)
+        const height = 10 + labelLines.length * labelLineHeight + 6 + valueLines.length * valueLineHeight + 10
+        rowHeight = Math.max(rowHeight, height)
+        return { labelLines, valueLines }
+      })
+      rowEntries.push({ entries, rowHeight })
+    }
+
+    const totalHeight =
+      rowEntries.reduce((sum, row) => sum + row.rowHeight, 0) + Math.max(0, (rowEntries.length - 1) * gapY)
+    ensureSpace(totalHeight + 6)
+
+    let rowTop = cursorY
+    rowEntries.forEach((rowData, rowIndex) => {
+      const start = rowIndex * columns
+      const offsetX =
+        rowData.entries.length < columns
+          ? ((columns - rowData.entries.length) * (cardWidth + gapX)) / 2
+          : 0
+
+      rowData.entries.forEach((entry, colIndex) => {
+        const cardX = MARGIN_LEFT + offsetX + colIndex * (cardWidth + gapX)
+        const color = palette[(start + colIndex) % palette.length]
+
+        drawRect(currentPage, cardX, rowTop, cardWidth, rowData.rowHeight, color)
+
+        let textY = rowTop + 16
+        entry.labelLines.forEach((line) => {
+          drawText(currentPage, line, cardX + paddingX, textY, {
+            font: 'F2',
+            size: labelSize,
+            color: [0.15, 0.22, 0.28]
+          })
+          textY += labelLineHeight
+        })
+
+        textY += 3
+        entry.valueLines.forEach((line) => {
+          drawText(currentPage, line, cardX + paddingX, textY, {
+            font: 'F1',
+            size: valueSize,
+            color: [0.08, 0.12, 0.16]
+          })
+          textY += valueLineHeight
+        })
+      })
+
+      rowTop += rowData.rowHeight + gapY
+    })
+
+    cursorY += totalHeight + 6
+  }
+
   const addCardWithSideText = (params: {
     card: NonNullable<ExportRoom['moves'][number]['cardDraws'][number]['card']> | null
     cards: number[]
@@ -861,14 +953,34 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
 
   addSpacer(12)
   addSectionTitle('2. Visao geral da sessao')
-  addParagraph(`Terapeuta joga: ${room.therapistPlays ? 'Sim' : 'Nao'}`)
-  addParagraph(`Intencao do jogador: ${focusParticipant?.gameIntention?.trim() || 'Nao informada'}`)
-  addParagraph(`Consentimento: ${focusParticipant?.consentAcceptedAt ? formatDate(focusParticipant.consentAcceptedAt) : 'Nao aceito'}`)
-  addParagraph(`Casa atual: ${currentHouseNumber} (${currentHouse?.title || '-'})`)
-  addParagraph(`Concluiu partida: ${participantState?.hasCompleted ? 'Sim' : 'Nao'}`)
-  addParagraph(`Inicio da partida: ${startDate ? formatDate(startDate) : '-'}`)
-  addParagraph(`Fim da partida: ${endDate ? formatDate(endDate) : '-'}`)
-  addParagraph(`Tempo da partida: ${durationLabel}`)
+  addOverviewCards([
+    { label: 'Terapeuta joga', value: room.therapistPlays ? 'Sim' : 'Nao' },
+    {
+      label: 'Intencao do jogador',
+      value: focusParticipant?.gameIntention?.trim() || 'Nao informada'
+    },
+    {
+      label: 'Consentimento',
+      value: focusParticipant?.consentAcceptedAt ? formatDate(focusParticipant.consentAcceptedAt) : 'Nao aceito'
+    },
+    {
+      label: 'Casa atual',
+      value: `${currentHouseNumber} (${currentHouse?.title || '-'})`
+    },
+    {
+      label: 'Concluiu partida',
+      value: participantState?.hasCompleted ? 'Sim' : 'Nao'
+    },
+    {
+      label: 'Inicio da partida',
+      value: startDate ? formatDate(startDate) : '-'
+    },
+    {
+      label: 'Fim da partida',
+      value: endDate ? formatDate(endDate) : '-'
+    },
+    { label: 'Tempo da partida', value: durationLabel }
+  ])
 
   addSpacer(12)
   addSectionTitle('3. Jornada')
@@ -888,7 +1000,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
         ? `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.appliedJumpFrom || move.toPos)} -> ${formatHouseName(move.appliedJumpTo || move.toPos)}`
         : `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.toPos)}`
       addParagraph(journeyTitle, { font: 'F2', size: 11 })
-      if (isPostStartMove(move)) {
+      if (isPostStartMove(move) && !hadJump) {
         addParagraph('Explicacao da casa:', { indent: 14, size: 10, font: 'F2' })
         const houseExplanationLines = getHouseExplanationLines(move.toPos)
         houseExplanationLines.forEach((line) => {
