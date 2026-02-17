@@ -1211,12 +1211,6 @@ export function DashboardClient() {
   const visibleRooms =
     sessionsViewTab === "created" ? createdRooms : participatedRooms;
 
-  useEffect(() => {
-    if (sessionsViewTab === "created" && createdRooms.length === 0 && participatedRooms.length > 0) {
-      setSessionsViewTab("participated");
-    }
-  }, [sessionsViewTab, createdRooms.length, participatedRooms.length]);
-
   const roomCards = visibleRooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
     const canManageInvites = room.canManage && room.status === "ACTIVE";
