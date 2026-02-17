@@ -1251,11 +1251,9 @@ export function DashboardClient() {
           ? therapistParticipants
           : []
         : room.viewerRole === "THERAPIST"
-          ? playerParticipants.length > 0
-            ? playerParticipants
-            : room.therapistPlays
-              ? therapistParticipants
-              : []
+          ? room.therapistPlays
+            ? [...playerParticipants, ...therapistParticipants]
+            : playerParticipants
           : currentUserParticipant
             ? [currentUserParticipant]
             : [];
@@ -2310,14 +2308,14 @@ export function DashboardClient() {
             <div style={{ display: "grid", gap: 8 }}>
               <strong>
                 {room.viewerRole === "THERAPIST"
-                  ? "Exportar PDF por jogador"
+                  ? "Exportar PDF por participante"
                   : "Exportar meu PDF"}
               </strong>
               {exportableParticipants.length === 0 ? (
                 <span className="small-muted">
                   {room.therapistSoloPlay && room.viewerRole !== "THERAPIST"
                     ? "Exportação disponível apenas para o terapeuta neste modo."
-                    : "Nenhum jogador disponível para exportação."}
+                    : "Nenhum participante disponível para exportação."}
                 </span>
               ) : (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
