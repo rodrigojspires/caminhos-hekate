@@ -3879,9 +3879,7 @@ export function RoomClient({ code }: { code: string }) {
                   const isCurrent = participant.id === currentParticipant?.id;
                   const participantIsTherapist =
                     participant.role === "THERAPIST";
-                  const canEditParticipantSummary =
-                    isTherapist &&
-                    (participant.role === "PLAYER" || isTherapistSoloPlay);
+                  const canEditParticipantSummary = isTherapist;
                   return (
                     <div
                       key={participant.id}

@@ -1113,7 +1113,7 @@ export function DashboardClient() {
     room: Room,
     participantId: string,
   ) => {
-    if (!room.canManage) return;
+    if (room.viewerRole !== "THERAPIST") return;
     const therapistSummary = therapistSummaries[participantId] ?? "";
 
     setSavingTherapistSummaryByParticipantId((prev) => ({
@@ -1809,9 +1809,7 @@ export function DashboardClient() {
                   {visibleParticipants.map((participant) => {
                     const isTherapist = participant.role === "THERAPIST";
                     const canEditParticipantSummary =
-                      room.canManage &&
-                      (participant.role === "PLAYER" ||
-                        Boolean(room.therapistSoloPlay));
+                      room.viewerRole === "THERAPIST";
                     const participantSummaryValue =
                       therapistSummaries[participant.id] ??
                       participant.therapistSummary ??

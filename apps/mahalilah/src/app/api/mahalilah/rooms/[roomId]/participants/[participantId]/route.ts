@@ -29,15 +29,28 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const room = await prisma.mahaLilahRoom.findUnique({
       where: { id: params.roomId },
-      select: { id: true, createdByUserId: true }
+      select: { id: true }
     })
 
     if (!room) {
       return NextResponse.json({ error: 'Sala não encontrada' }, { status: 404 })
     }
 
-    if (room.createdByUserId !== session.user.id) {
-      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    const requesterParticipant = await prisma.mahaLilahParticipant.findFirst({
+      where: {
+        roomId: room.id,
+        userId: session.user.id
+      },
+      select: {
+        role: true
+      }
+    })
+
+    if (requesterParticipant?.role !== MahaLilahParticipantRole.THERAPIST) {
+      return NextResponse.json(
+        { error: 'Apenas terapeutas da sala podem editar a síntese.' },
+        { status: 403 }
+      )
     }
 
     const participant = await prisma.mahaLilahParticipant.findUnique({
