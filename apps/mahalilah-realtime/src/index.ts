@@ -689,6 +689,7 @@ async function generateProgressSummaryIfNeeded(params: {
   onStatusChange?: (payload: {
     status: "processing" | "done";
     participantId: string;
+    participantName: string;
     windowStartMoveIndex: number;
     windowEndMoveIndex: number;
   }) => void;
@@ -873,6 +874,7 @@ async function generateProgressSummaryIfNeeded(params: {
   params.onStatusChange?.({
     status: "processing",
     participantId: participant.id,
+    participantName: participant.user.name || participant.user.email,
     windowStartMoveIndex,
     windowEndMoveIndex,
   });
@@ -898,6 +900,7 @@ async function generateProgressSummaryIfNeeded(params: {
   params.onStatusChange?.({
     status: "done",
     participantId: participant.id,
+    participantName: participant.user.name || participant.user.email,
     windowStartMoveIndex,
     windowEndMoveIndex,
   });
@@ -1555,12 +1558,14 @@ io.on("connection", (socket: AuthedSocket) => {
                 onStatusChange: ({
                   status,
                   participantId: targetParticipantId,
+                  participantName,
                   windowStartMoveIndex,
                   windowEndMoveIndex,
                 }) => {
                   io.to(roomId).emit("ai:progressSummaryStatus", {
                     status,
                     participantId: targetParticipantId,
+                    participantName,
                     windowStartMoveIndex,
                     windowEndMoveIndex,
                   });

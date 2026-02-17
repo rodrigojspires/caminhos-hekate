@@ -172,6 +172,7 @@ type ParsedProgressSummary = {
 type ProgressSummaryStatusPayload = {
   status?: "processing" | "done" | "error";
   participantId?: string;
+  participantName?: string;
   windowStartMoveIndex?: number;
   windowEndMoveIndex?: number;
 };
@@ -965,6 +966,17 @@ export function RoomClient({ code }: { code: string }) {
               ...prev,
               [participantId]: true,
             }));
+            const participantLabel =
+              payload.participantName?.trim() || "jogador";
+            const intervalLabel =
+              typeof payload.windowStartMoveIndex === "number" &&
+              typeof payload.windowEndMoveIndex === "number"
+                ? ` (jogadas ${payload.windowStartMoveIndex}-${payload.windowEndMoveIndex})`
+                : "";
+            pushToast(
+              `Gerando síntese automática de O Caminho até agora para ${participantLabel}${intervalLabel}.`,
+              "warning",
+            );
             return;
           }
 
