@@ -373,7 +373,7 @@ async function callOpenAI(prompt: string) {
         {
           role: "system",
           content:
-            "Você é um terapeuta que usa o jogo Maha Lilah para gerar insights. Responda em português, com estrutura clara e tom acolhedor.",
+            "Você é um terapeuta que utiliza o jogo Maha Lilah para facilitar insights simbólicos e reflexões profundas. Responda em português, de modo claro, acolhedor e sempre conectando as respostas ao significado simbólico de cada casa no tabuleiro.",
         },
         { role: "user", content: prompt },
       ],
@@ -668,7 +668,7 @@ async function generateFinalReportForParticipant(params: {
 
   const participantIntention = participant.gameIntention?.trim() || null;
   const context = await buildAiContext(room.id, participantId);
-  const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nGere um resumo final estruturado com: padrões, temas, 3 intervenções, plano de 7 dias e perguntas finais.`;
+  const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nConsiderando a intenção do jogo e o caminho percorrido, faça o seguinte: (1) Gere um breve resumo das casas e movimentos percorridos. (2) Identifique os temas e padrões que surgiram em relação à intenção. (3) Ofereça um insight terapêutico central que resuma a experiência. (4) Sugira ações ou práticas terapêuticas alinhadas à intenção para os próximos sete dias. (5) Explique o que o caminho revelou sobre a intenção do jogador. (6) Deixe uma pergunta final para integrar o aprendizado no dia a dia.`;
   const content = await callOpenAI(prompt);
 
   await prisma.mahaLilahAiReport.create({
@@ -863,7 +863,7 @@ async function generateProgressSummaryIfNeeded(params: {
     })),
   };
 
-  const prompt = `Contexto global da sessão (JSON):\n${JSON.stringify(globalContext, null, 2)}\n\nTrecho do percurso para "O Caminho até agora" (JSON):\n${JSON.stringify(intervalContext, null, 2)}\n\nGere uma síntese em português com:\n1) o que aconteceu nesse intervalo;\n2) padrões e viradas mais relevantes;\n3) conexão direta com a intenção do jogo;\n4) três perguntas de integração;\n5) duas micro-ações para o próximo ciclo.\nSeja terapêutico, concreto e fácil de aplicar.`;
+  const prompt = `Contexto global da sessão (JSON):\n${JSON.stringify(globalContext, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nCom base nesse caminho (JSON):\n${JSON.stringify(intervalContext, null, 2)}\n\ngere uma síntese em português que inclua: (1) um resumo do que aconteceu; (2) padrões simbólicos ou viradas significativas; (3) uma conexão direta com a intenção original do jogo; (4) três perguntas de reflexão que estimulem o autoconhecimento; (5) um insight final para encerrar este ciclo; (6) uma reflexão interna sobre o significado do caminho percorrido. Seja terapêutico, reflexivo e conecte a jornada à consciência.`;
   const content = await callOpenAI(prompt);
 
   await prisma.mahaLilahAiReport.create({
@@ -1919,7 +1919,7 @@ io.on("connection", (socket: AuthedSocket) => {
 
         const participantIntention = participant.gameIntention?.trim() || null;
         const context = await buildAiContext(room.id, participant.id);
-        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nGere: perguntas terapêuticas, hipótese de padrão, micro-intervenção corporal e micro-ação. Seja direto e prático.`;
+        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nConsiderando a intenção original do jogo e o caminho percorrido até esta casa, gere: (1) uma hipótese terapêutica sobre o significado simbólico desta casa, conectando-a ao trajeto até aqui; (2) uma pergunta de insight que incentive a pessoa a refletir sobre o aprendizado deste ponto; (3) uma pergunta de insight conectando o caminho à experiência atual;(3) uma breve orientação para o próximo passo no jogo, que aprofunde a compreensão do caminho. (3) um insight final que aprofunde a compreensão do momento; (4) uma reflexão pessoal que convide o jogador a relacionar o aprendizado desta casa a uma situação ou sentimento da vida real. Seja reflexivo, terapêutico, integrador e focado em entendimento.`;
 
         const content = await callOpenAI(prompt);
         const lastMove = await prisma.mahaLilahMove.findFirst({

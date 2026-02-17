@@ -650,6 +650,8 @@ export function DashboardClient() {
     from: "",
     to: "",
   });
+  const [isFiltersMenuOpen, setIsFiltersMenuOpen] = useState(false);
+  const [isIndicatorsCollapsed, setIsIndicatorsCollapsed] = useState(false);
   const [sessionsViewTab, setSessionsViewTab] =
     useState<SessionsViewTab>("created");
   const [showDashboardTutorial, setShowDashboardTutorial] = useState(false);
@@ -883,6 +885,14 @@ export function DashboardClient() {
       Math.min(prev, dashboardTutorialSteps.length - 1),
     );
   }, [showDashboardTutorial, dashboardTutorialSteps.length]);
+
+  useEffect(() => {
+    if (!showDashboardTutorial) return;
+    const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
+    if (currentStep?.target === "filters") {
+      setIsFiltersMenuOpen(true);
+    }
+  }, [showDashboardTutorial, dashboardTutorialStep, dashboardTutorialSteps]);
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
@@ -1210,6 +1220,7 @@ export function DashboardClient() {
   const participatedRooms = rooms.filter((room) => !room.canManage);
   const visibleRooms =
     sessionsViewTab === "created" ? createdRooms : participatedRooms;
+  const hasActiveFilters = Boolean(filters.status || filters.from || filters.to);
 
   const roomCards = visibleRooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
@@ -2543,508 +2554,550 @@ export function DashboardClient() {
           );
         })}
       </div>
-      {hasUsedTrial === false && !hasSingleSessionOrPlan && (
-        <div
-          className="card dashboard-create-card"
-          style={{ display: "grid", gap: 12 }}
-        >
-          <strong>Sala trial</strong>
-          <p className="small-muted" style={{ margin: 0 }}>
-            Experimente agora com 1 jogador, 1 ajuda de IA e resumo final, com
-            limite de 5 jogadas após sair da casa 68.
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              className="btn-primary"
-              onClick={handleCreateTrialRoom}
-              disabled={creatingTrial}
-            >
-              {creatingTrial ? "Criando trial..." : "Experimente já"}
-            </button>
-            <a href="/planos" className="btn-secondary">
-              Ver planos
-            </a>
-          </div>
-        </div>
-      )}
-      {showTrialUpgradeCard && (
-        <div className="card dashboard-create-card" style={{ display: "grid", gap: 12 }}>
-          <strong>Sala trial encerrada</strong>
-          <p className="small-muted" style={{ margin: 0 }}>
-            Sua sala trial foi encerrada. Para criar novas salas, escolha entre sessão
-            avulsa ou assinatura.
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href="/planos" className="btn-secondary">
-              Comprar sessão avulsa
-            </a>
-            <a href="/planos" className="btn-primary">
-              Assinar Plano
-            </a>
-          </div>
-        </div>
-      )}
-      {canCreateRoom && (
-        <div
-          className="card dashboard-create-card"
-          style={{ display: "grid", gap: 12 }}
-          data-tour-dashboard="create-room"
-        >
-          <strong>Criar nova sala</strong>
+      <div className="dashboard-three-columns">
+        <aside className="grid dashboard-side-column dashboard-left-column" style={{ gap: 16 }}>
           <div
-            className="dashboard-create-row"
-            style={{
-              display: "flex",
-              gap: 12,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
+            className="card dashboard-filters-card"
+            style={{ display: "grid", gap: 12 }}
+            data-tour-dashboard="filters"
           >
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Jogadores máximos</span>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={maxParticipants}
-                onChange={(event) =>
-                  setMaxParticipants(Number(event.target.value))
-                }
-              />
-            </label>
-            <label
+            <div
+              className="dashboard-filters-head"
               style={{
                 display: "flex",
-                gap: 8,
+                justifyContent: "space-between",
                 alignItems: "center",
-                paddingTop: 22,
+                flexWrap: "wrap",
+                gap: 10,
               }}
             >
-              <input
-                type="checkbox"
-                checked={therapistPlays}
-                onChange={(event) => {
-                  if (therapistSoloPlay && !event.target.checked) return;
-                  setTherapistPlays(event.target.checked);
-                }}
-                disabled={therapistSoloPlay}
-              />
-              <span>Terapeuta joga junto</span>
-            </label>
-            {canUseTherapistSoloPlay && (
-              <label
+              <h2 className="section-title">Filtros de sessão</h2>
+              <button
+                className="btn-secondary"
+                onClick={() => setIsFiltersMenuOpen((prev) => !prev)}
+                aria-expanded={isFiltersMenuOpen}
+                aria-controls="dashboard-filters-menu"
+              >
+                {isFiltersMenuOpen ? "✕ Fechar" : "☰ Filtros"}
+              </button>
+            </div>
+            {hasActiveFilters && (
+              <span className="small-muted">Filtros ativos aplicados no painel.</span>
+            )}
+            {isFiltersMenuOpen ? (
+              <div id="dashboard-filters-menu" className="grid" style={{ gap: 12 }}>
+                <div
+                  className="dashboard-filters-row"
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Status</span>
+                    <select
+                      value={filters.status}
+                      onChange={(event) =>
+                        setFilters((prev) => ({ ...prev, status: event.target.value }))
+                      }
+                    >
+                      <option value="">Todos</option>
+                      <option value="ACTIVE">Ativas</option>
+                      <option value="CLOSED">Encerradas</option>
+                      <option value="COMPLETED">Concluídas</option>
+                    </select>
+                  </label>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>De</span>
+                    <input
+                      type="date"
+                      value={filters.from}
+                      onChange={(event) =>
+                        setFilters((prev) => ({ ...prev, from: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>Até</span>
+                    <input
+                      type="date"
+                      value={filters.to}
+                      onChange={(event) =>
+                        setFilters((prev) => ({ ...prev, to: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <button
+                    className="btn-secondary w-fit"
+                    style={{ alignSelf: "center" }}
+                    onClick={() => loadRooms()}
+                  >
+                    Aplicar filtros
+                  </button>
+                </div>
+                <button
+                  className="btn-ghost"
+                  onClick={() => {
+                    setFilters({ status: "", from: "", to: "" });
+                    loadRooms({ status: "", from: "", to: "" });
+                  }}
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            ) : (
+              <p className="small-muted" style={{ margin: 0 }}>
+                Abra o menu para filtrar por status e período.
+              </p>
+            )}
+          </div>
+        </aside>
+
+        <div className="grid dashboard-center-column" style={{ gap: 16 }}>
+          {hasUsedTrial === false && !hasSingleSessionOrPlan && (
+            <div
+              className="card dashboard-create-card"
+              style={{ display: "grid", gap: 12 }}
+            >
+              <strong>Sala trial</strong>
+              <p className="small-muted" style={{ margin: 0 }}>
+                Experimente agora com 1 jogador, 1 ajuda de IA e resumo final, com
+                limite de 5 jogadas após sair da casa 68.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="btn-primary"
+                  onClick={handleCreateTrialRoom}
+                  disabled={creatingTrial}
+                >
+                  {creatingTrial ? "Criando trial..." : "Experimente já"}
+                </button>
+                <a href="/planos" className="btn-secondary">
+                  Ver planos
+                </a>
+              </div>
+            </div>
+          )}
+          {showTrialUpgradeCard && (
+            <div className="card dashboard-create-card" style={{ display: "grid", gap: 12 }}>
+              <strong>Sala trial encerrada</strong>
+              <p className="small-muted" style={{ margin: 0 }}>
+                Sua sala trial foi encerrada. Para criar novas salas, escolha entre sessão
+                avulsa ou assinatura.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href="/planos" className="btn-secondary">
+                  Comprar sessão avulsa
+                </a>
+                <a href="/planos" className="btn-primary">
+                  Assinar Plano
+                </a>
+              </div>
+            </div>
+          )}
+          {canCreateRoom && (
+            <div
+              className="card dashboard-create-card"
+              style={{ display: "grid", gap: 12 }}
+              data-tour-dashboard="create-room"
+            >
+              <strong>Criar nova sala</strong>
+              <div
+                className="dashboard-create-row"
                 style={{
                   display: "flex",
-                  gap: 8,
+                  gap: 12,
+                  flexWrap: "wrap",
                   alignItems: "center",
-                  paddingTop: 22,
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={therapistSoloPlay}
-                  onChange={(event) => {
-                    const enabled = event.target.checked;
-                    setTherapistSoloPlay(enabled);
-                    if (enabled) {
-                      setTherapistPlays(true);
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Jogadores máximos</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={maxParticipants}
+                    onChange={(event) =>
+                      setMaxParticipants(Number(event.target.value))
                     }
+                  />
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    paddingTop: 22,
                   }}
-                />
-                <span>Só o terapeuta joga (demais visualizam)</span>
-              </label>
-            )}
-            <button
-              className="btn-primary"
-              onClick={handleCreateRoom}
-              disabled={creating || isLimitedQuotaExhausted}
-            >
-              {creating
-                ? "Criando..."
-                : isLimitedQuotaExhausted
-                  ? "Limite do período atingido"
-                  : "Criar sala"}
-            </button>
-          </div>
-          <p className="small-muted">
-            Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
-            vaga de jogador.
-            {canUseTherapistSoloPlay
-              ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
-              : ' O modo de jogadores somente visualização não está disponível no seu plano atual.'}
-          </p>
-          {isLimitedQuotaExhausted && (
-            <p className="notice">
-              Você já usou todas as salas disponíveis no período atual do plano limitado.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="card" style={{ display: "grid", gap: 12 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <h2 className="section-title">Indicadores do painel</h2>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Taxa de ocupação</span>
-            <strong>{occupancyPercent}%</strong>
-            <span className="small-muted">
-              {occupiedSlots}/{availableSlots} vagas preenchidas
-            </span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Convites aceitos</span>
-            <strong>
-              {inviteAcceptancePercent === null ? "--" : `${inviteAcceptancePercent}%`}
-            </strong>
-            <span className="small-muted">
-              {invitesAcceptedCount}/{invitesSentCount} convites
-            </span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Consentimento pendente</span>
-            <strong>{consentPendingParticipantsCount}</strong>
-            <span className="small-muted">
-              {consentPendingRoomsCount} sala{consentPendingRoomsCount === 1 ? "" : "s"} com pendência
-            </span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Salas ativas sem movimento</span>
-            <strong>{activeRoomsWithoutMovementCount}</strong>
-            <span className="small-muted">
-              de {activeRoomsCount} sala{activeRoomsCount === 1 ? "" : "s"} ativa
-              {activeRoomsCount === 1 ? "" : "s"}
-            </span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Profundidade terapêutica</span>
-            <strong>
-              {therapyEntriesPerMove === null
-                ? "--"
-                : therapyEntriesPerMove.toFixed(2).replace(".", ",")}
-            </strong>
-            <span className="small-muted">registros por jogada</span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Uso da IA</span>
-            <strong>
-              {aiReportsPerMove === null
-                ? "--"
-                : aiReportsPerMove.toFixed(2).replace(".", ",")}
-            </strong>
-            <span className="small-muted">relatórios por jogada</span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Taxa de conclusão</span>
-            <strong>{completionRatePercent}%</strong>
-            <span className="small-muted">
-              {completedRoomsCount}/{totalRoomsCount} salas completas
-            </span>
-          </div>
-
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <span className="small-muted">Ritmo de criação</span>
-            <strong>
-              7d: {roomsCreatedLast7Days} | 30d: {roomsCreatedLast30Days}
-            </strong>
-            <span className="small-muted">salas criadas</span>
-          </div>
-
-          {roomQuota && (
-            <div
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "10px 12px",
-                display: "grid",
-                gap: 4,
-              }}
-            >
-              <span className="small-muted">
-                {roomQuota.planType === "SUBSCRIPTION_LIMITED"
-                  ? "Salas do plano limitado"
-                  : "Salas no período"}
-              </span>
-              <strong>{roomQuota.roomsUsed}</strong>
-              <span className="small-muted">Período: {quotaPeriodLabel}</span>
-              {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
-                <span className="small-muted">
-                  Máx.: {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit} |
-                  Disponíveis:{" "}
-                  {roomQuota.roomsRemaining == null ? "Ilimitadas" : roomQuota.roomsRemaining}
-                </span>
-              ) : (
-                <span className="small-muted">
-                  Limite: {roomQuota.roomsLimit == null ? "Ilimitado" : roomQuota.roomsLimit}
-                </span>
+                >
+                  <input
+                    type="checkbox"
+                    checked={therapistPlays}
+                    onChange={(event) => {
+                      if (therapistSoloPlay && !event.target.checked) return;
+                      setTherapistPlays(event.target.checked);
+                    }}
+                    disabled={therapistSoloPlay}
+                  />
+                  <span>Terapeuta joga junto</span>
+                </label>
+                {canUseTherapistSoloPlay && (
+                  <label
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      paddingTop: 22,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={therapistSoloPlay}
+                      onChange={(event) => {
+                        const enabled = event.target.checked;
+                        setTherapistSoloPlay(enabled);
+                        if (enabled) {
+                          setTherapistPlays(true);
+                        }
+                      }}
+                    />
+                    <span>Só o terapeuta joga (demais visualizam)</span>
+                  </label>
+                )}
+                <button
+                  className="btn-primary"
+                  onClick={handleCreateRoom}
+                  disabled={creating || isLimitedQuotaExhausted}
+                >
+                  {creating
+                    ? "Criando..."
+                    : isLimitedQuotaExhausted
+                      ? "Limite do período atingido"
+                      : "Criar sala"}
+                </button>
+              </div>
+              <p className="small-muted">
+                Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
+                vaga de jogador.
+                {canUseTherapistSoloPlay
+                  ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
+                  : ' O modo de jogadores somente visualização não está disponível no seu plano atual.'}
+              </p>
+              {isLimitedQuotaExhausted && (
+                <p className="notice">
+                  Você já usou todas as salas disponíveis no período atual do plano limitado.
+                </p>
               )}
             </div>
           )}
-        </div>
 
-        <div
-          style={{
-            borderTop: "1px solid var(--border)",
-            paddingTop: 10,
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 10,
-            }}
-          >
-            <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <span>Encerradas (CLOSED)</span>
-              <strong>
-                {finalizedRoomsCount > 0 ? `${closedRoomsPercent}%` : "--"} ({closedRoomsCount})
-              </strong>
+          <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className={
+                    sessionsViewTab === "created" ? "btn-primary" : "btn-secondary"
+                  }
+                  onClick={() => setSessionsViewTab("created")}
+                >
+                  Sessões criadas ({createdRooms.length})
+                </button>
+                <button
+                  className={
+                    sessionsViewTab === "participated"
+                      ? "btn-primary"
+                      : "btn-secondary"
+                  }
+                  onClick={() => setSessionsViewTab("participated")}
+                >
+                  Sessões que participei ({participatedRooms.length})
+                </button>
+              </div>
             </div>
-            <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <span>Completas (COMPLETED)</span>
-              <strong>
-                {finalizedRoomsCount > 0 ? `${completedRoomsPercent}%` : "--"} ({completedRoomsCount})
-              </strong>
+            {loading ? (
+              <div className="card" data-tour-dashboard="sessions-list">
+                Carregando...
+              </div>
+            ) : visibleRooms.length === 0 ? (
+              <div className="card" data-tour-dashboard="sessions-list">
+                {sessionsViewTab === "created"
+                  ? "Nenhuma sessão criada com os filtros atuais."
+                  : "Nenhuma sessão em que você participou com os filtros atuais."}
+              </div>
+            ) : (
+              <div
+                className="dashboard-sessions-list"
+                data-tour-dashboard="sessions-list"
+              >
+                {roomCards}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <aside className="grid dashboard-side-column dashboard-right-column" style={{ gap: 16 }}>
+          <div className="card dashboard-indicators-card" style={{ display: "grid", gap: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <h2 className="section-title">Indicadores do painel</h2>
+              <button
+                className="btn-secondary"
+                onClick={() => setIsIndicatorsCollapsed((prev) => !prev)}
+                aria-expanded={!isIndicatorsCollapsed}
+              >
+                {isIndicatorsCollapsed ? "Expandir" : "Recolher"}
+              </button>
             </div>
-          </div>
-        </div>
 
-        {dashboardAlerts.length > 0 && (
-          <div
-            style={{
-              borderTop: "1px solid var(--border)",
-              paddingTop: 10,
-              display: "grid",
-              gap: 6,
-            }}
-          >
-            <strong>Alertas rápidos</strong>
-            {dashboardAlerts.map((alert) => (
-              <span key={alert} className="small-muted">
-                • {alert}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+            {isIndicatorsCollapsed ? (
+              <p className="small-muted" style={{ margin: 0 }}>
+                Painel recolhido. Clique em "Expandir" para ver os indicadores.
+              </p>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Taxa de ocupação</span>
+                    <strong>{occupancyPercent}%</strong>
+                    <span className="small-muted">
+                      {occupiedSlots}/{availableSlots} vagas preenchidas
+                    </span>
+                  </div>
 
-      <div
-        className="card dashboard-filters-card"
-        style={{ display: "grid", gap: 12 }}
-        data-tour-dashboard="filters"
-      >
-        <div
-          className="dashboard-filters-head"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <h2 className="section-title">Filtros de sessão</h2>
-          <button
-            className="btn-secondary"
-            onClick={() => {
-              setFilters({ status: "", from: "", to: "" });
-              loadRooms({ status: "", from: "", to: "" });
-            }}
-          >
-            Limpar filtros
-          </button>
-        </div>
-        <div
-          className="dashboard-filters-row"
-          style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-          }}
-        >
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Status</span>
-            <select
-              value={filters.status}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, status: event.target.value }))
-              }
-            >
-              <option value="">Todos</option>
-              <option value="ACTIVE">Ativas</option>
-              <option value="CLOSED">Encerradas</option>
-              <option value="COMPLETED">Concluídas</option>
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>De</span>
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, from: event.target.value }))
-              }
-            />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Até</span>
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, to: event.target.value }))
-              }
-            />
-          </label>
-          <button
-            className="btn-secondary w-fit"
-            style={{ alignSelf: "center" }}
-            onClick={() => loadRooms()}
-          >
-            Aplicar filtros
-          </button>
-        </div>
-      </div>
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Convites aceitos</span>
+                    <strong>
+                      {inviteAcceptancePercent === null ? "--" : `${inviteAcceptancePercent}%`}
+                    </strong>
+                    <span className="small-muted">
+                      {invitesAcceptedCount}/{invitesSentCount} convites
+                    </span>
+                  </div>
 
-      <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <h2 className="section-title">Minhas sessões</h2>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              className={
-                sessionsViewTab === "created" ? "btn-primary" : "btn-secondary"
-              }
-              onClick={() => setSessionsViewTab("created")}
-            >
-              Sessões criadas ({createdRooms.length})
-            </button>
-            <button
-              className={
-                sessionsViewTab === "participated"
-                  ? "btn-primary"
-                  : "btn-secondary"
-              }
-              onClick={() => setSessionsViewTab("participated")}
-            >
-              Sessões que participei ({participatedRooms.length})
-            </button>
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Consentimento pendente</span>
+                    <strong>{consentPendingParticipantsCount}</strong>
+                    <span className="small-muted">
+                      {consentPendingRoomsCount} sala{consentPendingRoomsCount === 1 ? "" : "s"} com pendência
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Salas ativas sem movimento</span>
+                    <strong>{activeRoomsWithoutMovementCount}</strong>
+                    <span className="small-muted">
+                      de {activeRoomsCount} sala{activeRoomsCount === 1 ? "" : "s"} ativa
+                      {activeRoomsCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Profundidade terapêutica</span>
+                    <strong>
+                      {therapyEntriesPerMove === null
+                        ? "--"
+                        : therapyEntriesPerMove.toFixed(2).replace(".", ",")}
+                    </strong>
+                    <span className="small-muted">registros por jogada</span>
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Uso da IA</span>
+                    <strong>
+                      {aiReportsPerMove === null
+                        ? "--"
+                        : aiReportsPerMove.toFixed(2).replace(".", ",")}
+                    </strong>
+                    <span className="small-muted">relatórios por jogada</span>
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Taxa de conclusão</span>
+                    <strong>{completionRatePercent}%</strong>
+                    <span className="small-muted">
+                      {completedRoomsCount}/{totalRoomsCount} salas completas
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <span className="small-muted">Ritmo de criação</span>
+                    <strong>
+                      7d: {roomsCreatedLast7Days} | 30d: {roomsCreatedLast30Days}
+                    </strong>
+                    <span className="small-muted">salas criadas</span>
+                  </div>
+
+                  {roomQuota && (
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        {roomQuota.planType === "SUBSCRIPTION_LIMITED"
+                          ? "Salas do plano limitado"
+                          : "Salas no período"}
+                      </span>
+                      <strong>{roomQuota.roomsUsed}</strong>
+                      <span className="small-muted">Período: {quotaPeriodLabel}</span>
+                      {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
+                        <span className="small-muted">
+                          Máx.: {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit} |
+                          Disponíveis:{" "}
+                          {roomQuota.roomsRemaining == null ? "Ilimitadas" : roomQuota.roomsRemaining}
+                        </span>
+                      ) : (
+                        <span className="small-muted">
+                          Limite: {roomQuota.roomsLimit == null ? "Ilimitado" : roomQuota.roomsLimit}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px solid var(--border)",
+                    paddingTop: 10,
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span>Encerradas (CLOSED)</span>
+                      <strong>
+                        {finalizedRoomsCount > 0 ? `${closedRoomsPercent}%` : "--"} ({closedRoomsCount})
+                      </strong>
+                    </div>
+                    <div className="pill" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span>Completas (COMPLETED)</span>
+                      <strong>
+                        {finalizedRoomsCount > 0 ? `${completedRoomsPercent}%` : "--"} ({completedRoomsCount})
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {dashboardAlerts.length > 0 && (
+                  <div
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      paddingTop: 10,
+                      display: "grid",
+                      gap: 6,
+                    }}
+                  >
+                    <strong>Alertas rápidos</strong>
+                    {dashboardAlerts.map((alert) => (
+                      <span key={alert} className="small-muted">
+                        • {alert}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </div>
-        {loading ? (
-          <div className="card" data-tour-dashboard="sessions-list">
-            Carregando...
-          </div>
-        ) : visibleRooms.length === 0 ? (
-          <div className="card" data-tour-dashboard="sessions-list">
-            {sessionsViewTab === "created"
-              ? "Nenhuma sessão criada com os filtros atuais."
-              : "Nenhuma sessão em que você participou com os filtros atuais."}
-          </div>
-        ) : (
-          <div
-            className="dashboard-sessions-list"
-            data-tour-dashboard="sessions-list"
-          >
-            {roomCards}
-          </div>
-        )}
+        </aside>
       </div>
 
       {therapyModalEntries.length > 0 && (
