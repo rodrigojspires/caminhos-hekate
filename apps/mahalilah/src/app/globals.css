@@ -576,16 +576,19 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.dashboard-room-toggle-row {
-  display: flex;
-  align-items: center;
-}
-
 .dashboard-room-subline {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+
+.dashboard-room-mode-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .dashboard-room-meta-chip {
@@ -615,6 +618,7 @@ button:disabled {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .dashboard-room-pill-row {
@@ -622,14 +626,13 @@ button:disabled {
 }
 
 .dashboard-room-expand-btn {
-  width: 34px;
-  min-width: 34px;
+  width: 100%;
+  min-width: 0;
   height: 34px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
 }
 
 .dashboard-room-tabs {
@@ -780,15 +783,6 @@ button:disabled {
   .dashboard-room-card {
     gap: 12px !important;
     padding: 16px;
-  }
-
-  .dashboard-room-indicators-row {
-    flex-wrap: wrap;
-  }
-
-  .dashboard-room-expand-btn {
-    margin-left: 0;
-    align-self: flex-end;
   }
 
   .dashboard-room-pill-row {

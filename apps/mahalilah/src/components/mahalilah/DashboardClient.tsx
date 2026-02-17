@@ -1519,26 +1519,6 @@ export function DashboardClient() {
             </div>
           </div>
 
-          {room.canManage && hasNonTherapistParticipants && (
-            <div className="dashboard-room-toggle-row">
-              <label
-                className="small-muted dashboard-room-visibility-toggle"
-              >
-                <ToggleSwitch
-                  checked={Boolean(room.isVisibleToPlayers)}
-                  ariaLabel="Disponibilizar para jogadores"
-                  onToggle={() =>
-                    handleToggleRoomPlayerVisibility(
-                      room,
-                      !Boolean(room.isVisibleToPlayers),
-                    )
-                  }
-                />
-                <span>Disponibilizar para jogadores</span>
-              </label>
-            </div>
-          )}
-
           <div className="dashboard-room-subline">
             <span className="dashboard-room-meta-chip">
               {new Date(room.createdAt).toLocaleString("pt-BR")}
@@ -1546,9 +1526,28 @@ export function DashboardClient() {
             <span className="dashboard-room-meta-chip">
               {room.participantsCount}/{room.maxParticipants} jogadores
             </span>
-            <span className="dashboard-room-meta-chip">
-              {roomModeLabel}
-            </span>
+            <div className="dashboard-room-mode-row">
+              <span className="dashboard-room-meta-chip">
+                {roomModeLabel}
+              </span>
+              {room.canManage && hasNonTherapistParticipants && (
+                <label
+                  className="small-muted dashboard-room-visibility-toggle"
+                >
+                  <ToggleSwitch
+                    checked={Boolean(room.isVisibleToPlayers)}
+                    ariaLabel="Disponibilizar para jogadores"
+                    onToggle={() =>
+                      handleToggleRoomPlayerVisibility(
+                        room,
+                        !Boolean(room.isVisibleToPlayers),
+                      )
+                    }
+                  />
+                  <span>Disponibilizar para jogadores</span>
+                </label>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1567,16 +1566,16 @@ export function DashboardClient() {
               <span className="pill">Cartas: {room.stats.cardDraws}</span>
               <span className="pill">Relatórios IA: {room.stats.aiReports}</span>
             </div>
-            <button
-              className="btn-secondary dashboard-room-expand-btn"
-              onClick={() => toggleRoom(room.id)}
-              aria-expanded={isOpen}
-              aria-label={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
-              title={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
-            >
-              {isOpen ? "▲" : "▼"}
-            </button>
           </div>
+          <button
+            className="btn-secondary dashboard-room-expand-btn"
+            onClick={() => toggleRoom(room.id)}
+            aria-expanded={isOpen}
+            aria-label={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
+            title={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
+          >
+            {isOpen ? "▲" : "▼"}
+          </button>
         </div>
 
         {isOpen && (
@@ -2838,13 +2837,8 @@ export function DashboardClient() {
                     Aplicar filtros
                   </button>
                   <button
-                    className="btn-ghost"
-                    style={{
-                      padding: "4px 10px",
-                      fontSize: 12,
-                      minHeight: 30,
-                      width: "auto",
-                    }}
+                    className="btn-secondary w-fit"
+                    style={{ width: "auto" }}
                     onClick={() => {
                       setFilters({ status: "", from: "", to: "" });
                       loadRooms({ status: "", from: "", to: "" });
