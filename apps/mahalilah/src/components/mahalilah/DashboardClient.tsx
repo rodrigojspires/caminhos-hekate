@@ -445,7 +445,7 @@ function getDashboardTutorialSteps({
     {
       title: "Acoes rapidas da sala",
       description:
-        '"Abrir sala" (quando ativa) entra na partida e "Ver detalhes" abre a gestao. O chip "Novo" marca sala criada no checkout e some apos a primeira rodada.',
+        '"Abrir sala" (quando ativa) entra na partida e a seta ao lado dos indicadores abre/fecha os detalhes da sessao. O chip "Novo" marca sala criada no checkout e some apos a primeira rodada.',
       target: "room-actions",
     },
     {
@@ -1477,36 +1477,50 @@ export function DashboardClient() {
       >
         <div className="dashboard-room-header">
           <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <div className="badge">Sala {room.code}</div>
-            {room.isTrial && <span className="pill">Trial</span>}
-            {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
-            <span className={`pill ${statusClass(room.status)}`}>
-              {room.status}
-            </span>
-          </div>
-          <div className="dashboard-room-subline">
-            <span className="dashboard-room-meta-chip">
-              {new Date(room.createdAt).toLocaleString("pt-BR")}
-            </span>
-            <span className="dashboard-room-meta-chip">
-              {room.participantsCount}/{room.maxParticipants} jogadores
-            </span>
-            <span className="dashboard-room-meta-chip">
-              {roomModeLabel}
-            </span>
-          </div>
-          <div
-            className="dashboard-room-actions"
+            className="dashboard-room-topline"
             data-tour-dashboard={index === 0 ? "room-actions" : undefined}
           >
-            {room.canManage && hasNonTherapistParticipants && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div className="badge">Sala {room.code}</div>
+              {room.isTrial && <span className="pill">Trial</span>}
+              {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
+              <span className={`pill ${statusClass(room.status)}`}>
+                {room.status}
+              </span>
+            </div>
+            <div
+              className="dashboard-room-inline-actions"
+            >
+              {room.status === "ACTIVE" && (
+                <a href={`/rooms/${room.code}`} className="btn-secondary">
+                  Abrir sala
+                </a>
+              )}
+              {room.canDelete && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => handleDeleteRoom(room)}
+                  disabled={isDeletingRoom}
+                  style={{
+                    borderColor: "rgba(255, 107, 107, 0.45)",
+                    color: "#ff9f9f",
+                  }}
+                >
+                  {isDeletingRoom ? "Excluindo..." : "Excluir"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {room.canManage && hasNonTherapistParticipants && (
+            <div className="dashboard-room-toggle-row">
               <label
                 className="small-muted dashboard-room-visibility-toggle"
               >
@@ -1522,47 +1536,46 @@ export function DashboardClient() {
                 />
                 <span>Disponibilizar para jogadores</span>
               </label>
-            )}
-            {room.status === "ACTIVE" && (
-              <a href={`/rooms/${room.code}`} className="btn-secondary">
-                Abrir sala
-              </a>
-            )}
-            <button
-              className="btn-secondary"
-              onClick={() => toggleRoom(room.id)}
-            >
-              {isOpen ? "Fechar detalhes" : "Detalhes"}
-            </button>
-            {room.canDelete && (
-              <button
-                className="btn-secondary"
-                onClick={() => handleDeleteRoom(room)}
-                disabled={isDeletingRoom}
-                style={{
-                  borderColor: "rgba(255, 107, 107, 0.45)",
-                  color: "#ff9f9f",
-                }}
-              >
-                {isDeletingRoom ? "Excluindo..." : "Excluir"}
-              </button>
-            )}
+            </div>
+          )}
+
+          <div className="dashboard-room-subline">
+            <span className="dashboard-room-meta-chip">
+              {new Date(room.createdAt).toLocaleString("pt-BR")}
+            </span>
+            <span className="dashboard-room-meta-chip">
+              {room.participantsCount}/{room.maxParticipants} jogadores
+            </span>
+            <span className="dashboard-room-meta-chip">
+              {roomModeLabel}
+            </span>
           </div>
         </div>
 
         <div className="grid dashboard-room-indicators" style={{ gap: 8 }}>
-          <div
-            className="dashboard-room-pill-row"
-            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-          >
-            <span className="pill">Jogadas: {room.stats.moves}</span>
-            <span className="pill">Rolagens: {room.stats.rollsTotal}</span>
-            <span className="pill">
-              Até iniciar: {room.stats.rollsUntilStart}
-            </span>
-            <span className="pill">Registros: {room.stats.therapyEntries}</span>
-            <span className="pill">Cartas: {room.stats.cardDraws}</span>
-            <span className="pill">Relatórios IA: {room.stats.aiReports}</span>
+          <div className="dashboard-room-indicators-row">
+            <div
+              className="dashboard-room-pill-row"
+              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+            >
+              <span className="pill">Jogadas: {room.stats.moves}</span>
+              <span className="pill">Rolagens: {room.stats.rollsTotal}</span>
+              <span className="pill">
+                Até iniciar: {room.stats.rollsUntilStart}
+              </span>
+              <span className="pill">Registros: {room.stats.therapyEntries}</span>
+              <span className="pill">Cartas: {room.stats.cardDraws}</span>
+              <span className="pill">Relatórios IA: {room.stats.aiReports}</span>
+            </div>
+            <button
+              className="btn-secondary dashboard-room-expand-btn"
+              onClick={() => toggleRoom(room.id)}
+              aria-expanded={isOpen}
+              aria-label={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
+              title={isOpen ? "Recolher detalhes" : "Expandir detalhes"}
+            >
+              {isOpen ? "▲" : "▼"}
+            </button>
           </div>
         </div>
 
@@ -2807,25 +2820,40 @@ export function DashboardClient() {
                     onChange={(event) =>
                       setFilters((prev) => ({ ...prev, to: event.target.value }))
                     }
-                  />
+                    />
                 </label>
-                <button
-                  className="btn-secondary w-fit"
-                  style={{ alignSelf: "center" }}
-                  onClick={() => loadRooms()}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    alignSelf: "center",
+                  }}
                 >
-                  Aplicar filtros
-                </button>
+                  <button
+                    className="btn-secondary w-fit"
+                    style={{ width: "auto" }}
+                    onClick={() => loadRooms()}
+                  >
+                    Aplicar filtros
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: 12,
+                      minHeight: 30,
+                      width: "auto",
+                    }}
+                    onClick={() => {
+                      setFilters({ status: "", from: "", to: "" });
+                      loadRooms({ status: "", from: "", to: "" });
+                    }}
+                  >
+                    Limpar
+                  </button>
+                </div>
               </div>
-              <button
-                className="btn-ghost"
-                onClick={() => {
-                  setFilters({ status: "", from: "", to: "" });
-                  loadRooms({ status: "", from: "", to: "" });
-                }}
-              >
-                Limpar filtros
-              </button>
             </div>
           </div>
         </aside>
