@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       select: {
         id: true,
         createdByUserId: true,
-        therapistSoloPlay: true,
+        isVisibleToPlayers: true,
         code: true,
         participants: {
           select: { id: true, userId: true, role: true },
@@ -54,14 +54,25 @@ export async function GET(request: Request, { params }: RouteParams) {
     const requesterParticipant = room.participants.find(
       (participant) => participant.userId === session.user.id,
     );
-    const canViewAllAiReports =
-      room.createdByUserId === session.user.id ||
-      requesterParticipant?.role === "THERAPIST" ||
-      room.therapistSoloPlay;
+    const isCreator = room.createdByUserId === session.user.id;
+
+    if (!isCreator && !room.isVisibleToPlayers) {
+      return NextResponse.json(
+        {
+          error:
+            "Esta sessão ainda não foi disponibilizada pelo terapeuta para visualização.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const participantScopeId = !isCreator ? requesterParticipant?.id ?? null : null;
 
     const [moves, aiReports, standaloneDraws] = await prisma.$transaction([
       prisma.mahaLilahMove.findMany({
-        where: { roomId: room.id },
+        where: participantScopeId
+          ? { roomId: room.id, participantId: participantScopeId }
+          : { roomId: room.id },
         orderBy: { createdAt: "asc" },
         include: {
           participant: {
@@ -96,7 +107,9 @@ export async function GET(request: Request, { params }: RouteParams) {
         },
       }),
       prisma.mahaLilahAiReport.findMany({
-        where: { roomId: room.id },
+        where: participantScopeId
+          ? { roomId: room.id, participantId: participantScopeId }
+          : { roomId: room.id },
         orderBy: { createdAt: "desc" },
         include: {
           participant: {
@@ -107,7 +120,9 @@ export async function GET(request: Request, { params }: RouteParams) {
         },
       }),
       prisma.mahaLilahCardDraw.findMany({
-        where: { roomId: room.id, moveId: null },
+        where: participantScopeId
+          ? { roomId: room.id, moveId: null, drawnById: participantScopeId }
+          : { roomId: room.id, moveId: null },
         orderBy: { createdAt: "asc" },
         include: {
           card: {
@@ -148,19 +163,13 @@ export async function GET(request: Request, { params }: RouteParams) {
         : null,
     });
 
-    const visibleAiReports = canViewAllAiReports
-      ? aiReports
-      : aiReports.filter(
-          (report) => report.participantId === requesterParticipant?.id,
-        );
-
     return NextResponse.json({
       room: { id: room.id, code: room.code },
       moves: moves.map((move) => ({
         ...move,
         cardDraws: move.cardDraws.map(mapDrawWithCard),
       })),
-      aiReports: visibleAiReports,
+      aiReports,
       cardDraws: standaloneDraws.map(mapDrawWithCard),
     });
   } catch (error) {

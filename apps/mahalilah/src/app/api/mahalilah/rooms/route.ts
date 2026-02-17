@@ -360,7 +360,10 @@ export async function GET(request: Request) {
     const where: Record<string, any> = {
       OR: [
         { createdByUserId: session.user.id },
-        { participants: { some: { userId: session.user.id } } }
+        {
+          isVisibleToPlayers: true,
+          participants: { some: { userId: session.user.id } }
+        }
       ]
     }
     if (status && ['ACTIVE', 'CLOSED', 'COMPLETED'].includes(status)) {
@@ -476,6 +479,7 @@ export async function GET(request: Request) {
           maxParticipants: room.maxParticipants,
           therapistPlays: room.therapistPlays,
           therapistSoloPlay: room.therapistSoloPlay,
+          isVisibleToPlayers: room.isVisibleToPlayers,
           isTrial: isTrialRoom(room),
           isAutoCreatedFromCheckout,
           createdAt: room.createdAt,

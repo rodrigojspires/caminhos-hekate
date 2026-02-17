@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
+import { z } from 'zod'
 
 interface RouteParams {
   params: { roomId: string }
 }
+
+const UpdateRoomSchema = z.object({
+  isVisibleToPlayers: z.boolean()
+})
 
 function decrementMahaRoomsUsed(rawMetadata: unknown) {
   if (!rawMetadata || typeof rawMetadata !== 'object') return null
@@ -140,6 +145,61 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Erro ao excluir sala Maha Lilah:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request, { params }: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const payload = await request.json()
+    const data = UpdateRoomSchema.parse(payload)
+
+    const room = await prisma.mahaLilahRoom.findUnique({
+      where: { id: params.roomId },
+      select: { id: true, createdByUserId: true, status: true }
+    })
+
+    if (!room) {
+      return NextResponse.json({ error: 'Sala não encontrada' }, { status: 404 })
+    }
+
+    if (room.createdByUserId !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Sem permissão para atualizar esta sala' },
+        { status: 403 }
+      )
+    }
+
+    if (room.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Só é possível alterar este modo em salas ativas.' },
+        { status: 400 }
+      )
+    }
+
+    const updated = await prisma.mahaLilahRoom.update({
+      where: { id: room.id },
+      data: {
+        isVisibleToPlayers: data.isVisibleToPlayers
+      },
+      select: {
+        id: true,
+        isVisibleToPlayers: true
+      }
+    })
+
+    return NextResponse.json({ room: updated })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
+    }
+    console.error('Erro ao atualizar sala Maha Lilah:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

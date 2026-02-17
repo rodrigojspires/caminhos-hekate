@@ -41,6 +41,7 @@ type Room = {
   maxParticipants: number;
   therapistPlays: boolean;
   therapistSoloPlay?: boolean;
+  isVisibleToPlayers?: boolean;
   isTrial?: boolean;
   isAutoCreatedFromCheckout?: boolean;
   createdAt: string;
@@ -181,6 +182,8 @@ type Filters = {
   from: string;
   to: string;
 };
+
+type SessionsViewTab = "created" | "participated";
 
 type RoomDetailsTab =
   | "invites"
@@ -597,6 +600,8 @@ export function DashboardClient() {
     from: "",
     to: "",
   });
+  const [sessionsViewTab, setSessionsViewTab] =
+    useState<SessionsViewTab>("created");
   const [showDashboardTutorial, setShowDashboardTutorial] = useState(false);
   const [dashboardTutorialStep, setDashboardTutorialStep] = useState(0);
   const [dashboardTutorialTargetRect, setDashboardTutorialTargetRect] =
@@ -948,6 +953,33 @@ export function DashboardClient() {
     });
   };
 
+  const handleToggleRoomPlayerVisibility = async (
+    room: Room,
+    isVisibleToPlayers: boolean,
+  ) => {
+    if (!room.canManage) return;
+
+    const res = await fetch(`/api/mahalilah/rooms/${room.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isVisibleToPlayers }),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      pushToast(payload.error || "Erro ao atualizar visualização da sala.", "error");
+      return;
+    }
+
+    pushToast(
+      isVisibleToPlayers
+        ? "Sessão disponibilizada para visualização do jogador."
+        : "Sessão ocultada da visualização do jogador.",
+      "success",
+    );
+    await loadRooms();
+  };
+
   const handleSendInvites = async (
     roomId: string,
     overrideEmails?: string[],
@@ -1124,7 +1156,18 @@ export function DashboardClient() {
     return role;
   };
 
-  const roomCards = rooms.map((room, index) => {
+  const createdRooms = rooms.filter((room) => room.canManage);
+  const participatedRooms = rooms.filter((room) => !room.canManage);
+  const visibleRooms =
+    sessionsViewTab === "created" ? createdRooms : participatedRooms;
+
+  useEffect(() => {
+    if (sessionsViewTab === "created" && createdRooms.length === 0 && participatedRooms.length > 0) {
+      setSessionsViewTab("participated");
+    }
+  }, [sessionsViewTab, createdRooms.length, participatedRooms.length]);
+
+  const roomCards = visibleRooms.map((room, index) => {
     const isOpen = !!openRooms[room.id];
     const canManageInvites = room.canManage && room.status === "ACTIVE";
     const requestedTab = activeDetailTabs[room.id];
@@ -1166,6 +1209,12 @@ export function DashboardClient() {
           : currentUserParticipant
             ? [currentUserParticipant]
             : [];
+
+    const visibleParticipants = room.canManage
+      ? room.participants
+      : currentUserParticipant
+        ? [currentUserParticipant]
+        : [];
 
     const filteredMoves = (roomDetails?.moves || []).filter((move) =>
       effectiveSelectedParticipantId
@@ -1298,8 +1347,8 @@ export function DashboardClient() {
                 : "Terapeuta conduz sem jogar"}
             </div>
           </div>
-          <div
-            className="dashboard-room-actions"
+            <div
+              className="dashboard-room-actions"
             style={{
               display: "flex",
               gap: 8,
@@ -1307,7 +1356,30 @@ export function DashboardClient() {
               alignItems: "center",
             }}
             data-tour-dashboard={index === 0 ? "room-actions" : undefined}
-          >
+            >
+            {room.canManage && (
+              <label
+                className="small-muted"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 4px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(room.isVisibleToPlayers)}
+                  onChange={(event) =>
+                    handleToggleRoomPlayerVisibility(
+                      room,
+                      event.target.checked,
+                    )
+                  }
+                />
+                <span>Disponível para visualização do jogador</span>
+              </label>
+            )}
             {room.status === "ACTIVE" && (
               <a href={`/rooms/${room.code}`} className="btn-secondary">
                 Abrir sala
@@ -1551,7 +1623,7 @@ export function DashboardClient() {
               <div className="grid" style={{ gap: 10 }}>
                 <strong>Participantes</strong>
                 <div style={{ display: "grid", gap: 6 }}>
-                  {room.participants.map((participant) => {
+                  {visibleParticipants.map((participant) => {
                     const isTherapist = participant.role === "THERAPIST";
 
                     return (
@@ -2874,14 +2946,46 @@ export function DashboardClient() {
       </div>
 
       <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
-        <h2 className="section-title">Minhas sessões</h2>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <h2 className="section-title">Minhas sessões</h2>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              className={
+                sessionsViewTab === "created" ? "btn-primary" : "btn-secondary"
+              }
+              onClick={() => setSessionsViewTab("created")}
+            >
+              Sessões criadas ({createdRooms.length})
+            </button>
+            <button
+              className={
+                sessionsViewTab === "participated"
+                  ? "btn-primary"
+                  : "btn-secondary"
+              }
+              onClick={() => setSessionsViewTab("participated")}
+            >
+              Sessões que participei ({participatedRooms.length})
+            </button>
+          </div>
+        </div>
         {loading ? (
           <div className="card" data-tour-dashboard="sessions-list">
             Carregando...
           </div>
-        ) : rooms.length === 0 ? (
+        ) : visibleRooms.length === 0 ? (
           <div className="card" data-tour-dashboard="sessions-list">
-            Nenhuma sala encontrada com os filtros atuais.
+            {sessionsViewTab === "created"
+              ? "Nenhuma sessão criada com os filtros atuais."
+              : "Nenhuma sessão em que você participou com os filtros atuais."}
           </div>
         ) : (
           <div
