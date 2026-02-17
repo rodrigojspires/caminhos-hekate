@@ -291,6 +291,21 @@ function NewRoomIcon() {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M5 7h14M9 7V5h6v2M10 11v6M14 11v6M7.5 7l1 12h7l1-12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const DASHBOARD_ONBOARDING_VERSION = "2026-02-feature-pack";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
@@ -1508,12 +1523,14 @@ export function DashboardClient() {
                   className="btn-secondary"
                   onClick={() => handleDeleteRoom(room)}
                   disabled={isDeletingRoom}
+                  aria-label="Excluir sala"
+                  title="Excluir sala"
                   style={{
                     borderColor: "rgba(255, 107, 107, 0.45)",
                     color: "#ff9f9f",
                   }}
                 >
-                  {isDeletingRoom ? "Excluindo..." : "Excluir"}
+                  <TrashIcon />
                 </button>
               )}
             </div>
