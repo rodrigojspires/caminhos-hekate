@@ -34,9 +34,6 @@ export default async function DashboardPage() {
         <section style={{ display: "grid", gap: 20 }}>
           <header>
             <div className="badge">Painel de sessões</div>
-            <h1 style={{ fontSize: 34, marginBottom: 6 }}>
-              Minhas sessões Maha Lilah
-            </h1>
           </header>
           <DashboardClient />
         </section>
