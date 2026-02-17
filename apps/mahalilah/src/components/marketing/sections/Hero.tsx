@@ -16,6 +16,8 @@ export function Hero({
   mediaLabel,
   videoSrc,
   videoType,
+  videoFallbackSrc,
+  videoFallbackType,
   note,
   highlights,
   metrics
@@ -28,6 +30,8 @@ export function Hero({
   mediaLabel?: string
   videoSrc?: string
   videoType?: string
+  videoFallbackSrc?: string
+  videoFallbackType?: string
   note?: string
   highlights?: string[]
   metrics?: HeroMetric[]
@@ -86,9 +90,11 @@ export function Hero({
                 muted
                 loop
                 playsInline
+                preload="auto"
                 controls
               >
-                <source src={videoSrc} type={videoType || 'video/quicktime'} />
+                <source src={videoSrc} type={videoType || undefined} />
+                {videoFallbackSrc && <source src={videoFallbackSrc} type={videoFallbackType || undefined} />}
               </video>
               <div className="border-t border-border/70 bg-surface/90 px-4 py-2 text-xs text-ink-muted">
                 O vídeo inicia sem som. Use o controle de áudio do player para ativar quando quiser.

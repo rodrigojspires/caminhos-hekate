@@ -97,8 +97,10 @@ export default async function HomePage() {
         subtitle="Autoguiado ou em sessão terapêutica, crie uma sala, role o dado, avance pelas casas e registre o que importa — com perguntas e síntese quando você quiser."
         primaryCta={{ label: 'Experimente', href: '/dashboard' }}
         mediaLabel="Vídeo hero: fluxo completo da jornada, da criação da sala ao fechamento"
-        videoSrc="/marketing/videos/Hero.mov"
-        videoType="video/quicktime"
+        videoSrc="/marketing/videos/Hero.mp4"
+        videoType="video/mp4"
+        videoFallbackSrc="/marketing/videos/Hero.mov"
+        videoFallbackType="video/quicktime"
         note="Com assistência de IA, eu consigo me autoguiar com perguntas, sínteses e resumos"
         highlights={['Autoguiado', 'Autoconhecimento', 'Expansão da Consciência']}
         metrics={[
