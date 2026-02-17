@@ -62,6 +62,21 @@ type Entitlement = {
   userSubscriptionId?: string
 }
 
+type PlanSettings = {
+  allowTherapistSoloPlay: boolean
+  roomsPerMonth: number | null
+}
+
+type ActiveQuota = {
+  source: 'ORDER' | 'USER_SUBSCRIPTION'
+  planType: MahaLilahPlanType
+  roomsLimit: number | null
+  roomsUsed: number
+  periodStart: Date | null
+  periodEnd: Date | null
+  billingInterval: string | null
+}
+
 type MahaMetadata = {
   planType?: string
   maxParticipants?: number
@@ -102,7 +117,7 @@ function isSubscriptionExpired(currentPeriodEnd?: Date | null) {
   return currentPeriodEnd.getTime() < Date.now()
 }
 
-async function getPlanTherapistSoloPlayByType() {
+async function getPlanSettingsByType() {
   const db = prisma as any
   const plans = await db.mahaLilahPlan.findMany({
     where: {
@@ -110,23 +125,33 @@ async function getPlanTherapistSoloPlayByType() {
     },
     select: {
       planType: true,
-      allowTherapistSoloPlay: true
+      allowTherapistSoloPlay: true,
+      roomsPerMonth: true
     }
   })
 
-  return new Map(plans.map((plan: any) => [plan.planType as MahaLilahPlanType, Boolean(plan.allowTherapistSoloPlay)]))
+  return new Map(
+    plans.map((plan: any) => [
+      plan.planType as MahaLilahPlanType,
+      {
+        allowTherapistSoloPlay: Boolean(plan.allowTherapistSoloPlay),
+        roomsPerMonth:
+          plan.roomsPerMonth == null ? null : Number(plan.roomsPerMonth)
+      } satisfies PlanSettings
+    ])
+  )
 }
 
 function resolveAllowTherapistSoloPlay(params: {
   metadataValue: unknown
   planType: MahaLilahPlanType
-  byPlanType: Map<MahaLilahPlanType, boolean>
+  byPlanType: Map<MahaLilahPlanType, PlanSettings>
 }) {
   if (typeof params.metadataValue === 'boolean') {
     return params.metadataValue
   }
   if (params.byPlanType.has(params.planType)) {
-    return Boolean(params.byPlanType.get(params.planType))
+    return Boolean(params.byPlanType.get(params.planType)?.allowTherapistSoloPlay)
   }
   return true
 }
@@ -134,7 +159,7 @@ function resolveAllowTherapistSoloPlay(params: {
 async function findEntitlement(
   userId: string,
   requestedMax: number,
-  planTherapistSoloPlayByType: Map<MahaLilahPlanType, boolean>
+  planSettingsByType: Map<MahaLilahPlanType, PlanSettings>
 ) {
   const subscriptions = await prisma.userSubscription.findMany({
     where: {
@@ -178,7 +203,7 @@ async function findEntitlement(
       allowTherapistSoloPlay: resolveAllowTherapistSoloPlay({
         metadataValue: meta.allowTherapistSoloPlay,
         planType,
-        byPlanType: planTherapistSoloPlayByType
+        byPlanType: planSettingsByType
       }),
       roomsLimit: roomsLimit !== null && Number.isFinite(roomsLimit) ? roomsLimit : null,
       roomsUsed
@@ -212,7 +237,7 @@ async function findEntitlement(
       allowTherapistSoloPlay: resolveAllowTherapistSoloPlay({
         metadataValue: meta.allowTherapistSoloPlay,
         planType,
-        byPlanType: planTherapistSoloPlayByType
+        byPlanType: planSettingsByType
       }),
       roomsLimit:
         meta.roomsLimit === null || meta.roomsLimit === undefined
@@ -220,6 +245,100 @@ async function findEntitlement(
           : Number(meta.roomsLimit),
       roomsUsed: Number(meta.roomsUsed || 0)
     } satisfies Entitlement
+  }
+
+  return null
+}
+
+async function findActiveQuota(
+  userId: string,
+  planSettingsByType: Map<MahaLilahPlanType, PlanSettings>
+): Promise<ActiveQuota | null> {
+  const subscriptions = await prisma.userSubscription.findMany({
+    where: {
+      userId,
+      status: { in: ['ACTIVE', 'TRIALING'] }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  for (const subscription of subscriptions) {
+    const meta = parseSubscriptionMahaMetadata(subscription.metadata)
+    if (!meta) continue
+    if (isSubscriptionExpired(subscription.currentPeriodEnd)) continue
+
+    const planType = normalizePlanType(meta.planType)
+    if (
+      planType !== MahaLilahPlanType.SUBSCRIPTION &&
+      planType !== MahaLilahPlanType.SUBSCRIPTION_LIMITED
+    ) {
+      continue
+    }
+
+    const configuredRoomsPerMonth =
+      planSettingsByType.get(planType)?.roomsPerMonth ?? null
+    const roomsLimit =
+      meta.roomsLimit === null || meta.roomsLimit === undefined
+        ? configuredRoomsPerMonth
+        : Number(meta.roomsLimit)
+    const roomsUsed = Number(meta.roomsUsed || 0)
+
+    return {
+      source: 'USER_SUBSCRIPTION',
+      planType,
+      roomsLimit:
+        roomsLimit !== null && Number.isFinite(roomsLimit) ? roomsLimit : null,
+      roomsUsed: Number.isFinite(roomsUsed) ? roomsUsed : 0,
+      periodStart: subscription.currentPeriodStart ?? null,
+      periodEnd: subscription.currentPeriodEnd ?? null,
+      billingInterval:
+        typeof meta.billingInterval === 'string' ? meta.billingInterval : null
+    }
+  }
+
+  const orders = await prisma.order.findMany({
+    where: { userId, status: 'PAID' },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  for (const order of orders) {
+    const meta = parseOrderMahaMetadata(order.metadata)
+    if (!meta || meta.active !== true) continue
+    if (isExpired(meta.expiresAt)) continue
+
+    const planType = normalizePlanType(meta.planType)
+    if (
+      planType !== MahaLilahPlanType.SUBSCRIPTION &&
+      planType !== MahaLilahPlanType.SUBSCRIPTION_LIMITED
+    ) {
+      continue
+    }
+
+    const configuredRoomsPerMonth =
+      planSettingsByType.get(planType)?.roomsPerMonth ?? null
+    const roomsLimit =
+      meta.roomsLimit === null || meta.roomsLimit === undefined
+        ? configuredRoomsPerMonth
+        : Number(meta.roomsLimit)
+    const roomsUsed = Number(meta.roomsUsed || 0)
+    const activatedAt =
+      typeof (meta as any).activatedAt === 'string'
+        ? new Date((meta as any).activatedAt)
+        : null
+    const expiresAt =
+      typeof meta.expiresAt === 'string' ? new Date(meta.expiresAt) : null
+
+    return {
+      source: 'ORDER',
+      planType,
+      roomsLimit:
+        roomsLimit !== null && Number.isFinite(roomsLimit) ? roomsLimit : null,
+      roomsUsed: Number.isFinite(roomsUsed) ? roomsUsed : 0,
+      periodStart:
+        activatedAt && !Number.isNaN(activatedAt.getTime()) ? activatedAt : null,
+      periodEnd: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null,
+      billingInterval: null
+    }
   }
 
   return null
@@ -252,9 +371,9 @@ export async function GET(request: Request) {
       where.createdAt = createdAtRange
     }
 
-    const planTherapistSoloPlayByType = await getPlanTherapistSoloPlayByType()
+    const planSettingsByType = await getPlanSettingsByType()
 
-    const [rooms, entitlementForCreate, trialRoom] = await Promise.all([
+    const [rooms, entitlementForCreate, trialRoom, activeQuota] = await Promise.all([
       prisma.mahaLilahRoom.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -281,7 +400,7 @@ export async function GET(request: Request) {
           }
         }
       }),
-      findEntitlement(session.user.id, 1, planTherapistSoloPlayByType),
+      findEntitlement(session.user.id, 1, planSettingsByType),
       prisma.mahaLilahRoom.findFirst({
         where: {
           createdByUserId: session.user.id,
@@ -289,8 +408,13 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: 'desc' },
         select: { id: true, status: true }
-      })
+      }),
+      findActiveQuota(session.user.id, planSettingsByType)
     ])
+
+    const catalogLimitedPlanMaxRooms =
+      planSettingsByType.get(MahaLilahPlanType.SUBSCRIPTION_LIMITED)
+        ?.roomsPerMonth ?? null
 
     return NextResponse.json({
       currentUserId: session.user.id,
@@ -298,6 +422,25 @@ export async function GET(request: Request) {
       canUseTherapistSoloPlay: Boolean(entitlementForCreate?.allowTherapistSoloPlay),
       hasUsedTrial: Boolean(trialRoom),
       trialRoomStatus: trialRoom?.status ?? null,
+      roomQuota: activeQuota
+        ? {
+            source: activeQuota.source,
+            planType: activeQuota.planType,
+            roomsUsed: activeQuota.roomsUsed,
+            roomsLimit: activeQuota.roomsLimit,
+            roomsRemaining:
+              activeQuota.roomsLimit == null
+                ? null
+                : Math.max(0, activeQuota.roomsLimit - activeQuota.roomsUsed),
+            periodStart: activeQuota.periodStart?.toISOString() ?? null,
+            periodEnd: activeQuota.periodEnd?.toISOString() ?? null,
+            billingInterval: activeQuota.billingInterval,
+            catalogRoomsLimit:
+              activeQuota.planType === MahaLilahPlanType.SUBSCRIPTION_LIMITED
+                ? catalogLimitedPlanMaxRooms
+                : null
+          }
+        : null,
       rooms: rooms.map((room) => {
         const viewerParticipant = room.participants.find(
           (participant) => participant.userId === session.user.id
@@ -380,7 +523,7 @@ export async function POST(request: Request) {
 
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
-    const planTherapistSoloPlayByType = await getPlanTherapistSoloPlayByType()
+    const planSettingsByType = await getPlanSettingsByType()
 
     let therapistSoloPlay = Boolean(data.therapistSoloPlay)
     let therapistPlays = therapistSoloPlay ? true : data.therapistPlays
@@ -438,7 +581,7 @@ export async function POST(request: Request) {
     const entitlement = await findEntitlement(
       session.user.id,
       data.maxParticipants,
-      planTherapistSoloPlayByType
+      planSettingsByType
     )
     if (!entitlement) {
       return NextResponse.json({ error: 'Sem plano ativo. Finalize a compra para criar a sala.' }, { status: 402 })

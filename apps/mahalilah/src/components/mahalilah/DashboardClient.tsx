@@ -50,6 +50,18 @@ type Room = {
   stats: RoomStats;
 };
 
+type RoomQuota = {
+  source: "ORDER" | "USER_SUBSCRIPTION";
+  planType: "SUBSCRIPTION" | "SUBSCRIPTION_LIMITED" | "SINGLE_SESSION";
+  roomsUsed: number;
+  roomsLimit: number | null;
+  roomsRemaining: number | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  billingInterval: string | null;
+  catalogRoomsLimit: number | null;
+};
+
 type TimelineCardDraw = {
   id: string;
   cards: number[];
@@ -553,6 +565,7 @@ export function DashboardClient() {
   const [creating, setCreating] = useState(false);
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
+  const [roomQuota, setRoomQuota] = useState<RoomQuota | null>(null);
   const [maxParticipants, setMaxParticipants] = useState(4);
   const [therapistPlays, setTherapistPlays] = useState(true);
   const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
@@ -692,6 +705,7 @@ export function DashboardClient() {
       const data = await res.json();
       setCurrentUserId(data.currentUserId || null);
       setRooms(data.rooms || []);
+      setRoomQuota(data.roomQuota || null);
       setCanCreateRoom(Boolean(data.canCreateRoom));
       setCanUseTherapistSoloPlay(Boolean(data.canUseTherapistSoloPlay));
       if (!data.canUseTherapistSoloPlay) {
@@ -833,6 +847,14 @@ export function DashboardClient() {
   };
 
   const handleCreateRoom = async () => {
+    if (isLimitedQuotaExhausted) {
+      pushToast(
+        "Você atingiu o limite de salas deste período no plano limitado.",
+        "warning",
+      );
+      return;
+    }
+
     setCreating(true);
     const res = await fetch("/api/mahalilah/rooms", {
       method: "POST",
@@ -2200,6 +2222,22 @@ export function DashboardClient() {
   const dashboardTutorialPopover = getTutorialPopoverPosition(
     dashboardTutorialTargetRect,
   );
+  const quotaPeriodLabel =
+    roomQuota?.periodStart && roomQuota?.periodEnd
+      ? `${new Date(roomQuota.periodStart).toLocaleDateString("pt-BR")} a ${new Date(
+          roomQuota.periodEnd,
+        ).toLocaleDateString("pt-BR")}`
+      : roomQuota?.periodEnd
+        ? `até ${new Date(roomQuota.periodEnd).toLocaleDateString("pt-BR")}`
+        : "período atual";
+  const limitedCatalogLimit =
+    roomQuota?.planType === "SUBSCRIPTION_LIMITED"
+      ? roomQuota.catalogRoomsLimit ?? roomQuota.roomsLimit
+      : null;
+  const isLimitedQuotaExhausted =
+    roomQuota?.planType === "SUBSCRIPTION_LIMITED" &&
+    roomQuota.roomsRemaining !== null &&
+    roomQuota.roomsRemaining <= 0;
   const hasSingleSessionOrPlan = canCreateRoom || rooms.some((room) => !room.isTrial);
   const showTrialUpgradeCard =
     hasUsedTrial === true &&
@@ -2417,6 +2455,51 @@ export function DashboardClient() {
           </div>
         </div>
       )}
+      {roomQuota && (
+        <div className="card dashboard-create-card" style={{ display: "grid", gap: 10 }}>
+          <strong>
+            {roomQuota.planType === "SUBSCRIPTION_LIMITED"
+              ? "Contador de salas do plano limitado"
+              : "Contador de salas do período"}
+          </strong>
+          <div className="small-muted" style={{ display: "grid", gap: 2 }}>
+            <span>
+              Período: <strong>{quotaPeriodLabel}</strong>
+            </span>
+            {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
+              <>
+                <span>
+                  Salas criadas no período: <strong>{roomQuota.roomsUsed}</strong>
+                </span>
+                <span>
+                  Máximo do catálogo:{" "}
+                  <strong>
+                    {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit}
+                  </strong>
+                </span>
+                <span>
+                  Salas disponíveis:{" "}
+                  <strong>
+                    {roomQuota.roomsRemaining == null ? "Ilimitadas" : roomQuota.roomsRemaining}
+                  </strong>
+                </span>
+              </>
+            ) : (
+              <>
+                <span>
+                  Salas criadas no período: <strong>{roomQuota.roomsUsed}</strong>
+                </span>
+                <span>
+                  Limite do período:{" "}
+                  <strong>
+                    {roomQuota.roomsLimit == null ? "Ilimitado" : roomQuota.roomsLimit}
+                  </strong>
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {canCreateRoom && (
         <div
           className="card dashboard-create-card"
@@ -2490,9 +2573,13 @@ export function DashboardClient() {
             <button
               className="btn-primary"
               onClick={handleCreateRoom}
-              disabled={creating}
+              disabled={creating || isLimitedQuotaExhausted}
             >
-              {creating ? "Criando..." : "Criar sala"}
+              {creating
+                ? "Criando..."
+                : isLimitedQuotaExhausted
+                  ? "Limite do período atingido"
+                  : "Criar sala"}
             </button>
           </div>
           <p className="small-muted">
@@ -2502,6 +2589,11 @@ export function DashboardClient() {
               ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
               : ' O modo de jogadores somente visualização não está disponível no seu plano atual.'}
           </p>
+          {isLimitedQuotaExhausted && (
+            <p className="notice">
+              Você já usou todas as salas disponíveis no período atual do plano limitado.
+            </p>
+          )}
         </div>
       )}
 
