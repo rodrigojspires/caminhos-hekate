@@ -2674,7 +2674,6 @@ export function RoomClient({ code }: { code: string }) {
             />
             <span>Animação do Dado</span>
           </button>
-          {canCloseRoom && (
             <Link
               href="/dashboard"
               className="btn-secondary"
@@ -2682,7 +2681,7 @@ export function RoomClient({ code }: { code: string }) {
             >
               Voltar ao dashboard
             </Link>
-          )}
+          
         </div>
 
         {isTrialRoom && trialLimitReached && (
