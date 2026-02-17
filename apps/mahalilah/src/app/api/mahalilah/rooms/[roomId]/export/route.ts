@@ -938,9 +938,12 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
 
   addSpacer(12)
   addSectionTitle('6. Sintese final pelo Terapeuta')
-  addMultilineParagraph(room.therapistSummary || 'Sem sintese final registrada pelo terapeuta para esta sessao.', {
-    size: 10
-  })
+  addMultilineParagraph(
+    focusParticipant?.therapistSummary || 'Sem sintese final registrada pelo terapeuta para esta sessao.',
+    {
+      size: 10
+    }
+  )
 
   const totalPages = pages.length
   const footerLineOne =

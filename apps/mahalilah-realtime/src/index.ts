@@ -1056,7 +1056,6 @@ async function buildRoomState(roomId: string) {
       isTrial: isTrialRoom(room),
       playerIntentionLocked: room.playerIntentionLocked,
       therapistSoloPlay: room.therapistSoloPlay,
-      therapistSummary: room.therapistSummary,
       aiReportsCount: room._count.aiReports,
       currentTurnIndex: safeTurnIndex,
       turnParticipantId,
@@ -1068,6 +1067,7 @@ async function buildRoomState(roomId: string) {
       user: p.user,
       consentAcceptedAt: p.consentAcceptedAt,
       gameIntention: p.gameIntention,
+      therapistSummary: p.therapistSummary,
     })),
     playerStates: playerStates.map((state) => ({
       participantId: state.participantId,

@@ -18,6 +18,7 @@ type RoomParticipant = {
   role: string;
   consentAcceptedAt: string | null;
   gameIntention?: string | null;
+  therapistSummary?: string | null;
   user: { id: string; name: string | null; email: string };
 };
 
@@ -41,7 +42,6 @@ type Room = {
   maxParticipants: number;
   therapistPlays: boolean;
   therapistSoloPlay?: boolean;
-  therapistSummary?: string | null;
   isVisibleToPlayers?: boolean;
   isTrial?: boolean;
   isAutoCreatedFromCheckout?: boolean;
@@ -619,7 +619,7 @@ export function DashboardClient() {
   const [creating, setCreating] = useState(false);
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
-  const [savingTherapistSummaryByRoomId, setSavingTherapistSummaryByRoomId] =
+  const [savingTherapistSummaryByParticipantId, setSavingTherapistSummaryByParticipantId] =
     useState<Record<string, boolean>>({});
   const [therapistSummaries, setTherapistSummaries] = useState<
     Record<string, string>
@@ -772,7 +772,9 @@ export function DashboardClient() {
       setTherapistSummaries(
         nextRooms.reduce(
           (acc: Record<string, string>, room: Room) => {
-            acc[room.id] = room.therapistSummary || "";
+            room.participants.forEach((participant) => {
+              acc[participant.id] = participant.therapistSummary || "";
+            });
             return acc;
           },
           {} as Record<string, string>,
@@ -1056,17 +1058,26 @@ export function DashboardClient() {
     await loadRooms();
   };
 
-  const handleSaveTherapistSummary = async (room: Room) => {
+  const handleSaveTherapistSummary = async (
+    room: Room,
+    participantId: string,
+  ) => {
     if (!room.canManage) return;
-    const therapistSummary = therapistSummaries[room.id] ?? "";
+    const therapistSummary = therapistSummaries[participantId] ?? "";
 
-    setSavingTherapistSummaryByRoomId((prev) => ({ ...prev, [room.id]: true }));
+    setSavingTherapistSummaryByParticipantId((prev) => ({
+      ...prev,
+      [participantId]: true,
+    }));
     try {
-      const res = await fetch(`/api/mahalilah/rooms/${room.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ therapistSummary }),
-      });
+      const res = await fetch(
+        `/api/mahalilah/rooms/${room.id}/participants/${participantId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ therapistSummary }),
+        },
+      );
 
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -1076,23 +1087,36 @@ export function DashboardClient() {
 
       const payload = await res.json().catch(() => ({}));
       const updatedSummary =
-        typeof payload?.room?.therapistSummary === "string"
-          ? payload.room.therapistSummary
+        typeof payload?.participant?.therapistSummary === "string"
+          ? payload.participant.therapistSummary
           : "";
 
       setRooms((prev) =>
         prev.map((item) =>
           item.id === room.id
-            ? { ...item, therapistSummary: updatedSummary }
+            ? {
+                ...item,
+                participants: item.participants.map((participant) =>
+                  participant.id === participantId
+                    ? { ...participant, therapistSummary: updatedSummary }
+                    : participant,
+                ),
+              }
             : item,
         ),
       );
-      setTherapistSummaries((prev) => ({ ...prev, [room.id]: updatedSummary }));
+      setTherapistSummaries((prev) => ({
+        ...prev,
+        [participantId]: updatedSummary,
+      }));
       pushToast("Síntese do terapeuta salva.", "success");
     } catch {
       pushToast("Erro ao salvar síntese do terapeuta.", "error");
     } finally {
-      setSavingTherapistSummaryByRoomId((prev) => ({ ...prev, [room.id]: false }));
+      setSavingTherapistSummaryByParticipantId((prev) => ({
+        ...prev,
+        [participantId]: false,
+      }));
     }
   };
 
@@ -1416,12 +1440,6 @@ export function DashboardClient() {
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
     const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
-    const isSavingTherapistSummary = Boolean(
-      savingTherapistSummaryByRoomId[room.id],
-    );
-    const therapistSummaryValue =
-      therapistSummaries[room.id] ?? room.therapistSummary ?? "";
-
     return (
       <div
         key={room.id}
@@ -1550,48 +1568,6 @@ export function DashboardClient() {
               paddingTop: 12,
             }}
           >
-            {room.canManage && (
-              <div className="notice" style={{ display: "grid", gap: 8 }}>
-                <strong>Síntese do terapeuta</strong>
-                <textarea
-                  rows={5}
-                  maxLength={8000}
-                  value={therapistSummaryValue}
-                  onChange={(event) =>
-                    setTherapistSummaries((prev) => ({
-                      ...prev,
-                      [room.id]: event.target.value,
-                    }))
-                  }
-                  placeholder="Registre observações centrais da sessão, pontos de atenção e próximos passos."
-                />
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    className="btn-secondary"
-                    disabled={isSavingTherapistSummary}
-                    onClick={() => handleSaveTherapistSummary(room)}
-                  >
-                    {isSavingTherapistSummary ? "Salvando..." : "Salvar síntese"}
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    disabled={isSavingTherapistSummary}
-                    onClick={() =>
-                      setTherapistSummaries((prev) => ({
-                        ...prev,
-                        [room.id]: "",
-                      }))
-                    }
-                  >
-                    Limpar texto
-                  </button>
-                </div>
-                <span className="small-muted">
-                  Esse conteúdo pode ser atualizado a qualquer momento e também durante a partida.
-                </span>
-              </div>
-            )}
-
             <div
               className="dashboard-room-tabs"
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
@@ -1784,16 +1760,24 @@ export function DashboardClient() {
                 <div style={{ display: "grid", gap: 6 }}>
                   {visibleParticipants.map((participant) => {
                     const isTherapist = participant.role === "THERAPIST";
+                    const canEditParticipantSummary =
+                      room.canManage &&
+                      (participant.role === "PLAYER" ||
+                        Boolean(room.therapistSoloPlay));
+                    const participantSummaryValue =
+                      therapistSummaries[participant.id] ??
+                      participant.therapistSummary ??
+                      "";
+                    const isSavingParticipantSummary = Boolean(
+                      savingTherapistSummaryByParticipantId[participant.id],
+                    );
 
                     return (
                       <div
                         key={participant.id}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
+                          display: "grid",
                           gap: 10,
-                          flexWrap: "wrap",
                           padding: "10px 12px",
                           borderRadius: 12,
                           border: isTherapist
@@ -1804,50 +1788,105 @@ export function DashboardClient() {
                             : "hsl(var(--temple-surface-2))",
                         }}
                       >
-                        <div style={{ display: "grid", gap: 2 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <strong>
-                              {participant.user.name || participant.user.email}
-                            </strong>
-                            {isTherapist ? (
-                              <span
-                                className="pill"
-                                style={{
-                                  background: "rgba(217, 164, 65, 0.2)",
-                                  borderColor: "rgba(217, 164, 65, 0.5)",
-                                  color: "#f1d59a",
-                                }}
-                              >
-                                Terapeuta
-                              </span>
-                            ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 10,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ display: "grid", gap: 2 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <strong>
+                                {participant.user.name || participant.user.email}
+                              </strong>
+                              {isTherapist ? (
+                                <span
+                                  className="pill"
+                                  style={{
+                                    background: "rgba(217, 164, 65, 0.2)",
+                                    borderColor: "rgba(217, 164, 65, 0.5)",
+                                    color: "#f1d59a",
+                                  }}
+                                >
+                                  Terapeuta
+                                </span>
+                              ) : (
+                                <span className="small-muted">
+                                  {participantRoleLabel(participant.role)}
+                                </span>
+                              )}
+                            </div>
+                            {!participant.consentAcceptedAt && (
                               <span className="small-muted">
-                                {participantRoleLabel(participant.role)}
+                                Consentimento pendente
                               </span>
                             )}
                           </div>
-                          {!participant.consentAcceptedAt && (
-                            <span className="small-muted">
-                              Consentimento pendente
-                            </span>
+                          {room.canManage && participant.role === "PLAYER" && (
+                            <button
+                              className="btn-secondary px-3 py-1 text-xs"
+                              onClick={() =>
+                                handleRemoveParticipant(room.id, participant.id)
+                              }
+                            >
+                              Remover
+                            </button>
                           )}
                         </div>
-                        {room.canManage && participant.role === "PLAYER" && (
-                          <button
-                            className="btn-secondary px-3 py-1 text-xs"
-                            onClick={() =>
-                              handleRemoveParticipant(room.id, participant.id)
-                            }
-                          >
-                            Remover
-                          </button>
+
+                        {canEditParticipantSummary && (
+                          <div className="notice" style={{ display: "grid", gap: 8 }}>
+                            <strong style={{ fontSize: 12 }}>
+                              Síntese terapêutica deste jogador
+                            </strong>
+                            <textarea
+                              rows={4}
+                              maxLength={8000}
+                              value={participantSummaryValue}
+                              onChange={(event) =>
+                                setTherapistSummaries((prev) => ({
+                                  ...prev,
+                                  [participant.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="Registre os principais pontos para este jogador."
+                            />
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                className="btn-secondary"
+                                disabled={isSavingParticipantSummary}
+                                onClick={() =>
+                                  handleSaveTherapistSummary(room, participant.id)
+                                }
+                              >
+                                {isSavingParticipantSummary
+                                  ? "Salvando..."
+                                  : "Salvar síntese"}
+                              </button>
+                              <button
+                                className="btn-ghost"
+                                disabled={isSavingParticipantSummary}
+                                onClick={() =>
+                                  setTherapistSummaries((prev) => ({
+                                    ...prev,
+                                    [participant.id]: "",
+                                  }))
+                                }
+                              >
+                                Limpar
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     );

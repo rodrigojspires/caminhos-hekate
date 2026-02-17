@@ -21,6 +21,7 @@ type Participant = {
   user: { id: string; name: string | null; email: string };
   consentAcceptedAt: string | null;
   gameIntention?: string | null;
+  therapistSummary?: string | null;
 };
 
 type PlayerState = {
@@ -41,7 +42,6 @@ type RoomState = {
     isTrial?: boolean;
     playerIntentionLocked?: boolean;
     therapistSoloPlay?: boolean;
-    therapistSummary?: string | null;
     aiReportsCount?: number;
     currentTurnIndex: number;
     turnParticipantId: string | null;
@@ -685,6 +685,8 @@ export function RoomClient({ code }: { code: string }) {
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
+  const [therapistSummaryParticipantId, setTherapistSummaryParticipantId] =
+    useState("");
   const [therapistSummaryDraft, setTherapistSummaryDraft] = useState("");
   const [therapistSummaryModalOpen, setTherapistSummaryModalOpen] =
     useState(false);
@@ -975,15 +977,14 @@ export function RoomClient({ code }: { code: string }) {
     setDiceResult(null);
     setFinalReportPrompt(null);
     setPendingCompletedParticipantPrompts([]);
+    setTherapistSummaryParticipantId("");
+    setTherapistSummaryDraft("");
+    setTherapistSummaryModalOpen(false);
+    setTherapistSummarySaving(false);
     completionStateByParticipantRef.current = new Map();
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
   }, [state?.room.id, clearDiceTimers]);
-
-  useEffect(() => {
-    if (!state?.room) return;
-    setTherapistSummaryDraft(state.room.therapistSummary || "");
-  }, [state?.room.id, state?.room.therapistSummary]);
 
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
@@ -1429,6 +1430,15 @@ export function RoomClient({ code }: { code: string }) {
       ) || null
     );
   }, [state?.participants, summaryParticipantId]);
+
+  const therapistSummaryParticipant = useMemo(() => {
+    if (!therapistSummaryParticipantId) return null;
+    return (
+      state?.participants.find(
+        (participant) => participant.id === therapistSummaryParticipantId,
+      ) || null
+    );
+  }, [state?.participants, therapistSummaryParticipantId]);
 
   const summaryPlayerState = summaryParticipant
     ? playerStateMap.get(summaryParticipant.id)
@@ -2052,16 +2062,34 @@ export function RoomClient({ code }: { code: string }) {
     [state?.room.id, pushToast],
   );
 
+  const openTherapistSummaryModal = useCallback(
+    (participantId: string) => {
+      const participant = state?.participants.find(
+        (item) => item.id === participantId,
+      );
+      if (!participant) return;
+      setTherapistSummaryParticipantId(participant.id);
+      setTherapistSummaryDraft(participant.therapistSummary || "");
+      setTherapistSummaryModalOpen(true);
+    },
+    [state?.participants],
+  );
+
   const handleSaveTherapistSummary = useCallback(async () => {
-    if (!state?.room.id || !isTherapist) return false;
+    if (!state?.room.id || !isTherapist || !therapistSummaryParticipantId) {
+      return false;
+    }
 
     setTherapistSummarySaving(true);
     try {
-      const res = await fetch(`/api/mahalilah/rooms/${state.room.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ therapistSummary: therapistSummaryDraft }),
-      });
+      const res = await fetch(
+        `/api/mahalilah/rooms/${state.room.id}/participants/${therapistSummaryParticipantId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ therapistSummary: therapistSummaryDraft }),
+        },
+      );
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -2073,8 +2101,8 @@ export function RoomClient({ code }: { code: string }) {
       }
 
       const nextSummary =
-        typeof payload?.room?.therapistSummary === "string"
-          ? payload.room.therapistSummary
+        typeof payload?.participant?.therapistSummary === "string"
+          ? payload.participant.therapistSummary
           : "";
 
       setTherapistSummaryDraft(nextSummary);
@@ -2082,10 +2110,11 @@ export function RoomClient({ code }: { code: string }) {
         prev
           ? {
               ...prev,
-              room: {
-                ...prev.room,
-                therapistSummary: nextSummary || null,
-              },
+              participants: prev.participants.map((participant) =>
+                participant.id === therapistSummaryParticipantId
+                  ? { ...participant, therapistSummary: nextSummary || null }
+                  : participant,
+              ),
             }
           : prev,
       );
@@ -2099,11 +2128,18 @@ export function RoomClient({ code }: { code: string }) {
     }
   }, [
     state?.room.id,
+    therapistSummaryParticipantId,
     therapistSummaryDraft,
     isTherapist,
     showSocketError,
     pushToast,
   ]);
+
+  const closeTherapistSummaryModal = useCallback(() => {
+    if (therapistSummarySaving) return;
+    setTherapistSummaryModalOpen(false);
+    setTherapistSummaryParticipantId("");
+  }, [therapistSummarySaving]);
 
   const closeRoom = useCallback(() => {
     if (!socket) return;
@@ -3506,15 +3542,6 @@ export function RoomClient({ code }: { code: string }) {
                 >
                   {aiTipLoading ? "Processando ajuda..." : "IA: me ajuda agora"}
                 </button>
-                {isTherapist && (
-                  <button
-                    className="secondary"
-                    disabled={therapistSummarySaving}
-                    onClick={() => setTherapistSummaryModalOpen(true)}
-                  >
-                    Observações do terapeuta
-                  </button>
-                )}
               </div>
 
               {aiTipLoading && (
@@ -3743,7 +3770,11 @@ export function RoomClient({ code }: { code: string }) {
               <div style={{ display: "grid", gap: 6 }}>
                 {state.participants.map((participant) => {
                   const isCurrent = participant.id === currentParticipant?.id;
-                  const isTherapist = participant.role === "THERAPIST";
+                  const participantIsTherapist =
+                    participant.role === "THERAPIST";
+                  const canEditParticipantSummary =
+                    isTherapist &&
+                    (participant.role === "PLAYER" || isTherapistSoloPlay);
                   return (
                     <div
                       key={participant.id}
@@ -3762,30 +3793,57 @@ export function RoomClient({ code }: { code: string }) {
                       <div
                         style={{
                           display: "flex",
-                          gap: 6,
+                          justifyContent: "space-between",
+                          gap: 8,
                           alignItems: "center",
                           flexWrap: "wrap",
                         }}
                       >
-                        <strong style={{ fontSize: 13 }}>
-                          {participant.user.name || participant.user.email}
-                        </strong>
-                        <span
-                          className="pill"
-                          style={{ padding: "2px 7px", fontSize: 11 }}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
                         >
-                          {isTherapist ? "Terapeuta" : "Jogador"}
-                        </span>
-                        {isCurrent && (
+                          <strong style={{ fontSize: 13 }}>
+                            {participant.user.name || participant.user.email}
+                          </strong>
                           <span
                             className="pill"
                             style={{ padding: "2px 7px", fontSize: 11 }}
                           >
-                            Vez atual
+                            {participantIsTherapist ? "Terapeuta" : "Jogador"}
                           </span>
+                          {isCurrent && (
+                            <span
+                              className="pill"
+                              style={{ padding: "2px 7px", fontSize: 11 }}
+                            >
+                              Vez atual
+                            </span>
+                          )}
+                        </div>
+                        {canEditParticipantSummary && (
+                          <button
+                            className="btn-secondary"
+                            disabled={therapistSummarySaving}
+                            title="Abrir observações do terapeuta"
+                            onClick={() => openTherapistSummaryModal(participant.id)}
+                            style={{
+                              width: 32,
+                              minWidth: 32,
+                              height: 32,
+                              padding: 0,
+                              fontSize: 15,
+                            }}
+                          >
+                            ✎
+                          </button>
                         )}
                       </div>
-                      {!isTherapist && (
+                      {!participantIsTherapist && (
                         <span className="small-muted">
                           <strong>Intenção de jogo:</strong>{" "}
                           {participant.gameIntention?.trim()
@@ -4319,10 +4377,7 @@ export function RoomClient({ code }: { code: string }) {
         <div
           role="dialog"
           aria-modal="true"
-          onClick={() => {
-            if (therapistSummarySaving) return;
-            setTherapistSummaryModalOpen(false);
-          }}
+          onClick={closeTherapistSummaryModal}
           style={{
             position: "fixed",
             inset: 0,
@@ -4352,18 +4407,23 @@ export function RoomClient({ code }: { code: string }) {
                 alignItems: "center",
               }}
             >
-              <strong>Síntese do terapeuta</strong>
+              <strong>
+                Síntese do terapeuta
+                {therapistSummaryParticipant
+                  ? ` • ${getParticipantDisplayName(therapistSummaryParticipant)}`
+                  : ""}
+              </strong>
               <button
                 className="btn-secondary"
                 disabled={therapistSummarySaving}
-                onClick={() => setTherapistSummaryModalOpen(false)}
+                onClick={closeTherapistSummaryModal}
               >
                 Fechar
               </button>
             </div>
 
             <span className="small-muted">
-              Essas observações são compartilhadas com o campo de síntese da sala no dashboard.
+              Essas observações ficam vinculadas a este jogador e também aparecem na síntese do dashboard e do PDF da sessão.
             </span>
 
             <textarea
@@ -4395,7 +4455,7 @@ export function RoomClient({ code }: { code: string }) {
                 onClick={async () => {
                   const ok = await handleSaveTherapistSummary();
                   if (!ok) return;
-                  setTherapistSummaryModalOpen(false);
+                  closeTherapistSummaryModal();
                 }}
               >
                 {therapistSummarySaving ? "Salvando..." : "Salvar síntese"}
