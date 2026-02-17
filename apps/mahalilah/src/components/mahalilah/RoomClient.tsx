@@ -3685,7 +3685,18 @@ export function RoomClient({ code }: { code: string }) {
               <div className="notice" style={{ display: "grid", gap: 6 }}>
                 <strong>O Caminho até agora</strong>
                 {isProgressSummaryGeneratingForSelectedParticipant && (
-                  <span className="small-muted">
+                  <span
+                    className="small-muted"
+                    style={{
+                      color: "#ff9f9f",
+                      fontWeight: 600,
+                      background: "rgba(255, 107, 107, 0.14)",
+                      border: "1px solid rgba(255, 107, 107, 0.35)",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      width: "fit-content",
+                    }}
+                  >
                     Gerando síntese automática deste jogador, aguarde...
                   </span>
                 )}
