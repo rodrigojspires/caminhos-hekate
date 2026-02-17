@@ -260,20 +260,6 @@ function ToggleSwitch({
   );
 }
 
-function FilterIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-      <path
-        d="M4 6h16M7 12h10M10 18h4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function IndicatorsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -701,7 +687,6 @@ export function DashboardClient() {
     from: "",
     to: "",
   });
-  const [isFiltersMenuOpen, setIsFiltersMenuOpen] = useState(false);
   const [isIndicatorsModalOpen, setIsIndicatorsModalOpen] = useState(false);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [sessionsViewTab, setSessionsViewTab] =
@@ -949,14 +934,6 @@ export function DashboardClient() {
       Math.min(prev, dashboardTutorialSteps.length - 1),
     );
   }, [showDashboardTutorial, dashboardTutorialSteps.length]);
-
-  useEffect(() => {
-    if (!showDashboardTutorial) return;
-    const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
-    if (currentStep?.target === "filters") {
-      setIsFiltersMenuOpen(true);
-    }
-  }, [showDashboardTutorial, dashboardTutorialStep, dashboardTutorialSteps]);
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
@@ -1487,74 +1464,51 @@ export function DashboardClient() {
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
     const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
+    const roomModeLabel = room.therapistSoloPlay
+      ? "Terapeuta joga sozinho (demais visualizam)"
+      : room.therapistPlays
+        ? "Terapeuta joga junto"
+        : "Terapeuta conduz sem jogar";
     return (
       <div
         key={room.id}
         className="card dashboard-room-card"
         style={{ display: "grid", gap: 14 }}
       >
-        <div
-          className="dashboard-room-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div className="badge">Sala {room.code}</div>
-              {room.isTrial && <span className="pill">Trial</span>}
-              {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
-              <span className={`pill ${statusClass(room.status)}`}>
-                {room.status}
-              </span>
-            </div>
-            <div
-              style={{
-                color: "var(--muted)",
-                marginTop: 6,
-                fontSize: 12,
-                lineHeight: 1.35,
-              }}
-            >
-              {new Date(room.createdAt).toLocaleString("pt-BR")} •{" "}
-              {room.participantsCount}/{room.maxParticipants} jogadores •{" "}
-              {room.therapistSoloPlay
-                ? "Terapeuta joga sozinho (demais visualizam)"
-                : room.therapistPlays
-                ? "Terapeuta joga junto"
-                : "Terapeuta conduz sem jogar"}
-            </div>
-          </div>
-            <div
-              className="dashboard-room-actions"
+        <div className="dashboard-room-header">
+          <div
             style={{
               display: "flex",
               gap: 8,
-              flexWrap: "wrap",
               alignItems: "center",
+              flexWrap: "wrap",
             }}
+          >
+            <div className="badge">Sala {room.code}</div>
+            {room.isTrial && <span className="pill">Trial</span>}
+            {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
+            <span className={`pill ${statusClass(room.status)}`}>
+              {room.status}
+            </span>
+          </div>
+          <div className="dashboard-room-subline">
+            <span className="dashboard-room-meta-chip">
+              {new Date(room.createdAt).toLocaleString("pt-BR")}
+            </span>
+            <span className="dashboard-room-meta-chip">
+              {room.participantsCount}/{room.maxParticipants} jogadores
+            </span>
+            <span className="dashboard-room-meta-chip">
+              {roomModeLabel}
+            </span>
+          </div>
+          <div
+            className="dashboard-room-actions"
             data-tour-dashboard={index === 0 ? "room-actions" : undefined}
-            >
+          >
             {room.canManage && hasNonTherapistParticipants && (
               <label
-                className="small-muted"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "0 4px",
-                }}
+                className="small-muted dashboard-room-visibility-toggle"
               >
                 <ToggleSwitch
                   checked={Boolean(room.isVisibleToPlayers)}
@@ -2759,25 +2713,6 @@ export function DashboardClient() {
             }}
           >
             <button
-              className={isFiltersMenuOpen ? "btn-primary" : "btn-secondary"}
-              onClick={() => setIsFiltersMenuOpen((prev) => !prev)}
-              aria-expanded={isFiltersMenuOpen}
-              aria-controls="dashboard-filters-menu"
-              aria-label={isFiltersMenuOpen ? "Fechar filtros" : "Abrir filtros"}
-              title={isFiltersMenuOpen ? "Fechar filtros" : "Abrir filtros"}
-              style={{
-                width: 36,
-                minWidth: 36,
-                height: 36,
-                padding: 0,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <FilterIcon />
-            </button>
-            <button
               className="btn-secondary"
               onClick={() => setIsIndicatorsModalOpen(true)}
               aria-label="Abrir indicadores"
@@ -2830,74 +2765,68 @@ export function DashboardClient() {
             {hasActiveFilters && (
               <span className="small-muted">Filtros ativos aplicados no painel.</span>
             )}
-            {isFiltersMenuOpen ? (
-              <div id="dashboard-filters-menu" className="grid" style={{ gap: 12 }}>
-                <div
-                  className="dashboard-filters-row"
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    alignItems: "flex-end",
-                  }}
-                >
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span>Status</span>
-                    <select
-                      value={filters.status}
-                      onChange={(event) =>
-                        setFilters((prev) => ({ ...prev, status: event.target.value }))
-                      }
-                    >
-                      <option value="">Todos</option>
-                      <option value="ACTIVE">Ativas</option>
-                      <option value="CLOSED">Encerradas</option>
-                      <option value="COMPLETED">Concluídas</option>
-                    </select>
-                  </label>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span>De</span>
-                    <input
-                      type="date"
-                      value={filters.from}
-                      onChange={(event) =>
-                        setFilters((prev) => ({ ...prev, from: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span>Até</span>
-                    <input
-                      type="date"
-                      value={filters.to}
-                      onChange={(event) =>
-                        setFilters((prev) => ({ ...prev, to: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <button
-                    className="btn-secondary w-fit"
-                    style={{ alignSelf: "center" }}
-                    onClick={() => loadRooms()}
+            <div className="grid" style={{ gap: 12 }}>
+              <div
+                className="dashboard-filters-row"
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  alignItems: "flex-end",
+                }}
+              >
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Status</span>
+                  <select
+                    value={filters.status}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, status: event.target.value }))
+                    }
                   >
-                    Aplicar filtros
-                  </button>
-                </div>
+                    <option value="">Todos</option>
+                    <option value="ACTIVE">Ativas</option>
+                    <option value="CLOSED">Encerradas</option>
+                    <option value="COMPLETED">Concluídas</option>
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>De</span>
+                  <input
+                    type="date"
+                    value={filters.from}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, from: event.target.value }))
+                    }
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Até</span>
+                  <input
+                    type="date"
+                    value={filters.to}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, to: event.target.value }))
+                    }
+                  />
+                </label>
                 <button
-                  className="btn-ghost"
-                  onClick={() => {
-                    setFilters({ status: "", from: "", to: "" });
-                    loadRooms({ status: "", from: "", to: "" });
-                  }}
+                  className="btn-secondary w-fit"
+                  style={{ alignSelf: "center" }}
+                  onClick={() => loadRooms()}
                 >
-                  Limpar filtros
+                  Aplicar filtros
                 </button>
               </div>
-            ) : (
-              <p className="small-muted" style={{ margin: 0 }}>
-                Abra o menu para filtrar por status e período.
-              </p>
-            )}
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setFilters({ status: "", from: "", to: "" });
+                  loadRooms({ status: "", from: "", to: "" });
+                }}
+              >
+                Limpar filtros
+              </button>
+            </div>
           </div>
         </aside>
 
