@@ -2455,51 +2455,6 @@ export function DashboardClient() {
           </div>
         </div>
       )}
-      {roomQuota && (
-        <div className="card dashboard-create-card" style={{ display: "grid", gap: 10 }}>
-          <strong>
-            {roomQuota.planType === "SUBSCRIPTION_LIMITED"
-              ? "Contador de salas do plano limitado"
-              : "Contador de salas do período"}
-          </strong>
-          <div className="small-muted" style={{ display: "grid", gap: 2 }}>
-            <span>
-              Período: <strong>{quotaPeriodLabel}</strong>
-            </span>
-            {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
-              <>
-                <span>
-                  Salas criadas no período: <strong>{roomQuota.roomsUsed}</strong>
-                </span>
-                <span>
-                  Máximo do catálogo:{" "}
-                  <strong>
-                    {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit}
-                  </strong>
-                </span>
-                <span>
-                  Salas disponíveis:{" "}
-                  <strong>
-                    {roomQuota.roomsRemaining == null ? "Ilimitadas" : roomQuota.roomsRemaining}
-                  </strong>
-                </span>
-              </>
-            ) : (
-              <>
-                <span>
-                  Salas criadas no período: <strong>{roomQuota.roomsUsed}</strong>
-                </span>
-                <span>
-                  Limite do período:{" "}
-                  <strong>
-                    {roomQuota.roomsLimit == null ? "Ilimitado" : roomQuota.roomsLimit}
-                  </strong>
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
       {canCreateRoom && (
         <div
           className="card dashboard-create-card"
@@ -2754,6 +2709,37 @@ export function DashboardClient() {
             </strong>
             <span className="small-muted">salas criadas</span>
           </div>
+
+          {roomQuota && (
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                padding: "10px 12px",
+                display: "grid",
+                gap: 4,
+              }}
+            >
+              <span className="small-muted">
+                {roomQuota.planType === "SUBSCRIPTION_LIMITED"
+                  ? "Salas do plano limitado"
+                  : "Salas no período"}
+              </span>
+              <strong>{roomQuota.roomsUsed}</strong>
+              <span className="small-muted">Período: {quotaPeriodLabel}</span>
+              {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
+                <span className="small-muted">
+                  Máx.: {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit} |
+                  Disponíveis:{" "}
+                  {roomQuota.roomsRemaining == null ? "Ilimitadas" : roomQuota.roomsRemaining}
+                </span>
+              ) : (
+                <span className="small-muted">
+                  Limite: {roomQuota.roomsLimit == null ? "Ilimitado" : roomQuota.roomsLimit}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div
