@@ -616,7 +616,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const coverPage: string[] = []
   pages.push(coverPage)
 
-  const coverHeaderTop = 170
+  const coverHeaderTop = 280
   const coverHeaderHeight = 236
   drawRect(coverPage, 0, coverHeaderTop, PAGE_WIDTH, coverHeaderHeight, [0.10, 0.26, 0.31])
   drawRect(coverPage, 0, coverHeaderTop + coverHeaderHeight, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
