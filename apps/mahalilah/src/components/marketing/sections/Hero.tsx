@@ -14,6 +14,8 @@ export function Hero({
   primaryCta,
   secondaryCta,
   mediaLabel,
+  videoSrc,
+  videoType,
   note,
   highlights,
   metrics
@@ -24,11 +26,13 @@ export function Hero({
   primaryCta: Cta
   secondaryCta?: Cta
   mediaLabel?: string
+  videoSrc?: string
+  videoType?: string
   note?: string
   highlights?: string[]
   metrics?: HeroMetric[]
 }) {
-  const hasMedia = Boolean(mediaLabel?.trim())
+  const hasMedia = Boolean(mediaLabel?.trim()) || Boolean(videoSrc?.trim())
 
   return (
     <SectionShell className="pt-12 sm:pt-14 lg:pt-20">
@@ -72,13 +76,31 @@ export function Hero({
             </div>
           )}
         </div>
-        {hasMedia && (
-          <MediaPlaceholder variant="video" label={mediaLabel}>
-            <span className="rounded-full border border-gold/35 bg-surface/85 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gold-soft">
-              Prévia da experiência real
-            </span>
-          </MediaPlaceholder>
-        )}
+        {hasMedia &&
+          (videoSrc ? (
+            <div className="relative w-full overflow-hidden rounded-3xl border border-border/70 bg-surface/85 shadow-soft">
+              <video
+                aria-label={mediaLabel || 'Vídeo de demonstração do Maha Lilah Online'}
+                className="aspect-[16/9] w-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+              >
+                <source src={videoSrc} type={videoType || 'video/quicktime'} />
+              </video>
+              <div className="border-t border-border/70 bg-surface/90 px-4 py-2 text-xs text-ink-muted">
+                O vídeo inicia sem som. Use o controle de áudio do player para ativar quando quiser.
+              </div>
+            </div>
+          ) : (
+            <MediaPlaceholder variant="video" label={mediaLabel}>
+              <span className="rounded-full border border-gold/35 bg-surface/85 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-gold-soft">
+                Prévia da experiência real
+              </span>
+            </MediaPlaceholder>
+          ))}
       </div>
     </SectionShell>
   )
