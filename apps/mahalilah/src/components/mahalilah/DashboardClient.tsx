@@ -570,6 +570,18 @@ function parseProgressSummaryContent(content: string): ParsedProgressSummary {
   };
 }
 
+function normalizeAiModalText(content: string) {
+  return content
+    .replace(/\r\n/g, "\n")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function getParticipantDisplayName(participant: {
   user: { name: string | null; email: string };
 }) {
@@ -3516,9 +3528,9 @@ export function DashboardClient() {
             style={{
               width: "min(760px, 96vw)",
               maxHeight: "82vh",
-              overflow: "auto",
+              overflow: "hidden",
               display: "grid",
-              gap: 10,
+              gridTemplateRows: "auto minmax(0, 1fr)",
             }}
           >
             <div
@@ -3526,6 +3538,10 @@ export function DashboardClient() {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
+                alignItems: "center",
+                padding: "10px 12px",
+                borderBottom: "1px solid var(--border)",
+                background: "rgba(11, 18, 29, 0.92)",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -3541,8 +3557,10 @@ export function DashboardClient() {
                 Fechar
               </button>
             </div>
-            <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
-              {aiContentModal.content}
+            <div style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}>
+              <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
+                {normalizeAiModalText(aiContentModal.content)}
+              </div>
             </div>
           </div>
         </div>
@@ -3569,9 +3587,9 @@ export function DashboardClient() {
             style={{
               width: "min(760px, 96vw)",
               maxHeight: "82vh",
-              overflow: "auto",
+              overflow: "hidden",
               display: "grid",
-              gap: 10,
+              gridTemplateRows: "auto minmax(0, 1fr)",
             }}
           >
             <div
@@ -3579,6 +3597,10 @@ export function DashboardClient() {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
+                alignItems: "center",
+                padding: "10px 12px",
+                borderBottom: "1px solid var(--border)",
+                background: "rgba(11, 18, 29, 0.92)",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -3595,7 +3617,7 @@ export function DashboardClient() {
               </button>
             </div>
 
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}>
               <div
                 className="notice"
                 style={{
@@ -3663,9 +3685,9 @@ export function DashboardClient() {
             style={{
               width: "min(760px, 96vw)",
               maxHeight: "82vh",
-              overflow: "auto",
+              overflow: "hidden",
               display: "grid",
-              gap: 10,
+              gridTemplateRows: "auto minmax(0, 1fr)",
             }}
           >
             <div
@@ -3673,6 +3695,10 @@ export function DashboardClient() {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
+                alignItems: "center",
+                padding: "10px 12px",
+                borderBottom: "1px solid var(--border)",
+                background: "rgba(11, 18, 29, 0.92)",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -3689,103 +3715,105 @@ export function DashboardClient() {
               </button>
             </div>
 
-            {houseMeaningModal.jumpContext && (
-              <div className="notice" style={{ display: "grid", gap: 8 }}>
-                <span className="small-muted">
-                  Contexto de atalho: casa {houseMeaningModal.jumpContext.from}{" "}
-                  {houseMeaningModal.jumpContext.isUp ? "↗" : "↘"} casa{" "}
-                  {houseMeaningModal.jumpContext.to} (
-                  {houseMeaningModal.jumpContext.isUp ? "subida" : "descida"})
-                </span>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    className="btn-secondary"
-                    onClick={() =>
-                      setHouseMeaningModal((prev) =>
-                        prev?.jumpContext
-                          ? {
-                              ...prev,
-                              houseNumber: prev.jumpContext.from,
-                              title: `Significado da casa ${prev.jumpContext.from}`,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Ver casa {houseMeaningModal.jumpContext.from}
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    onClick={() =>
-                      setHouseMeaningModal((prev) =>
-                        prev?.jumpContext
-                          ? {
-                              ...prev,
-                              houseNumber: prev.jumpContext.to,
-                              title: `Significado da casa ${prev.jumpContext.to}`,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Ver casa {houseMeaningModal.jumpContext.to}
-                  </button>
+            <div style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}>
+              {houseMeaningModal.jumpContext && (
+                <div className="notice" style={{ display: "grid", gap: 8 }}>
+                  <span className="small-muted">
+                    Contexto de atalho: casa {houseMeaningModal.jumpContext.from}{" "}
+                    {houseMeaningModal.jumpContext.isUp ? "↗" : "↘"} casa{" "}
+                    {houseMeaningModal.jumpContext.to} (
+                    {houseMeaningModal.jumpContext.isUp ? "subida" : "descida"})
+                  </span>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() =>
+                        setHouseMeaningModal((prev) =>
+                          prev?.jumpContext
+                            ? {
+                                ...prev,
+                                houseNumber: prev.jumpContext.from,
+                                title: `Significado da casa ${prev.jumpContext.from}`,
+                              }
+                            : prev,
+                        )
+                      }
+                    >
+                      Ver casa {houseMeaningModal.jumpContext.from}
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() =>
+                        setHouseMeaningModal((prev) =>
+                          prev?.jumpContext
+                            ? {
+                                ...prev,
+                                houseNumber: prev.jumpContext.to,
+                                title: `Significado da casa ${prev.jumpContext.to}`,
+                              }
+                            : prev,
+                        )
+                      }
+                    >
+                      Ver casa {houseMeaningModal.jumpContext.to}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {modalHouseInfo ? (
-              <div style={{ display: "grid", gap: 8 }}>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>
-                    Casa {modalHouseInfo.number} • {modalHouseInfo.sanskrit || "—"} •{" "}
-                    {modalHouseInfo.portuguese}
-                  </strong>
+              {modalHouseInfo ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>
+                      Casa {modalHouseInfo.number} • {modalHouseInfo.sanskrit || "—"} •{" "}
+                      {modalHouseInfo.portuguese}
+                    </strong>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Significado</strong>
+                    <span className="small-muted">
+                      {modalHouseInfo.meaning || modalHouseInfo.portuguese}
+                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Palavras-chave gerais</strong>
+                    <span className="small-muted">
+                      {modalHouseInfo.keywords.length
+                        ? modalHouseInfo.keywords.join(" • ")
+                        : modalHouseInfo.description || "—"}
+                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Lado Luz</strong>
+                    <span className="small-muted">
+                      {modalHouseInfo.polarity
+                        ? `Palavras-chave: ${modalHouseInfo.polarity.lightKeywords}. ${modalHouseInfo.polarity.lightSummary}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Lado Sombra</strong>
+                    <span className="small-muted">
+                      {modalHouseInfo.polarity
+                        ? `Palavras-chave: ${modalHouseInfo.polarity.shadowKeywords}. ${modalHouseInfo.polarity.shadowSummary}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                    <strong>Texto Terapêutico</strong>
+                    <span className="small-muted">
+                      {modalHouseTherapeutic
+                        ? `${modalHouseTherapeutic.text} Pergunta: ${modalHouseTherapeutic.question}`
+                        : modalHouseQuestion}
+                    </span>
+                  </div>
                 </div>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Significado</strong>
-                  <span className="small-muted">
-                    {modalHouseInfo.meaning || modalHouseInfo.portuguese}
-                  </span>
-                </div>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Palavras-chave gerais</strong>
-                  <span className="small-muted">
-                    {modalHouseInfo.keywords.length
-                      ? modalHouseInfo.keywords.join(" • ")
-                      : modalHouseInfo.description || "—"}
-                  </span>
-                </div>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Lado Luz</strong>
-                  <span className="small-muted">
-                    {modalHouseInfo.polarity
-                      ? `Palavras-chave: ${modalHouseInfo.polarity.lightKeywords}. ${modalHouseInfo.polarity.lightSummary}`
-                      : "—"}
-                  </span>
-                </div>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Lado Sombra</strong>
-                  <span className="small-muted">
-                    {modalHouseInfo.polarity
-                      ? `Palavras-chave: ${modalHouseInfo.polarity.shadowKeywords}. ${modalHouseInfo.polarity.shadowSummary}`
-                      : "—"}
-                  </span>
-                </div>
-                <div className="notice" style={{ display: "grid", gap: 4 }}>
-                  <strong>Texto Terapêutico</strong>
-                  <span className="small-muted">
-                    {modalHouseTherapeutic
-                      ? `${modalHouseTherapeutic.text} Pergunta: ${modalHouseTherapeutic.question}`
-                      : modalHouseQuestion}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <span className="small-muted">
-                Sem dados de significado para esta casa.
-              </span>
-            )}
+              ) : (
+                <span className="small-muted">
+                  Sem dados de significado para esta casa.
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}

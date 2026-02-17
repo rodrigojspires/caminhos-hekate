@@ -686,6 +686,12 @@ async function generateFinalReportForParticipant(params: {
 async function generateProgressSummaryIfNeeded(params: {
   roomId: string;
   participantId: string;
+  onStatusChange?: (payload: {
+    status: "processing" | "done";
+    participantId: string;
+    windowStartMoveIndex: number;
+    windowEndMoveIndex: number;
+  }) => void;
 }) {
   const room = await prisma.mahaLilahRoom.findUnique({
     where: { id: params.roomId },
@@ -864,6 +870,12 @@ async function generateProgressSummaryIfNeeded(params: {
   };
 
   const prompt = `Contexto global da sessão (JSON):\n${JSON.stringify(globalContext, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nCom base nesse caminho (JSON):\n${JSON.stringify(intervalContext, null, 2)}\n\ngere uma síntese em português que inclua: (1) um resumo do que aconteceu; (2) padrões simbólicos ou viradas significativas; (3) uma conexão direta com a intenção original do jogo; (4) três perguntas de reflexão que estimulem o autoconhecimento; (5) um insight final para encerrar este ciclo; (6) uma reflexão interna sobre o significado do caminho percorrido. Seja terapêutico, reflexivo e conecte a jornada à consciência.`;
+  params.onStatusChange?.({
+    status: "processing",
+    participantId: participant.id,
+    windowStartMoveIndex,
+    windowEndMoveIndex,
+  });
   const content = await callOpenAI(prompt);
 
   await prisma.mahaLilahAiReport.create({
@@ -881,6 +893,13 @@ async function generateProgressSummaryIfNeeded(params: {
         summaryEveryMoves: step,
       }),
     },
+  });
+
+  params.onStatusChange?.({
+    status: "done",
+    participantId: participant.id,
+    windowStartMoveIndex,
+    windowEndMoveIndex,
   });
 
   return {
@@ -1529,9 +1548,23 @@ io.on("connection", (socket: AuthedSocket) => {
         if (result?.movedParticipantId) {
           void (async () => {
             try {
+              const participantId = result.movedParticipantId;
               const generated = await generateProgressSummaryIfNeeded({
                 roomId,
-                participantId: result.movedParticipantId,
+                participantId,
+                onStatusChange: ({
+                  status,
+                  participantId: targetParticipantId,
+                  windowStartMoveIndex,
+                  windowEndMoveIndex,
+                }) => {
+                  io.to(roomId).emit("ai:progressSummaryStatus", {
+                    status,
+                    participantId: targetParticipantId,
+                    windowStartMoveIndex,
+                    windowEndMoveIndex,
+                  });
+                },
               });
               if (!generated.created) return;
               const refreshedState = await buildRoomState(roomId);
@@ -1539,6 +1572,10 @@ io.on("connection", (socket: AuthedSocket) => {
                 io.to(roomId).emit("room:state", refreshedState);
               }
             } catch (progressError) {
+              io.to(roomId).emit("ai:progressSummaryStatus", {
+                status: "error",
+                participantId: result.movedParticipantId,
+              });
               console.error(
                 "Erro ao gerar síntese 'O Caminho até agora':",
                 progressError,

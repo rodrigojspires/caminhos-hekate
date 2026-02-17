@@ -337,6 +337,19 @@ async function loadCardImageForPdf(
   return null
 }
 
+function normalizeAiNarrativeText(value: string) {
+  return (value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/__/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .normalize('NFC')
+}
+
 function extractAiReportText(content: string) {
   const raw = (content || '').trim()
   if (!raw) return ''
@@ -345,7 +358,7 @@ function extractAiReportText(content: string) {
     const parsed = JSON.parse(raw)
 
     if (typeof parsed === 'string') {
-      return parsed.normalize('NFC')
+      return normalizeAiNarrativeText(parsed)
     }
 
     if (parsed && typeof parsed === 'object') {
@@ -356,13 +369,13 @@ function extractAiReportText(content: string) {
             ? (parsed as { content: string }).content
             : ''
 
-      if (text) return text.normalize('NFC')
+      if (text) return normalizeAiNarrativeText(text)
     }
   } catch {
     // Se nao for JSON, segue com o proprio conteudo.
   }
 
-  return raw.normalize('NFC')
+  return normalizeAiNarrativeText(raw)
 }
 
 function extractProgressInterval(content: string) {
