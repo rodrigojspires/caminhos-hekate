@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { Prisma, prisma } from '@hekate/database'
 import { HOUSES, getHouseByNumber } from '@hekate/mahalilah-core'
+import { HOUSE_MEANINGS } from '@/lib/mahalilah/house-meanings'
+import { HOUSE_POLARITIES } from '@/lib/mahalilah/house-polarities'
+import { HOUSE_THERAPEUTIC_TEXTS } from '@/lib/mahalilah/house-therapeutic-texts'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
@@ -191,6 +194,23 @@ function drawText(
   pageOps.push(`${x.toFixed(2)} ${toPdfY(topY)} Td`)
   pageOps.push(`(${safe}) Tj`)
   pageOps.push('ET')
+}
+
+function drawCenteredText(
+  pageOps: string[],
+  text: string,
+  topY: number,
+  options?: {
+    font?: 'F1' | 'F2'
+    size?: number
+    color?: [number, number, number]
+  }
+) {
+  const safeText = toPdfSafeText(text)
+  const size = options?.size ?? 11
+  const estimatedWidth = safeText.length * size * 0.52
+  const x = Math.max(MARGIN_LEFT, (PAGE_WIDTH - estimatedWidth) / 2)
+  drawText(pageOps, text, x, topY, options)
 }
 
 function formatDate(date: Date) {
@@ -437,6 +457,25 @@ function isPostStartMove(move: {
   return !(move.fromPos === 68 && move.toPos === 68 && move.diceValue !== 6)
 }
 
+function getHouseExplanationLines(houseNumber: number) {
+  const house = getHouseByNumber(houseNumber)
+  const houseMeaning = HOUSE_MEANINGS[houseNumber]
+  const polarity = HOUSE_POLARITIES[houseNumber]
+  const therapeutic = HOUSE_THERAPEUTIC_TEXTS[houseNumber]
+
+  const lines: string[] = []
+  lines.push(`Casa: ${formatHouseName(houseNumber)}`)
+  lines.push(`Descricao base: ${house?.description || '-'}`)
+  lines.push(`Significado ampliado: ${houseMeaning || '-'}`)
+  lines.push(`Lado luz - palavras-chave: ${polarity?.lightKeywords || '-'}`)
+  lines.push(`Lado luz - sintese: ${polarity?.lightSummary || '-'}`)
+  lines.push(`Lado sombra - palavras-chave: ${polarity?.shadowKeywords || '-'}`)
+  lines.push(`Lado sombra - sintese: ${polarity?.shadowSummary || '-'}`)
+  lines.push(`Texto terapeutico: ${therapeutic?.text || '-'}`)
+  lines.push(`Pergunta terapeutica: ${therapeutic?.question || '-'}`)
+  return lines
+}
+
 function formatDurationBetween(startDate: Date | null, endDate: Date | null) {
   if (!startDate || !endDate) return '-'
   const diffMs = endDate.getTime() - startDate.getTime()
@@ -574,30 +613,40 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const coverPage: string[] = []
   pages.push(coverPage)
 
-  drawRect(coverPage, 0, 0, PAGE_WIDTH, 220, [0.10, 0.26, 0.31])
-  drawRect(coverPage, 0, 220, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
-  drawText(coverPage, 'Maha Lilah Online', 52, 74, { font: 'F2', size: 30, color: [1, 1, 1] })
-  drawText(coverPage, 'Relatorio de Sessao', 52, 108, { font: 'F2', size: 18, color: [0.92, 0.95, 0.97] })
+  const coverHeaderTop = 126
+  const coverHeaderHeight = 236
+  drawRect(coverPage, 0, coverHeaderTop, PAGE_WIDTH, coverHeaderHeight, [0.10, 0.26, 0.31])
+  drawRect(coverPage, 0, coverHeaderTop + coverHeaderHeight, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
+  drawCenteredText(coverPage, 'Maha Lilah Online', coverHeaderTop + 56, {
+    font: 'F2',
+    size: 30,
+    color: [1, 1, 1]
+  })
+  drawCenteredText(coverPage, 'Relatorio de Sessao', coverHeaderTop + 88, {
+    font: 'F2',
+    size: 18,
+    color: [0.92, 0.95, 0.97]
+  })
 
   const headerRoomLine =
     `Sala ${room.code} - Status: ${formatRoomStatus(room.status)} - criada em ${formatDate(room.createdAt)}` +
     (room.isTrial ? ' - Trial' : '')
-  drawText(coverPage, headerRoomLine, 52, 138, {
+  drawCenteredText(coverPage, headerRoomLine, coverHeaderTop + 118, {
     font: 'F1',
     size: 11,
     color: [0.92, 0.95, 0.97]
   })
-  drawText(coverPage, `Terapeuta: ${options.therapistName}`, 52, 160, {
+  drawCenteredText(coverPage, `Terapeuta: ${options.therapistName}`, coverHeaderTop + 140, {
     font: 'F1',
     size: 11,
     color: [0.92, 0.95, 0.97]
   })
-  drawText(coverPage, `Nome do Jogador: ${options.playerName}`, 52, 182, {
+  drawCenteredText(coverPage, `Nome do Jogador: ${options.playerName}`, coverHeaderTop + 162, {
     font: 'F1',
     size: 11,
     color: [0.92, 0.95, 0.97]
   })
-  drawText(coverPage, `Gerado em ${formatDate(options.generatedAt)}`, 52, 204, {
+  drawCenteredText(coverPage, `Gerado em ${formatDate(options.generatedAt)}`, coverHeaderTop + 184, {
     font: 'F1',
     size: 10,
     color: [0.92, 0.95, 0.97]
@@ -777,12 +826,13 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
         ? `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.appliedJumpFrom || move.toPos)} -> ${formatHouseName(move.appliedJumpTo || move.toPos)}`
         : `Jogada ${move.turnNumber}: ${formatHouseName(move.fromPos)} -> ${formatHouseName(move.toPos)}`
       addParagraph(journeyTitle, { font: 'F2', size: 11 })
-      addParagraph(`Data/hora: ${formatDate(move.createdAt)}`, { indent: 14, size: 10 })
-      addParagraph(`Casa atual: ${formatHouseName(move.toPos)}`, { indent: 14, size: 10 })
-      addParagraph(
-        `Explicacao da casa: ${getHouseByNumber(move.toPos)?.description || '-'}`,
-        { indent: 14, size: 10 }
-      )
+      if (isPostStartMove(move)) {
+        addParagraph('Explicacao da casa:', { indent: 14, size: 10, font: 'F2' })
+        const houseExplanationLines = getHouseExplanationLines(move.toPos)
+        houseExplanationLines.forEach((line) => {
+          addParagraph(line, { indent: 28, size: 10 })
+        })
+      }
 
       if (hadJump) {
         const jumpFrom = move.appliedJumpFrom as number
@@ -817,7 +867,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
       if (tipsForMove.length > 0) {
         addParagraph('Ajudas da IA:', { indent: 14, size: 10, font: 'F2' })
         tipsForMove.forEach((tip, index) => {
-          addParagraph(`Ajuda ${index + 1} (${formatDate(tip.createdAt)}):`, {
+          addParagraph(`Ajuda ${index + 1}:`, {
             indent: 28,
             size: 10,
             font: 'F2'
@@ -872,7 +922,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
       addParagraph('Ajudas da IA sem jogada vinculada:', { font: 'F2', size: 11 })
       extraTips.forEach((tip, index) => {
         addParagraph(
-          `Ajuda ${index + 1}${tip.turnNumber ? ` (jogada ${tip.turnNumber})` : ''} - ${formatDate(tip.createdAt)}`,
+          `Ajuda ${index + 1}${tip.turnNumber ? ` (jogada ${tip.turnNumber})` : ''}`,
           { indent: 14, size: 10, font: 'F2' }
         )
         addMultilineParagraph(tip.text, { indent: 28, size: 10 })
@@ -896,7 +946,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
             ? `${progressReport.intervalStart} - ${progressReport.intervalEnd}`
             : '-'
         addParagraph(
-          `Caminho ${index + 1} (intervalo ${intervalLabel}) - ${formatDate(progressReport.createdAt)}`,
+          `Caminho ${index + 1} (intervalo ${intervalLabel})`,
           { indent: 14, size: 10, font: 'F2' }
         )
         addMultilineParagraph(progressReport.text, { indent: 28, size: 10 })
