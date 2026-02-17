@@ -176,13 +176,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       )
     }
 
-    if (room.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Só é possível alterar este modo em salas ativas.' },
-        { status: 400 }
-      )
-    }
-
     const updated = await prisma.mahaLilahRoom.update({
       where: { id: room.id },
       data: {

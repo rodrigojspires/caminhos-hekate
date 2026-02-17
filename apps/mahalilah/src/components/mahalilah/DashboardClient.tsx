@@ -1239,6 +1239,9 @@ export function DashboardClient() {
     const therapistParticipants = room.participants.filter(
       (participant) => participant.role === "THERAPIST",
     );
+    const hasNonTherapistParticipants = room.participants.some(
+      (participant) => participant.role !== "THERAPIST",
+    );
     const exportableParticipants =
       room.therapistSoloPlay
         ? room.viewerRole === "THERAPIST"
@@ -1399,7 +1402,7 @@ export function DashboardClient() {
             }}
             data-tour-dashboard={index === 0 ? "room-actions" : undefined}
             >
-            {room.canManage && (
+            {room.canManage && hasNonTherapistParticipants && (
               <label
                 className="small-muted"
                 style={{
