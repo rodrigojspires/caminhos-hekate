@@ -604,6 +604,9 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
 
   const recurringMap = new Map<number, number>()
   pathHouses.forEach((houseNumber) => {
+    if (houseNumber >= 68 && houseNumber <= 71) {
+      return
+    }
     recurringMap.set(houseNumber, (recurringMap.get(houseNumber) || 0) + 1)
   })
   const recurringHouses = Array.from(recurringMap.entries())
