@@ -260,6 +260,51 @@ function ToggleSwitch({
   );
 }
 
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M4 6h16M7 12h10M10 18h4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IndicatorsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M5 18V11M12 18V6M19 18v-8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="5" cy="9" r="1.4" fill="currentColor" />
+      <circle cx="12" cy="4" r="1.4" fill="currentColor" />
+      <circle cx="19" cy="8" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+function NewRoomIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const DASHBOARD_ONBOARDING_VERSION = "2026-02-feature-pack";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
@@ -658,6 +703,7 @@ export function DashboardClient() {
   });
   const [isFiltersMenuOpen, setIsFiltersMenuOpen] = useState(false);
   const [isIndicatorsModalOpen, setIsIndicatorsModalOpen] = useState(false);
+  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [sessionsViewTab, setSessionsViewTab] =
     useState<SessionsViewTab>("created");
   const [showDashboardTutorial, setShowDashboardTutorial] = useState(false);
@@ -962,6 +1008,7 @@ export function DashboardClient() {
     );
     await loadRooms();
     setCreating(false);
+    setIsCreateRoomModalOpen(false);
   };
 
   const handleCreateTrialRoom = async () => {
@@ -2720,14 +2767,35 @@ export function DashboardClient() {
                   onClick={() => setIsFiltersMenuOpen((prev) => !prev)}
                   aria-expanded={isFiltersMenuOpen}
                   aria-controls="dashboard-filters-menu"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                 >
-                  {isFiltersMenuOpen ? "✕ Fechar" : "☰ Filtros"}
+                  <FilterIcon />
+                  {isFiltersMenuOpen ? "Fechar filtros" : "Filtros"}
                 </button>
                 <button
                   className="btn-secondary"
                   onClick={() => setIsIndicatorsModalOpen(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                 >
+                  <IndicatorsIcon />
                   Indicadores
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => setIsCreateRoomModalOpen(true)}
+                  disabled={!canCreateRoom || isLimitedQuotaExhausted}
+                  data-tour-dashboard={canCreateRoom ? "create-room" : undefined}
+                  title={
+                    !canCreateRoom
+                      ? "No momento você não pode criar nova sala."
+                      : isLimitedQuotaExhausted
+                        ? "Limite do período atingido."
+                        : "Criar nova sala"
+                  }
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  <NewRoomIcon />
+                  Nova sala
                 </button>
               </div>
             </div>
@@ -2847,103 +2915,6 @@ export function DashboardClient() {
               </div>
             </div>
           )}
-          {canCreateRoom && (
-            <div
-              className="card dashboard-create-card"
-              style={{ display: "grid", gap: 12 }}
-              data-tour-dashboard="create-room"
-            >
-              <strong>Criar nova sala</strong>
-              <div
-                className="dashboard-create-row"
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span>Jogadores máximos</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={maxParticipants}
-                    onChange={(event) =>
-                      setMaxParticipants(Number(event.target.value))
-                    }
-                  />
-                </label>
-                <label
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    paddingTop: 22,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={therapistPlays}
-                    onChange={(event) => {
-                      if (therapistSoloPlay && !event.target.checked) return;
-                      setTherapistPlays(event.target.checked);
-                    }}
-                    disabled={therapistSoloPlay}
-                  />
-                  <span>Terapeuta joga junto</span>
-                </label>
-                {canUseTherapistSoloPlay && (
-                  <label
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      paddingTop: 22,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={therapistSoloPlay}
-                      onChange={(event) => {
-                        const enabled = event.target.checked;
-                        setTherapistSoloPlay(enabled);
-                        if (enabled) {
-                          setTherapistPlays(true);
-                        }
-                      }}
-                    />
-                    <span>Só o terapeuta joga (demais visualizam)</span>
-                  </label>
-                )}
-                <button
-                  className="btn-primary"
-                  onClick={handleCreateRoom}
-                  disabled={creating || isLimitedQuotaExhausted}
-                >
-                  {creating
-                    ? "Criando..."
-                    : isLimitedQuotaExhausted
-                      ? "Limite do período atingido"
-                      : "Criar sala"}
-                </button>
-              </div>
-              <p className="small-muted">
-                Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
-                vaga de jogador.
-                {canUseTherapistSoloPlay
-                  ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
-                  : ' O modo de jogadores somente visualização não está disponível no seu plano atual.'}
-              </p>
-              {isLimitedQuotaExhausted && (
-                <p className="notice">
-                  Você já usou todas as salas disponíveis no período atual do plano limitado.
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="grid dashboard-sessions-section" style={{ gap: 16 }}>
             <div
               style={{
@@ -2997,6 +2968,164 @@ export function DashboardClient() {
         </div>
 
       </div>
+
+      {isCreateRoomModalOpen && canCreateRoom && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (creating) return;
+            setIsCreateRoomModalOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.7)",
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(760px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <strong>Criar nova sala</strong>
+              <button
+                className="btn-secondary"
+                disabled={creating}
+                onClick={() => setIsCreateRoomModalOpen(false)}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div
+              className="dashboard-create-row"
+              style={{
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Jogadores máximos</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={maxParticipants}
+                  onChange={(event) =>
+                    setMaxParticipants(Number(event.target.value))
+                  }
+                />
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  paddingTop: 22,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={therapistPlays}
+                  onChange={(event) => {
+                    if (therapistSoloPlay && !event.target.checked) return;
+                    setTherapistPlays(event.target.checked);
+                  }}
+                  disabled={therapistSoloPlay}
+                />
+                <span>Terapeuta joga junto</span>
+              </label>
+              {canUseTherapistSoloPlay && (
+                <label
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    paddingTop: 22,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={therapistSoloPlay}
+                    onChange={(event) => {
+                      const enabled = event.target.checked;
+                      setTherapistSoloPlay(enabled);
+                      if (enabled) {
+                        setTherapistPlays(true);
+                      }
+                    }}
+                  />
+                  <span>Só o terapeuta joga (demais visualizam)</span>
+                </label>
+              )}
+            </div>
+
+            <p className="small-muted" style={{ margin: 0 }}>
+              Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
+              vaga de jogador.
+              {canUseTherapistSoloPlay
+                ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
+                : " O modo de jogadores somente visualização não está disponível no seu plano atual."}
+            </p>
+
+            {isLimitedQuotaExhausted && (
+              <p className="notice">
+                Você já usou todas as salas disponíveis no período atual do plano
+                limitado.
+              </p>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-ghost"
+                disabled={creating}
+                onClick={() => setIsCreateRoomModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleCreateRoom}
+                disabled={creating || isLimitedQuotaExhausted}
+              >
+                {creating
+                  ? "Criando..."
+                  : isLimitedQuotaExhausted
+                    ? "Limite do período atingido"
+                    : "Criar sala"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isIndicatorsModalOpen && (
         <div
