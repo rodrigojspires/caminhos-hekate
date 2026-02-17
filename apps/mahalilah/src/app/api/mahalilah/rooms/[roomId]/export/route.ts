@@ -613,7 +613,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const coverPage: string[] = []
   pages.push(coverPage)
 
-  const coverHeaderTop = 126
+  const coverHeaderTop = 170
   const coverHeaderHeight = 236
   drawRect(coverPage, 0, coverHeaderTop, PAGE_WIDTH, coverHeaderHeight, [0.10, 0.26, 0.31])
   drawRect(coverPage, 0, coverHeaderTop + coverHeaderHeight, PAGE_WIDTH, 4, [0.83, 0.68, 0.39])
@@ -730,6 +730,63 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
     cursorY += height
   }
 
+  const addSummaryIndicatorCards = (
+    items: Array<{
+      label: string
+      value: string
+    }>
+  ) => {
+    if (items.length === 0) return
+
+    const columns = 3
+    const gapX = 10
+    const gapY = 10
+    const cardHeight = 56
+    const contentWidth = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
+    const cardWidth = (contentWidth - gapX * (columns - 1)) / columns
+    const rows = Math.ceil(items.length / columns)
+    const totalHeight = rows * cardHeight + (rows - 1) * gapY
+    const palette: Array<[number, number, number]> = [
+      [0.90, 0.95, 0.99],
+      [0.92, 0.96, 0.92],
+      [0.98, 0.94, 0.90],
+      [0.94, 0.93, 0.98],
+      [0.90, 0.96, 0.95],
+      [0.97, 0.93, 0.95]
+    ]
+
+    ensureSpace(totalHeight + 6)
+
+    for (let row = 0; row < rows; row += 1) {
+      const start = row * columns
+      const rowItems = items.slice(start, start + columns)
+      const offsetX =
+        rowItems.length < columns
+          ? ((columns - rowItems.length) * (cardWidth + gapX)) / 2
+          : 0
+
+      rowItems.forEach((item, colIndex) => {
+        const cardX = MARGIN_LEFT + offsetX + colIndex * (cardWidth + gapX)
+        const cardY = cursorY + row * (cardHeight + gapY)
+        const color = palette[(start + colIndex) % palette.length]
+
+        drawRect(currentPage, cardX, cardY, cardWidth, cardHeight, color)
+        drawText(currentPage, item.label, cardX + 10, cardY + 18, {
+          font: 'F2',
+          size: 9,
+          color: [0.15, 0.22, 0.28]
+        })
+        drawText(currentPage, item.value, cardX + 10, cardY + 40, {
+          font: 'F2',
+          size: 16,
+          color: [0.08, 0.12, 0.16]
+        })
+      })
+    }
+
+    cursorY += totalHeight + 6
+  }
+
   const addCardWithSideText = (params: {
     card: NonNullable<ExportRoom['moves'][number]['cardDraws'][number]['card']> | null
     cards: number[]
@@ -791,11 +848,16 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   }
 
   startBodyPage('1. Resumo rapido')
-  addParagraph(`Quantidade de jogadas: ${totalMoves}`)
-  addParagraph(`Quantidade ate inicio: ${participantState?.rollCountUntilStart ?? 0}`)
-  addParagraph(`Registros terapeuticos: ${totalTherapyEntries}`)
-  addParagraph(`Assistencia de IA: ${tipReports.length}`)
-  addParagraph(`Tiragens de cartas: ${totalCardDraws}`)
+  addSummaryIndicatorCards([
+    { label: 'Quantidade de jogadas', value: String(totalMoves) },
+    {
+      label: 'Quantidade ate inicio',
+      value: String(participantState?.rollCountUntilStart ?? 0)
+    },
+    { label: 'Registros terapeuticos', value: String(totalTherapyEntries) },
+    { label: 'Assistencia de IA', value: String(tipReports.length) },
+    { label: 'Tiragens de cartas', value: String(totalCardDraws) }
+  ])
 
   addSpacer(12)
   addSectionTitle('2. Visao geral da sessao')
@@ -841,10 +903,25 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
           `Atalho: ${formatHouseName(jumpFrom)} -> ${formatHouseName(jumpTo)} (${jumpTo > jumpFrom ? 'subida' : 'descida'})`,
           { indent: 14, size: 10 }
         )
-        addParagraph(
-          `Explicacao do atalho: ${getHouseByNumber(jumpFrom)?.description || '-'} | destino: ${getHouseByNumber(jumpTo)?.description || '-'}`,
-          { indent: 14, size: 10 }
-        )
+        addParagraph('Explicacao completa do atalho (origem):', {
+          indent: 14,
+          size: 10,
+          font: 'F2'
+        })
+        const jumpFromExplanationLines = getHouseExplanationLines(jumpFrom)
+        jumpFromExplanationLines.forEach((line) => {
+          addParagraph(line, { indent: 28, size: 10 })
+        })
+
+        addParagraph('Explicacao completa do atalho (destino):', {
+          indent: 14,
+          size: 10,
+          font: 'F2'
+        })
+        const jumpToExplanationLines = getHouseExplanationLines(jumpTo)
+        jumpToExplanationLines.forEach((line) => {
+          addParagraph(line, { indent: 28, size: 10 })
+        })
       }
 
       if (move.therapyEntries.length > 0) {
