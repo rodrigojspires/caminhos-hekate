@@ -1519,7 +1519,14 @@ export function DashboardClient() {
                 {room.status}
               </span>
             </div>
-            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+            <div
+              style={{
+                color: "var(--muted)",
+                marginTop: 6,
+                fontSize: 12,
+                lineHeight: 1.35,
+              }}
+            >
               {new Date(room.createdAt).toLocaleString("pt-BR")} •{" "}
               {room.participantsCount}/{room.maxParticipants} jogadores •{" "}
               {room.therapistSoloPlay
@@ -1590,7 +1597,6 @@ export function DashboardClient() {
         </div>
 
         <div className="grid dashboard-room-indicators" style={{ gap: 8 }}>
-          <strong>Indicadores</strong>
           <div
             className="dashboard-room-pill-row"
             style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
@@ -2746,59 +2752,81 @@ export function DashboardClient() {
       <div className="dashboard-three-columns">
         <aside className="grid dashboard-side-column dashboard-left-column" style={{ gap: 16 }}>
           <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className={isFiltersMenuOpen ? "btn-primary" : "btn-secondary"}
+              onClick={() => setIsFiltersMenuOpen((prev) => !prev)}
+              aria-expanded={isFiltersMenuOpen}
+              aria-controls="dashboard-filters-menu"
+              aria-label={isFiltersMenuOpen ? "Fechar filtros" : "Abrir filtros"}
+              title={isFiltersMenuOpen ? "Fechar filtros" : "Abrir filtros"}
+              style={{
+                width: 36,
+                minWidth: 36,
+                height: 36,
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <FilterIcon />
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => setIsIndicatorsModalOpen(true)}
+              aria-label="Abrir indicadores"
+              title="Abrir indicadores"
+              style={{
+                width: 36,
+                minWidth: 36,
+                height: 36,
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IndicatorsIcon />
+            </button>
+            <button
+              className="btn-primary"
+              onClick={() => setIsCreateRoomModalOpen(true)}
+              disabled={!canCreateRoom || isLimitedQuotaExhausted}
+              data-tour-dashboard={canCreateRoom ? "create-room" : undefined}
+              aria-label="Criar nova sala"
+              title={
+                !canCreateRoom
+                  ? "No momento você não pode criar nova sala."
+                  : isLimitedQuotaExhausted
+                    ? "Limite do período atingido."
+                    : "Criar nova sala"
+              }
+              style={{
+                width: 36,
+                minWidth: 36,
+                height: 36,
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <NewRoomIcon />
+            </button>
+          </div>
+
+          <div
             className="card dashboard-filters-card"
             style={{ display: "grid", gap: 12 }}
             data-tour-dashboard="filters"
           >
-            <div
-              className="dashboard-filters-head"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 10,
-              }}
-            >
-              <h2 className="section-title">Filtros de sessão</h2>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setIsFiltersMenuOpen((prev) => !prev)}
-                  aria-expanded={isFiltersMenuOpen}
-                  aria-controls="dashboard-filters-menu"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                >
-                  <FilterIcon />
-                  {isFiltersMenuOpen ? "Fechar filtros" : "Filtros"}
-                </button>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setIsIndicatorsModalOpen(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                >
-                  <IndicatorsIcon />
-                  Indicadores
-                </button>
-                <button
-                  className="btn-primary"
-                  onClick={() => setIsCreateRoomModalOpen(true)}
-                  disabled={!canCreateRoom || isLimitedQuotaExhausted}
-                  data-tour-dashboard={canCreateRoom ? "create-room" : undefined}
-                  title={
-                    !canCreateRoom
-                      ? "No momento você não pode criar nova sala."
-                      : isLimitedQuotaExhausted
-                        ? "Limite do período atingido."
-                        : "Criar nova sala"
-                  }
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                >
-                  <NewRoomIcon />
-                  Nova sala
-                </button>
-              </div>
-            </div>
+            <h2 className="section-title">Filtros de sessão</h2>
             {hasActiveFilters && (
               <span className="small-muted">Filtros ativos aplicados no painel.</span>
             )}
