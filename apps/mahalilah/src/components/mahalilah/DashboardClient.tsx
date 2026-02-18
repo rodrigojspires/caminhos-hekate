@@ -194,10 +194,14 @@ type RoomDetailsTab =
   | "aiReports";
 
 type DashboardTutorialTarget =
+  | "toolbar-indicators"
   | "create-room"
+  | "create-room-config"
   | "filters"
+  | "sessions-tabs"
   | "sessions-list"
   | "room-actions"
+  | "room-indicators"
   | "room-tab-invites"
   | "room-tab-participants"
   | "room-tab-timeline"
@@ -306,7 +310,7 @@ function TrashIcon() {
   );
 }
 
-const DASHBOARD_ONBOARDING_VERSION = "2026-02-feature-pack";
+const DASHBOARD_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
 
@@ -430,73 +434,104 @@ function getDashboardTutorialSteps({
 }): TutorialStep[] {
   const steps: TutorialStep[] = [];
 
+  steps.push({
+    title: "Indicadores do painel",
+    description:
+      "Use o ícone de indicadores para abrir o modal com métricas gerais (ocupação, convites, consentimento e volume de jogadas).",
+    target: "toolbar-indicators",
+  });
+
   if (canCreateRoom) {
-    steps.push({
-      title: "Criar sala",
-      description:
-        'Defina "Jogadores maximos", marque se o terapeuta joga junto e use "Criar sala". Em sessao avulsa paga, a sala pode ser criada automaticamente.',
-      target: "create-room",
-    });
+    steps.push(
+      {
+        title: "Nova sala",
+        description:
+          'Use o ícone "+" para abrir a criação de sala sem ocupar espaço no painel principal.',
+        target: "create-room",
+      },
+      {
+        title: "Configuração da nova sala",
+        description:
+          "No modal você define jogadores máximos, se o terapeuta joga junto e, quando disponível no plano, o modo de terapeuta único.",
+        target: "create-room-config",
+      },
+    );
   }
 
-  steps.push({
-    title: "Filtros de sessao",
-    description:
-      'Use "Status", periodo "De/Ate" e "Aplicar filtros" para encontrar rapidamente as sessoes que deseja acompanhar.',
-    target: "filters",
-  });
+  steps.push(
+    {
+      title: "Filtros de sessão",
+      description:
+        'Use "Status", período "De/Até", "Aplicar filtros" e "Limpar" para focar rapidamente nas sessões que deseja revisar.',
+      target: "filters",
+    },
+    {
+      title: "Abas de sessões",
+      description:
+        'Alterne entre "Sessões criadas" e "Sessões que participei" para separar gestão de sala e acompanhamento como participante.',
+      target: "sessions-tabs",
+    },
+  );
 
   if (!hasRooms) {
     steps.push({
-      title: "Minhas sessoes",
+      title: "Lista de sessões",
       description:
-        'Quando a primeira sala aparecer (manual ou automatica apos checkout), aqui voce acompanha indicadores e abre detalhes por abas.',
+        "Quando a primeira sala aparecer, aqui você acompanha os cards com status, indicadores e detalhes por aba.",
       target: "sessions-list",
     });
     return steps;
   }
 
-  steps.push(
-    {
-      title: "Acoes rapidas da sala",
+  steps.push({
+    title: "Cabeçalho da sala",
+    description:
+      "Na primeira linha você encontra código, trial, status, abrir sala e exclusão; abaixo, data, ocupação, modo da sala e disponibilidade para jogadores.",
+    target: "room-actions",
+  });
+
+  steps.push({
+    title: "Indicadores da sala",
+    description:
+      "Acompanhe os chips com jogadas, rolagens, registros, cartas e IA. A seta abre e recolhe os detalhes completos da sessão.",
+    target: "room-indicators",
+  });
+
+  if (canManageRoom) {
+    steps.push({
+      title: "Aba Convites",
       description:
-        '"Abrir sala" (quando ativa) entra na partida e a seta ao lado dos indicadores abre/fecha os detalhes da sessao. O chip "Novo" marca sala criada no checkout e some apos a primeira rodada.',
-      target: "room-actions",
-    },
+        "Envie convites por e-mail, acompanhe quem aceitou e use reenviar para pendências.",
+      target: "room-tab-invites",
+    });
+  }
+
+  steps.push(
     {
       title: "Aba Participantes",
       description:
-        "Veja terapeuta e jogadores da sala, confira consentimento e remova participantes quando precisar ajustar a turma.",
+        "Confira consentimento, remova jogador quando necessário e registre/edite a síntese terapêutica por participante.",
       target: "room-tab-participants",
     },
     {
       title: "Aba Jornada",
       description:
-        "Revise jogadas por ordem cronologica, com dado, casa, atalhos e registros terapeuticos por participante.",
+        "Revise jogadas em ordem cronológica com dado, casas, atalhos, registros terapêuticos e eventos de IA.",
       target: "room-tab-timeline",
     },
     {
-      title: "Aba Deck randomico",
+      title: "Aba Deck randômico",
       description:
-        "Acompanhe todas as cartas tiradas na sessao e filtre por jogador para leitura individual do percurso.",
+        "Visualize cartas tiradas na sessão, incluindo tiragens fora de jogada, com filtro por participante.",
       target: "room-tab-deck",
     },
     {
-      title: "Aba Relatorios IA",
+      title: "Aba Relatórios IA",
       description:
-        'Consulte ajudas da IA, "O Caminho ate agora" por intervalo de jogadas e relatorios finais para fechamento terapeutico.',
+        'Consulte ajudas da IA, blocos de "O Caminho até agora" e relatórios finais por participante.',
       target: "room-tab-aiReports",
     },
   );
-
-  if (canManageRoom) {
-    steps.splice(4, 0, {
-      title: "Aba Convites",
-      description:
-        "Envie novos convites por e-mail, acompanhe quem esta pendente/aceito e use reenviar quando necessario.",
-      target: "room-tab-invites",
-    });
-  }
 
   return steps;
 }
@@ -964,6 +999,7 @@ export function DashboardClient() {
 
   const finishDashboardTutorial = async () => {
     setShowDashboardTutorial(false);
+    setIsCreateRoomModalOpen(false);
     try {
       window.localStorage.setItem(
         DASHBOARD_ONBOARDING_VERSION_KEY,
@@ -1289,25 +1325,53 @@ export function DashboardClient() {
     const currentStep = dashboardTutorialSteps[dashboardTutorialStep];
     if (!currentStep) return;
 
+    const isRoomScopedStep = currentStep.target.startsWith("room-");
+    const hasCreatedRooms = rooms.some((room) => room.canManage);
+    if (isRoomScopedStep && hasCreatedRooms && sessionsViewTab !== "created") {
+      setSessionsViewTab("created");
+      return;
+    }
+
+    const shouldOpenCreateRoomModal =
+      currentStep.target === "create-room-config" && canCreateRoom;
+    if (shouldOpenCreateRoomModal && !isCreateRoomModalOpen) {
+      setIsCreateRoomModalOpen(true);
+    }
+    if (!shouldOpenCreateRoomModal && isCreateRoomModalOpen) {
+      setIsCreateRoomModalOpen(false);
+    }
+
     const targetTab = DETAIL_TAB_BY_TUTORIAL_TARGET[currentStep.target];
     if (!targetTab) return;
 
-    const firstRoomId = rooms[0]?.id;
-    if (!firstRoomId) return;
+    const tutorialRooms =
+      sessionsViewTab === "created"
+        ? rooms.filter((room) => room.canManage)
+        : rooms.filter((room) => !room.canManage);
+    const targetRoom =
+      currentStep.target === "room-tab-invites"
+        ? tutorialRooms.find((room) => room.canManage && room.status === "ACTIVE") ||
+          null
+        : tutorialRooms[0] || null;
+    if (!targetRoom) return;
+    const targetRoomId = targetRoom.id;
 
-    if (!openRooms[firstRoomId]) {
-      setOpenRooms((prev) => ({ ...prev, [firstRoomId]: true }));
+    if (!openRooms[targetRoomId]) {
+      setOpenRooms((prev) => ({ ...prev, [targetRoomId]: true }));
     }
-    if (activeDetailTabs[firstRoomId] !== targetTab) {
-      setActiveDetailTabs((prev) => ({ ...prev, [firstRoomId]: targetTab }));
+    if (activeDetailTabs[targetRoomId] !== targetTab) {
+      setActiveDetailTabs((prev) => ({ ...prev, [targetRoomId]: targetTab }));
     }
-    if (!details[firstRoomId]) {
-      void loadTimeline(firstRoomId);
+    if (!details[targetRoomId]) {
+      void loadTimeline(targetRoomId);
     }
   }, [
     showDashboardTutorial,
     dashboardTutorialStep,
     dashboardTutorialSteps,
+    canCreateRoom,
+    isCreateRoomModalOpen,
+    sessionsViewTab,
     rooms,
     openRooms,
     activeDetailTabs,
@@ -1351,10 +1415,16 @@ export function DashboardClient() {
   const participatedRooms = rooms.filter((room) => !room.canManage);
   const visibleRooms =
     sessionsViewTab === "created" ? createdRooms : participatedRooms;
+  const tutorialPrimaryRoomId = visibleRooms[0]?.id || null;
+  const tutorialInvitesRoomId =
+    visibleRooms.find((room) => room.canManage && room.status === "ACTIVE")?.id ||
+    null;
   const hasActiveFilters = Boolean(filters.status || filters.from || filters.to);
 
-  const roomCards = visibleRooms.map((room, index) => {
+  const roomCards = visibleRooms.map((room) => {
     const isOpen = !!openRooms[room.id];
+    const isTutorialPrimaryRoom = room.id === tutorialPrimaryRoomId;
+    const isTutorialInvitesRoom = room.id === tutorialInvitesRoomId;
     const canManageInvites = room.canManage && room.status === "ACTIVE";
     const requestedTab = activeDetailTabs[room.id];
     const activeTab: RoomDetailsTab =
@@ -1502,10 +1572,12 @@ export function DashboardClient() {
         className="card dashboard-room-card"
         style={{ display: "grid", gap: 14 }}
       >
-        <div className="dashboard-room-header">
+        <div
+          className="dashboard-room-header"
+          data-tour-dashboard={isTutorialPrimaryRoom ? "room-actions" : undefined}
+        >
           <div
             className="dashboard-room-topline"
-            data-tour-dashboard={index === 0 ? "room-actions" : undefined}
           >
             <div
               style={{
@@ -1580,7 +1652,11 @@ export function DashboardClient() {
           </div>
         </div>
 
-        <div className="grid dashboard-room-indicators" style={{ gap: 8 }}>
+        <div
+          className="grid dashboard-room-indicators"
+          style={{ gap: 8 }}
+          data-tour-dashboard={isTutorialPrimaryRoom ? "room-indicators" : undefined}
+        >
           <div className="dashboard-room-indicators-row">
             <div
               className="dashboard-room-pill-row"
@@ -1632,7 +1708,7 @@ export function DashboardClient() {
                     }))
                   }
                   data-tour-dashboard={
-                    index === 0 ? "room-tab-invites" : undefined
+                    isTutorialInvitesRoom ? "room-tab-invites" : undefined
                   }
                 >
                   Convites
@@ -1649,7 +1725,7 @@ export function DashboardClient() {
                   }))
                 }
                 data-tour-dashboard={
-                  index === 0 ? "room-tab-participants" : undefined
+                  isTutorialPrimaryRoom ? "room-tab-participants" : undefined
                 }
               >
                 Participantes
@@ -1665,7 +1741,7 @@ export function DashboardClient() {
                   }))
                 }
                 data-tour-dashboard={
-                  index === 0 ? "room-tab-timeline" : undefined
+                  isTutorialPrimaryRoom ? "room-tab-timeline" : undefined
                 }
               >
                 Jornada
@@ -1680,7 +1756,9 @@ export function DashboardClient() {
                     [room.id]: "deck",
                   }))
                 }
-                data-tour-dashboard={index === 0 ? "room-tab-deck" : undefined}
+                data-tour-dashboard={
+                  isTutorialPrimaryRoom ? "room-tab-deck" : undefined
+                }
               >
                 Deck randômico
               </button>
@@ -1695,7 +1773,7 @@ export function DashboardClient() {
                   }))
                 }
                 data-tour-dashboard={
-                  index === 0 ? "room-tab-aiReports" : undefined
+                  isTutorialPrimaryRoom ? "room-tab-aiReports" : undefined
                 }
               >
                 Relatórios IA
@@ -2754,6 +2832,7 @@ export function DashboardClient() {
             <button
               className="btn-secondary"
               onClick={() => setIsIndicatorsModalOpen(true)}
+              data-tour-dashboard="toolbar-indicators"
               aria-label="Abrir indicadores"
               title="Abrir indicadores"
               style={{
@@ -2936,6 +3015,7 @@ export function DashboardClient() {
                   className={
                     sessionsViewTab === "created" ? "btn-primary" : "btn-secondary"
                   }
+                  data-tour-dashboard="sessions-tabs"
                   onClick={() => setSessionsViewTab("created")}
                 >
                   Sessões criadas ({createdRooms.length})
@@ -3024,6 +3104,7 @@ export function DashboardClient() {
 
             <div
               className="dashboard-create-row"
+              data-tour-dashboard="create-room-config"
               style={{
                 display: "flex",
                 gap: 12,

@@ -237,7 +237,7 @@ const COLORS = [
 ];
 const TRIAL_POST_START_MOVE_LIMIT = 5;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
-const ROOM_ONBOARDING_VERSION = "2026-02-feature-pack";
+const ROOM_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const ROOM_ONBOARDING_THERAPIST_VERSION_KEY =
   "mahalilah:onboarding:room:therapist:version";
 const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
@@ -428,14 +428,26 @@ function getRoomTutorialSteps({
 
   const controlDescription =
     role === "THERAPIST"
-      ? 'Use "Rolar dado" para jogar a vez atual, "Avancar vez" para passar ao proximo participante e "Encerrar sala" para finalizar. Ao concluir a jornada (casa 68), o sistema pergunta se deseja gerar o relatorio final.'
-      : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde. O botao muda de status automaticamente conforme vez e conexao do terapeuta.';
+      ? 'Use "Rolar dado" na vez atual, "Avançar vez" para conduzir a rodada e "Encerrar sala" para fechamento. Ao concluir a jornada, você pode gerar relatório final direto pela sala.'
+      : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde sua vez; o botão muda de estado automaticamente.';
+  const aiDescription =
+    role === "THERAPIST"
+      ? 'No ícone IA você gera ajuda contextual, acompanha histórico de ajudas, monitora "O Caminho até agora" por blocos e dispara relatório final por jogador ou da sala.'
+      : 'No ícone IA você acompanha ajudas e sínteses já geradas na sessão. Em modo visualização, as ações de geração ficam apenas com o terapeuta.';
+  const playersDescription =
+    role === "THERAPIST"
+      ? "No ícone Jogadores você acompanha participantes e vez atual, além de abrir o botão de observações para editar a síntese terapêutica de cada jogador."
+      : "No ícone Jogadores você acompanha quem está na sala e quem está com a vez no momento.";
+  const summaryDescription =
+    role === "THERAPIST"
+      ? "No ícone Resumo você revisa caminho completo, casas recorrentes, registros terapêuticos e volume de IA por participante para fechamento clínico."
+      : "No ícone Resumo você visualiza o consolidado da jornada, com caminho no tabuleiro e casas mais recorrentes.";
 
   return [
     {
       title: "Indicadores da sala",
       description:
-        "No topo voce acompanha vez atual, rolagens, casa atual, status do terapeuta e status da sala em tempo real.",
+        "No topo você acompanha vez atual, rolagens, status da sala, status do terapeuta e sinalizações de trial/modo de jogo em tempo real.",
       target: "room-header",
     },
     {
@@ -446,49 +458,46 @@ function getRoomTutorialSteps({
     {
       title: "Leitura do tabuleiro",
       description:
-        "Aqui ficam os pinos dos jogadores, atalhos de subida/descida e destaque visual de quem esta na vez.",
+        "Aqui ficam os pinos, atalhos de subida/descida e destaque visual da vez atual, com leitura rápida da posição de cada participante.",
       target: "room-board",
     },
     {
       title: "Menu Casa",
       description:
-        "No icone Casa voce consulta significado, palavras-chave, lado luz/sombra e pergunta terapeutica da casa selecionada.",
+        "No ícone Casa você consulta significado completo da casa selecionada, com palavras-chave, polaridade (luz/sombra) e pergunta terapêutica.",
       target: "room-menu-house",
     },
     {
       title: "Menu Carta",
       description:
-        "No icone Carta o jogador da vez tira cartas do deck (ate 3 por jogada), com imagem e registro automatico na jornada.",
+        "No ícone Carta o jogador da vez tira cartas do deck (até 3 por jogada), com pré-visualização, texto terapêutico e registro na jornada.",
       target: "room-menu-deck",
     },
     {
       title: "Menu Registro",
       description:
-        "No icone Registro voce salva emocao, insight, corpo e acao da jogada atual para acompanhamento terapeutico.",
+        "No ícone Registro você salva emoção, intensidade, insight, corpo e ação da jogada atual para acompanhamento terapêutico.",
       target: "room-menu-therapy",
     },
     {
       title: "Menu IA",
-      description:
-        'No icone IA voce pede ajuda contextual, acompanha limite de uso, consulta "O Caminho ate agora" por bloco de jogadas e gera relatorio final.',
+      description: aiDescription,
       target: "room-menu-ai",
     },
     {
       title: "Menu Jogadores",
-      description:
-        "No icone Jogadores voce visualiza terapeuta e participantes, com destaque de quem esta com a vez.",
+      description: playersDescription,
       target: "room-menu-players",
     },
     {
       title: "Menu Jornada",
       description:
-        "No icone Jornada voce revisa jogadas, atalhos, cartas, registros terapeuticos e saidas de IA por participante.",
+        "No ícone Jornada você revisa jogadas, atalhos, cartas, registros terapêuticos e saídas de IA por participante.",
       target: "room-menu-timeline",
     },
     {
       title: "Menu Resumo",
-      description:
-        "No icone Resumo voce consolida caminho no tabuleiro, casas recorrentes, registros e historico de IA por jogador.",
+      description: summaryDescription,
       target: "room-menu-summary",
     },
   ];
