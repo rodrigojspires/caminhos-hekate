@@ -3245,8 +3245,8 @@ export function DashboardClient() {
             </div>
 
             <p className="small-muted" style={{ margin: 0 }}>
-              Defina se o terapeuta entra na fila. Quando ele jogar junto, ocupa 1
-              vaga de jogador.
+              Defina se o terapeuta entra na fila. <br/>Quando ele jogar junto, ocupa 1
+              vaga de jogador.<br/>
               {canUseTherapistSoloPlay
                 ? ' No modo "só o terapeuta joga", os demais entram apenas como visualizadores da mesma partida.'
                 : " O modo de jogadores somente visualização não está disponível no seu plano atual."}
