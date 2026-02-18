@@ -159,6 +159,8 @@ type ParsedTip = {
   turnNumber: number | null;
   houseNumber: number | null;
   intention: string | null;
+  mode: "currentHouse" | "pathQuestion" | null;
+  question: string | null;
 };
 
 type ParsedProgressSummary = {
@@ -683,6 +685,12 @@ function parseTipReportContent(content: string): ParsedTip {
           typeof parsed.houseNumber === "number" ? parsed.houseNumber : null,
         intention:
           typeof parsed.intention === "string" ? parsed.intention : null,
+        mode:
+          parsed.mode === "currentHouse" || parsed.mode === "pathQuestion"
+            ? parsed.mode
+            : null,
+        question:
+          typeof parsed.question === "string" ? parsed.question : null,
       };
     }
   } catch {
@@ -693,6 +701,8 @@ function parseTipReportContent(content: string): ParsedTip {
     turnNumber: null,
     houseNumber: null,
     intention: null,
+    mode: null,
+    question: null,
   };
 }
 
@@ -775,6 +785,7 @@ export function RoomClient({ code }: { code: string }) {
   });
   const [aiIntention, setAiIntention] = useState("");
   const [aiTipLoading, setAiTipLoading] = useState(false);
+  const [aiPathHelpInput, setAiPathHelpInput] = useState("");
   const [aiTipUsage, setAiTipUsage] = useState<{
     used: number;
     limit: number;
@@ -2229,6 +2240,83 @@ export function RoomClient({ code }: { code: string }) {
     [state?.room.id, pushToast],
   );
 
+  const requestAiTip = useCallback(
+    ({
+      mode,
+      question,
+    }: {
+      mode: "currentHouse" | "pathQuestion";
+      question?: string;
+    }) => {
+      if (!socket) return;
+
+      const normalizedQuestion =
+        typeof question === "string" ? question.trim() : "";
+      if (mode === "pathQuestion" && !normalizedQuestion) {
+        pushToast(
+          "Escreva seu contexto/pergunta antes de pedir a ajuda pelo caminho.",
+          "warning",
+        );
+        return;
+      }
+
+      setAiTipLoading(true);
+      socket.emit(
+        "ai:tip",
+        {
+          mode,
+          question: normalizedQuestion || undefined,
+        },
+        async (resp: any) => {
+          setAiTipLoading(false);
+          if (!resp?.ok) {
+            showSocketError("Erro ao gerar dica", resp);
+            return;
+          }
+          if (
+            typeof resp.tipsUsed === "number" &&
+            typeof resp.tipsLimit === "number"
+          ) {
+            setAiTipUsage({
+              used: resp.tipsUsed,
+              limit: resp.tipsLimit,
+            });
+          }
+
+          const responseMode =
+            resp?.mode === "pathQuestion" ? "pathQuestion" : "currentHouse";
+          const responseQuestion =
+            typeof resp?.question === "string" ? resp.question.trim() : "";
+          const modeLabel =
+            responseMode === "pathQuestion"
+              ? "Ajuda pelo caminho"
+              : "Entendimento da casa atual";
+
+          setAiContentModal({
+            title: "Ajuda da IA",
+            subtitle:
+              responseMode === "pathQuestion" && responseQuestion
+                ? `${modeLabel} • ${new Date().toLocaleString("pt-BR")}`
+                : `Gerada em ${new Date().toLocaleString("pt-BR")} • ${modeLabel}`,
+            content:
+              responseMode === "pathQuestion" && responseQuestion
+                ? `Pergunta enviada: ${responseQuestion}\n\n${typeof resp.content === "string" ? resp.content : "Sem conteúdo disponível."}`
+                : typeof resp.content === "string"
+                  ? resp.content
+                  : "Sem conteúdo disponível.",
+          });
+          if (responseMode === "pathQuestion") {
+            setAiPathHelpInput("");
+          }
+
+          await loadTimelineData();
+          pushToast("Dica da IA gerada.", "success");
+        },
+      );
+    },
+    [socket, pushToast, showSocketError, loadTimelineData],
+  );
+
   const openTherapistSummaryModal = useCallback(
     (participantId: string) => {
       const participant = state?.participants.find(
@@ -3652,48 +3740,46 @@ export function RoomClient({ code }: { code: string }) {
                 </strong>
               </span>
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "grid", gap: 8 }}>
                 <button
                   className="secondary"
                   disabled={!canUseAiActions || aiTipLoading}
+                  onClick={() => requestAiTip({ mode: "currentHouse" })}
+                >
+                  {aiTipLoading
+                    ? "Processando ajuda..."
+                    : "IA: me ajuda a entender a casa atual"}
+                </button>
+
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>Ajuda personalizada pelo caminho</span>
+                  <textarea
+                    placeholder="Escreva sua dúvida/contexto. Ex.: estou repetindo a mesma dificuldade de comunicação e não sei como sair disso."
+                    value={aiPathHelpInput}
+                    disabled={!canUseAiActions || aiTipLoading}
+                    onChange={(event) => setAiPathHelpInput(event.target.value)}
+                  />
+                  <span className="small-muted">
+                    A IA vai considerar seu texto e o caminho percorrido até este
+                    momento.
+                  </span>
+                </label>
+
+                <button
+                  className="secondary"
+                  disabled={
+                    !canUseAiActions || aiTipLoading || !aiPathHelpInput.trim()
+                  }
                   onClick={() =>
-                    (() => {
-                      if (!socket) return;
-                      setAiTipLoading(true);
-                      socket.emit(
-                        "ai:tip",
-                        {},
-                        async (resp: any) => {
-                          setAiTipLoading(false);
-                          if (!resp?.ok) {
-                            showSocketError("Erro ao gerar dica", resp);
-                          } else {
-                            if (
-                              typeof resp.tipsUsed === "number" &&
-                              typeof resp.tipsLimit === "number"
-                            ) {
-                              setAiTipUsage({
-                                used: resp.tipsUsed,
-                                limit: resp.tipsLimit,
-                              });
-                            }
-                            setAiContentModal({
-                              title: "Ajuda da IA",
-                              subtitle: `Gerada em ${new Date().toLocaleString("pt-BR")}`,
-                              content:
-                                typeof resp.content === "string"
-                                  ? resp.content
-                                  : "Sem conteúdo disponível.",
-                            });
-                            await loadTimelineData();
-                            pushToast("Dica da IA gerada.", "success");
-                          }
-                        },
-                      );
-                    })()
+                    requestAiTip({
+                      mode: "pathQuestion",
+                      question: aiPathHelpInput,
+                    })
                   }
                 >
-                  {aiTipLoading ? "Processando ajuda..." : "IA: me ajuda agora"}
+                  {aiTipLoading
+                    ? "Processando ajuda..."
+                    : "IA: me ajuda com meu texto e caminho"}
                 </button>
               </div>
 
@@ -3747,8 +3833,25 @@ export function RoomClient({ code }: { code: string }) {
                         onClick={() =>
                           setAiContentModal({
                             title: `Ajuda da IA #${helpNumber}`,
-                            subtitle: `${parsed.turnNumber !== null ? `Jogada #${parsed.turnNumber}` : "Jogada não identificada"}${parsed.houseNumber !== null ? ` • Casa ${parsed.houseNumber}` : ""} • ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
-                            content: parsed.text,
+                            subtitle: `${
+                              parsed.mode === "pathQuestion"
+                                ? "Ajuda pelo caminho"
+                                : parsed.mode === "currentHouse"
+                                  ? "Entendimento da casa atual"
+                                  : "Ajuda da IA"
+                            } • ${
+                              parsed.turnNumber !== null
+                                ? `Jogada #${parsed.turnNumber}`
+                                : "Jogada não identificada"
+                            }${
+                              parsed.houseNumber !== null
+                                ? ` • Casa ${parsed.houseNumber}`
+                                : ""
+                            } • ${new Date(report.createdAt).toLocaleString("pt-BR")}`,
+                            content:
+                              parsed.mode === "pathQuestion" && parsed.question
+                                ? `Pergunta enviada: ${parsed.question}\n\n${parsed.text}`
+                                : parsed.text,
                           })
                         }
                       >
@@ -3756,6 +3859,12 @@ export function RoomClient({ code }: { code: string }) {
                           Ajuda #{helpNumber}
                         </strong>
                         <span className="small-muted">
+                          {parsed.mode === "pathQuestion"
+                            ? "Ajuda pelo caminho"
+                            : parsed.mode === "currentHouse"
+                              ? "Casa atual"
+                              : "Ajuda"}
+                          {" • "}
                           {parsed.turnNumber !== null
                             ? `Jogada #${parsed.turnNumber}`
                             : "Jogada não identificada"}

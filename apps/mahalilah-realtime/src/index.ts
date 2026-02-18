@@ -83,6 +83,9 @@ const TRIAL_PROGRESS_SUMMARY_EVERY_MOVES = Number(
 const PLAYER_INTENTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
 );
+const AI_TIP_QUESTION_MAX_LENGTH = Number(
+  process.env.MAHALILAH_AI_TIP_QUESTION_MAX_LENGTH || 500,
+);
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -397,8 +400,19 @@ async function buildAiContext(roomId: string, participantId: string) {
 
   if (!participant) throw new Error("Participante não encontrado");
 
-  const [playerState, moves, therapyEntries] = await Promise.all([
+  const [playerState, pathMoves, recentMoves, therapyEntries] = await Promise.all([
     prisma.mahaLilahPlayerState.findFirst({ where: { roomId, participantId } }),
+    prisma.mahaLilahMove.findMany({
+      where: { roomId, participantId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        diceValue: true,
+        fromPos: true,
+        toPos: true,
+        appliedJumpFrom: true,
+        appliedJumpTo: true,
+      },
+    }),
     prisma.mahaLilahMove.findMany({
       where: { roomId, participantId },
       orderBy: { createdAt: "desc" },
@@ -411,10 +425,7 @@ async function buildAiContext(roomId: string, participantId: string) {
     }),
   ]);
 
-  const path = moves
-    .filter(isPostStartMove)
-    .map((move) => move.toPos)
-    .reverse();
+  const path = pathMoves.filter(isPostStartMove).map((move) => move.toPos);
 
   const counts: Record<string, number> = {};
   path.forEach((house) => {
@@ -441,7 +452,7 @@ async function buildAiContext(roomId: string, participantId: string) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([house, count]) => ({ house: Number(house), count })),
-    recentMoves: moves.map((move) => ({
+    recentMoves: recentMoves.map((move) => ({
       dice: move.diceValue,
       from: move.fromPos,
       to: move.toPos,
@@ -457,6 +468,27 @@ async function buildAiContext(roomId: string, participantId: string) {
       microAction: entry.microAction,
     })),
   };
+}
+
+function buildAiTipPrompt({
+  context,
+  participantIntention,
+  mode,
+  question,
+}: {
+  context: Awaited<ReturnType<typeof buildAiContext>>;
+  participantIntention: string | null;
+  mode: "currentHouse" | "pathQuestion";
+  question: string | null;
+}) {
+  const contextJson = JSON.stringify(context, null, 2);
+  const intentionText = participantIntention || "não informada";
+
+  if (mode === "pathQuestion") {
+    return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\nPergunta/contexto enviado pelo jogador: ${question || "não informado"}\n\nCom base no caminho percorrido até este momento, responda em português, de forma terapêutica e prática, trazendo:\n1) Leitura simbólica do caminho até agora (incluindo padrões/repetições relevantes);\n2) Resposta direta à pergunta/contexto da pessoa;\n3) Uma pergunta de auto-investigação para aprofundar o insight;\n4) Uma orientação breve para o próximo passo no jogo e na vida real\n\nSeja acolhedor, claro e específico ao contexto atual do jogador.`;
+  }
+
+  return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\n\nCom base na casa atual e no caminho percorrido até aqui, gere em português:\n1) Uma hipótese terapêutica sobre o significado simbólico da casa atual;\n2) Uma conexão objetiva desta casa com o trajeto percorrido até agora;\n3) Uma pergunta de insight para o jogador;\n4) Uma orientação breve para o próximo passo no jogo e na vida real.\n\nSeja reflexivo, acolhedor e focado em entendimento da casa atual.`;
 }
 
 async function loadPlanAiLimitsByType() {
@@ -1915,7 +1947,10 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "ai:tip",
     async (
-      _payload: { intention?: string } = {},
+      payload: {
+        mode?: "currentHouse" | "pathQuestion";
+        question?: string;
+      } = {},
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -1960,9 +1995,24 @@ io.on("connection", (socket: AuthedSocket) => {
           throw new Error("Limite de dicas atingido para esta sessão");
         }
 
+        const tipMode =
+          payload?.mode === "pathQuestion" ? "pathQuestion" : "currentHouse";
+        const normalizedQuestion =
+          typeof payload?.question === "string"
+            ? payload.question.trim().slice(0, AI_TIP_QUESTION_MAX_LENGTH)
+            : "";
+        if (tipMode === "pathQuestion" && !normalizedQuestion) {
+          throw new Error("Escreva um contexto para pedir ajuda pelo caminho.");
+        }
+
         const participantIntention = participant.gameIntention?.trim() || null;
         const context = await buildAiContext(room.id, participant.id);
-        const prompt = `Contexto do jogo (JSON):\n${JSON.stringify(context, null, 2)}\n\nIntenção da sessão: ${participantIntention || "não informada"}\n\nConsiderando a intenção original do jogo e o caminho percorrido até esta casa, gere: (1) uma hipótese terapêutica sobre o significado simbólico desta casa, conectando-a ao trajeto até aqui; (2) uma pergunta de insight que incentive a pessoa a refletir sobre o aprendizado deste ponto; (3) uma pergunta de insight conectando o caminho à experiência atual;(3) uma breve orientação para o próximo passo no jogo, que aprofunde a compreensão do caminho. (3) um insight final que aprofunde a compreensão do momento; (4) uma reflexão pessoal que convide o jogador a relacionar o aprendizado desta casa a uma situação ou sentimento da vida real. Seja reflexivo, terapêutico, integrador e focado em entendimento.`;
+        const prompt = buildAiTipPrompt({
+          context,
+          participantIntention,
+          mode: tipMode,
+          question: normalizedQuestion || null,
+        });
 
         const content = await callOpenAI(prompt);
         const lastMove = await prisma.mahaLilahMove.findFirst({
@@ -1986,6 +2036,8 @@ io.on("connection", (socket: AuthedSocket) => {
               intention: participantIntention,
               turnNumber: lastMove?.turnNumber ?? null,
               houseNumber,
+              mode: tipMode,
+              question: tipMode === "pathQuestion" ? normalizedQuestion : null,
             }),
           },
         });
@@ -2002,6 +2054,8 @@ io.on("connection", (socket: AuthedSocket) => {
           content,
           tipsUsed: updatedUsage.tipsUsed,
           tipsLimit: updatedUsage.tipsLimit,
+          mode: tipMode,
+          question: tipMode === "pathQuestion" ? normalizedQuestion : null,
         });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
