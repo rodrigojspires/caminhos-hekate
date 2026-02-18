@@ -158,17 +158,17 @@ export async function GET(request: Request) {
       rooms.map((room) => [room.id, room] as const)
     )
 
-    const [participantIntentions, moveEvents] = roomIds.length
+    const [participantMetrics, moveEvents] = roomIds.length
       ? await Promise.all([
           prisma.mahaLilahParticipant.findMany({
             where: {
               roomId: {
                 in: roomIds
-              },
-              role: MahaLilahParticipantRole.PLAYER
+              }
             },
             select: {
               roomId: true,
+              role: true,
               gameIntention: true,
               therapistSummary: true,
               consentAcceptedAt: true,
@@ -262,10 +262,14 @@ export async function GET(request: Request) {
     )
     const invitesTotalCount = invitesAcceptedCount + invitesPendingCount
 
-    const consentsAcceptedCount = participantIntentions.filter((participant) =>
+    const playerParticipants = participantMetrics.filter(
+      (participant) => participant.role === MahaLilahParticipantRole.PLAYER
+    )
+
+    const consentsAcceptedCount = playerParticipants.filter((participant) =>
       Boolean(participant.consentAcceptedAt)
     ).length
-    const consentsPendingCount = participantIntentions.filter((participant) =>
+    const consentsPendingCount = playerParticipants.filter((participant) =>
       !participant.consentAcceptedAt
     ).length
     const consentsTotalCount = consentsAcceptedCount + consentsPendingCount
@@ -321,7 +325,7 @@ export async function GET(request: Request) {
         } | null
       }>
     >()
-    for (const participant of participantIntentions) {
+    for (const participant of playerParticipants) {
       const current = playersByRoom.get(participant.roomId) || []
       current.push(participant)
       playersByRoom.set(participant.roomId, current)
@@ -329,7 +333,7 @@ export async function GET(request: Request) {
 
     let consentLeadTimeMsTotal = 0
     let consentLeadTimeMeasuredCount = 0
-    for (const participant of participantIntentions) {
+    for (const participant of playerParticipants) {
       if (!participant.consentAcceptedAt || !participant.invite?.sentAt) continue
       consentLeadTimeMsTotal += Math.max(
         0,
@@ -340,8 +344,8 @@ export async function GET(request: Request) {
     const averageConsentLeadTimeMinutes =
       consentLeadTimeMeasuredCount > 0 ? consentLeadTimeMsTotal / consentLeadTimeMeasuredCount / 60000 : null
 
-    const playersTotalCount = participantIntentions.length
-    const playersWithSummaryCount = participantIntentions.filter((participant) =>
+    const playersTotalCount = playerParticipants.length
+    const playersWithSummaryCount = playerParticipants.filter((participant) =>
       Boolean(participant.therapistSummary?.trim())
     ).length
     const roomsWithSummaryCount = rooms.filter((room) => {
@@ -349,11 +353,14 @@ export async function GET(request: Request) {
       return roomPlayers.some((participant) => Boolean(participant.therapistSummary?.trim()))
     }).length
 
-    const playersWithIntentionCount = participantIntentions.filter((participant) =>
+    const participantsTotalCount = participantMetrics.length
+    const participantsWithIntentionCount = participantMetrics.filter((participant) =>
       Boolean(participant.gameIntention?.trim())
     ).length
-    const startedPlayers = participantIntentions.filter((participant) => startedRoomIds.has(participant.roomId))
-    const startedPlayersWithIntentionCount = startedPlayers.filter((participant) =>
+    const startedParticipants = participantMetrics.filter((participant) =>
+      startedRoomIds.has(participant.roomId)
+    )
+    const startedParticipantsWithIntentionCount = startedParticipants.filter((participant) =>
       Boolean(participant.gameIntention?.trim())
     ).length
 
@@ -465,7 +472,7 @@ export async function GET(request: Request) {
       }
     >()
 
-    for (const participant of participantIntentions) {
+    for (const participant of participantMetrics) {
       const room = roomById.get(participant.roomId)
       if (!room) continue
 
@@ -637,14 +644,14 @@ export async function GET(request: Request) {
         },
         intentionCoverage: {
           players: {
-            count: playersWithIntentionCount,
-            total: playersTotalCount,
-            percent: toPercent(playersWithIntentionCount, playersTotalCount)
+            count: participantsWithIntentionCount,
+            total: participantsTotalCount,
+            percent: toPercent(participantsWithIntentionCount, participantsTotalCount)
           },
           startedPlayers: {
-            count: startedPlayersWithIntentionCount,
-            total: startedPlayers.length,
-            percent: toPercent(startedPlayersWithIntentionCount, startedPlayers.length)
+            count: startedParticipantsWithIntentionCount,
+            total: startedParticipants.length,
+            percent: toPercent(startedParticipantsWithIntentionCount, startedParticipants.length)
           }
         },
         aiEffectiveness: {

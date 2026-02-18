@@ -214,7 +214,12 @@ type TutorialStep = {
   target: DashboardTutorialTarget;
 };
 
-type IndicatorsTab = "overview" | "engagement" | "performance" | "heatmaps";
+type IndicatorsTab =
+  | "overview"
+  | "engagement"
+  | "performance"
+  | "comparison"
+  | "heatmaps";
 
 type IndicatorsDateFilter = {
   from: string;
@@ -3514,6 +3519,14 @@ export function DashboardClient() {
               >
                 Mapas de calor
               </button>
+              <button
+                className={
+                  indicatorsTab === "comparison" ? "btn-primary" : "btn-secondary"
+                }
+                onClick={() => setIndicatorsTab("comparison")}
+              >
+                Comparativo
+              </button>
             </div>
 
             {indicatorsError && <span className="small-muted">{indicatorsError}</span>}
@@ -3735,40 +3748,6 @@ export function DashboardClient() {
                         borderRadius: 12,
                         padding: "10px 12px",
                         display: "grid",
-                        gap: 6,
-                      }}
-                    >
-                      <span className="small-muted">Funil da sessão</span>
-                      <span className="small-muted">
-                        Criadas: {formatMetricNumber(indicatorsData.funnel.created)}
-                      </span>
-                      <span className="small-muted">
-                        Convite aceito:{" "}
-                        {formatMetricNumber(indicatorsData.funnel.inviteAccepted)} (
-                        {formatMetricNumber(indicatorsData.funnel.inviteAcceptedPercent)}%)
-                      </span>
-                      <span className="small-muted">
-                        Consentimento aceito:{" "}
-                        {formatMetricNumber(indicatorsData.funnel.consentAccepted)} (
-                        {formatMetricNumber(indicatorsData.funnel.consentAcceptedPercent)}
-                        %)
-                      </span>
-                      <span className="small-muted">
-                        Iniciadas: {formatMetricNumber(indicatorsData.funnel.started)} (
-                        {formatMetricNumber(indicatorsData.funnel.startedPercent)}%)
-                      </span>
-                      <span className="small-muted">
-                        Concluídas: {formatMetricNumber(indicatorsData.funnel.completed)} (
-                        {formatMetricNumber(indicatorsData.funnel.completedPercent)}%)
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
-                        border: "1px solid var(--border)",
-                        borderRadius: 12,
-                        padding: "10px 12px",
-                        display: "grid",
                         gap: 4,
                       }}
                     >
@@ -3974,7 +3953,7 @@ export function DashboardClient() {
                       >
                         <span className="small-muted">Intenção definida</span>
                         <strong>
-                          Jogadores:{" "}
+                          Participantes:{" "}
                           {formatMetricNumber(indicatorsData.intentionCoverage.players.percent)}
                           %
                         </strong>
@@ -4261,6 +4240,11 @@ export function DashboardClient() {
                       </span>
                     </div>
 
+                  </div>
+                )}
+
+                {indicatorsTab === "comparison" && (
+                  <div style={{ display: "grid", gap: 10 }}>
                     <div
                       style={{
                         border: "1px solid var(--border)",
@@ -4268,7 +4252,6 @@ export function DashboardClient() {
                         padding: "10px 12px",
                         display: "grid",
                         gap: 6,
-                        gridColumn: "1 / -1",
                       }}
                     >
                       <strong>Comparativo por modo</strong>
@@ -4409,9 +4392,6 @@ export function DashboardClient() {
                             ))}
                           </div>
                         </div>
-                        <span className="small-muted">
-                          Eixo Y: dias da semana • Eixo X: horário
-                        </span>
                       </div>
                     ))}
                   </div>
