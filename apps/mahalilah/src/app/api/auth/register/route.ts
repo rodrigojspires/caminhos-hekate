@@ -9,11 +9,32 @@ import { applyRateLimit } from '@/lib/security/rate-limit'
 const RegisterSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres')
+  password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres'),
+  callbackUrl: z.string().max(2048).optional()
 })
 
 const GENERIC_REGISTER_MESSAGE =
   'Se o e-mail puder ser utilizado, você receberá as instruções para ativar a conta.'
+
+function normalizeCallbackPath(value: string | undefined): string | undefined {
+  if (!value) return undefined
+
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  let decoded = trimmed
+  try {
+    decoded = decodeURIComponent(trimmed)
+  } catch {
+    decoded = trimmed
+  }
+
+  if (!decoded.startsWith('/') || decoded.startsWith('//')) {
+    return undefined
+  }
+
+  return decoded
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = RegisterSchema.parse(body)
     const normalizedEmail = data.email.trim().toLowerCase()
+    const callbackUrl = normalizeCallbackPath(data.callbackUrl)
 
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
@@ -39,7 +61,8 @@ export async function POST(request: NextRequest) {
           const verificationToken = await generateEmailVerificationToken(existingUser.email)
           await sendEmailVerificationEmail({
             to: existingUser.email,
-            verificationToken
+            verificationToken,
+            callbackUrl
           })
         } catch (emailError) {
           console.error('Erro ao reenviar verificação de email (Maha Lilah):', emailError)
@@ -74,7 +97,8 @@ export async function POST(request: NextRequest) {
       const verificationToken = await generateEmailVerificationToken(user.email)
       await sendEmailVerificationEmail({
         to: user.email,
-        verificationToken
+        verificationToken,
+        callbackUrl
       })
     } catch (emailError) {
       console.error('Erro ao enviar verificação de email (Maha Lilah):', emailError)

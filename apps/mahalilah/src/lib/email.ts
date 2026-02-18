@@ -200,9 +200,25 @@ Se você não solicitou essa ação, ignore este email.
   })
 }
 
-export async function sendEmailVerificationEmail(params: { to: string; verificationToken: string }) {
+export async function sendEmailVerificationEmail(params: {
+  to: string
+  verificationToken: string
+  callbackUrl?: string
+}) {
   const { fromEmail, fromName } = getMahaLilahFromAddress()
-  const verifyUrl = `${getMahaLilahBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(params.verificationToken)}`
+  const callbackPath =
+    params.callbackUrl &&
+    params.callbackUrl.startsWith('/') &&
+    !params.callbackUrl.startsWith('//')
+      ? params.callbackUrl
+      : null
+
+  const verifyUrl = new URL('/api/auth/verify-email', getMahaLilahBaseUrl())
+  verifyUrl.searchParams.set('token', params.verificationToken)
+  if (callbackPath) {
+    verifyUrl.searchParams.set('callbackUrl', callbackPath)
+  }
+  const verifyUrlString = verifyUrl.toString()
 
   const subject = 'Confirme seu e-mail - Maha Lilah Online'
   const html = `
@@ -210,7 +226,7 @@ export async function sendEmailVerificationEmail(params: { to: string; verificat
       <h2>Confirmar e-mail</h2>
       <p>Para ativar sua conta, confirme seu e-mail clicando no botão abaixo:</p>
       <p>
-        <a href="${verifyUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+        <a href="${verifyUrlString}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
           Confirmar e-mail
         </a>
       </p>
@@ -223,7 +239,7 @@ export async function sendEmailVerificationEmail(params: { to: string; verificat
 Confirme seu e-mail - Maha Lilah Online
 
 Para ativar sua conta, acesse:
-${verifyUrl}
+${verifyUrlString}
 
 Este link expira em 24 horas.
   `

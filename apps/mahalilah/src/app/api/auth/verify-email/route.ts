@@ -39,9 +39,29 @@ function resolveBaseUrl(request: NextRequest) {
   return 'https://mahalilahonline.com.br'
 }
 
-function loginRedirect(request: NextRequest, status: 'success' | 'invalid' | 'expired') {
+function normalizeCallbackPath(value: string | null): string | undefined {
+  if (!value) return undefined
+
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return undefined
+  }
+
+  return trimmed
+}
+
+function loginRedirect(
+  request: NextRequest,
+  status: 'success' | 'invalid' | 'expired',
+  callbackUrl?: string
+) {
   const url = new URL('/login', resolveBaseUrl(request))
   url.searchParams.set('verified', status)
+  if (callbackUrl) {
+    url.searchParams.set('callbackUrl', callbackUrl)
+  }
   return NextResponse.redirect(url)
 }
 
@@ -55,9 +75,10 @@ export async function GET(request: NextRequest) {
     })
     if (rateLimited) return rateLimited
 
+    const callbackUrl = normalizeCallbackPath(request.nextUrl.searchParams.get('callbackUrl'))
     const token = request.nextUrl.searchParams.get('token')?.trim()
     if (!token) {
-      return loginRedirect(request, 'invalid')
+      return loginRedirect(request, 'invalid', callbackUrl)
     }
 
     const verificationToken = await prisma.verificationToken.findUnique({
@@ -65,12 +86,12 @@ export async function GET(request: NextRequest) {
     })
 
     if (!verificationToken) {
-      return loginRedirect(request, 'invalid')
+      return loginRedirect(request, 'invalid', callbackUrl)
     }
 
     if (verificationToken.expires < new Date()) {
       await prisma.verificationToken.delete({ where: { token } }).catch(() => undefined)
-      return loginRedirect(request, 'expired')
+      return loginRedirect(request, 'expired', callbackUrl)
     }
 
     await prisma.$transaction([
@@ -81,9 +102,10 @@ export async function GET(request: NextRequest) {
       prisma.verificationToken.delete({ where: { token } })
     ])
 
-    return loginRedirect(request, 'success')
+    return loginRedirect(request, 'success', callbackUrl)
   } catch (error) {
     console.error('Erro ao verificar e-mail (Maha Lilah):', error)
-    return loginRedirect(request, 'invalid')
+    const callbackUrl = normalizeCallbackPath(request.nextUrl.searchParams.get('callbackUrl'))
+    return loginRedirect(request, 'invalid', callbackUrl)
   }
 }

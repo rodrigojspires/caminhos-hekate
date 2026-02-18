@@ -21,7 +21,7 @@ export function LoginForm() {
   const verifiedStatus = searchParams.get('verified')
   const safeCallback = (() => {
     if (!rawCallback) return '/dashboard'
-    if (rawCallback.startsWith('/')) return rawCallback
+    if (rawCallback.startsWith('/') && !rawCallback.startsWith('//')) return rawCallback
     try {
       const parsed = new URL(rawCallback)
       if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
@@ -30,6 +30,7 @@ export function LoginForm() {
     } catch {}
     return '/dashboard'
   })()
+  const registerHref = `/register?callbackUrl=${encodeURIComponent(safeCallback)}`
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +102,7 @@ export function LoginForm() {
       </p>
       <p className="text-sm text-ink-muted">
         Não tem conta?{' '}
-        <Link href="/register" className="text-gold hover:text-gold-soft">
+        <Link href={registerHref} className="text-gold hover:text-gold-soft">
           Criar conta
         </Link>
       </p>

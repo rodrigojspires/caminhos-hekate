@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 type ApiError = {
@@ -9,6 +10,21 @@ type ApiError = {
 }
 
 export function RegisterForm() {
+  const searchParams = useSearchParams()
+  const rawCallback = searchParams.get('callbackUrl')
+  const safeCallback = (() => {
+    if (!rawCallback) return '/dashboard'
+    if (rawCallback.startsWith('/') && !rawCallback.startsWith('//')) return rawCallback
+    try {
+      const parsed = new URL(rawCallback)
+      if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`
+      }
+    } catch {}
+    return '/dashboard'
+  })()
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(safeCallback)}`
+
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +42,7 @@ export function RegisterForm() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, callbackUrl: safeCallback })
       })
 
       const data: ApiError = await response.json().catch(() => ({}))
@@ -74,7 +90,7 @@ export function RegisterForm() {
       {success && (
         <div className="notice good">
           {success}{' '}
-          <Link href="/login" className="text-ink underline">
+          <Link href={loginHref} className="text-ink underline">
             Ir para login
           </Link>
         </div>
@@ -84,7 +100,7 @@ export function RegisterForm() {
       </button>
       <p className="text-sm text-ink-muted">
         Já tem conta?{' '}
-        <Link href="/login" className="text-gold hover:text-gold-soft">
+        <Link href={loginHref} className="text-gold hover:text-gold-soft">
           Entrar
         </Link>
       </p>
