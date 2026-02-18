@@ -3720,7 +3720,7 @@ export function RoomClient({ code }: { code: string }) {
 
           {activePanel === "ai" && (
             <div className="grid" style={{ gap: 8 }}>
-              <strong>IA terapêutica</strong>
+              <strong>Assistência com IA</strong>
               {isViewerInTherapistSoloPlay && (
                 <span className="small-muted">
                   Nesta sala você está como visualizador. As ações de IA ficam
@@ -3741,46 +3741,79 @@ export function RoomClient({ code }: { code: string }) {
               </span>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <button
-                  className="secondary"
-                  disabled={!canUseAiActions || aiTipLoading}
-                  onClick={() => requestAiTip({ mode: "currentHouse" })}
+                <div
+                  className="notice"
+                  style={{ display: "grid", gap: 6, alignItems: "start" }}
                 >
-                  {aiTipLoading
-                    ? "Processando ajuda..."
-                    : "Ajuda na Casa Atual"}
-                </button>
-
-                <label style={{ display: "grid", gap: 4 }}>
-                  <span>Ajuda personalizada pelo caminho</span>
-                  <textarea
-                    placeholder="Escreva sua dúvida/contexto. Ex.: estou repetindo a mesma dificuldade de comunicação e não sei como sair disso."
-                    value={aiPathHelpInput}
-                    disabled={!canUseAiActions || aiTipLoading}
-                    onChange={(event) => setAiPathHelpInput(event.target.value)}
-                  />
+                  <strong style={{ fontSize: 12 }}>Ajuda rápida da casa atual</strong>
                   <span className="small-muted">
-                    A IA vai considerar seu texto e o caminho percorrido até este
-                    momento.
+                    Leitura simbólica da casa em que você está neste momento.
                   </span>
-                </label>
+                  <button
+                    className="secondary"
+                    disabled={!canUseAiActions || aiTipLoading}
+                    onClick={() => requestAiTip({ mode: "currentHouse" })}
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(224, 186, 95, 0.96), rgba(182, 131, 45, 0.96))",
+                      borderColor: "rgba(255, 229, 160, 0.72)",
+                      color: "#231302",
+                      fontWeight: 700,
+                      boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
+                    }}
+                  >
+                    {aiTipLoading
+                      ? "Processando ajuda..."
+                      : "Ajuda na Casa Atual"}
+                  </button>
+                </div>
 
-                <button
-                  className="secondary"
-                  disabled={
-                    !canUseAiActions || aiTipLoading || !aiPathHelpInput.trim()
-                  }
-                  onClick={() =>
-                    requestAiTip({
-                      mode: "pathQuestion",
-                      question: aiPathHelpInput,
-                    })
-                  }
+                <div
+                  className="notice"
+                  style={{ display: "grid", gap: 6, alignItems: "start" }}
                 >
-                  {aiTipLoading
-                    ? "Processando ajuda..."
-                    : "Me ajuda com minha pergunta"}
-                </button>
+                  <strong style={{ fontSize: 12 }}>
+                    Ajuda personalizada pelo caminho
+                  </strong>
+                  <span className="small-muted">
+                    Escreva seu contexto para a IA analisar seu caminho até aqui.
+                  </span>
+                  <label style={{ display: "grid", gap: 4 }}>
+                    <textarea
+                      placeholder="Escreva sua dúvida/contexto. Ex.: estou repetindo a mesma dificuldade de comunicação e não sei como sair disso."
+                      value={aiPathHelpInput}
+                      disabled={!canUseAiActions || aiTipLoading}
+                      onChange={(event) =>
+                        setAiPathHelpInput(event.target.value)
+                      }
+                    />
+                  </label>
+
+                  <button
+                    className="secondary"
+                    disabled={
+                      !canUseAiActions || aiTipLoading || !aiPathHelpInput.trim()
+                    }
+                    onClick={() =>
+                      requestAiTip({
+                        mode: "pathQuestion",
+                        question: aiPathHelpInput,
+                      })
+                    }
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(224, 186, 95, 0.96), rgba(182, 131, 45, 0.96))",
+                      borderColor: "rgba(255, 229, 160, 0.72)",
+                      color: "#231302",
+                      fontWeight: 700,
+                      boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
+                    }}
+                  >
+                    {aiTipLoading
+                      ? "Processando ajuda..."
+                      : "Me ajuda com minha pergunta"}
+                  </button>
+                </div>
               </div>
 
               {aiTipLoading && (
