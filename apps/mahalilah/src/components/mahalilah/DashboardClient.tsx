@@ -214,6 +214,92 @@ type TutorialStep = {
   target: DashboardTutorialTarget;
 };
 
+type IndicatorsTab = "overview" | "engagement" | "performance";
+
+type IndicatorsDateFilter = {
+  from: string;
+  to: string;
+};
+
+type IndicatorsStatusMetric = {
+  count: number;
+  percent: number;
+};
+
+type IndicatorsThemeRoom = {
+  id: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  matchCount: number;
+  intentions: string[];
+};
+
+type IndicatorsTheme = {
+  theme: string;
+  count: number;
+  rooms: IndicatorsThemeRoom[];
+};
+
+type DashboardIndicators = {
+  period: {
+    from: string | null;
+    to: string | null;
+    roomsCount: number;
+  };
+  lastSession: {
+    id: string;
+    code: string;
+    status: string;
+    createdAt: string;
+    lastMoveAt: string | null;
+  } | null;
+  invites: {
+    pending: number;
+    accepted: number;
+    total: number;
+  };
+  roomsWithoutMoves: number;
+  consents: {
+    pending: number;
+    accepted: number;
+    total: number;
+  };
+  statuses: {
+    completed: IndicatorsStatusMetric;
+    closed: IndicatorsStatusMetric;
+    active: IndicatorsStatusMetric;
+  };
+  averages: {
+    movesPerRoom: number;
+    aiPerRoom: number;
+    therapyPerRoom: number;
+  };
+  completionRatePercent: number;
+  gameplay: {
+    averageDurationMinutes: number | null;
+    totalDurationMinutes: number;
+    startedRoomsCount: number;
+  };
+  roomsCreatedLast7Days: number;
+  roomsCreatedLast30Days: number;
+  daysSinceLastSession: number | null;
+  aiReportsGenerated: {
+    month: number;
+    total: number;
+  };
+  sessionsWithRecords: {
+    count: number;
+    percent: number;
+  };
+  therapistModes: {
+    playsTogether: number;
+    notPlaying: number;
+    solo: number;
+  };
+  intentionThemes: IndicatorsTheme[];
+};
+
 function ToggleSwitch({
   checked,
   disabled,
@@ -705,6 +791,39 @@ function getTutorialPopoverPosition(targetRect: DOMRect | null) {
   } satisfies TutorialPopoverPosition;
 }
 
+function formatDateTimeLabel(value?: string | null) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString("pt-BR");
+}
+
+function formatPeriodLabel(from?: string | null, to?: string | null) {
+  const fromLabel = from ? formatDateTimeLabel(from).split(",")[0] : null;
+  const toLabel = to ? formatDateTimeLabel(to).split(",")[0] : null;
+  if (fromLabel && toLabel) return `${fromLabel} até ${toLabel}`;
+  if (fromLabel) return `a partir de ${fromLabel}`;
+  if (toLabel) return `até ${toLabel}`;
+  return "todo o histórico";
+}
+
+function formatMetricNumber(value: number, maximumFractionDigits = 0) {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+}
+
+function formatDurationFromMinutes(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  const totalMinutes = Math.max(0, Math.round(value));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
+}
+
 export function DashboardClient() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -750,6 +869,18 @@ export function DashboardClient() {
     to: "",
   });
   const [isIndicatorsModalOpen, setIsIndicatorsModalOpen] = useState(false);
+  const [indicatorsTab, setIndicatorsTab] = useState<IndicatorsTab>("overview");
+  const [indicatorsDateFilter, setIndicatorsDateFilter] =
+    useState<IndicatorsDateFilter>({ from: "", to: "" });
+  const [indicatorsDateDraft, setIndicatorsDateDraft] =
+    useState<IndicatorsDateFilter>({ from: "", to: "" });
+  const [indicatorsLoading, setIndicatorsLoading] = useState(false);
+  const [indicatorsError, setIndicatorsError] = useState<string | null>(null);
+  const [indicatorsData, setIndicatorsData] = useState<DashboardIndicators | null>(
+    null,
+  );
+  const [intentionThemeModal, setIntentionThemeModal] =
+    useState<IndicatorsTheme | null>(null);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [sessionsViewTab, setSessionsViewTab] =
     useState<SessionsViewTab>("created");
@@ -886,9 +1017,60 @@ export function DashboardClient() {
     [filters, pushToast],
   );
 
+  const loadIndicators = useCallback(
+    async (override?: Partial<IndicatorsDateFilter>) => {
+      const activeFilter: IndicatorsDateFilter = {
+        from: override?.from ?? indicatorsDateFilter.from,
+        to: override?.to ?? indicatorsDateFilter.to,
+      };
+      setIndicatorsDateFilter(activeFilter);
+      setIndicatorsLoading(true);
+      setIndicatorsError(null);
+
+      const params = new URLSearchParams();
+      if (activeFilter.from) params.set("from", activeFilter.from);
+      if (activeFilter.to) params.set("to", activeFilter.to);
+
+      try {
+        const res = await fetch(
+          `/api/mahalilah/dashboard/indicators${params.toString() ? `?${params.toString()}` : ""}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          const message =
+            payload.error || "Não foi possível carregar os indicadores.";
+          setIndicatorsError(message);
+          return;
+        }
+
+        const payload = await res.json().catch(() => ({}));
+        setIndicatorsData(payload.indicators || null);
+      } catch {
+        setIndicatorsError("Não foi possível carregar os indicadores.");
+      } finally {
+        setIndicatorsLoading(false);
+      }
+    },
+    [indicatorsDateFilter.from, indicatorsDateFilter.to],
+  );
+
   useEffect(() => {
     loadRooms();
   }, [loadRooms]);
+
+  useEffect(() => {
+    if (!isIndicatorsModalOpen) return;
+    if (indicatorsLoading) return;
+    if (indicatorsData) return;
+    void loadIndicators(indicatorsDateFilter);
+  }, [
+    isIndicatorsModalOpen,
+    indicatorsLoading,
+    indicatorsData,
+    indicatorsDateFilter,
+    loadIndicators,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2620,14 +2802,8 @@ export function DashboardClient() {
     dashboardTutorialSteps[dashboardTutorialStep] || null;
   const isTutorialCreateRoomConfigStep =
     currentDashboardTutorialStep?.target === "create-room-config";
-  const quotaPeriodLabel =
-    roomQuota?.periodStart && roomQuota?.periodEnd
-      ? `${new Date(roomQuota.periodStart).toLocaleDateString("pt-BR")} a ${new Date(
-          roomQuota.periodEnd,
-        ).toLocaleDateString("pt-BR")}`
-      : roomQuota?.periodEnd
-        ? `até ${new Date(roomQuota.periodEnd).toLocaleDateString("pt-BR")}`
-        : "período atual";
+  const isDockedCreateRoomTutorial =
+    isTutorialCreateRoomConfigStep && isCreateRoomModalOpen;
   const limitedCatalogLimit =
     roomQuota?.planType === "SUBSCRIPTION_LIMITED"
       ? roomQuota.catalogRoomsLimit ?? roomQuota.roomsLimit
@@ -2643,122 +2819,11 @@ export function DashboardClient() {
     trialRoomStatus !== null &&
     trialRoomStatus !== "ACTIVE" &&
     !canCreateRoom;
-  const indicatorRooms = createdRooms;
-  const totalRoomsCount = indicatorRooms.length;
-  const activeRoomsCount = indicatorRooms.filter(
-    (room) => room.status === "ACTIVE",
-  ).length;
-
-  const occupancyBaseRooms =
-    activeRoomsCount > 0
-      ? indicatorRooms.filter((room) => room.status === "ACTIVE")
-      : indicatorRooms;
-  const occupiedSlots = occupancyBaseRooms.reduce(
-    (sum, room) => sum + room.participantsCount,
-    0,
+  const indicatorsPeriodLabel = formatPeriodLabel(
+    indicatorsData?.period.from,
+    indicatorsData?.period.to,
   );
-  const availableSlots = occupancyBaseRooms.reduce(
-    (sum, room) => sum + room.maxParticipants,
-    0,
-  );
-  const occupancyPercent =
-    availableSlots > 0 ? Math.round((occupiedSlots / availableSlots) * 100) : 0;
-
-  const invitesSentCount = indicatorRooms.reduce(
-    (sum, room) => sum + room.invites.length,
-    0,
-  );
-  const invitesAcceptedCount = indicatorRooms.reduce(
-    (sum, room) =>
-      sum + room.invites.filter((invite) => Boolean(invite.acceptedAt)).length,
-    0,
-  );
-  const inviteAcceptancePercent =
-    invitesSentCount > 0
-      ? Math.round((invitesAcceptedCount / invitesSentCount) * 100)
-      : null;
-
-  const consentPendingParticipantsCount = indicatorRooms.reduce(
-    (sum, room) =>
-      sum +
-      room.participants.filter(
-        (participant) =>
-          participant.role === "PLAYER" && !participant.consentAcceptedAt,
-      ).length,
-    0,
-  );
-  const consentPendingRoomsCount = indicatorRooms.filter((room) =>
-    room.participants.some(
-      (participant) =>
-        participant.role === "PLAYER" && !participant.consentAcceptedAt,
-    ),
-  ).length;
-
-  const activeRoomsWithoutMovementCount = indicatorRooms.filter(
-    (room) => room.status === "ACTIVE" && room.stats.moves === 0,
-  ).length;
-
-  const totalMoves = indicatorRooms.reduce((sum, room) => sum + room.stats.moves, 0);
-  const totalTherapyEntries = indicatorRooms.reduce(
-    (sum, room) => sum + room.stats.therapyEntries,
-    0,
-  );
-  const totalAiReports = indicatorRooms.reduce(
-    (sum, room) => sum + room.stats.aiReports,
-    0,
-  );
-  const therapyEntriesPerMove =
-    totalMoves > 0 ? totalTherapyEntries / totalMoves : null;
-  const aiReportsPerMove = totalMoves > 0 ? totalAiReports / totalMoves : null;
-
-  const closedRoomsCount = indicatorRooms.filter(
-    (room) => room.status === "CLOSED",
-  ).length;
-  const completedRoomsCount = indicatorRooms.filter(
-    (room) => room.status === "COMPLETED",
-  ).length;
-  const finalizedRoomsCount = closedRoomsCount + completedRoomsCount;
-  const completionRatePercent =
-    totalRoomsCount > 0
-      ? Math.round((completedRoomsCount / totalRoomsCount) * 100)
-      : 0;
-  const closedRoomsPercent =
-    finalizedRoomsCount > 0
-      ? Math.round((closedRoomsCount / finalizedRoomsCount) * 100)
-      : 0;
-  const completedRoomsPercent =
-    finalizedRoomsCount > 0
-      ? Math.round((completedRoomsCount / finalizedRoomsCount) * 100)
-      : 0;
-
-  const now = Date.now();
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  const roomsCreatedLast7Days = indicatorRooms.filter((room) => {
-    const createdAt = new Date(room.createdAt).getTime();
-    return Number.isFinite(createdAt) && now - createdAt <= sevenDaysMs;
-  }).length;
-  const roomsCreatedLast30Days = indicatorRooms.filter((room) => {
-    const createdAt = new Date(room.createdAt).getTime();
-    return Number.isFinite(createdAt) && now - createdAt <= thirtyDaysMs;
-  }).length;
-
-  const dashboardAlerts: string[] = [];
-  if (consentPendingParticipantsCount > 0) {
-    dashboardAlerts.push(
-      `${consentPendingParticipantsCount} participante(s) sem consentimento em ${consentPendingRoomsCount} sala(s).`,
-    );
-  }
-  if (activeRoomsWithoutMovementCount > 0) {
-    dashboardAlerts.push(
-      `${activeRoomsWithoutMovementCount} sala(s) ativa(s) ainda sem jogadas.`,
-    );
-  }
-  if (inviteAcceptancePercent !== null && inviteAcceptancePercent < 40) {
-    dashboardAlerts.push(
-      `Taxa de aceite de convites em ${inviteAcceptancePercent}% (abaixo de 40%).`,
-    );
-  }
+  const indicatorsRoomsCount = indicatorsData?.period.roomsCount ?? 0;
 
   return (
     <div className="grid dashboard-root" style={{ gap: 24 }}>
@@ -2835,7 +2900,14 @@ export function DashboardClient() {
           >
             <button
               className="btn-secondary"
-              onClick={() => setIsIndicatorsModalOpen(true)}
+              onClick={() => {
+                setIndicatorsTab("overview");
+                setIndicatorsDateDraft(indicatorsDateFilter);
+                setIntentionThemeModal(null);
+                setIndicatorsData(null);
+                setIsIndicatorsModalOpen(true);
+                void loadIndicators(indicatorsDateFilter);
+              }}
               data-tour-dashboard="toolbar-indicators"
               aria-label="Abrir indicadores"
               title="Abrir indicadores"
@@ -3222,7 +3294,10 @@ export function DashboardClient() {
         <div
           role="dialog"
           aria-modal="true"
-          onClick={() => setIsIndicatorsModalOpen(false)}
+          onClick={() => {
+            setIsIndicatorsModalOpen(false);
+            setIntentionThemeModal(null);
+          }}
           style={{
             position: "fixed",
             inset: 0,
@@ -3256,257 +3331,679 @@ export function DashboardClient() {
               <h2 className="section-title">Indicadores do painel</h2>
               <button
                 className="btn-secondary"
-                onClick={() => setIsIndicatorsModalOpen(false)}
+                onClick={() => {
+                  setIsIndicatorsModalOpen(false);
+                  setIntentionThemeModal(null);
+                }}
               >
                 Fechar
               </button>
             </div>
 
+            <div className="small-muted" style={{ marginTop: -6 }}>
+              Indicadores calculados apenas com salas criadas/compradas por você.
+            </div>
+
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                display: "flex",
                 gap: 10,
+                flexWrap: "wrap",
+                alignItems: "flex-end",
               }}
             >
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Taxa de ocupação</span>
-                <strong>{occupancyPercent}%</strong>
-                <span className="small-muted">
-                  {occupiedSlots}/{availableSlots} vagas preenchidas
-                </span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Convites aceitos</span>
-                <strong>
-                  {inviteAcceptancePercent === null
-                    ? "--"
-                    : `${inviteAcceptancePercent}%`}
-                </strong>
-                <span className="small-muted">
-                  {invitesAcceptedCount}/{invitesSentCount} convites
-                </span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Consentimento pendente</span>
-                <strong>{consentPendingParticipantsCount}</strong>
-                <span className="small-muted">
-                  {consentPendingRoomsCount} sala
-                  {consentPendingRoomsCount === 1 ? "" : "s"} com pendência
-                </span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Salas ativas sem movimento</span>
-                <strong>{activeRoomsWithoutMovementCount}</strong>
-                <span className="small-muted">
-                  de {activeRoomsCount} sala{activeRoomsCount === 1 ? "" : "s"}{" "}
-                  ativa{activeRoomsCount === 1 ? "" : "s"}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Profundidade terapêutica</span>
-                <strong>
-                  {therapyEntriesPerMove === null
-                    ? "--"
-                    : therapyEntriesPerMove.toFixed(2).replace(".", ",")}
-                </strong>
-                <span className="small-muted">registros por jogada</span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Uso da IA</span>
-                <strong>
-                  {aiReportsPerMove === null
-                    ? "--"
-                    : aiReportsPerMove.toFixed(2).replace(".", ",")}
-                </strong>
-                <span className="small-muted">relatórios por jogada</span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Taxa de conclusão</span>
-                <strong>{completionRatePercent}%</strong>
-                <span className="small-muted">
-                  {completedRoomsCount}/{totalRoomsCount} salas completas
-                </span>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  padding: "10px 12px",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <span className="small-muted">Ritmo de criação</span>
-                <strong>
-                  7d: {roomsCreatedLast7Days} | 30d: {roomsCreatedLast30Days}
-                </strong>
-                <span className="small-muted">salas criadas</span>
-              </div>
-
-              {roomQuota && (
-                <div
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    padding: "10px 12px",
-                    display: "grid",
-                    gap: 4,
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>De</span>
+                <input
+                  type="date"
+                  value={indicatorsDateDraft.from}
+                  onChange={(event) =>
+                    setIndicatorsDateDraft((prev) => ({
+                      ...prev,
+                      from: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Até</span>
+                <input
+                  type="date"
+                  value={indicatorsDateDraft.to}
+                  onChange={(event) =>
+                    setIndicatorsDateDraft((prev) => ({
+                      ...prev,
+                      to: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="btn-secondary"
+                  disabled={indicatorsLoading}
+                  onClick={() => void loadIndicators(indicatorsDateDraft)}
+                >
+                  {indicatorsLoading ? "Aplicando..." : "Aplicar período"}
+                </button>
+                <button
+                  className="btn-secondary"
+                  disabled={indicatorsLoading}
+                  onClick={() => {
+                    const cleared = { from: "", to: "" };
+                    setIndicatorsDateDraft(cleared);
+                    void loadIndicators(cleared);
                   }}
                 >
-                  <span className="small-muted">
-                    {roomQuota.planType === "SUBSCRIPTION_LIMITED"
-                      ? "Salas do plano limitado"
-                      : "Salas no período"}
-                  </span>
-                  <strong>{roomQuota.roomsUsed}</strong>
-                  <span className="small-muted">Período: {quotaPeriodLabel}</span>
-                  {roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
-                    <span className="small-muted">
-                      Máx.:{" "}
-                      {limitedCatalogLimit == null ? "Ilimitado" : limitedCatalogLimit}{" "}
-                      | Disponíveis:{" "}
-                      {roomQuota.roomsRemaining == null
-                        ? "Ilimitadas"
-                        : roomQuota.roomsRemaining}
-                    </span>
-                  ) : (
-                    <span className="small-muted">
-                      Limite:{" "}
-                      {roomQuota.roomsLimit == null
-                        ? "Ilimitado"
-                        : roomQuota.roomsLimit}
-                    </span>
-                  )}
-                </div>
-              )}
+                  Limpar
+                </button>
+              </div>
             </div>
 
+            <div className="small-muted">
+              Período ativo: {indicatorsPeriodLabel}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className={indicatorsTab === "overview" ? "btn-primary" : "btn-secondary"}
+                onClick={() => setIndicatorsTab("overview")}
+              >
+                Visão Geral
+              </button>
+              <button
+                className={indicatorsTab === "engagement" ? "btn-primary" : "btn-secondary"}
+                onClick={() => setIndicatorsTab("engagement")}
+              >
+                Engajamento
+              </button>
+              <button
+                className={
+                  indicatorsTab === "performance" ? "btn-primary" : "btn-secondary"
+                }
+                onClick={() => setIndicatorsTab("performance")}
+              >
+                Performance
+              </button>
+            </div>
+
+            {indicatorsError && <span className="small-muted">{indicatorsError}</span>}
+
+            {indicatorsLoading ? (
+              <span className="small-muted">Carregando indicadores...</span>
+            ) : !indicatorsData ? (
+              <span className="small-muted">
+                Sem dados disponíveis para o período selecionado.
+              </span>
+            ) : (
+              <>
+                {indicatorsTab === "overview" && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Última sessão</span>
+                      <strong>
+                        {indicatorsData.lastSession
+                          ? `Sala ${indicatorsData.lastSession.code}`
+                          : "Sem sessão"}
+                      </strong>
+                      <span className="small-muted">
+                        {indicatorsData.lastSession
+                          ? `${indicatorsData.lastSession.status} • ${
+                              indicatorsData.lastSession.lastMoveAt
+                                ? `Última jogada em ${formatDateTimeLabel(
+                                    indicatorsData.lastSession.lastMoveAt,
+                                  )}`
+                                : `Criada em ${formatDateTimeLabel(
+                                    indicatorsData.lastSession.createdAt,
+                                  )}`
+                            }`
+                          : "--"}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Salas concluídas (qtde / %)
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.statuses.completed.count)} (
+                        {formatMetricNumber(indicatorsData.statuses.completed.percent)}%)
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Salas encerradas (qtde / %)
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.statuses.closed.count)} (
+                        {formatMetricNumber(indicatorsData.statuses.closed.percent)}%)
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Salas ativas (qtde / %)</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.statuses.active.count)} (
+                        {formatMetricNumber(indicatorsData.statuses.active.percent)}%)
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Taxa de conclusão</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.completionRatePercent)}%
+                      </strong>
+                      <span className="small-muted">
+                        Base: {formatMetricNumber(indicatorsData.gameplay.startedRoomsCount)}{" "}
+                        sala(s) iniciadas
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Salas criadas nos últimos 7 dias
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.roomsCreatedLast7Days)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Salas criadas nos últimos 30 dias
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.roomsCreatedLast30Days)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Salas criadas no período</span>
+                      <strong>{formatMetricNumber(indicatorsRoomsCount)}</strong>
+                      <span className="small-muted">Período: {indicatorsPeriodLabel}</span>
+                      {roomQuota ? (
+                        roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
+                          <span className="small-muted">
+                            Limite:{" "}
+                            {limitedCatalogLimit == null
+                              ? "Ilimitado"
+                              : formatMetricNumber(limitedCatalogLimit)}{" "}
+                            | Disponíveis:{" "}
+                            {roomQuota.roomsRemaining == null
+                              ? "Ilimitadas"
+                              : formatMetricNumber(roomQuota.roomsRemaining)}
+                          </span>
+                        ) : (
+                          <span className="small-muted">
+                            Limite do plano:{" "}
+                            {roomQuota.roomsLimit == null
+                              ? "Ilimitado"
+                              : formatMetricNumber(roomQuota.roomsLimit)}
+                          </span>
+                        )
+                      ) : (
+                        <span className="small-muted">
+                          Limite do plano indisponível.
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Dias desde a última sessão
+                      </span>
+                      <strong>
+                        {indicatorsData.daysSinceLastSession === null
+                          ? "--"
+                          : formatMetricNumber(indicatorsData.daysSinceLastSession)}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+
+                {indicatorsTab === "engagement" && (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">
+                          Convites pendentes / aceitos
+                        </span>
+                        <strong>
+                          {formatMetricNumber(indicatorsData.invites.pending)} /{" "}
+                          {formatMetricNumber(indicatorsData.invites.accepted)}
+                        </strong>
+                        <span className="small-muted">
+                          Total: {formatMetricNumber(indicatorsData.invites.total)}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">
+                          Consentimentos pendentes / aceitos
+                        </span>
+                        <strong>
+                          {formatMetricNumber(indicatorsData.consents.pending)} /{" "}
+                          {formatMetricNumber(indicatorsData.consents.accepted)}
+                        </strong>
+                        <span className="small-muted">
+                          Total: {formatMetricNumber(indicatorsData.consents.total)}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">
+                          Sessões terapeuta joga junto
+                        </span>
+                        <strong>
+                          {formatMetricNumber(indicatorsData.therapistModes.playsTogether)}
+                        </strong>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">
+                          Sessões terapeuta não joga
+                        </span>
+                        <strong>
+                          {formatMetricNumber(indicatorsData.therapistModes.notPlaying)}
+                        </strong>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">Sessões solo</span>
+                        <strong>
+                          {formatMetricNumber(indicatorsData.therapistModes.solo)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <strong>Intenções de jogo no período</strong>
+                      {indicatorsData.intentionThemes.length === 0 ? (
+                        <span className="small-muted">
+                          Nenhum tema de intenção encontrado para este período.
+                        </span>
+                      ) : (
+                        <>
+                          <span className="small-muted">
+                            Clique em um tema para ver as sessões relacionadas.
+                          </span>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {indicatorsData.intentionThemes.map((theme) => (
+                              <button
+                                key={theme.theme}
+                                className="btn-secondary"
+                                onClick={() => setIntentionThemeModal(theme)}
+                                style={{ height: "auto", padding: "6px 10px" }}
+                              >
+                                {theme.theme} ({formatMetricNumber(theme.count)})
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {indicatorsTab === "performance" && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Salas criadas e não jogadas
+                      </span>
+                      <strong>{formatMetricNumber(indicatorsData.roomsWithoutMoves)}</strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Média de jogadas</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.averages.movesPerRoom, 2)}
+                      </strong>
+                      <span className="small-muted">por sala no período</span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Média de uso de IA</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.averages.aiPerRoom, 2)}
+                      </strong>
+                      <span className="small-muted">relatórios por sala</span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Média de registros terapêuticos
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.averages.therapyPerRoom, 2)}
+                      </strong>
+                      <span className="small-muted">por sala</span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Tempo médio de jogo</span>
+                      <strong>
+                        {formatDurationFromMinutes(
+                          indicatorsData.gameplay.averageDurationMinutes,
+                        )}
+                      </strong>
+                      <span className="small-muted">
+                        Base: {formatMetricNumber(indicatorsData.gameplay.startedRoomsCount)}{" "}
+                        sala(s) iniciadas
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Tempo total em sessão</span>
+                      <strong>
+                        {formatDurationFromMinutes(indicatorsData.gameplay.totalDurationMinutes)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">
+                        Registros por IA gerados (mês / total)
+                      </span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.aiReportsGenerated.month)} /{" "}
+                        {formatMetricNumber(indicatorsData.aiReportsGenerated.total)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">% de sessões com registro</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.sessionsWithRecords.percent)}%
+                      </strong>
+                      <span className="small-muted">
+                        {formatMetricNumber(indicatorsData.sessionsWithRecords.count)} de{" "}
+                        {formatMetricNumber(indicatorsRoomsCount)} sala(s)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {intentionThemeModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setIntentionThemeModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 6, 10, 0.62)",
+            zIndex: 10001,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(780px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
             <div
               style={{
-                borderTop: "1px solid var(--border)",
-                paddingTop: 10,
-                display: "grid",
+                display: "flex",
+                justifyContent: "space-between",
                 gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
               }}
             >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: 10,
-                }}
+              <strong>
+                Tema: {intentionThemeModal.theme} (
+                {formatMetricNumber(intentionThemeModal.count)})
+              </strong>
+              <button
+                className="btn-secondary"
+                onClick={() => setIntentionThemeModal(null)}
               >
-                <div
-                  className="pill"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
-                  <span>Encerradas (CLOSED)</span>
-                  <strong>
-                    {finalizedRoomsCount > 0 ? `${closedRoomsPercent}%` : "--"} (
-                    {closedRoomsCount})
-                  </strong>
-                </div>
-                <div
-                  className="pill"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
-                  <span>Completas (COMPLETED)</span>
-                  <strong>
-                    {finalizedRoomsCount > 0
-                      ? `${completedRoomsPercent}%`
-                      : "--"}{" "}
-                    ({completedRoomsCount})
-                  </strong>
-                </div>
-              </div>
+                Fechar
+              </button>
             </div>
-
-            {dashboardAlerts.length > 0 && (
-              <div
-                style={{
-                  borderTop: "1px solid var(--border)",
-                  paddingTop: 10,
-                  display: "grid",
-                  gap: 6,
-                }}
-              >
-                <strong>Alertas rápidos</strong>
-                {dashboardAlerts.map((alert) => (
-                  <span key={alert} className="small-muted">
-                    • {alert}
-                  </span>
+            {intentionThemeModal.rooms.length === 0 ? (
+              <span className="small-muted">Nenhuma sessão relacionada.</span>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {intentionThemeModal.rooms.map((room) => (
+                  <div
+                    key={`${intentionThemeModal.theme}-${room.id}`}
+                    className="notice"
+                    style={{ display: "grid", gap: 4 }}
+                  >
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <strong>Sala {room.code}</strong>
+                      <span className="small-muted">{room.status}</span>
+                      <span className="small-muted">
+                        {formatDateTimeLabel(room.createdAt)}
+                      </span>
+                    </div>
+                    <span className="small-muted">
+                      Correspondências do tema: {formatMetricNumber(room.matchCount)}
+                    </span>
+                    <span className="small-muted">
+                      Intenções: {room.intentions.join(" | ")}
+                    </span>
+                    <a href={`/rooms/${room.code}`} className="btn-secondary w-fit">
+                      Abrir sala
+                    </a>
+                  </div>
                 ))}
               </div>
             )}
@@ -3925,14 +4422,15 @@ export function DashboardClient() {
                 height: dashboardTutorialTargetRect.height + 16,
                 borderRadius: 14,
                 border: "2px solid rgba(217, 164, 65, 0.92)",
-                boxShadow:
-                  "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
+                boxShadow: isDockedCreateRoomTutorial
+                  ? "0 0 0 5px rgba(217, 164, 65, 0.22)"
+                  : "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
                 pointerEvents: "none",
                 zIndex: 10001,
               }}
             />
           )}
-          {dashboardTutorialPopover && (
+          {dashboardTutorialPopover && !isDockedCreateRoomTutorial && (
             <div
               style={{
                 position: "fixed",
@@ -4000,11 +4498,18 @@ export function DashboardClient() {
               display: "grid",
               gap: 12,
               position: "fixed",
-              top: dashboardTutorialPopover?.top || "50%",
-              left: dashboardTutorialPopover?.left || "50%",
-              transform: dashboardTutorialPopover
-                ? "none"
-                : "translate(-50%, -50%)",
+              top: isDockedCreateRoomTutorial
+                ? "auto"
+                : dashboardTutorialPopover?.top || "50%",
+              left: isDockedCreateRoomTutorial
+                ? "50%"
+                : dashboardTutorialPopover?.left || "50%",
+              bottom: isDockedCreateRoomTutorial ? 18 : "auto",
+              transform: isDockedCreateRoomTutorial
+                ? "translateX(-50%)"
+                : dashboardTutorialPopover
+                  ? "none"
+                  : "translate(-50%, -50%)",
               zIndex: 10002,
               pointerEvents: "auto",
             }}
