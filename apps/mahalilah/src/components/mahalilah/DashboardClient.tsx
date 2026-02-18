@@ -4471,9 +4471,15 @@ export function DashboardClient() {
                     <span className="small-muted">
                       Intenções: {room.intentions.join(" | ")}
                     </span>
-                    <a href={`/rooms/${room.code}`} className="btn-secondary w-fit">
-                      Abrir sala
-                    </a>
+                    {room.status === "ACTIVE" ? (
+                      <a href={`/rooms/${room.code}`} className="btn-secondary w-fit">
+                        Abrir sala
+                      </a>
+                    ) : (
+                      <span className="small-muted">
+                        Abertura disponível apenas para salas ativas.
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
