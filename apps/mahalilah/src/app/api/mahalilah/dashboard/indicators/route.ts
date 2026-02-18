@@ -266,6 +266,20 @@ export async function GET(request: Request) {
       (participant) => participant.role === MahaLilahParticipantRole.PLAYER
     )
 
+    const intentionParticipants = participantMetrics.filter((participant) => {
+      const room = roomById.get(participant.roomId)
+      if (!room) return false
+
+      // When therapist only conducts (does not play), therapist intention should not be counted.
+      if (
+        participant.role === MahaLilahParticipantRole.THERAPIST &&
+        !room.therapistPlays
+      ) {
+        return false
+      }
+      return true
+    })
+
     const consentsAcceptedCount = playerParticipants.filter((participant) =>
       Boolean(participant.consentAcceptedAt)
     ).length
@@ -353,11 +367,11 @@ export async function GET(request: Request) {
       return roomPlayers.some((participant) => Boolean(participant.therapistSummary?.trim()))
     }).length
 
-    const participantsTotalCount = participantMetrics.length
-    const participantsWithIntentionCount = participantMetrics.filter((participant) =>
+    const participantsTotalCount = intentionParticipants.length
+    const participantsWithIntentionCount = intentionParticipants.filter((participant) =>
       Boolean(participant.gameIntention?.trim())
     ).length
-    const startedParticipants = participantMetrics.filter((participant) =>
+    const startedParticipants = intentionParticipants.filter((participant) =>
       startedRoomIds.has(participant.roomId)
     )
     const startedParticipantsWithIntentionCount = startedParticipants.filter((participant) =>
@@ -472,7 +486,7 @@ export async function GET(request: Request) {
       }
     >()
 
-    for (const participant of participantMetrics) {
+    for (const participant of intentionParticipants) {
       const room = roomById.get(participant.roomId)
       if (!room) continue
 
