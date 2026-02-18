@@ -275,6 +275,7 @@ export async function POST(request: NextRequest) {
     }
 
     for (const post of createdPosts) {
+      if (!post.communityId) continue
       const memberIds = membersByCommunity.get(post.communityId) || []
       const communityName = communityNameMap.get(post.communityId) || 'comunidade'
       for (const userId of memberIds) {

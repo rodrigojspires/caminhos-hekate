@@ -211,7 +211,8 @@ export async function POST(request: Request) {
 
     const mp = new MercadoPagoService()
     const payment = await mp.getPayment(String(payload.data.id))
-    const status = mapStatus(payment.status)
+    const providerStatus = payment.status || ''
+    const status = mapStatus(providerStatus)
 
     const txId = payment.external_reference
     if (!txId) {
@@ -270,9 +271,9 @@ export async function POST(request: Request) {
       await prisma.payment.update({
         where: { id: paymentRecord.id },
         data: {
-          status: mapPaymentStatus(payment.status),
+          status: mapPaymentStatus(providerStatus),
           mercadoPagoId: String(payment.id),
-          mercadoPagoStatus: payment.status,
+          mercadoPagoStatus: providerStatus,
           paidAt: status === 'COMPLETED' ? now : null,
           metadata: {
             ...(paymentRecord.metadata as any),

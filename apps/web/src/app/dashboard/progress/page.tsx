@@ -198,13 +198,17 @@ export default function ProgressPage() {
     const events: TimelineEvent[] = []
 
     for (const achievement of achievements ?? []) {
-      if (!achievement.unlockedAt) continue
+      const unlockedAt =
+        (achievement as any).unlockedAt ??
+        (achievement as any).createdAt ??
+        null
+      if (!unlockedAt) continue
       events.push({
         id: `achievement-${achievement.id}`,
         type: 'achievement',
         title: achievement.name,
         description: achievement.description || 'Conquista desbloqueada',
-        date: achievement.unlockedAt,
+        date: unlockedAt,
         status: 'completed'
       })
     }

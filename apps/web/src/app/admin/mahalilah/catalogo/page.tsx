@@ -497,7 +497,7 @@ export default function AdminMahaLilahCatalogPage() {
                           }
                         />
                         <span className="text-sm text-muted-foreground">
-                          Permitir "Só o terapeuta joga (demais visualizam)"
+                          Permitir: So o terapeuta joga (demais visualizam)
                         </span>
                       </div>
                     </div>
@@ -845,7 +845,7 @@ export default function AdminMahaLilahCatalogPage() {
                             }
                           />
                           <span className="text-sm text-muted-foreground">
-                            Permitir "Só o terapeuta joga (demais visualizam)"
+                            Permitir: So o terapeuta joga (demais visualizam)
                           </span>
                         </div>
                       </div>
@@ -1032,7 +1032,7 @@ export default function AdminMahaLilahCatalogPage() {
                             }
                           />
                           <span className="text-sm text-muted-foreground">
-                            Permitir "Só o terapeuta joga (demais visualizam)"
+                            Permitir: So o terapeuta joga (demais visualizam)
                           </span>
                         </div>
                       </div>

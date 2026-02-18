@@ -102,7 +102,6 @@ export function RitualInProgressCard() {
               <Progress
                 value={course.progress}
                 className="h-2"
-                indicatorClassName="bg-gradient-to-r from-[hsl(var(--temple-accent-violet))] to-[hsl(var(--temple-accent-gold))]"
               />
             </div>
           ))

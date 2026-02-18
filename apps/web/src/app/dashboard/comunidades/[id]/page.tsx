@@ -105,7 +105,7 @@ export default function CommunityDetailPage() {
   const { apply } = useDashboardVocabulary()
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const communityId = params.id
+  const communityId = params?.id ?? ''
 
   const [community, setCommunity] = useState<Community | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -222,8 +222,8 @@ export default function CommunityDetailPage() {
     }
 
     let canceled = false
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-    let pingTimer: ReturnType<typeof setInterval> | null = null
+    let reconnectTimer: number | null = null
+    let pingTimer: number | null = null
     let reconnectAttempts = 0
 
     const scheduleReconnect = () => {

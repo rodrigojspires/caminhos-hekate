@@ -88,7 +88,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
             onChange={(e) => handleChange('name', e.target.value)}
             placeholder="Digite o nome completo"
             disabled={loading}
-            error={!!errors.name}
+            className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined}
           />
           {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
         </div>
@@ -102,7 +102,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
             onChange={(e) => handleChange('email', e.target.value)}
             placeholder="Digite o email"
             disabled={loading}
-            error={!!errors.email}
+            className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined}
           />
           {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
         </div>

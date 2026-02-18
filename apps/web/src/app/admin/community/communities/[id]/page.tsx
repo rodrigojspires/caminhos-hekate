@@ -68,7 +68,7 @@ type CommunityFile = {
 export default function CommunityManagerPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const communityId = params.id
+  const communityId = params?.id ?? ''
 
   const [community, setCommunity] = useState<Community | null>(null)
   const [topics, setTopics] = useState<Topic[]>([])

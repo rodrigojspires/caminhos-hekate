@@ -27,7 +27,7 @@ const slugify = (value: string) => {
 export default function NewTopicPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preselectedCommunityId = searchParams.get('communityId')
+  const preselectedCommunityId = searchParams?.get('communityId') ?? null
   const [communities, setCommunities] = useState<Community[]>([])
   const [saving, setSaving] = useState(false)
   const [slugTouched, setSlugTouched] = useState(false)

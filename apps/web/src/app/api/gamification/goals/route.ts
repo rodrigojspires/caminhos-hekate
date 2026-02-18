@@ -36,7 +36,7 @@ async function computeMetricValue(userId: string, metric: GoalMetric, startDate:
       })
     case 'COMMUNITY_MESSAGES':
       return prisma.communityMessage.count({
-        where: { userId, createdAt: range }
+        where: { authorId: userId, createdAt: range }
       })
     case 'PRODUCT_PURCHASES':
       return prisma.order.count({

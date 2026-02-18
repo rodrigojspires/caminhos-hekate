@@ -149,7 +149,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
         if (!res.ok) return null
         const data = await res.json()
         const list = Array.isArray(data?.communities) ? data.communities : []
-        return list.filter((community) => community.isMember).length
+        return list.filter((community: any) => community.isMember).length
       })
       .then((count) => {
         if (isMounted && typeof count === 'number') setCommunityCount(count)

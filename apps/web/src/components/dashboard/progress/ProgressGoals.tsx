@@ -208,7 +208,6 @@ export default function ProgressGoals({
                       unit: categoryData?.unit || 'unidades'
                     }))
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   className="w-full px-3 py-2 border border-slate-700 bg-slate-800 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-100"
                 >
                   {goalCategories.map(category => (

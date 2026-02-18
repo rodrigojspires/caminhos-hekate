@@ -63,7 +63,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
     const data = await readFile(fullPath);
 
-    return new Response(data, {
+    return new Response(new Uint8Array(data), {
       status: 200,
       headers: {
         "Content-Type": getMimeType(params.filename),

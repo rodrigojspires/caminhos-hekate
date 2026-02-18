@@ -510,7 +510,7 @@ export default function GamificationAdminDashboard() {
                 }
               }}
             >
-              Criar categoria "Emblemas"
+              Criar categoria: Emblemas
             </button>
           </div>
         )}

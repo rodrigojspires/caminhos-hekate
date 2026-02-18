@@ -89,6 +89,7 @@ type MahaMetadata = {
   allowTherapistSoloPlay?: boolean
   roomsLimit?: number | null
   roomsUsed?: number
+  billingInterval?: string | null
   tipsPerPlayer?: number
   summaryLimit?: number
   progressSummaryEveryMoves?: number
@@ -123,7 +124,7 @@ function isSubscriptionExpired(currentPeriodEnd?: Date | null) {
   return currentPeriodEnd.getTime() < Date.now()
 }
 
-async function getPlanSettingsByType() {
+async function getPlanSettingsByType(): Promise<Map<MahaLilahPlanType, PlanSettings>> {
   const db = prisma as any
   const plans = await db.mahaLilahPlan.findMany({
     where: {
@@ -136,15 +137,18 @@ async function getPlanSettingsByType() {
     }
   })
 
-  return new Map(
-    plans.map((plan: any) => [
-      plan.planType as MahaLilahPlanType,
-      {
-        allowTherapistSoloPlay: Boolean(plan.allowTherapistSoloPlay),
-        roomsPerMonth:
-          plan.roomsPerMonth == null ? null : Number(plan.roomsPerMonth)
-      } satisfies PlanSettings
-    ])
+  return new Map<MahaLilahPlanType, PlanSettings>(
+    plans.map(
+      (plan: any) =>
+        [
+          plan.planType as MahaLilahPlanType,
+          {
+            allowTherapistSoloPlay: Boolean(plan.allowTherapistSoloPlay),
+            roomsPerMonth:
+              plan.roomsPerMonth == null ? null : Number(plan.roomsPerMonth)
+          }
+        ] as [MahaLilahPlanType, PlanSettings]
+    )
   )
 }
 

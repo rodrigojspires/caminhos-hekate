@@ -4,8 +4,43 @@ import { applyRateLimit } from '@/lib/security/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
+function normalizeOrigin(value: string | undefined | null): string | null {
+  if (!value) return null
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const candidates = trimmed.includes('://') ? [trimmed] : [trimmed, `https://${trimmed}`]
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = new URL(candidate)
+      if (parsed.hostname === '0.0.0.0') continue
+      return parsed.origin
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+function resolveBaseUrl(request: NextRequest) {
+  const byEnv =
+    normalizeOrigin(process.env.NEXT_PUBLIC_MAHALILAH_URL) ||
+    normalizeOrigin(process.env.NEXTAUTH_URL_MAHALILAH) ||
+    normalizeOrigin(process.env.NEXTAUTH_URL)
+
+  if (byEnv) return byEnv
+
+  const requestOrigin = normalizeOrigin(request.nextUrl.origin)
+  if (requestOrigin) return requestOrigin
+
+  return 'https://mahalilahonline.com.br'
+}
+
 function loginRedirect(request: NextRequest, status: 'success' | 'invalid' | 'expired') {
-  const url = new URL('/login', request.url)
+  const url = new URL('/login', resolveBaseUrl(request))
   url.searchParams.set('verified', status)
   return NextResponse.redirect(url)
 }

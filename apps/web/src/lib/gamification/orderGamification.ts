@@ -6,11 +6,13 @@ import { getGamificationPointSettings } from '@/lib/gamification/point-settings.
 
 const ORDER_GAMIFICATION_CATEGORY_ID = 'orders_category'
 
-function buildOrderAchievements(settings: {
-  orderAchievement1Points: number
-  orderAchievement5Points: number
-  orderAchievement10Points: number
-}) {
+type OrderAchievementPointSettings = {
+  orderAchievement1Points?: number
+  orderAchievement5Points?: number
+  orderAchievement10Points?: number
+}
+
+function buildOrderAchievements(settings: OrderAchievementPointSettings) {
   return [
     {
       id: 'orders_1',
@@ -18,7 +20,7 @@ function buildOrderAchievements(settings: {
       description: 'Concluiu o primeiro pedido com sucesso.',
       threshold: 1,
       rarity: 'COMMON' as const,
-      points: settings.orderAchievement1Points,
+      points: settings.orderAchievement1Points ?? 0,
       icon: '🛒',
     },
     {
@@ -27,7 +29,7 @@ function buildOrderAchievements(settings: {
       description: 'Concluiu cinco pedidos.',
       threshold: 5,
       rarity: 'RARE' as const,
-      points: settings.orderAchievement5Points,
+      points: settings.orderAchievement5Points ?? 0,
       icon: '💎',
     },
     {
@@ -36,7 +38,7 @@ function buildOrderAchievements(settings: {
       description: 'Concluiu dez pedidos.',
       threshold: 10,
       rarity: 'EPIC' as const,
-      points: settings.orderAchievement10Points,
+      points: settings.orderAchievement10Points ?? 0,
       icon: '🏆',
     },
   ]
@@ -179,11 +181,7 @@ export async function handleOrderStatusChange(options: {
   return result
 }
 
-async function ensureOrderAchievements(settings: {
-  orderAchievement1Points: number
-  orderAchievement5Points: number
-  orderAchievement10Points: number
-}) {
+async function ensureOrderAchievements(settings: OrderAchievementPointSettings) {
   await prisma.achievementCategory.upsert({
     where: { id: ORDER_GAMIFICATION_CATEGORY_ID },
     update: {

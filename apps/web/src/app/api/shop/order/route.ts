@@ -354,7 +354,7 @@ export async function POST(request: NextRequest) {
         }),
         ...validEvents.map((ev, idx) => {
           const variant = eventVariants[idx].variant
-          const price = new Prisma.Decimal(ev.price)
+          const price = new Prisma.Decimal(ev.price ?? 0)
           return {
             productId: variant.productId,
             variantId: variant.id,
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
         }),
         ...validCommunities.map((community, idx) => {
           const variant = communityVariants[idx].variant
-          const price = new Prisma.Decimal(community.price)
+          const price = new Prisma.Decimal(community.price ?? 0)
           return {
             productId: variant.productId,
             variantId: variant.id,

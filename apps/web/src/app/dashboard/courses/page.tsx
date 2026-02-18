@@ -249,7 +249,19 @@ async function getUserCourses(): Promise<{ courses: CourseData[], stats: CourseS
     return { courses: coursesWithProgress, stats }
   } catch (error) {
     console.error('Erro ao buscar rituais do usuário:', error)
-    return { courses: [], stats: { totalCourses: 0, completedCourses: 0, inProgressCourses: 0, notStartedCourses: 0, totalStudyTime: 0, averageProgress: 0 } }
+    return {
+      courses: [],
+      stats: {
+        totalCourses: 0,
+        completedCourses: 0,
+        inProgressCourses: 0,
+        notStartedCourses: 0,
+        totalStudyTime: 0,
+        averageProgress: 0,
+        weeklyProgress: [],
+        streakDays: 0
+      }
+    }
   }
 }
 

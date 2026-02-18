@@ -1483,7 +1483,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       ? `_${toFilenamePart(targetParticipant.user.name || targetParticipant.user.email)}`
       : ''
 
-    return new Response(pdfBuffer, {
+    return new Response(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

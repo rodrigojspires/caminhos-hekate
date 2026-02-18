@@ -4314,9 +4314,11 @@ export function RoomClient({ code }: { code: string }) {
                                 paddingBottom: 2,
                               }}
                             >
-                              {move.cardDraws.map((draw) => (
+                              {move.cardDraws.map((draw) => {
+                                const card = draw.card;
+                                return (
                                 <div key={draw.id}>
-                                  {draw.card ? (
+                                  {card ? (
                                     <button
                                       className="btn-secondary"
                                       style={{
@@ -4331,15 +4333,15 @@ export function RoomClient({ code }: { code: string }) {
                                       }}
                                       onClick={() =>
                                         openCardPreview({
-                                          card: draw.card,
-                                          title: `Carta #${draw.card.cardNumber}`,
+                                          card,
+                                          title: `Carta #${card.cardNumber}`,
                                           subtitle: `Jogada #${move.turnNumber}`,
                                         })
                                       }
                                     >
                                       <img
-                                        src={draw.card.imageUrl}
-                                        alt={`Carta ${draw.card.cardNumber}`}
+                                        src={card.imageUrl}
+                                        alt={`Carta ${card.cardNumber}`}
                                         style={{
                                           width: "100%",
                                           height: "100%",
@@ -4353,7 +4355,7 @@ export function RoomClient({ code }: { code: string }) {
                                     </span>
                                   )}
                                 </div>
-                              ))}
+                              )})}
                             </div>
                           )}
                           {move.therapyEntries.length > 0 && (

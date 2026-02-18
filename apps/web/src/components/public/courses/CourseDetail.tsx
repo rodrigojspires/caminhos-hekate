@@ -131,10 +131,13 @@ export default function CourseDetail({
     })
   }, [course.modules, course.id, getLessonProgress, enrolled, enrollmentStatus, enrollmentStartDate])
 
-  const flatLessonMetas = useMemo(() => modulesForList.flatMap((module) => module.lessons), [modulesForList])
+  const flatLessonMetas = useMemo(
+    () => modulesForList.flatMap((module: any) => module.lessons),
+    [modulesForList]
+  )
 
   const firstUnlockedLesson = useMemo(
-    () => flatLessonMetas.find((lesson) => !lesson.isLocked) || null,
+    () => flatLessonMetas.find((lesson: any) => !lesson.isLocked) || null,
     [flatLessonMetas]
   )
 
@@ -142,19 +145,25 @@ export default function CourseDetail({
     const fromCourse = (course.modules || []).some((m: any) =>
       (m.lessons || []).some((l: any) => !!l.isFree)
     )
-    const fromComputed = flatLessonMetas.some((lesson) => lesson.isFree)
+    const fromComputed = flatLessonMetas.some((lesson: any) => lesson.isFree)
     return fromCourse || fromComputed
   }, [course.modules, flatLessonMetas])
 
   const nextUnlockLesson = useMemo(() => {
     const upcoming = flatLessonMetas
-      .filter((lesson) => lesson.isLocked && lesson.availableAt)
-      .map((lesson) => ({
+      .filter((lesson: any) => lesson.isLocked && lesson.availableAt)
+      .map((lesson: any) => ({
         lesson,
         availableAt: lesson.availableAt ? new Date(lesson.availableAt) : null
       }))
-      .filter(({ availableAt }) => availableAt && availableAt.getTime() > Date.now())
-      .sort((a, b) => a.availableAt!.getTime() - b.availableAt!.getTime())
+      .filter(({ availableAt }: { availableAt: Date | null }) => (
+        availableAt && availableAt.getTime() > Date.now()
+      ))
+      .sort(
+        (a: { availableAt: Date | null }, b: { availableAt: Date | null }) => (
+          a.availableAt!.getTime() - b.availableAt!.getTime()
+        )
+      )
     return upcoming.length > 0 ? upcoming[0] : null
   }, [flatLessonMetas])
 
@@ -178,7 +187,7 @@ export default function CourseDetail({
 
   const currentLessonMeta = useMemo(() => {
     if (!currentLessonId) return null
-    return flatLessonMetas.find((lesson) => lesson.id === currentLessonId) || null
+    return flatLessonMetas.find((lesson: any) => lesson.id === currentLessonId) || null
   }, [currentLessonId, flatLessonMetas])
 
   // Fetch signed URL when lesson video is a protected course video and user has access
@@ -230,7 +239,7 @@ export default function CourseDetail({
     }
 
     const currentMeta = currentLessonId
-      ? flatLessonMetas.find((lesson) => lesson.id === currentLessonId)
+      ? flatLessonMetas.find((lesson: any) => lesson.id === currentLessonId)
       : null
 
     if (firstUnlockedLesson) {

@@ -221,7 +221,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       ? await addWatermarkToPdf(fileBuffer, session.user.email)
       : fileBuffer
 
-    return new NextResponse(payload, {
+    return new NextResponse(new Uint8Array(payload), {
       status: 200,
       headers: {
         'Content-Type': contentType,

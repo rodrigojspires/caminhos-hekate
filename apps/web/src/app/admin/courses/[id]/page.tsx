@@ -94,7 +94,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
 
         const validAccessModels = Array.from(
           new Set(
-            rawAccessModels.filter((value): value is CourseFormValues['accessModels'][number] =>
+            rawAccessModels.filter((value: string): value is CourseFormValues['accessModels'][number] =>
               value === 'FREE' || value === 'ONE_TIME' || value === 'SUBSCRIPTION'
             )
           )

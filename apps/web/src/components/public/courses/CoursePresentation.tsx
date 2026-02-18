@@ -133,11 +133,12 @@ export default function CoursePresentation({
       return
     }
     const isProtectedVideo = isProtectedCourseVideoPath(normalized)
+    const normalizedPath = normalized
     let cancelled = false
     async function update() {
       if (isProtectedVideo) {
         try {
-          const params = new URLSearchParams({ path: normalized, courseId: String(course.id) })
+          const params = new URLSearchParams({ path: normalizedPath, courseId: String(course.id) })
           const resp = await fetch(`/api/media/course-videos/token?${params.toString()}`)
           const json = await resp.json()
           if (resp.ok && json?.url) {
@@ -146,7 +147,7 @@ export default function CoursePresentation({
           }
         } catch {}
       }
-      if (!cancelled) setIntroVideoSrc(resolveMediaUrl(normalized))
+      if (!cancelled) setIntroVideoSrc(resolveMediaUrl(normalizedPath))
     }
     update()
     return () => {

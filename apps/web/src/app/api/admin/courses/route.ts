@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, Prisma } from '@hekate/database'
 import { checkAdminPermission } from '@/lib/auth'
 import { z } from 'zod'
-import { CourseStatus, CourseLevel, SubscriptionTier } from '@hekate/database'
+import { CourseStatus, CourseLevel, CourseAccessModel, SubscriptionTier } from '@hekate/database'
 import { ensureCourseProduct } from '@/lib/shop/ensure-course-product'
 
 // Schema de validação para criação de curso
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { accessModels, tier, slug: _slug, categoryId, ...courseData } = validatedData
-    const normalizedAccessModels = Array.from(new Set(accessModels)) as Prisma.CourseAccessModel[]
+    const normalizedAccessModels = Array.from(new Set(accessModels)) as CourseAccessModel[]
     const normalizedTier = normalizedAccessModels.includes('SUBSCRIPTION')
       ? tier
       : SubscriptionTier.FREE

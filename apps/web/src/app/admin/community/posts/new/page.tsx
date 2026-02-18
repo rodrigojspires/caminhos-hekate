@@ -13,7 +13,7 @@ type Community = { id: string; name: string }
 export default function NewCommunityPostPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const communityIdParam = searchParams.get('communityId')
+  const communityIdParam = searchParams?.get('communityId') ?? null
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [communities, setCommunities] = useState<Community[]>([])

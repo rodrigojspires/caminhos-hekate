@@ -115,8 +115,15 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       )
     }
+    if (!order.userId) {
+      return NextResponse.json(
+        { error: 'Pedido sem usuário vinculado.' },
+        { status: 409 }
+      )
+    }
 
     const now = new Date()
+    const orderUserId = order.userId
     const result = await prisma.$transaction(async (tx) => {
       const roomByOrder = await tx.mahaLilahRoom.findFirst({
         where: { orderId: order.id },
@@ -128,7 +135,7 @@ export async function POST(request: NextRequest) {
       const createdRoom = await tx.mahaLilahRoom.create({
         data: {
           code,
-          createdByUserId: order.userId,
+          createdByUserId: orderUserId,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: Number(maha.maxParticipants || 4),
           therapistPlays: true,
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
       await tx.mahaLilahParticipant.create({
         data: {
           roomId: createdRoom.id,
-          userId: order.userId,
+          userId: orderUserId,
           role: MahaLilahParticipantRole.THERAPIST,
           displayName: order.customerName || null
         }

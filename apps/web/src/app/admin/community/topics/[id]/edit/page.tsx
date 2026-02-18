@@ -27,7 +27,7 @@ const slugify = (value: string) => {
 export default function EditTopicPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const topicId = params.id
+  const topicId = params?.id ?? ''
   const [communities, setCommunities] = useState<Community[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

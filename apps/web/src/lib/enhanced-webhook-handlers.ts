@@ -35,16 +35,18 @@ export class EnhancedMercadoPagoProcessor {
     const { id, status, transaction_amount, payer, external_reference, metadata = {}, order = {} } = paymentData;
     
     try {
+      const lookupConditions = [
+        { providerPaymentId: id.toString() },
+        external_reference ? { providerPaymentId: String(external_reference) } : null,
+        metadata?.transaction_id ? { id: String(metadata.transaction_id) } : null,
+        metadata?.transaction_id ? { providerPaymentId: String(metadata.transaction_id) } : null,
+        order?.id ? { providerPaymentId: String(order.id) } : null,
+      ].filter(Boolean) as any[]
+
       // Busca a transação existente
       const transaction = await prisma.paymentTransaction.findFirst({
         where: {
-          OR: [
-            { providerPaymentId: id.toString() },
-            external_reference ? { providerPaymentId: external_reference } : undefined,
-            metadata?.transaction_id ? { id: metadata.transaction_id } : undefined,
-            metadata?.transaction_id ? { providerPaymentId: metadata.transaction_id } : undefined,
-            order?.id ? { providerPaymentId: order.id } : undefined,
-          ],
+          OR: lookupConditions,
         },
         include: { subscription: { include: { user: true } } },
       });

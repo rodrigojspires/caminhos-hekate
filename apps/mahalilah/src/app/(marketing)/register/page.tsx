@@ -19,17 +19,6 @@ export const metadata: Metadata = withSeoDefaults({
 export default function RegisterPage() {
   return (
     <div>
-      <Hero
-        eyebrow="Cadastro rápido"
-        title="Crie sua conta e entre no fluxo em poucos minutos"
-        subtitle="Cadastro simples para acessar salas, convites personalizados e histórico terapêutico com segurança."
-        primaryCta={{ label: 'Ver planos', href: '/planos' }}
-        secondaryCta={{ label: 'Como funciona', href: '/como-funciona' }}
-        mediaLabel="Tela de cadastro do Maha Lilah Online"
-        note="Conta única para toda a experiência"
-        highlights={['Cadastro em 1 minuto', 'Acesso seguro', 'Sem burocracia']}
-      />
-
       <SectionShell>
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="flex flex-col gap-4">
@@ -43,14 +32,6 @@ export default function RegisterPage() {
           <MediaPlaceholder variant="vertical" label="Imagem institucional: criação de conta" />
         </div>
       </SectionShell>
-
-      <CTA
-        title="Já recebeu um convite?"
-        subtitle="Após criar sua conta, basta entrar com o mesmo e-mail do convite para acessar a sala."
-        primaryCta={{ label: 'Entrar', href: '/login' }}
-        secondaryCta={{ label: 'Ver planos', href: '/planos' }}
-        badges={['Conta única', 'Fluxo instantâneo']}
-      />
     </div>
   )
 }

@@ -346,7 +346,7 @@ export async function PUT(
     const priceToUse = validatedData.price ?? existingEvent.price
     const freeTiersToUse = validatedData.freeTiers ?? existingEvent.freeTiers
 
-    if (accessTypeToUse === EventAccessType.PAID && (!priceToUse || priceToUse <= 0)) {
+    if (accessTypeToUse === EventAccessType.PAID && Number(priceToUse || 0) <= 0) {
       return NextResponse.json(
         { error: 'Defina um preço para eventos pagos' },
         { status: 400 }
@@ -389,11 +389,11 @@ export async function PUT(
       recurrenceInstanceEnd,
       ...eventData
     } = validatedData
-    const baseMetadata = eventData.metadata && typeof eventData.metadata === 'object'
-      ? eventData.metadata
-      : existingEvent.metadata || {}
-    const existingMetadata = existingEvent.metadata && typeof existingEvent.metadata === 'object'
-      ? existingEvent.metadata
+    const baseMetadata: Record<string, any> = eventData.metadata && typeof eventData.metadata === 'object'
+      ? (eventData.metadata as Record<string, any>)
+      : ((existingEvent.metadata as Record<string, any> | null) || {})
+    const existingMetadata: Record<string, any> = existingEvent.metadata && typeof existingEvent.metadata === 'object'
+      ? (existingEvent.metadata as Record<string, any>)
       : {}
 
     let metadata = baseMetadata

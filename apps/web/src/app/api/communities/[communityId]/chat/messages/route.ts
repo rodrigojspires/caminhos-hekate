@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: { communityId:
       }
     })
 
-    return NextResponse.json({ messages, lastReadAt: membership.lastChatReadAt })
+    return NextResponse.json({ messages, lastReadAt: membership?.lastChatReadAt ?? null })
   } catch (error) {
     console.error('Erro ao listar mensagens da comunidade:', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

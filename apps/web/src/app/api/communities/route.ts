@@ -48,7 +48,9 @@ export async function GET(req: NextRequest) {
             const count = await prisma.communityMessage.count({
               where: {
                 communityId: community.id,
-                createdAt: membership.lastChatReadAt ? { gt: membership.lastChatReadAt } : undefined
+                createdAt: membership?.lastChatReadAt
+                  ? { gt: membership.lastChatReadAt }
+                  : undefined
               }
             })
             return [community.id, count] as const
