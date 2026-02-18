@@ -2,7 +2,11 @@ import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
-import { prisma, MahaLilahParticipantRole } from '@hekate/database'
+import {
+  prisma,
+  MahaLilahInviteRole,
+  MahaLilahParticipantRole
+} from '@hekate/database'
 import { withSeoDefaults } from '@/lib/marketing/seo'
 
 interface InvitePageProps {
@@ -58,9 +62,13 @@ export default async function InvitePage({ params }: InvitePageProps) {
   }
 
   const now = new Date()
+  const participantRole =
+    invite.role === MahaLilahInviteRole.THERAPIST
+      ? MahaLilahParticipantRole.THERAPIST
+      : MahaLilahParticipantRole.PLAYER
 
-  await prisma.$transaction([
-    prisma.mahaLilahParticipant.upsert({
+  await prisma.$transaction(async (tx) => {
+    await tx.mahaLilahParticipant.upsert({
       where: {
         roomId_userId: {
           roomId: invite.roomId,
@@ -69,22 +77,30 @@ export default async function InvitePage({ params }: InvitePageProps) {
       },
       update: {
         inviteId: invite.id,
-        role: MahaLilahParticipantRole.PLAYER,
+        role: participantRole,
         joinedAt: now
       },
       create: {
         roomId: invite.roomId,
         userId: session.user.id,
-        role: MahaLilahParticipantRole.PLAYER,
+        role: participantRole,
         inviteId: invite.id,
         joinedAt: now
       }
-    }),
-    prisma.mahaLilahInvite.update({
+    })
+
+    await tx.mahaLilahInvite.update({
       where: { id: invite.id },
       data: { acceptedAt: now }
     })
-  ])
+
+    if (invite.role === MahaLilahInviteRole.THERAPIST) {
+      await tx.mahaLilahRoom.update({
+        where: { id: invite.roomId },
+        data: { createdByUserId: session.user.id }
+      })
+    }
+  })
 
   redirect(`/rooms/${invite.room.code}`)
 }

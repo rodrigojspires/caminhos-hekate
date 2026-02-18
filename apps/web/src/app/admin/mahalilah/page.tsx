@@ -42,6 +42,11 @@ type Room = {
   therapistSoloPlay?: boolean;
   createdAt: string;
   createdBy: { id: string; name: string | null; email: string };
+  therapist: {
+    name: string | null;
+    email: string;
+    status: "ACTIVE" | "PENDING_INVITE";
+  };
   orderId: string | null;
   participantsCount: number;
   invitesCount: number;
@@ -148,7 +153,13 @@ export default function AdminMahaLilahRoomsPage() {
       return;
     }
 
-    toast.success("Sala criada com sucesso.");
+    if (payload.awaitingTherapistAcceptance) {
+      toast.success(
+        "Sala criada e convite enviado. O terapeuta precisa concluir cadastro/login para assumir a sala.",
+      );
+    } else {
+      toast.success("Sala criada com sucesso.");
+    }
     setTherapistEmail("");
     setTherapistPlays(true);
     setTherapistSoloPlay(false);
@@ -350,11 +361,18 @@ export default function AdminMahaLilahRoomsPage() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">
-                          {room.createdBy.name || room.createdBy.email}
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">
+                            {room.therapist.name || room.therapist.email}
+                          </div>
+                          {room.therapist.status === "PENDING_INVITE" && (
+                            <Badge className="bg-amber-100 text-amber-800">
+                              Convite pendente
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {room.createdBy.email}
+                          {room.therapist.email}
                         </div>
                       </TableCell>
                       <TableCell>

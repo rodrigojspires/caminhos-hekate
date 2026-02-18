@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import {
   Prisma,
   prisma,
+  MahaLilahInviteRole,
   MahaLilahParticipantRole,
   MahaLilahRoomStatus
 } from '@hekate/database'
@@ -116,6 +117,9 @@ export async function GET(request: Request) {
         therapistPlays: true,
         therapistSoloPlay: true,
         invites: {
+          where: {
+            role: MahaLilahInviteRole.PLAYER
+          },
           select: {
             acceptedAt: true
           }

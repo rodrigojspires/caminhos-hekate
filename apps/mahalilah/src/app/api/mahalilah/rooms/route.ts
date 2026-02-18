@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma, MahaLilahParticipantRole, MahaLilahRoomStatus, MahaLilahPlanType } from '@hekate/database'
+import {
+  prisma,
+  MahaLilahInviteRole,
+  MahaLilahParticipantRole,
+  MahaLilahRoomStatus,
+  MahaLilahPlanType
+} from '@hekate/database'
 import { z } from 'zod'
 import { generateRoomCode } from '@/lib/mahalilah/room-code'
 import { RULES } from '@hekate/mahalilah-core'
@@ -386,7 +392,11 @@ export async function GET(request: Request) {
               metadata: true
             }
           },
-          invites: true,
+          invites: {
+            where: {
+              role: MahaLilahInviteRole.PLAYER
+            }
+          },
           participants: {
             include: {
               user: { select: { id: true, name: true, email: true } }

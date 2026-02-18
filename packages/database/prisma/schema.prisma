@@ -3284,6 +3284,7 @@ enum MahaLilahSingleSessionPricingMode {
 
 enum MahaLilahInviteRole {
   PLAYER
+  THERAPIST
 }
 
 enum MahaLilahParticipantRole {

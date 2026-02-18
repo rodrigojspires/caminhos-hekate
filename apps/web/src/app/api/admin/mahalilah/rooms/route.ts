@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma, MahaLilahParticipantRole, MahaLilahRoomStatus, MahaLilahPlanType } from '@hekate/database'
+import {
+  prisma,
+  MahaLilahInviteRole,
+  MahaLilahParticipantRole,
+  MahaLilahRoomStatus,
+  MahaLilahPlanType
+} from '@hekate/database'
 import { z } from 'zod'
-import { customAlphabet } from 'nanoid'
+import { customAlphabet, nanoid } from 'nanoid'
 import { resendEmailService } from '@/lib/resend-email'
 
 const CreateRoomSchema = z.object({
@@ -59,7 +65,11 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         createdByUser: { select: { id: true, name: true, email: true } },
-        participants: true,
+        participants: {
+          include: {
+            user: { select: { id: true, name: true, email: true } }
+          }
+        },
         invites: true,
         _count: {
           select: {
@@ -73,6 +83,48 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       rooms: rooms.map((room) => ({
+        ...(function resolveTherapistMeta() {
+          const therapistParticipant = room.participants.find(
+            (participant) => participant.role === MahaLilahParticipantRole.THERAPIST
+          )
+          if (therapistParticipant) {
+            return {
+              therapist: {
+                name:
+                  therapistParticipant.user.name ||
+                  therapistParticipant.displayName ||
+                  null,
+                email:
+                  therapistParticipant.user.email ||
+                  room.createdByUser.email,
+                status: 'ACTIVE' as const
+              }
+            }
+          }
+
+          const therapistInvite = room.invites.find(
+            (invite) => invite.role === MahaLilahInviteRole.THERAPIST
+          )
+          if (therapistInvite) {
+            return {
+              therapist: {
+                name: null,
+                email: therapistInvite.email,
+                status: therapistInvite.acceptedAt
+                  ? ('ACTIVE' as const)
+                  : ('PENDING_INVITE' as const)
+              }
+            }
+          }
+
+          return {
+            therapist: {
+              name: room.createdByUser.name || null,
+              email: room.createdByUser.email,
+              status: 'ACTIVE' as const
+            }
+          }
+        })(),
         id: room.id,
         code: room.code,
         status: room.status,
@@ -88,7 +140,9 @@ export async function GET(request: NextRequest) {
           participant.role === MahaLilahParticipantRole.PLAYER ||
           (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
         )).length,
-        invitesCount: room.invites.length,
+        invitesCount: room.invites.filter(
+          (invite) => invite.role === MahaLilahInviteRole.PLAYER
+        ).length,
         stats: room._count
       }))
     })
@@ -107,26 +161,23 @@ export async function POST(request: NextRequest) {
 
     const payload = await request.json()
     const data = CreateRoomSchema.parse(payload)
+    const normalizedTherapistEmail = data.therapistEmail.trim().toLowerCase()
     const therapistSoloPlay = Boolean(data.therapistSoloPlay)
     const therapistPlays = therapistSoloPlay ? true : data.therapistPlays
 
     const therapist = await prisma.user.findUnique({
-      where: { email: data.therapistEmail }
+      where: { email: normalizedTherapistEmail }
     })
-
-    if (!therapist) {
-      return NextResponse.json({ error: 'Terapeuta não encontrado' }, { status: 404 })
-    }
 
     const code = await ensureUniqueCode()
     const consentTextVersion = process.env.MAHALILAH_CONSENT_VERSION || 'v1'
     const planType = (data.planType || 'SINGLE_SESSION') as MahaLilahPlanType
 
-    const room = await prisma.$transaction(async (tx) => {
+    const roomCreation = await prisma.$transaction(async (tx) => {
       const created = await tx.mahaLilahRoom.create({
         data: {
           code,
-          createdByUserId: therapist.id,
+          createdByUserId: therapist?.id || session.user.id,
           status: MahaLilahRoomStatus.ACTIVE,
           maxParticipants: data.maxParticipants,
           therapistPlays,
@@ -137,58 +188,114 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      await tx.mahaLilahParticipant.create({
-        data: {
-          roomId: created.id,
-          userId: therapist.id,
-          role: MahaLilahParticipantRole.THERAPIST,
-          displayName: therapist.name || null
-        }
-      })
+      let therapistInviteToken: string | null = null
+
+      if (therapist) {
+        await tx.mahaLilahParticipant.create({
+          data: {
+            roomId: created.id,
+            userId: therapist.id,
+            role: MahaLilahParticipantRole.THERAPIST,
+            displayName: therapist.name || null
+          }
+        })
+      } else {
+        const invite = await tx.mahaLilahInvite.create({
+          data: {
+            roomId: created.id,
+            email: normalizedTherapistEmail,
+            role: MahaLilahInviteRole.THERAPIST,
+            token: nanoid(32),
+            invitedByUserId: session.user.id,
+            sentAt: new Date()
+          }
+        })
+        therapistInviteToken = invite.token
+      }
 
       await tx.mahaLilahGameState.create({
         data: { roomId: created.id }
       })
 
-      return created
+      return { room: created, therapistInviteToken }
     })
 
     const baseUrl =
       process.env.NEXT_PUBLIC_MAHALILAH_URL ||
       process.env.NEXTAUTH_URL_MAHALILAH ||
       'https://mahalilahonline.com.br'
-    const roomUrl = `${baseUrl}/rooms/${room.code}`
-    const emailIdentity = getMahaLilahEmailIdentity()
+    const roomUrl = `${baseUrl}/rooms/${roomCreation.room.code}`
 
     try {
-      await resendEmailService.sendEmail({
-        to: therapist.email,
-        from: emailIdentity.from,
-        fromName: emailIdentity.fromName,
-        replyTo: emailIdentity.replyTo,
-        subject: `Sua sala Maha Lilah foi criada (${room.code})`,
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
-            <h2>Sala Maha Lilah criada com sucesso</h2>
-            <p>Olá ${therapist.name || therapist.email},</p>
-            <p>Uma nova sala foi criada para você no Maha Lilah Online.</p>
-            <p><strong>Código:</strong> ${room.code}</p>
-            <p>
-              <a href="${roomUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
-                Entrar na sala
-              </a>
-            </p>
-            <p style="font-size:12px;color:#5d6b75;">Equipe Maha Lilah Online</p>
-            <p style="font-size:12px;color:#5d6b75;">Se você não esperava esta criação, ignore este email.</p>
-          </div>
-        `,
-        text: `Sala Maha Lilah criada.\nCódigo: ${room.code}\nAcesse: ${roomUrl}\n\nEquipe Maha Lilah Online`
-      })
+      const emailIdentity = getMahaLilahEmailIdentity()
+
+      if (therapist) {
+        await resendEmailService.sendEmail({
+          to: therapist.email,
+          from: emailIdentity.from,
+          fromName: emailIdentity.fromName,
+          replyTo: emailIdentity.replyTo,
+          subject: `Sua sala Maha Lilah foi criada (${roomCreation.room.code})`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+              <h2>Sala Maha Lilah criada com sucesso</h2>
+              <p>Olá ${therapist.name || therapist.email},</p>
+              <p>Uma nova sala foi criada para você no Maha Lilah Online.</p>
+              <p><strong>Código:</strong> ${roomCreation.room.code}</p>
+              <p>
+                <a href="${roomUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+                  Entrar na sala
+                </a>
+              </p>
+              <p style="font-size:12px;color:#5d6b75;">Equipe Maha Lilah Online</p>
+              <p style="font-size:12px;color:#5d6b75;">Se você não esperava esta criação, ignore este email.</p>
+            </div>
+          `,
+          text: `Sala Maha Lilah criada.\nCódigo: ${roomCreation.room.code}\nAcesse: ${roomUrl}\n\nEquipe Maha Lilah Online`
+        })
+      } else if (roomCreation.therapistInviteToken) {
+        const inviteUrl = `${baseUrl}/invite/${roomCreation.therapistInviteToken}`
+
+        await resendEmailService.sendEmail({
+          to: normalizedTherapistEmail,
+          from: emailIdentity.from,
+          fromName: emailIdentity.fromName,
+          replyTo: emailIdentity.replyTo,
+          subject: `Convite para assumir sala Maha Lilah (${roomCreation.room.code})`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2a2f">
+              <h2>Você recebeu um convite para terapeuta no Maha Lilah Online</h2>
+              <p>Uma sala foi criada para você no Maha Lilah Online.</p>
+              <p><strong>Código:</strong> ${roomCreation.room.code}</p>
+              <p>Para assumir a sala:</p>
+              <ol>
+                <li>Crie sua conta com este mesmo e-mail.</li>
+                <li>Confirme seu e-mail.</li>
+                <li>Acesse o convite abaixo para entrar e assumir a sala.</li>
+              </ol>
+              <p>
+                <a href="${inviteUrl}" style="display:inline-block;padding:10px 18px;background:#2f7f6f;color:#fff;border-radius:999px;text-decoration:none;">
+                  Aceitar convite
+                </a>
+              </p>
+              <p style="font-size:12px;color:#5d6b75;">Equipe Maha Lilah Online</p>
+              <p style="font-size:12px;color:#5d6b75;">Se você não esperava este convite, ignore este email.</p>
+            </div>
+          `,
+          text: `Você recebeu um convite para assumir uma sala no Maha Lilah Online.\nCódigo: ${roomCreation.room.code}\nConvite: ${inviteUrl}\n\nPara assumir a sala, crie sua conta com este mesmo e-mail, confirme o e-mail e acesse o link acima.\n\nEquipe Maha Lilah Online`
+        })
+      }
     } catch (error) {
       console.warn('Falha ao enviar email de criação de sala Maha Lilah:', error)
     }
 
-    return NextResponse.json({ room }, { status: 201 })
+    return NextResponse.json(
+      {
+        room: roomCreation.room,
+        awaitingTherapistAcceptance: !therapist
+      },
+      { status: 201 }
+    )
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Dados inválidos', details: error.errors }, { status: 400 })
