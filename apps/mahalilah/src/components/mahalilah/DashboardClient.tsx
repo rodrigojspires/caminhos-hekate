@@ -4405,7 +4405,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: dashboardTutorialTargetRect
+            background: isDockedCreateRoomTutorial || dashboardTutorialTargetRect
               ? "transparent"
               : "rgba(3, 6, 10, 0.72)",
             zIndex: 10000,
