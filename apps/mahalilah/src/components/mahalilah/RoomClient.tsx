@@ -209,6 +209,20 @@ type CardPreviewModalState = {
   subtitle?: string;
 };
 
+type AiContentModalEntry = {
+  label: string;
+  content: string;
+  subtitle?: string;
+};
+
+type AiContentModalState = {
+  title: string;
+  content: string;
+  subtitle?: string;
+  entries?: AiContentModalEntry[];
+  activeEntryIndex?: number;
+};
+
 type RoomTutorialTarget =
   | "room-header"
   | "room-controls"
@@ -844,11 +858,8 @@ export function RoomClient({ code }: { code: string }) {
       }
     >
   >([]);
-  const [aiContentModal, setAiContentModal] = useState<{
-    title: string;
-    content: string;
-    subtitle?: string;
-  } | null>(null);
+  const [aiContentModal, setAiContentModal] =
+    useState<AiContentModalState | null>(null);
   const [finalReportPrompt, setFinalReportPrompt] = useState<{
     mode: "close" | "participantCompleted" | "trialLimit";
     participantId?: string;
@@ -2711,6 +2722,21 @@ export function RoomClient({ code }: { code: string }) {
   const roomTutorialPopover = getRoomTutorialPopoverPosition(
     roomTutorialTargetRect,
   );
+  const aiModalEntries = aiContentModal?.entries || [];
+  const hasMultipleAiModalEntries = aiModalEntries.length > 1;
+  const activeAiModalEntryIndex = hasMultipleAiModalEntries
+    ? Math.min(
+        Math.max(aiContentModal?.activeEntryIndex ?? 0, 0),
+        aiModalEntries.length - 1,
+      )
+    : 0;
+  const activeAiModalEntry = hasMultipleAiModalEntries
+    ? aiModalEntries[activeAiModalEntryIndex]
+    : null;
+  const aiModalContent =
+    activeAiModalEntry?.content || aiContentModal?.content || "";
+  const aiModalSubtitle =
+    activeAiModalEntry?.subtitle || aiContentModal?.subtitle;
 
   return (
     <div className="grid room-shell" style={{ gap: 14 }}>
@@ -4352,19 +4378,43 @@ export function RoomClient({ code }: { code: string }) {
                                 `${move.participant.id}:${move.turnNumber}`,
                               ) || [];
                             if (moveTips.length === 0) return null;
+                            const orderedMoveTips = [...moveTips].sort(
+                              (a, b) =>
+                                new Date(a.report.createdAt).getTime() -
+                                new Date(b.report.createdAt).getTime(),
+                            );
                             return (
                               <button
                                 className="btn-secondary"
                                 style={{ justifyContent: "flex-start" }}
-                                onClick={() =>
+                                onClick={() => {
+                                  const modalEntries = orderedMoveTips.map(
+                                    (tip, index) => ({
+                                      label: `Ajuda ${index + 1}`,
+                                      subtitle: `Jogada #${move.turnNumber} • ${new Date(
+                                        tip.report.createdAt,
+                                      ).toLocaleString("pt-BR")}`,
+                                      content:
+                                        tip.parsed.mode === "pathQuestion" &&
+                                        tip.parsed.question
+                                          ? `Pergunta enviada: ${tip.parsed.question}\n\n${tip.parsed.text}`
+                                          : tip.parsed.text,
+                                    }),
+                                  );
+                                  const firstEntry = modalEntries[0];
+                                  if (!firstEntry) return;
                                   setAiContentModal({
                                     title: "Ajuda da IA",
-                                    subtitle: `Jogada #${move.turnNumber} • ${new Date(moveTips[moveTips.length - 1]?.report.createdAt).toLocaleString("pt-BR")}`,
-                                    content: moveTips
-                                      .map((tip) => tip.parsed.text)
-                                      .join("\n\n"),
-                                  })
-                                }
+                                    subtitle: firstEntry.subtitle,
+                                    content: firstEntry.content,
+                                    ...(modalEntries.length > 1
+                                      ? {
+                                          entries: modalEntries,
+                                          activeEntryIndex: 0,
+                                        }
+                                      : {}),
+                                  });
+                                }}
                               >
                                 Ver ajuda IA ({moveTips.length})
                               </button>
@@ -4748,16 +4798,52 @@ export function RoomClient({ code }: { code: string }) {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
-                alignItems: "center",
+                alignItems: "flex-start",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
                 background: "rgba(11, 18, 29, 0.92)",
               }}
             >
-              <div style={{ display: "grid", gap: 4 }}>
-                <strong>{aiContentModal.title}</strong>
-                {aiContentModal.subtitle && (
-                  <span className="small-muted">{aiContentModal.subtitle}</span>
+              <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <strong>{aiContentModal.title}</strong>
+                  {aiModalSubtitle && (
+                    <span className="small-muted">{aiModalSubtitle}</span>
+                  )}
+                </div>
+                {hasMultipleAiModalEntries && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {aiModalEntries.map((entry, index) => {
+                      const isActive = index === activeAiModalEntryIndex;
+                      return (
+                        <button
+                          key={`${entry.label}-${index}`}
+                          className="btn-secondary"
+                          style={{
+                            height: 30,
+                            minHeight: 30,
+                            padding: "0 10px",
+                            borderColor: isActive
+                              ? "rgba(217, 164, 65, 0.72)"
+                              : "rgba(217, 164, 65, 0.35)",
+                            background: isActive
+                              ? "rgba(217, 164, 65, 0.24)"
+                              : "rgba(9, 15, 24, 0.7)",
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setAiContentModal((previous) =>
+                              previous
+                                ? { ...previous, activeEntryIndex: index }
+                                : previous,
+                            );
+                          }}
+                        >
+                          {entry.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
               <button
@@ -4767,9 +4853,11 @@ export function RoomClient({ code }: { code: string }) {
                 Fechar
               </button>
             </div>
-            <div style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}>
+            <div
+              style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}
+            >
               <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
-                {normalizeAiModalText(aiContentModal.content)}
+                {normalizeAiModalText(aiModalContent)}
               </div>
             </div>
           </div>
