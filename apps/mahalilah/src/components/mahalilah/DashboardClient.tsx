@@ -3200,7 +3200,7 @@ export function DashboardClient() {
                   }
                 />
               </label>
-              <label
+              <div
                 style={{
                   display: "flex",
                   gap: 8,
@@ -3208,19 +3208,19 @@ export function DashboardClient() {
                   paddingTop: 22,
                 }}
               >
-                <input
-                  type="checkbox"
+                <ToggleSwitch
                   checked={therapistPlays}
-                  onChange={(event) => {
-                    if (therapistSoloPlay && !event.target.checked) return;
-                    setTherapistPlays(event.target.checked);
-                  }}
                   disabled={therapistSoloPlay}
+                  onToggle={() => {
+                    if (therapistSoloPlay) return;
+                    setTherapistPlays((prev) => !prev);
+                  }}
+                  ariaLabel="Terapeuta joga junto"
                 />
                 <span>Terapeuta joga junto</span>
-              </label>
+              </div>
               {canUseTherapistSoloPlay && (
-                <label
+                <div
                   style={{
                     display: "flex",
                     gap: 8,
@@ -3228,19 +3228,19 @@ export function DashboardClient() {
                     paddingTop: 22,
                   }}
                 >
-                  <input
-                    type="checkbox"
+                  <ToggleSwitch
                     checked={therapistSoloPlay}
-                    onChange={(event) => {
-                      const enabled = event.target.checked;
+                    onToggle={() => {
+                      const enabled = !therapistSoloPlay;
                       setTherapistSoloPlay(enabled);
                       if (enabled) {
                         setTherapistPlays(true);
                       }
                     }}
+                    ariaLabel="Só o terapeuta joga (demais visualizam)"
                   />
                   <span>Só o terapeuta joga (demais visualizam)</span>
-                </label>
+                </div>
               )}
             </div>
 
