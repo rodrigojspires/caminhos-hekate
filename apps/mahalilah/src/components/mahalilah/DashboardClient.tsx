@@ -2616,6 +2616,10 @@ export function DashboardClient() {
   const dashboardTutorialPopover = getTutorialPopoverPosition(
     dashboardTutorialTargetRect,
   );
+  const currentDashboardTutorialStep =
+    dashboardTutorialSteps[dashboardTutorialStep] || null;
+  const isTutorialCreateRoomConfigStep =
+    currentDashboardTutorialStep?.target === "create-room-config";
   const quotaPeriodLabel =
     roomQuota?.periodStart && roomQuota?.periodEnd
       ? `${new Date(roomQuota.periodStart).toLocaleDateString("pt-BR")} a ${new Date(
@@ -3908,6 +3912,7 @@ export function DashboardClient() {
               ? "transparent"
               : "rgba(3, 6, 10, 0.72)",
             zIndex: 10000,
+            pointerEvents: isTutorialCreateRoomConfigStep ? "none" : "auto",
           }}
         >
           {dashboardTutorialTargetRect && (
@@ -3936,6 +3941,7 @@ export function DashboardClient() {
                 background: "hsl(var(--temple-surface-2))",
                 transform: "rotate(45deg)",
                 zIndex: 10002,
+                pointerEvents: "none",
                 ...(dashboardTutorialPopover.placement === "right"
                   ? {
                       left: dashboardTutorialPopover.left - 7,
@@ -4000,6 +4006,7 @@ export function DashboardClient() {
                 ? "none"
                 : "translate(-50%, -50%)",
               zIndex: 10002,
+              pointerEvents: "auto",
             }}
           >
             <div style={{ display: "grid", gap: 4 }}>
@@ -4014,10 +4021,10 @@ export function DashboardClient() {
 
             <div className="notice" style={{ display: "grid", gap: 8 }}>
               <strong>
-                {dashboardTutorialSteps[dashboardTutorialStep]?.title}
+                {currentDashboardTutorialStep?.title}
               </strong>
               <span className="small-muted">
-                {dashboardTutorialSteps[dashboardTutorialStep]?.description}
+                {currentDashboardTutorialStep?.description}
               </span>
             </div>
 
