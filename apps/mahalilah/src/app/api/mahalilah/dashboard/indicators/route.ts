@@ -266,6 +266,16 @@ export async function GET(request: Request) {
       (participant) => participant.role === MahaLilahParticipantRole.PLAYER
     )
 
+    const summaryParticipants = participantMetrics.filter((participant) => {
+      const room = roomById.get(participant.roomId)
+      if (!room) return false
+      if (participant.role === MahaLilahParticipantRole.PLAYER) return true
+      return (
+        participant.role === MahaLilahParticipantRole.THERAPIST &&
+        room.therapistPlays
+      )
+    })
+
     const intentionParticipants = participantMetrics.filter((participant) => {
       const room = roomById.get(participant.roomId)
       if (!room) return false
@@ -331,6 +341,7 @@ export async function GET(request: Request) {
       string,
       Array<{
         roomId: string
+        role: MahaLilahParticipantRole
         gameIntention: string | null
         therapistSummary: string | null
         consentAcceptedAt: Date | null
@@ -343,6 +354,25 @@ export async function GET(request: Request) {
       const current = playersByRoom.get(participant.roomId) || []
       current.push(participant)
       playersByRoom.set(participant.roomId, current)
+    }
+
+    const summaryParticipantsByRoom = new Map<
+      string,
+      Array<{
+        roomId: string
+        role: MahaLilahParticipantRole
+        gameIntention: string | null
+        therapistSummary: string | null
+        consentAcceptedAt: Date | null
+        invite: {
+          sentAt: Date
+        } | null
+      }>
+    >()
+    for (const participant of summaryParticipants) {
+      const current = summaryParticipantsByRoom.get(participant.roomId) || []
+      current.push(participant)
+      summaryParticipantsByRoom.set(participant.roomId, current)
     }
 
     let consentLeadTimeMsTotal = 0
@@ -358,12 +388,12 @@ export async function GET(request: Request) {
     const averageConsentLeadTimeMinutes =
       consentLeadTimeMeasuredCount > 0 ? consentLeadTimeMsTotal / consentLeadTimeMeasuredCount / 60000 : null
 
-    const playersTotalCount = playerParticipants.length
-    const playersWithSummaryCount = playerParticipants.filter((participant) =>
+    const playersTotalCount = summaryParticipants.length
+    const playersWithSummaryCount = summaryParticipants.filter((participant) =>
       Boolean(participant.therapistSummary?.trim())
     ).length
     const roomsWithSummaryCount = rooms.filter((room) => {
-      const roomPlayers = playersByRoom.get(room.id) || []
+      const roomPlayers = summaryParticipantsByRoom.get(room.id) || []
       return roomPlayers.some((participant) => Boolean(participant.therapistSummary?.trim()))
     }).length
 
