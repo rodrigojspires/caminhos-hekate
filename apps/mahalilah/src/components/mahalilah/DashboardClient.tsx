@@ -214,7 +214,7 @@ type TutorialStep = {
   target: DashboardTutorialTarget;
 };
 
-type IndicatorsTab = "overview" | "engagement" | "performance";
+type IndicatorsTab = "overview" | "engagement" | "performance" | "heatmaps";
 
 type IndicatorsDateFilter = {
   from: string;
@@ -224,6 +224,27 @@ type IndicatorsDateFilter = {
 type IndicatorsStatusMetric = {
   count: number;
   percent: number;
+};
+
+type IndicatorsCoverageMetric = {
+  count: number;
+  total: number;
+  percent: number;
+};
+
+type IndicatorsModeComparisonMetric = {
+  rooms: number;
+  completionPercent: number;
+  averageDurationMinutes: number | null;
+  averageMoves: number;
+};
+
+type IndicatorsHeatmapMetric = {
+  days: string[];
+  hours: number[];
+  matrix: number[][];
+  max: number;
+  total: number;
 };
 
 type IndicatorsThemeRoom = {
@@ -298,6 +319,56 @@ type DashboardIndicators = {
     solo: number;
   };
   intentionThemes: IndicatorsTheme[];
+  funnel: {
+    created: number;
+    inviteAccepted: number;
+    consentAccepted: number;
+    started: number;
+    completed: number;
+    inviteAcceptedPercent: number;
+    consentAcceptedPercent: number;
+    startedPercent: number;
+    completedPercent: number;
+  };
+  timeToFirstMove: {
+    averageMinutes: number | null;
+    measuredRooms: number;
+  };
+  timeToConsent: {
+    averageMinutes: number | null;
+    measuredParticipants: number;
+  };
+  abandonment: {
+    count: number;
+    percent: number;
+    startedRooms: number;
+  };
+  therapeuticDensity: {
+    entriesPer10Moves: number;
+  };
+  therapistSummaryCoverage: {
+    players: IndicatorsCoverageMetric;
+    sessions: IndicatorsCoverageMetric;
+  };
+  intentionCoverage: {
+    players: IndicatorsCoverageMetric;
+    startedPlayers: IndicatorsCoverageMetric;
+  };
+  aiEffectiveness: {
+    sessionsWithAi: number;
+    sessionsPercent: number;
+    averagePerStartedRoom: number;
+  };
+  averageTimePerMoveMinutes: number | null;
+  modeComparison: {
+    playsTogether: IndicatorsModeComparisonMetric;
+    notPlaying: IndicatorsModeComparisonMetric;
+    solo: IndicatorsModeComparisonMetric;
+  };
+  heatmaps: {
+    roomCreation: IndicatorsHeatmapMetric;
+    moves: IndicatorsHeatmapMetric;
+  };
 };
 
 function ToggleSwitch({
@@ -822,6 +893,17 @@ function formatDurationFromMinutes(value: number | null | undefined) {
   if (hours === 0) return `${minutes} min`;
   if (minutes === 0) return `${hours} h`;
   return `${hours} h ${minutes} min`;
+}
+
+function formatHourLabel(hour: number) {
+  return String(hour).padStart(2, "0");
+}
+
+function getHeatmapCellBackground(value: number, max: number) {
+  if (value <= 0 || max <= 0) return "rgba(255, 255, 255, 0.04)";
+  const ratio = Math.min(1, value / max);
+  const alpha = 0.16 + ratio * 0.62;
+  return `rgba(217, 164, 65, ${alpha.toFixed(3)})`;
 }
 
 export function DashboardClient() {
@@ -2823,6 +2905,10 @@ export function DashboardClient() {
     indicatorsData?.period.from,
     indicatorsData?.period.to,
   );
+  const planPeriodLabel =
+    roomQuota?.periodStart || roomQuota?.periodEnd
+      ? formatPeriodLabel(roomQuota?.periodStart, roomQuota?.periodEnd)
+      : null;
   const indicatorsRoomsCount = indicatorsData?.period.roomsCount ?? 0;
 
   return (
@@ -3422,6 +3508,12 @@ export function DashboardClient() {
               >
                 Performance
               </button>
+              <button
+                className={indicatorsTab === "heatmaps" ? "btn-primary" : "btn-secondary"}
+                onClick={() => setIndicatorsTab("heatmaps")}
+              >
+                Mapas de calor
+              </button>
             </div>
 
             {indicatorsError && <span className="small-muted">{indicatorsError}</span>}
@@ -3588,7 +3680,9 @@ export function DashboardClient() {
                     >
                       <span className="small-muted">Salas criadas no período</span>
                       <strong>{formatMetricNumber(indicatorsRoomsCount)}</strong>
-                      <span className="small-muted">Período: {indicatorsPeriodLabel}</span>
+                      <span className="small-muted">
+                        Período: {planPeriodLabel || indicatorsPeriodLabel}
+                      </span>
                       {roomQuota ? (
                         roomQuota.planType === "SUBSCRIPTION_LIMITED" ? (
                           <span className="small-muted">
@@ -3634,6 +3728,60 @@ export function DashboardClient() {
                           : formatMetricNumber(indicatorsData.daysSinceLastSession)}
                       </strong>
                     </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      <span className="small-muted">Funil da sessão</span>
+                      <span className="small-muted">
+                        Criadas: {formatMetricNumber(indicatorsData.funnel.created)}
+                      </span>
+                      <span className="small-muted">
+                        Convite aceito:{" "}
+                        {formatMetricNumber(indicatorsData.funnel.inviteAccepted)} (
+                        {formatMetricNumber(indicatorsData.funnel.inviteAcceptedPercent)}%)
+                      </span>
+                      <span className="small-muted">
+                        Consentimento aceito:{" "}
+                        {formatMetricNumber(indicatorsData.funnel.consentAccepted)} (
+                        {formatMetricNumber(indicatorsData.funnel.consentAcceptedPercent)}
+                        %)
+                      </span>
+                      <span className="small-muted">
+                        Iniciadas: {formatMetricNumber(indicatorsData.funnel.started)} (
+                        {formatMetricNumber(indicatorsData.funnel.startedPercent)}%)
+                      </span>
+                      <span className="small-muted">
+                        Concluídas: {formatMetricNumber(indicatorsData.funnel.completed)} (
+                        {formatMetricNumber(indicatorsData.funnel.completedPercent)}%)
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Taxa de abandono</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.abandonment.count)} (
+                        {formatMetricNumber(indicatorsData.abandonment.percent)}%)
+                      </strong>
+                      <span className="small-muted">
+                        Base: {formatMetricNumber(indicatorsData.abandonment.startedRooms)}{" "}
+                        sessão(ões) iniciada(s)
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -3659,8 +3807,13 @@ export function DashboardClient() {
                           Convites pendentes / aceitos
                         </span>
                         <strong>
-                          {formatMetricNumber(indicatorsData.invites.pending)} /{" "}
-                          {formatMetricNumber(indicatorsData.invites.accepted)}
+                          <span style={{ color: "#ff6b6b" }}>
+                            {formatMetricNumber(indicatorsData.invites.pending)}
+                          </span>{" "}
+                          /{" "}
+                          <span style={{ color: "rgba(255, 255, 255, 0.92)" }}>
+                            {formatMetricNumber(indicatorsData.invites.accepted)}
+                          </span>
                         </strong>
                         <span className="small-muted">
                           Total: {formatMetricNumber(indicatorsData.invites.total)}
@@ -3680,8 +3833,13 @@ export function DashboardClient() {
                           Consentimentos pendentes / aceitos
                         </span>
                         <strong>
-                          {formatMetricNumber(indicatorsData.consents.pending)} /{" "}
-                          {formatMetricNumber(indicatorsData.consents.accepted)}
+                          <span style={{ color: "#ff6b6b" }}>
+                            {formatMetricNumber(indicatorsData.consents.pending)}
+                          </span>{" "}
+                          /{" "}
+                          <span style={{ color: "rgba(255, 255, 255, 0.92)" }}>
+                            {formatMetricNumber(indicatorsData.consents.accepted)}
+                          </span>
                         </strong>
                         <span className="small-muted">
                           Total: {formatMetricNumber(indicatorsData.consents.total)}
@@ -3735,6 +3893,110 @@ export function DashboardClient() {
                         <strong>
                           {formatMetricNumber(indicatorsData.therapistModes.solo)}
                         </strong>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">Tempo até consentimento</span>
+                        <strong>
+                          {formatDurationFromMinutes(
+                            indicatorsData.timeToConsent.averageMinutes,
+                          )}
+                        </strong>
+                        <span className="small-muted">
+                          Base:{" "}
+                          {formatMetricNumber(
+                            indicatorsData.timeToConsent.measuredParticipants,
+                          )}{" "}
+                          participante(s)
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">Cobertura da síntese do terapeuta</span>
+                        <strong>
+                          Jogadores:{" "}
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.players.percent,
+                          )}
+                          %
+                        </strong>
+                        <span className="small-muted">
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.players.count,
+                          )}{" "}
+                          de{" "}
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.players.total,
+                          )}{" "}
+                          jogador(es)
+                        </span>
+                        <span className="small-muted">
+                          Sessões:{" "}
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.sessions.count,
+                          )}{" "}
+                          de{" "}
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.sessions.total,
+                          )}{" "}
+                          (
+                          {formatMetricNumber(
+                            indicatorsData.therapistSummaryCoverage.sessions.percent,
+                          )}
+                          %)
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <span className="small-muted">Intenção definida</span>
+                        <strong>
+                          Jogadores:{" "}
+                          {formatMetricNumber(indicatorsData.intentionCoverage.players.percent)}
+                          %
+                        </strong>
+                        <span className="small-muted">
+                          {formatMetricNumber(indicatorsData.intentionCoverage.players.count)} de{" "}
+                          {formatMetricNumber(indicatorsData.intentionCoverage.players.total)}
+                        </span>
+                        <span className="small-muted">
+                          Sessões iniciadas:{" "}
+                          {formatMetricNumber(
+                            indicatorsData.intentionCoverage.startedPlayers.percent,
+                          )}
+                          % (
+                          {formatMetricNumber(
+                            indicatorsData.intentionCoverage.startedPlayers.count,
+                          )}{" "}
+                          de{" "}
+                          {formatMetricNumber(
+                            indicatorsData.intentionCoverage.startedPlayers.total,
+                          )}
+                          )
+                        </span>
                       </div>
                     </div>
 
@@ -3893,12 +4155,90 @@ export function DashboardClient() {
                         gap: 4,
                       }}
                     >
+                      <span className="small-muted">Tempo até primeira jogada</span>
+                      <strong>
+                        {formatDurationFromMinutes(
+                          indicatorsData.timeToFirstMove.averageMinutes,
+                        )}
+                      </strong>
+                      <span className="small-muted">
+                        Base: {formatMetricNumber(indicatorsData.timeToFirstMove.measuredRooms)}{" "}
+                        sala(s)
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Densidade terapêutica</span>
+                      <strong>
+                        {formatMetricNumber(
+                          indicatorsData.therapeuticDensity.entriesPer10Moves,
+                          2,
+                        )}
+                      </strong>
+                      <span className="small-muted">registros a cada 10 jogadas</span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
                       <span className="small-muted">
                         Registros por IA gerados (mês / total)
                       </span>
                       <strong>
                         {formatMetricNumber(indicatorsData.aiReportsGenerated.month)} /{" "}
                         {formatMetricNumber(indicatorsData.aiReportsGenerated.total)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Uso efetivo da IA</span>
+                      <strong>
+                        {formatMetricNumber(indicatorsData.aiEffectiveness.sessionsWithAi)} (
+                        {formatMetricNumber(indicatorsData.aiEffectiveness.sessionsPercent)}%)
+                      </strong>
+                      <span className="small-muted">
+                        Média por sessão iniciada:{" "}
+                        {formatMetricNumber(
+                          indicatorsData.aiEffectiveness.averagePerStartedRoom,
+                          2,
+                        )}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      <span className="small-muted">Tempo médio por jogada</span>
+                      <strong>
+                        {formatDurationFromMinutes(indicatorsData.averageTimePerMoveMinutes)}
                       </strong>
                     </div>
 
@@ -3920,6 +4260,160 @@ export function DashboardClient() {
                         {formatMetricNumber(indicatorsRoomsCount)} sala(s)
                       </span>
                     </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 6,
+                        gridColumn: "1 / -1",
+                      }}
+                    >
+                      <strong>Comparativo por modo</strong>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        {[
+                          {
+                            label: "Terapeuta joga junto",
+                            data: indicatorsData.modeComparison.playsTogether,
+                          },
+                          {
+                            label: "Terapeuta não joga",
+                            data: indicatorsData.modeComparison.notPlaying,
+                          },
+                          {
+                            label: "Sessão solo",
+                            data: indicatorsData.modeComparison.solo,
+                          },
+                        ].map((mode) => (
+                          <div
+                            key={mode.label}
+                            className="notice"
+                            style={{ display: "grid", gap: 4 }}
+                          >
+                            <strong>{mode.label}</strong>
+                            <span className="small-muted">
+                              Sessões: {formatMetricNumber(mode.data.rooms)}
+                            </span>
+                            <span className="small-muted">
+                              Conclusão:{" "}
+                              {formatMetricNumber(mode.data.completionPercent)}%
+                            </span>
+                            <span className="small-muted">
+                              Tempo médio:{" "}
+                              {formatDurationFromMinutes(mode.data.averageDurationMinutes)}
+                            </span>
+                            <span className="small-muted">
+                              Média de jogadas:{" "}
+                              {formatMetricNumber(mode.data.averageMoves, 2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {indicatorsTab === "heatmaps" && (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {[
+                      {
+                        key: "roomCreation",
+                        title: "Criação de salas por dia e horário",
+                        subtitle: "Baseado na data/hora de criação da sala",
+                        data: indicatorsData.heatmaps.roomCreation,
+                      },
+                      {
+                        key: "moves",
+                        title: "Jogadas por dia e horário",
+                        subtitle: "Baseado no horário de cada jogada",
+                        data: indicatorsData.heatmaps.moves,
+                      },
+                    ].map((heatmapItem) => (
+                      <div
+                        key={heatmapItem.key}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          display: "grid",
+                          gap: 8,
+                        }}
+                      >
+                        <strong>{heatmapItem.title}</strong>
+                        <span className="small-muted">
+                          {heatmapItem.subtitle} • Total de eventos:{" "}
+                          {formatMetricNumber(heatmapItem.data.total)} • Pico:{" "}
+                          {formatMetricNumber(heatmapItem.data.max)}
+                        </span>
+                        <div style={{ overflowX: "auto" }}>
+                          <div style={{ display: "grid", gap: 4, minWidth: 760 }}>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: `74px repeat(${heatmapItem.data.hours.length}, minmax(22px, 1fr))`,
+                                gap: 4,
+                                alignItems: "center",
+                              }}
+                            >
+                              <span className="small-muted">Dia/Hora</span>
+                              {heatmapItem.data.hours.map((hour) => (
+                                <span
+                                  key={`${heatmapItem.key}-hour-${hour}`}
+                                  className="small-muted"
+                                  style={{ textAlign: "center", fontSize: 10 }}
+                                >
+                                  {formatHourLabel(hour)}
+                                </span>
+                              ))}
+                            </div>
+
+                            {heatmapItem.data.days.map((day, dayIndex) => (
+                              <div
+                                key={`${heatmapItem.key}-day-${day}`}
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: `74px repeat(${heatmapItem.data.hours.length}, minmax(22px, 1fr))`,
+                                  gap: 4,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <span className="small-muted">{day}</span>
+                                {heatmapItem.data.hours.map((hour, hourIndex) => {
+                                  const value =
+                                    heatmapItem.data.matrix?.[dayIndex]?.[hourIndex] || 0;
+                                  return (
+                                    <div
+                                      key={`${heatmapItem.key}-${day}-${hour}`}
+                                      title={`${day} ${formatHourLabel(hour)}:00 • ${formatMetricNumber(value)} evento(s)`}
+                                      style={{
+                                        height: 18,
+                                        borderRadius: 4,
+                                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                                        background: getHeatmapCellBackground(
+                                          value,
+                                          heatmapItem.data.max,
+                                        ),
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="small-muted">
+                          Eixo Y: dias da semana • Eixo X: horário
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </>

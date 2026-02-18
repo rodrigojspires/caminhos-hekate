@@ -54,6 +54,39 @@ function normalizeThemeKey(theme: string) {
     .trim()
 }
 
+function buildWeekHourHeatmap(events: Date[]) {
+  const days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
+  const hours = Array.from({ length: 24 }, (_, index) => index)
+  const matrix = Array.from({ length: days.length }, () =>
+    Array.from({ length: hours.length }, () => 0)
+  )
+
+  let max = 0
+  let total = 0
+  for (const eventDate of events) {
+    if (!eventDate || Number.isNaN(eventDate.getTime())) continue
+    const day = eventDate.getDay()
+    const dayIndex = day === 0 ? 6 : day - 1
+    const hour = eventDate.getHours()
+    if (dayIndex < 0 || dayIndex >= days.length) continue
+    if (hour < 0 || hour >= hours.length) continue
+
+    matrix[dayIndex][hour] += 1
+    total += 1
+    if (matrix[dayIndex][hour] > max) {
+      max = matrix[dayIndex][hour]
+    }
+  }
+
+  return {
+    days,
+    hours,
+    matrix,
+    max,
+    total
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -85,15 +118,6 @@ export async function GET(request: Request) {
         invites: {
           select: {
             acceptedAt: true
-          }
-        },
-        participants: {
-          where: {
-            role: MahaLilahParticipantRole.PLAYER
-          },
-          select: {
-            gameIntention: true,
-            consentAcceptedAt: true
           }
         },
         _count: {
@@ -130,6 +154,43 @@ export async function GET(request: Request) {
     const moveWindowByRoomId = new Map(
       moveWindows.map((window) => [window.roomId, window] as const)
     )
+    const roomById = new Map(
+      rooms.map((room) => [room.id, room] as const)
+    )
+
+    const [participantIntentions, moveEvents] = roomIds.length
+      ? await Promise.all([
+          prisma.mahaLilahParticipant.findMany({
+            where: {
+              roomId: {
+                in: roomIds
+              },
+              role: MahaLilahParticipantRole.PLAYER
+            },
+            select: {
+              roomId: true,
+              gameIntention: true,
+              therapistSummary: true,
+              consentAcceptedAt: true,
+              invite: {
+                select: {
+                  sentAt: true
+                }
+              }
+            }
+          }),
+          prisma.mahaLilahMove.findMany({
+            where: {
+              roomId: {
+                in: roomIds
+              }
+            },
+            select: {
+              createdAt: true
+            }
+          })
+        ])
+      : [[], []]
 
     const now = new Date()
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -201,34 +262,156 @@ export async function GET(request: Request) {
     )
     const invitesTotalCount = invitesAcceptedCount + invitesPendingCount
 
-    const consentsAcceptedCount = rooms.reduce(
-      (sum, room) =>
-        sum + room.participants.filter((participant) => Boolean(participant.consentAcceptedAt)).length,
-      0
-    )
-    const consentsPendingCount = rooms.reduce(
-      (sum, room) =>
-        sum + room.participants.filter((participant) => !participant.consentAcceptedAt).length,
-      0
-    )
+    const consentsAcceptedCount = participantIntentions.filter((participant) =>
+      Boolean(participant.consentAcceptedAt)
+    ).length
+    const consentsPendingCount = participantIntentions.filter((participant) =>
+      !participant.consentAcceptedAt
+    ).length
     const consentsTotalCount = consentsAcceptedCount + consentsPendingCount
 
     let startedRoomsCount = 0
     let totalDurationMs = 0
+    let firstMoveDelayTotalMs = 0
+    let firstMoveDelayRoomsCount = 0
+    const startedRoomIds = new Set<string>()
+    const roomDurationByRoomId = new Map<string, number>()
     for (const window of moveWindows) {
       const min = window._min.createdAt
       const max = window._max.createdAt
       if (!min || !max || window._count._all <= 0) {
         continue
       }
+      startedRoomIds.add(window.roomId)
       startedRoomsCount += 1
-      totalDurationMs += Math.max(0, max.getTime() - min.getTime())
+      const roomDurationMs = Math.max(0, max.getTime() - min.getTime())
+      totalDurationMs += roomDurationMs
+      roomDurationByRoomId.set(window.roomId, roomDurationMs)
+
+      const room = roomById.get(window.roomId)
+      if (room) {
+        firstMoveDelayTotalMs += Math.max(0, min.getTime() - room.createdAt.getTime())
+        firstMoveDelayRoomsCount += 1
+      }
     }
 
     const completionRatePercent = toPercent(completedRoomsCount, startedRoomsCount)
     const averageDurationMinutes =
       startedRoomsCount > 0 ? totalDurationMs / startedRoomsCount / 60000 : null
     const totalDurationMinutes = totalDurationMs / 60000
+    const averageTimeToFirstMoveMinutes =
+      firstMoveDelayRoomsCount > 0 ? firstMoveDelayTotalMs / firstMoveDelayRoomsCount / 60000 : null
+
+    const abandonedRoomsCount = Array.from(startedRoomIds).reduce((sum, roomId) => {
+      const room = roomById.get(roomId)
+      if (!room) return sum
+      return room.status === MahaLilahRoomStatus.COMPLETED ? sum : sum + 1
+    }, 0)
+    const abandonmentRatePercent = toPercent(abandonedRoomsCount, startedRoomsCount)
+
+    const playersByRoom = new Map<
+      string,
+      Array<{
+        roomId: string
+        gameIntention: string | null
+        therapistSummary: string | null
+        consentAcceptedAt: Date | null
+        invite: {
+          sentAt: Date
+        } | null
+      }>
+    >()
+    for (const participant of participantIntentions) {
+      const current = playersByRoom.get(participant.roomId) || []
+      current.push(participant)
+      playersByRoom.set(participant.roomId, current)
+    }
+
+    let consentLeadTimeMsTotal = 0
+    let consentLeadTimeMeasuredCount = 0
+    for (const participant of participantIntentions) {
+      if (!participant.consentAcceptedAt || !participant.invite?.sentAt) continue
+      consentLeadTimeMsTotal += Math.max(
+        0,
+        participant.consentAcceptedAt.getTime() - participant.invite.sentAt.getTime()
+      )
+      consentLeadTimeMeasuredCount += 1
+    }
+    const averageConsentLeadTimeMinutes =
+      consentLeadTimeMeasuredCount > 0 ? consentLeadTimeMsTotal / consentLeadTimeMeasuredCount / 60000 : null
+
+    const playersTotalCount = participantIntentions.length
+    const playersWithSummaryCount = participantIntentions.filter((participant) =>
+      Boolean(participant.therapistSummary?.trim())
+    ).length
+    const roomsWithSummaryCount = rooms.filter((room) => {
+      const roomPlayers = playersByRoom.get(room.id) || []
+      return roomPlayers.some((participant) => Boolean(participant.therapistSummary?.trim()))
+    }).length
+
+    const playersWithIntentionCount = participantIntentions.filter((participant) =>
+      Boolean(participant.gameIntention?.trim())
+    ).length
+    const startedPlayers = participantIntentions.filter((participant) => startedRoomIds.has(participant.roomId))
+    const startedPlayersWithIntentionCount = startedPlayers.filter((participant) =>
+      Boolean(participant.gameIntention?.trim())
+    ).length
+
+    const roomsWithAcceptedInviteCount = rooms.filter((room) =>
+      room.invites.some((invite) => Boolean(invite.acceptedAt))
+    ).length
+    const roomsWithAcceptedConsentCount = rooms.filter((room) => {
+      const roomPlayers = playersByRoom.get(room.id) || []
+      return roomPlayers.some((participant) => Boolean(participant.consentAcceptedAt))
+    }).length
+    const roomsWithAiCount = rooms.filter((room) => room._count.aiReports > 0).length
+
+    const therapeuticDensityPer10Moves = totalMoves > 0 ? (totalTherapyEntries / totalMoves) * 10 : 0
+    const averageTimePerMoveMinutes = totalMoves > 0 ? totalDurationMs / 60000 / totalMoves : null
+    const averageAiPerStartedRoom = startedRoomsCount > 0 ? totalAiReports / startedRoomsCount : 0
+
+    type ModeKey = 'playsTogether' | 'notPlaying' | 'solo'
+    const modeAccumulator: Record<
+      ModeKey,
+      {
+        rooms: number
+        completed: number
+        started: number
+        durationMs: number
+        moves: number
+      }
+    > = {
+      playsTogether: { rooms: 0, completed: 0, started: 0, durationMs: 0, moves: 0 },
+      notPlaying: { rooms: 0, completed: 0, started: 0, durationMs: 0, moves: 0 },
+      solo: { rooms: 0, completed: 0, started: 0, durationMs: 0, moves: 0 }
+    }
+
+    for (const room of rooms) {
+      const mode: ModeKey = room.therapistSoloPlay
+        ? 'solo'
+        : room.therapistPlays
+          ? 'playsTogether'
+          : 'notPlaying'
+      modeAccumulator[mode].rooms += 1
+      modeAccumulator[mode].moves += room._count.moves
+      if (room.status === MahaLilahRoomStatus.COMPLETED) {
+        modeAccumulator[mode].completed += 1
+      }
+      if (startedRoomIds.has(room.id)) {
+        modeAccumulator[mode].started += 1
+        modeAccumulator[mode].durationMs += roomDurationByRoomId.get(room.id) || 0
+      }
+    }
+
+    function buildModeComparison(mode: ModeKey) {
+      const data = modeAccumulator[mode]
+      return {
+        rooms: data.rooms,
+        completionPercent: toPercent(data.completed, data.rooms),
+        averageDurationMinutes: data.started > 0 ? data.durationMs / data.started / 60000 : null,
+        averageMoves: data.rooms > 0 ? data.moves / data.rooms : 0
+      }
+    }
 
     let lastSession: {
       id: string
@@ -282,39 +465,40 @@ export async function GET(request: Request) {
       }
     >()
 
-    for (const room of rooms) {
-      for (const participant of room.participants) {
-        const rawIntention = participant.gameIntention?.trim()
-        if (!rawIntention) continue
-        const themes = extractIntentionThemes(rawIntention)
-        for (const theme of themes) {
-          const key = normalizeThemeKey(theme)
-          if (!key) continue
+    for (const participant of participantIntentions) {
+      const room = roomById.get(participant.roomId)
+      if (!room) continue
 
-          const current =
-            intentionThemeMap.get(key) ||
-            {
-              theme,
-              count: 0,
-              rooms: new Map()
-            }
+      const rawIntention = participant.gameIntention?.trim()
+      if (!rawIntention) continue
+      const themes = extractIntentionThemes(rawIntention)
+      for (const theme of themes) {
+        const key = normalizeThemeKey(theme)
+        if (!key) continue
 
-          current.count += 1
-          const roomCurrent =
-            current.rooms.get(room.id) ||
-            {
-              id: room.id,
-              code: room.code,
-              status: room.status,
-              createdAt: room.createdAt.toISOString(),
-              matchCount: 0,
-              intentions: new Set<string>()
-            }
-          roomCurrent.matchCount += 1
-          roomCurrent.intentions.add(rawIntention)
-          current.rooms.set(room.id, roomCurrent)
-          intentionThemeMap.set(key, current)
-        }
+        const current =
+          intentionThemeMap.get(key) ||
+          {
+            theme,
+            count: 0,
+            rooms: new Map()
+          }
+
+        current.count += 1
+        const roomCurrent =
+          current.rooms.get(room.id) ||
+          {
+            id: room.id,
+            code: room.code,
+            status: room.status,
+            createdAt: room.createdAt.toISOString(),
+            matchCount: 0,
+            intentions: new Set<string>()
+          }
+        roomCurrent.matchCount += 1
+        roomCurrent.intentions.add(rawIntention)
+        current.rooms.set(room.id, roomCurrent)
+        intentionThemeMap.set(key, current)
       }
     }
 
@@ -343,6 +527,13 @@ export async function GET(request: Request) {
             intentions: Array.from(room.intentions.values())
           }))
       }))
+
+    const roomCreationHeatmap = buildWeekHourHeatmap(
+      rooms.map((room) => room.createdAt)
+    )
+    const movesHeatmap = buildWeekHourHeatmap(
+      moveEvents.map((move) => move.createdAt)
+    )
 
     return NextResponse.json({
       indicators: {
@@ -404,7 +595,73 @@ export async function GET(request: Request) {
           notPlaying: therapistNotPlayingCount,
           solo: therapistSoloCount
         },
-        intentionThemes
+        intentionThemes,
+        funnel: {
+          created: totalRoomsCount,
+          inviteAccepted: roomsWithAcceptedInviteCount,
+          consentAccepted: roomsWithAcceptedConsentCount,
+          started: startedRoomsCount,
+          completed: completedRoomsCount,
+          inviteAcceptedPercent: toPercent(roomsWithAcceptedInviteCount, totalRoomsCount),
+          consentAcceptedPercent: toPercent(roomsWithAcceptedConsentCount, totalRoomsCount),
+          startedPercent: toPercent(startedRoomsCount, totalRoomsCount),
+          completedPercent: toPercent(completedRoomsCount, totalRoomsCount)
+        },
+        timeToFirstMove: {
+          averageMinutes: averageTimeToFirstMoveMinutes,
+          measuredRooms: firstMoveDelayRoomsCount
+        },
+        timeToConsent: {
+          averageMinutes: averageConsentLeadTimeMinutes,
+          measuredParticipants: consentLeadTimeMeasuredCount
+        },
+        abandonment: {
+          count: abandonedRoomsCount,
+          percent: abandonmentRatePercent,
+          startedRooms: startedRoomsCount
+        },
+        therapeuticDensity: {
+          entriesPer10Moves: therapeuticDensityPer10Moves
+        },
+        therapistSummaryCoverage: {
+          players: {
+            count: playersWithSummaryCount,
+            total: playersTotalCount,
+            percent: toPercent(playersWithSummaryCount, playersTotalCount)
+          },
+          sessions: {
+            count: roomsWithSummaryCount,
+            total: totalRoomsCount,
+            percent: toPercent(roomsWithSummaryCount, totalRoomsCount)
+          }
+        },
+        intentionCoverage: {
+          players: {
+            count: playersWithIntentionCount,
+            total: playersTotalCount,
+            percent: toPercent(playersWithIntentionCount, playersTotalCount)
+          },
+          startedPlayers: {
+            count: startedPlayersWithIntentionCount,
+            total: startedPlayers.length,
+            percent: toPercent(startedPlayersWithIntentionCount, startedPlayers.length)
+          }
+        },
+        aiEffectiveness: {
+          sessionsWithAi: roomsWithAiCount,
+          sessionsPercent: toPercent(roomsWithAiCount, totalRoomsCount),
+          averagePerStartedRoom: averageAiPerStartedRoom
+        },
+        averageTimePerMoveMinutes,
+        modeComparison: {
+          playsTogether: buildModeComparison('playsTogether'),
+          notPlaying: buildModeComparison('notPlaying'),
+          solo: buildModeComparison('solo')
+        },
+        heatmaps: {
+          roomCreation: roomCreationHeatmap,
+          moves: movesHeatmap
+        }
       }
     })
   } catch (error) {
