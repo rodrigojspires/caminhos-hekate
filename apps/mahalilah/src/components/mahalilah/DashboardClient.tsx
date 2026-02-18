@@ -4471,11 +4471,11 @@ export function DashboardClient() {
                     <span className="small-muted">
                       Intenções: {room.intentions.join(" | ")}
                     </span>
-                    {room.status === "ACTIVE" ? (
+                    {room.status === "ACTIVE" && (
                       <a href={`/rooms/${room.code}`} className="btn-secondary w-fit">
                         Abrir sala
                       </a>
-                    ) }
+                    )}
                   </div>
                 ))}
               </div>
