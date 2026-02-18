@@ -3182,14 +3182,13 @@ export function DashboardClient() {
               className="dashboard-create-row"
               data-tour-dashboard="create-room-config"
               style={{
-                display: "flex",
-                gap: 12,
-                flexWrap: "wrap",
-                alignItems: "center",
+                display: "grid",
+                gap: 10,
+                alignItems: "start",
               }}
             >
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Jogadores máximos</span>
+                <span>Número de jogadores</span>
                 <input
                   type="number"
                   min={1}
@@ -3205,7 +3204,6 @@ export function DashboardClient() {
                   display: "flex",
                   gap: 8,
                   alignItems: "center",
-                  paddingTop: 22,
                 }}
               >
                 <ToggleSwitch
@@ -3225,7 +3223,6 @@ export function DashboardClient() {
                     display: "flex",
                     gap: 8,
                     alignItems: "center",
-                    paddingTop: 22,
                   }}
                 >
                   <ToggleSwitch
@@ -3237,9 +3234,9 @@ export function DashboardClient() {
                         setTherapistPlays(true);
                       }
                     }}
-                    ariaLabel="Só o terapeuta joga (demais visualizam)"
+                    ariaLabel="Só o terapeuta joga"
                   />
-                  <span>Só o terapeuta joga (demais visualizam)</span>
+                  <span>Só o terapeuta joga</span>
                 </div>
               )}
             </div>
