@@ -1502,6 +1502,14 @@ io.on("connection", (socket: AuthedSocket) => {
           where: { roomId: room.id, userId },
         });
         if (!participant) throw new Error("Sem acesso à sala");
+        const roomState = await buildRoomState(room.id);
+        if (!roomState) throw new Error("Sala não encontrada");
+        if (roomState.room.status !== "ACTIVE") {
+          throw buildSocketError(
+            "Sala já foi encerrada e não pode mais ser aberta.",
+            "ROOM_CLOSED",
+          );
+        }
 
         const claimed = await claimUserActiveSession(userId, room.id, socket.id);
         if (!claimed.ok) {
@@ -1529,10 +1537,10 @@ io.on("connection", (socket: AuthedSocket) => {
           socket.data.roomId = room.id;
           addRoomConnection(room.id, userId);
 
-          const state = await buildRoomState(room.id);
-          if (!state) throw new Error("Sala não encontrada");
-          callback?.({ ok: true, state });
-          io.to(room.id).emit("room:state", state);
+          const refreshedState = await buildRoomState(room.id);
+          if (!refreshedState) throw new Error("Sala não encontrada");
+          callback?.({ ok: true, state: refreshedState });
+          io.to(room.id).emit("room:state", refreshedState);
         } catch (joinError) {
           try {
             if (previousRoomId) {

@@ -168,6 +168,20 @@ type CardPreviewModalState = {
   subtitle?: string;
 };
 
+type AiContentModalEntry = {
+  label: string;
+  content: string;
+  subtitle?: string;
+};
+
+type AiContentModalState = {
+  title: string;
+  content: string;
+  subtitle?: string;
+  entries?: AiContentModalEntry[];
+  activeEntryIndex?: number;
+};
+
 type HouseDisplayInfo = {
   number: number;
   sanskrit: string;
@@ -984,11 +998,8 @@ export function DashboardClient() {
       }
     >
   >([]);
-  const [aiContentModal, setAiContentModal] = useState<{
-    title: string;
-    content: string;
-    subtitle?: string;
-  } | null>(null);
+  const [aiContentModal, setAiContentModal] =
+    useState<AiContentModalState | null>(null);
   const [cardPreviewModal, setCardPreviewModal] =
     useState<CardPreviewModalState | null>(null);
   const [houseMeaningModal, setHouseMeaningModal] =
@@ -2473,15 +2484,35 @@ export function DashboardClient() {
                               <button
                                 className="btn-secondary"
                                 style={{ justifyContent: "flex-start" }}
-                                onClick={() =>
+                                onClick={() => {
+                                  const orderedMoveTips = [...moveTips].sort(
+                                    (a, b) =>
+                                      new Date(a.report.createdAt).getTime() -
+                                      new Date(b.report.createdAt).getTime(),
+                                  );
+                                  const modalEntries = orderedMoveTips.map(
+                                    (tip, index) => ({
+                                      label: `Ajuda ${index + 1}`,
+                                      subtitle: `Jogada #${move.turnNumber} • ${new Date(
+                                        tip.report.createdAt,
+                                      ).toLocaleString("pt-BR")}`,
+                                      content: tip.parsed.text,
+                                    }),
+                                  );
+                                  const firstEntry = modalEntries[0];
+                                  if (!firstEntry) return;
                                   setAiContentModal({
                                     title: "Ajuda da IA",
-                                    subtitle: `Jogada #${move.turnNumber} • ${new Date(moveTips[moveTips.length - 1]?.report.createdAt).toLocaleString("pt-BR")}`,
-                                    content: moveTips
-                                      .map((tip) => tip.parsed.text)
-                                      .join("\n\n"),
-                                  })
-                                }
+                                    subtitle: firstEntry.subtitle,
+                                    content: firstEntry.content,
+                                    ...(modalEntries.length > 1
+                                      ? {
+                                          entries: modalEntries,
+                                          activeEntryIndex: 0,
+                                        }
+                                      : {}),
+                                  });
+                                }}
                               >
                                 Ver ajuda IA ({moveTips.length})
                               </button>
@@ -2915,6 +2946,21 @@ export function DashboardClient() {
       ? formatPeriodLabel(roomQuota?.periodStart, roomQuota?.periodEnd)
       : null;
   const indicatorsRoomsCount = indicatorsData?.period.roomsCount ?? 0;
+  const aiModalEntries = aiContentModal?.entries || [];
+  const hasMultipleAiModalEntries = aiModalEntries.length > 1;
+  const activeAiModalEntryIndex = hasMultipleAiModalEntries
+    ? Math.min(
+        Math.max(aiContentModal?.activeEntryIndex ?? 0, 0),
+        aiModalEntries.length - 1,
+      )
+    : 0;
+  const activeAiModalEntry = hasMultipleAiModalEntries
+    ? aiModalEntries[activeAiModalEntryIndex]
+    : null;
+  const aiModalContent =
+    activeAiModalEntry?.content || aiContentModal?.content || "";
+  const aiModalSubtitle =
+    activeAiModalEntry?.subtitle || aiContentModal?.subtitle;
 
   return (
     <div className="grid dashboard-root" style={{ gap: 24 }}>
@@ -4591,16 +4637,52 @@ export function DashboardClient() {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
-                alignItems: "center",
+                alignItems: "flex-start",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
                 background: "rgba(11, 18, 29, 0.92)",
               }}
             >
-              <div style={{ display: "grid", gap: 4 }}>
-                <strong>{aiContentModal.title}</strong>
-                {aiContentModal.subtitle && (
-                  <span className="small-muted">{aiContentModal.subtitle}</span>
+              <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <strong>{aiContentModal.title}</strong>
+                  {aiModalSubtitle && (
+                    <span className="small-muted">{aiModalSubtitle}</span>
+                  )}
+                </div>
+                {hasMultipleAiModalEntries && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {aiModalEntries.map((entry, index) => {
+                      const isActive = index === activeAiModalEntryIndex;
+                      return (
+                        <button
+                          key={`${entry.label}-${index}`}
+                          className="btn-secondary"
+                          style={{
+                            height: 30,
+                            minHeight: 30,
+                            padding: "0 10px",
+                            borderColor: isActive
+                              ? "rgba(217, 164, 65, 0.72)"
+                              : "rgba(217, 164, 65, 0.35)",
+                            background: isActive
+                              ? "rgba(217, 164, 65, 0.24)"
+                              : "rgba(9, 15, 24, 0.7)",
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setAiContentModal((previous) =>
+                              previous
+                                ? { ...previous, activeEntryIndex: index }
+                                : previous,
+                            );
+                          }}
+                        >
+                          {entry.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
               <button
@@ -4610,9 +4692,11 @@ export function DashboardClient() {
                 Fechar
               </button>
             </div>
-            <div style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}>
+            <div
+              style={{ overflow: "auto", display: "grid", gap: 10, padding: 12 }}
+            >
               <div className="notice" style={{ whiteSpace: "pre-wrap" }}>
-                {normalizeAiModalText(aiContentModal.content)}
+                {normalizeAiModalText(aiModalContent)}
               </div>
             </div>
           </div>

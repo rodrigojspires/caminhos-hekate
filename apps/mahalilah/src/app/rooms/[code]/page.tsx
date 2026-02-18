@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth/next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@hekate/database";
@@ -44,6 +45,27 @@ export default async function RoomPage({ params }: RoomPageProps) {
     return (
       <main>
         <div className="card">Sala não encontrada.</div>
+      </main>
+    );
+  }
+
+  if (room.status !== "ACTIVE") {
+    return (
+      <main style={{ paddingTop: 20, paddingBottom: 72 }}>
+        <section className="grid" style={{ gap: 14 }}>
+          <div className="card" style={{ display: "grid", gap: 10 }}>
+            <strong>Sala encerrada</strong>
+            <span className="small-muted">
+              A sala {room.code} já foi encerrada e não pode mais ser aberta no
+              tabuleiro.
+            </span>
+            <div>
+              <Link href="/dashboard" className="btn-secondary">
+                Voltar ao dashboard
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
     );
   }
