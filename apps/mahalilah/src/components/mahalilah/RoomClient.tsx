@@ -3748,7 +3748,7 @@ export function RoomClient({ code }: { code: string }) {
                 >
                   {aiTipLoading
                     ? "Processando ajuda..."
-                    : "IA: me ajuda a entender a casa atual"}
+                    : "Ajuda na Casa Atual"}
                 </button>
 
                 <label style={{ display: "grid", gap: 4 }}>
@@ -3779,7 +3779,7 @@ export function RoomClient({ code }: { code: string }) {
                 >
                   {aiTipLoading
                     ? "Processando ajuda..."
-                    : "IA: me ajuda com meu texto e caminho"}
+                    : "Me ajuda com minha pergunta"}
                 </button>
               </div>
 
