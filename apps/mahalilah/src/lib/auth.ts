@@ -9,6 +9,9 @@ if (process.env.NEXTAUTH_URL_MAHALILAH) {
   process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL_MAHALILAH
 }
 
+const isSoftDeletedEmail = (email: string | null | undefined) =>
+  typeof email === "string" && email.startsWith("deleted_")
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -73,25 +76,60 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/dashboard`
     },
     async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { emailVerified: true, role: true }
-        })
-        if (dbUser) {
-          token.emailVerified = dbUser.emailVerified
-          token.role = dbUser.role
+      const userId = user?.id || token.sub
+
+      if (!userId) {
+        return token
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          emailVerified: true
+        }
+      })
+
+      // Revoga sessão quando usuário não existe mais, foi anonimizado ou perdeu verificação.
+      if (!dbUser || isSoftDeletedEmail(dbUser.email) || !dbUser.emailVerified) {
+        return {
+          ...token,
+          sub: undefined,
+          email: undefined,
+          name: undefined,
+          role: Role.VISITOR,
+          emailVerified: null,
+          exp: 0
         }
       }
+
+      token.sub = dbUser.id
+      token.email = dbUser.email
+      token.name = dbUser.name
+      token.role = dbUser.role
+      token.emailVerified = dbUser.emailVerified
+
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub!
-        session.user.role = token.role as Role
-        session.user.emailVerified = token.emailVerified as Date | null
+      if (!token?.sub || !token?.email) {
+        session.user.id = ""
+        session.user.email = null
+        session.user.name = null
+        session.user.role = Role.VISITOR
+        session.user.emailVerified = null
+        return session
       }
+
+      session.user.id = token.sub
+      session.user.email = token.email
+      session.user.name = token.name ?? null
+      session.user.role = token.role as Role
+      session.user.emailVerified = token.emailVerified as Date | null
+
       return session
     },
   },

@@ -23,6 +23,7 @@ const isLinkActive = (pathname: string, href: string) => {
 
 export function Navbar() {
   const { data: session, status } = useSession()
+  const isAuthenticated = Boolean(session?.user?.id && session?.user?.email)
   const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -68,8 +69,8 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    if (!session) setProfileOpen(false)
-  }, [session])
+    if (!isAuthenticated) setProfileOpen(false)
+  }, [isAuthenticated])
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -131,7 +132,7 @@ export function Navbar() {
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           {status === 'loading' ? (
             <div className="h-10 w-10 animate-pulse rounded-full border border-border/70 bg-surface/70" />
-          ) : session ? (
+          ) : isAuthenticated ? (
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
@@ -154,8 +155,8 @@ export function Navbar() {
                   role="menu"
                 >
                   <div className="px-3 py-2">
-                    <p className="font-semibold text-ink">{session.user?.name || 'Perfil'}</p>
-                    <p className="truncate text-xs text-ink-muted">{session.user?.email}</p>
+                    <p className="font-semibold text-ink">{session?.user?.name || 'Perfil'}</p>
+                    <p className="truncate text-xs text-ink-muted">{session?.user?.email}</p>
                   </div>
                   <div className="my-2 h-px bg-border/70" />
                   <Link
@@ -198,7 +199,7 @@ export function Navbar() {
               </Link>
             </>
           )}
-          {session ? (
+          {isAuthenticated ? (
             <Link href="/dashboard" className="btn-primary">
               Ir para dashboard
             </Link>
@@ -245,11 +246,11 @@ export function Navbar() {
           <div className="mt-4 border-t border-border/60 pt-4">
             {status === 'loading' ? (
               <div className="h-10 w-full animate-pulse rounded-xl border border-border/70 bg-surface/70" />
-            ) : session ? (
+            ) : isAuthenticated ? (
               <div className="grid gap-3">
                 <div className="rounded-xl border border-border/70 bg-surface/70 px-3 py-2">
-                  <p className="text-sm font-semibold text-ink">{session.user?.name || 'Perfil'}</p>
-                  <p className="truncate text-xs text-ink-muted">{session.user?.email}</p>
+                  <p className="text-sm font-semibold text-ink">{session?.user?.name || 'Perfil'}</p>
+                  <p className="truncate text-xs text-ink-muted">{session?.user?.email}</p>
                 </div>
                 <Link
                   href="/dashboard"
