@@ -245,6 +245,85 @@ const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
 const DICE_SPIN_INTERVAL_MS = 90;
 const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
+const THERAPY_EMOTION_OPTIONS = [
+  "Abandono (sentimento de)",
+  "Admiração",
+  "Alegria",
+  "Alívio",
+  "Amor / afeto",
+  "Angústia",
+  "Ansiedade",
+  "Antecipação",
+  "Apreensão",
+  "Arrependimento",
+  "Cansaço emocional",
+  "Ciúme",
+  "Compaixão",
+  "Confiança",
+  "Confusão",
+  "Contentamento",
+  "Culpa",
+  "Curiosidade",
+  "Decepção",
+  "Desamparo",
+  "Desânimo",
+  "Desconfiança",
+  "Desdém",
+  "Desespero",
+  "Desmotivação",
+  "Desprezo",
+  "Dúvida",
+  "Empatia",
+  "Empolgação",
+  "Encantamento",
+  "Entusiasmo",
+  "Esperança",
+  "Euforia",
+  "Expectativa",
+  "Frustração",
+  "Gratidão",
+  "Humor / diversão",
+  "Humilhação",
+  "Impaciência",
+  "Indignação",
+  "Insegurança",
+  "Interesse",
+  "Inveja",
+  "Irritação",
+  "Luto",
+  "Medo",
+  "Melancolia",
+  "Nervosismo",
+  "Nojo",
+  "Nostalgia",
+  "Orgulho (saudável)",
+  "Pânico",
+  "Paz",
+  "Preocupação",
+  "Raiva",
+  "Rejeição",
+  "Remorso",
+  "Ressentimento",
+  "Satisfação",
+  "Saudade",
+  "Sensação de rejeição",
+  "Senso de pertencimento",
+  "Serenidade / calma",
+  "Sobrecarga",
+  "Solidão",
+  "Surpresa",
+  "Tédio",
+  "Tensão",
+  "Ternura",
+  "Terror",
+  "Timidez",
+  "Tristeza",
+  "Tristeza profunda",
+  "Vazio",
+  "Vergonha (exposição)",
+  "Vergonha alheia",
+  "Vulnerabilidade",
+] as const;
 
 const ACTION_ITEMS: Array<{
   key: ActionPanel;
@@ -1911,6 +1990,7 @@ export function RoomClient({ code }: { code: string }) {
   const handleRoll = () => {
     if (!socket || rollInFlight) return;
 
+    handleSelectActionPanel("house");
     setRollInFlight(true);
     openDiceRollModal();
 
@@ -3471,7 +3551,10 @@ export function RoomClient({ code }: { code: string }) {
 
               <label style={{ display: "grid", gap: 4 }}>
                 <span>Emoção principal</span>
-                <select
+                <input
+                  type="text"
+                  list="therapy-emotion-options"
+                  placeholder="Digite ou selecione uma emoção"
                   value={therapy.emotion}
                   onChange={(event) =>
                     setTherapy((prev) => ({
@@ -3479,20 +3562,12 @@ export function RoomClient({ code }: { code: string }) {
                       emotion: event.target.value,
                     }))
                   }
-                >
-                  <option value="">—</option>
-                  <option value="Calma">Calma</option>
-                  <option value="Ansiedade">Ansiedade</option>
-                  <option value="Medo">Medo</option>
-                  <option value="Tristeza">Tristeza</option>
-                  <option value="Raiva">Raiva</option>
-                  <option value="Vergonha">Vergonha</option>
-                  <option value="Culpa">Culpa</option>
-                  <option value="Alívio">Alívio</option>
-                  <option value="Gratidão">Gratidão</option>
-                  <option value="Esperança">Esperança</option>
-                  <option value="Confusão">Confusão</option>
-                </select>
+                />
+                <datalist id="therapy-emotion-options">
+                  {THERAPY_EMOTION_OPTIONS.map((emotion) => (
+                    <option key={emotion} value={emotion} />
+                  ))}
+                </datalist>
               </label>
 
               <label style={{ display: "grid", gap: 4 }}>
