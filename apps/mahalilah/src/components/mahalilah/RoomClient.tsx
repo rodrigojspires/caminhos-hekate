@@ -2609,15 +2609,6 @@ export function RoomClient({ code }: { code: string }) {
         : "Aguardando 6"
     : "Sem dados";
 
-  const summaryPathText = summaryPath.length
-    ? summaryPath
-        .map((house) => {
-          const houseTitle = getHouseByNumber(house)?.title || "";
-          return `${house}${houseTitle ? ` (${houseTitle})` : ""}`;
-        })
-        .join(" → ")
-    : "—";
-
   if (loading) {
     return <div className="card">Carregando sala...</div>;
   }
@@ -4314,8 +4305,65 @@ export function RoomClient({ code }: { code: string }) {
                         Ajudas da IA: <strong>{summaryAiTipsCount}</strong>
                       </span>
                     </div>
-                    <div className="small-muted">
-                      <strong>Caminho:</strong> {summaryPathText}
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <strong style={{ fontSize: 12 }}>Caminho</strong>
+                      {summaryPath.length === 0 ? (
+                        <span className="small-muted">—</span>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                          }}
+                        >
+                          {summaryPath.map((house, index) => {
+                            const houseTitle = getHouseByNumber(house)?.title || "";
+                            return (
+                              <span
+                                key={`summary-path-${house}-${index}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{
+                                    padding: "2px 8px",
+                                    height: "auto",
+                                    borderRadius: 999,
+                                    fontSize: 12,
+                                  }}
+                                  title={`Ver significado da casa ${house}`}
+                                  onClick={() =>
+                                    openHouseMeaningModal({
+                                      houseNumber: house,
+                                      title: `Significado da casa ${house}`,
+                                      subtitle: `Resumo do jogador • ${
+                                        summaryParticipant?.user.name ||
+                                        summaryParticipant?.user.email ||
+                                        "Jogador"
+                                      }`,
+                                    })
+                                  }
+                                >
+                                  {house}
+                                  {houseTitle ? ` • ${houseTitle}` : ""}
+                                </button>
+                                {index < summaryPath.length - 1 && (
+                                  <span className="small-muted" aria-hidden="true">
+                                    →
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -4329,10 +4377,28 @@ export function RoomClient({ code }: { code: string }) {
                           const houseTitle =
                             getHouseByNumber(house)?.title || "";
                           return (
-                            <span key={`${house}-${count}`} className="pill">
+                            <button
+                              key={`${house}-${count}`}
+                              type="button"
+                              className="btn-secondary"
+                              style={{
+                                padding: "2px 8px",
+                                height: "auto",
+                                borderRadius: 999,
+                                fontSize: 12,
+                              }}
+                              title={`Ver significado da casa ${house}`}
+                              onClick={() =>
+                                openHouseMeaningModal({
+                                  houseNumber: house,
+                                  title: `Significado da casa ${house}`,
+                                  subtitle: `Casa recorrente no resumo (${count}x)`,
+                                })
+                              }
+                            >
                               {house}
                               {houseTitle ? ` • ${houseTitle}` : ""} ({count}x)
-                            </span>
+                            </button>
                           );
                         })
                       )}
