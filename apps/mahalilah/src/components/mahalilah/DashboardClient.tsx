@@ -4475,11 +4475,7 @@ export function DashboardClient() {
                       <a href={`/rooms/${room.code}`} className="btn-secondary w-fit">
                         Abrir sala
                       </a>
-                    ) : (
-                      <span className="small-muted">
-                        Abertura disponível apenas para salas ativas.
-                      </span>
-                    )}
+                    ) }
                   </div>
                 ))}
               </div>
