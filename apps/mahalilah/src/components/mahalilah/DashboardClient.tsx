@@ -2077,9 +2077,6 @@ export function DashboardClient() {
               </span>
               <span className="pill">Cartas (sala): {room.stats.cardDraws}</span>
               <span className="pill">Relatórios IA (sala): {room.stats.aiReports}</span>
-              <span className="small-muted">
-                Por jogador: aba Participantes.
-              </span>
             </div>
           </div>
           <button
