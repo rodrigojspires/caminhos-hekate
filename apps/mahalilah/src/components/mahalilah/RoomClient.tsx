@@ -3184,6 +3184,7 @@ export function RoomClient({
           display: "grid",
           gap: 8,
           padding: "14px 16px",
+          overflow: "hidden",
           opacity: actionsBlockedByConsent ? 0.6 : 1,
         }}
       >
@@ -3193,6 +3194,7 @@ export function RoomClient({
             display: "flex",
             alignItems: "stretch",
             gap: 10,
+            minWidth: 0,
           }}
           data-tour-room="room-header"
         >
@@ -3299,26 +3301,29 @@ export function RoomClient({
             }}
             style={{
               flex: "0 0 auto",
-              minWidth: 112,
+              minWidth: isMobileViewport ? 44 : 112,
+              width: isMobileViewport ? 44 : undefined,
               height: 40,
-              padding: "0 12px",
+              padding: isMobileViewport ? 0 : "0 12px",
               borderRadius: 999,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: isMobileViewport ? 0 : 8,
               borderColor: "rgba(255, 229, 160, 0.88)",
               background:
                 "linear-gradient(135deg, rgba(245, 204, 106, 0.98), rgba(194, 141, 43, 0.98))",
               color: "#261500",
               fontWeight: 800,
-              boxShadow: "0 10px 26px rgba(94, 63, 17, 0.32)",
+              boxShadow: isMobileViewport
+                ? "0 6px 14px rgba(94, 63, 17, 0.24)"
+                : "0 10px 26px rgba(94, 63, 17, 0.32)",
             }}
             title="Abrir central de ajuda"
             aria-label="Abrir central de ajuda"
           >
             <span style={{ fontSize: 18, lineHeight: 1 }}>?</span>
-            <span>Ajuda</span>
+            {!isMobileViewport && <span>Ajuda</span>}
           </button>
         </div>
 
