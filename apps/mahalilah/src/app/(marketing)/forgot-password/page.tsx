@@ -27,7 +27,6 @@ export default function ForgotPasswordPage() {
           </div>
           <ForgotPasswordForm />
         </div>
-        <MediaPlaceholder variant="vertical" label="Imagem institucional: recuperação de senha" />
       </div>
     </SectionShell>
   )
