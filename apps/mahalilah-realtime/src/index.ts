@@ -2029,13 +2029,27 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!room) throw new Error("Sala não encontrada");
         ensureNotViewerInTherapistSoloMode(room, participant);
 
-        if (!moveId) throw new Error("Move obrigatório");
+        let move = null as Awaited<
+          ReturnType<typeof prisma.mahaLilahMove.findUnique>
+        > | null;
 
-        const move = await prisma.mahaLilahMove.findUnique({
-          where: { id: moveId },
-        });
-        if (!move || move.roomId !== socket.data.roomId)
-          throw new Error("Jogada inválida");
+        if (moveId) {
+          move = await prisma.mahaLilahMove.findUnique({
+            where: { id: moveId },
+          });
+        } else {
+          move = await prisma.mahaLilahMove.findFirst({
+            where: {
+              roomId: socket.data.roomId,
+              participantId: participant.id,
+            },
+            orderBy: [{ turnNumber: "desc" }, { createdAt: "desc" }],
+          });
+        }
+
+        if (!move || move.roomId !== socket.data.roomId) {
+          throw new Error("Você ainda não tem jogadas para registrar.");
+        }
         if (move.participantId !== participant.id) {
           throw new Error("Registro permitido apenas para a própria jogada");
         }
@@ -2043,7 +2057,7 @@ io.on("connection", (socket: AuthedSocket) => {
         await prisma.mahaLilahTherapyEntry.create({
           data: {
             roomId: socket.data.roomId,
-            moveId,
+            moveId: move.id,
             participantId: participant.id,
             emotion: emotion || null,
             intensity: typeof intensity === "number" ? intensity : null,
@@ -2055,7 +2069,12 @@ io.on("connection", (socket: AuthedSocket) => {
 
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
-        callback?.({ ok: true });
+        callback?.({
+          ok: true,
+          moveId: move.id,
+          moveTurnNumber: move.turnNumber,
+          diceValue: move.diceValue,
+        });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
       }

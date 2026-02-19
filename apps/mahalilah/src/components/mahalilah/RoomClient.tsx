@@ -1552,12 +1552,15 @@ export function RoomClient({
   );
   const isMyTurn = currentParticipant?.user.id === session?.user?.id;
   const canLogTherapy = Boolean(
-    state?.lastMove &&
-      myParticipant &&
-      state.lastMove.participantId === myParticipant.id &&
+    myParticipant &&
       !isViewerInTherapistSoloPlay &&
       socketReady,
   );
+  const hasOwnMoveForTherapy = Boolean(
+    myPlayerState && myPlayerState.rollCountTotal > 0,
+  );
+  const canSaveTherapy =
+    canLogTherapy && hasOwnMoveForTherapy && !actionsBlockedByConsent;
   const isTherapist = myParticipant?.role === "THERAPIST";
   const isSinglePlayerWithTherapistObserver = Boolean(
     !isTherapistSoloPlay &&
@@ -2652,7 +2655,7 @@ export function RoomClient({
   };
 
   const handleSaveTherapy = () => {
-    if (!socket || !socket.connected || !state?.lastMove) {
+    if (!socket || !socket.connected || !myParticipant) {
       pushToast(
         "Sem conexão com a sala. Aguarde a reconexão para salvar o registro.",
         "warning",
@@ -2660,9 +2663,17 @@ export function RoomClient({
       return;
     }
 
-    if (!myParticipant || state.lastMove.participantId !== myParticipant.id) {
+    if (!canLogTherapy) {
       pushToast(
-        "Você só pode registrar a jogada do seu próprio turno.",
+        "Registro terapêutico indisponível para seu perfil nesta sala.",
+        "warning",
+      );
+      return;
+    }
+
+    if (!hasOwnMoveForTherapy) {
+      pushToast(
+        "Faça ao menos uma jogada para liberar o registro terapêutico.",
         "warning",
       );
       return;
@@ -2671,7 +2682,6 @@ export function RoomClient({
     socket.emit(
       "therapy:save",
       {
-        moveId: state.lastMove.id,
         emotion: therapy.emotion,
         intensity: therapy.intensity,
         insight: therapy.insight,
@@ -2689,7 +2699,16 @@ export function RoomClient({
             body: "",
             microAction: "",
           });
-          pushToast("Registro terapêutico salvo.", "success");
+          const moveTurnNumber =
+            typeof resp?.moveTurnNumber === "number"
+              ? resp.moveTurnNumber
+              : null;
+          pushToast(
+            moveTurnNumber
+              ? `Registro terapêutico salvo na jogada #${moveTurnNumber}.`
+              : "Registro terapêutico salvo.",
+            "success",
+          );
         }
       },
     );
@@ -4329,14 +4348,31 @@ export function RoomClient({
           {activePanel === "therapy" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>Registro terapêutico</strong>
-              {state.lastMove ? (
+              {state.lastMove && state.lastMove.participantId === myParticipant?.id ? (
                 <span className="small-muted">
-                  Jogada #{state.lastMove.turnNumber} • Dado{" "}
+                  Vinculado à sua jogada mais recente: #{state.lastMove.turnNumber} • Dado{" "}
                   {state.lastMove.diceValue}
-                  {canLogTherapy ? "" : " • registro apenas para quem jogou"}
+                </span>
+              ) : canLogTherapy ? (
+                <span className="small-muted">
+                  O registro será vinculado automaticamente à sua jogada mais recente.
+                </span>
+              ) : isViewerInTherapistSoloPlay ? (
+                <span className="small-muted">
+                  Neste modo você está como visualizador.
+                </span>
+              ) : !socketReady ? (
+                <span className="small-muted">
+                  Aguardando reconexão para salvar o registro.
+                </span>
+              ) : !hasOwnMoveForTherapy ? (
+                <span className="small-muted">
+                  Faça ao menos uma jogada para liberar o registro terapêutico.
                 </span>
               ) : (
-                <span className="small-muted">Sem jogadas para registrar.</span>
+                <span className="small-muted">
+                  Registro disponível nesta sala.
+                </span>
               )}
 
               <label style={{ display: "grid", gap: 4 }}>
@@ -4420,9 +4456,7 @@ export function RoomClient({
 
               <button
                 onClick={handleSaveTherapy}
-                disabled={
-                  !state.lastMove || !canLogTherapy || actionsBlockedByConsent
-                }
+                disabled={!canSaveTherapy}
               >
                 Salvar registro
               </button>
