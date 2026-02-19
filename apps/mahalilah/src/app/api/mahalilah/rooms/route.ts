@@ -406,6 +406,11 @@ export async function GET(request: Request) {
               user: { select: { id: true, name: true, email: true } }
             }
           },
+          gameState: {
+            select: {
+              currentTurnIndex: true
+            }
+          },
           playerStates: true,
           _count: {
             select: {
@@ -466,14 +471,36 @@ export async function GET(request: Request) {
           ? MahaLilahParticipantRole.THERAPIST
           : viewerParticipant?.role || MahaLilahParticipantRole.PLAYER
 
-        const rollsTotal = room.playerStates.reduce(
-          (sum, state) => sum + (state.rollCountTotal || 0),
-          0
+        const therapistParticipant = room.participants.find(
+          (participant) => participant.role === MahaLilahParticipantRole.THERAPIST
         )
-        const rollsUntilStart = room.playerStates.reduce(
-          (sum, state) => sum + (state.rollCountUntilStart || 0),
-          0
+        const turnParticipants = room.participants.filter(
+          (participant) => participant.role === MahaLilahParticipantRole.PLAYER
         )
+        if (room.therapistPlays && therapistParticipant) {
+          turnParticipants.push(therapistParticipant)
+        }
+        const currentTurnParticipant =
+          turnParticipants.length > 0
+            ? turnParticipants[
+                ((room.gameState?.currentTurnIndex ?? 0) % turnParticipants.length +
+                  turnParticipants.length) %
+                  turnParticipants.length
+              ]
+            : null
+        const statsParticipant =
+          viewerRole === MahaLilahParticipantRole.THERAPIST
+            ? currentTurnParticipant || viewerParticipant || null
+            : viewerParticipant || null
+        const statsState = statsParticipant
+          ? room.playerStates.find(
+              (state) => state.participantId === statsParticipant.id
+            ) || null
+          : null
+        const rollsTotal = statsState?.rollCountTotal || 0
+        const rollsUntilStart = statsState?.rollCountUntilStart || 0
+        const rollsParticipantName =
+          statsParticipant?.user.name || statsParticipant?.user.email || null
         const orderMetadata = (room.order?.metadata as any) || {}
         const autoRoomId = orderMetadata?.mahalilah?.autoRoomId
         const isAutoCreatedFromCheckout =
@@ -520,7 +547,8 @@ export async function GET(request: Request) {
             cardDraws: room._count.cardDraws,
             aiReports: room._count.aiReports,
             rollsTotal,
-            rollsUntilStart
+            rollsUntilStart,
+            rollsParticipantName
           },
           startHouse: RULES.start.house
         }

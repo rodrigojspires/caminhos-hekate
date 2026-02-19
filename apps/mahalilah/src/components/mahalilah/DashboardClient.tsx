@@ -29,6 +29,7 @@ type RoomStats = {
   aiReports: number;
   rollsTotal: number;
   rollsUntilStart: number;
+  rollsParticipantName: string | null;
 };
 
 type Room = {
@@ -1887,6 +1888,9 @@ export function DashboardClient() {
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
     const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
+    const rollsParticipantSuffix = room.stats.rollsParticipantName
+      ? ` (${room.stats.rollsParticipantName})`
+      : "";
     const roomModeLabel = room.therapistSoloPlay
       ? "Terapeuta joga sozinho (demais visualizam)"
       : room.therapistPlays
@@ -1989,9 +1993,11 @@ export function DashboardClient() {
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
               <span className="pill">Jogadas: {room.stats.moves}</span>
-              <span className="pill">Rolagens: {room.stats.rollsTotal}</span>
               <span className="pill">
-                Até iniciar: {room.stats.rollsUntilStart}
+                Rolagens{rollsParticipantSuffix}: {room.stats.rollsTotal}
+              </span>
+              <span className="pill">
+                Até iniciar{rollsParticipantSuffix}: {room.stats.rollsUntilStart}
               </span>
               <span className="pill">Registros: {room.stats.therapyEntries}</span>
               <span className="pill">Cartas: {room.stats.cardDraws}</span>

@@ -243,6 +243,7 @@ type TutorialStep = {
 };
 
 type RoomTutorialRole = "THERAPIST" | "PLAYER";
+type RulesHelpTab = "about" | "rules" | "controls" | "howToPlay";
 
 const COLORS = [
   "#2f7f6f",
@@ -377,6 +378,48 @@ const ACTION_ITEMS: Array<{
     shortLabel: "Resumo",
   },
 ];
+
+const RULES_HELP_TABS: Array<{
+  id: RulesHelpTab;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "about",
+    label: "O que é",
+    description: "Visão geral do Maha Lilah e do propósito terapêutico da sessão.",
+  },
+  {
+    id: "rules",
+    label: "Regras",
+    description: "Regras oficiais da sala, turnos, início, atalhos e encerramento.",
+  },
+  {
+    id: "controls",
+    label: "Botões",
+    description: "Explicação botão por botão, com quando usar cada um.",
+  },
+  {
+    id: "howToPlay",
+    label: "Como jogar",
+    description: "Mini tutorial prático em passos para conduzir uma rodada.",
+  },
+];
+
+const ACTION_ITEM_HELP_TEXT: Record<ActionPanel, string> = {
+  house:
+    "Consulta o significado completo da casa selecionada: tema, polaridade (luz/sombra), palavras-chave e pergunta terapêutica.",
+  deck: "Permite tirar cartas da jogada atual (até 3 cartas), com leitura e registro no histórico da jornada.",
+  therapy:
+    "Registra emoção, intensidade, insight, corpo e ação da jogada para acompanhamento terapêutico ao longo da sessão.",
+  ai: "Central de IA: ajuda da casa atual, ajuda personalizada pelo caminho e histórico de respostas geradas.",
+  players:
+    "Mostra participantes, estado de cada jogador e opções de acompanhamento clínico (como síntese do terapeuta).",
+  timeline:
+    "Exibe a jornada cronológica com jogadas, atalhos, cartas, registros e conteúdos de IA por jogador.",
+  summary:
+    "Mostra o consolidado do jogador: caminho no tabuleiro, frequência de casas, resumos e visão de evolução.",
+};
 
 const HOUSE_SANSKRIT_NAMES: string[] = [
   "Janma",
@@ -839,6 +882,7 @@ export function RoomClient({
   const [therapistSummarySaving, setTherapistSummarySaving] = useState(false);
   const [showBoardNames, setShowBoardNames] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  const [rulesHelpTab, setRulesHelpTab] = useState<RulesHelpTab>("about");
   const [diceAnimationEnabled, setDiceAnimationEnabled] = useState(true);
   const [rollInFlight, setRollInFlight] = useState(false);
   const [diceModalOpen, setDiceModalOpen] = useState(false);
@@ -2167,6 +2211,22 @@ export function RoomClient({
     }).catch(() => null);
   };
 
+  const handleRestartRoomTutorial = useCallback(() => {
+    if (!myParticipant) {
+      pushToast("Não foi possível iniciar o tutorial agora.", "warning");
+      return;
+    }
+    const role: RoomTutorialRole =
+      myParticipant.role === "THERAPIST" ? "THERAPIST" : "PLAYER";
+    setRulesModalOpen(false);
+    setRoomTutorialRole(role);
+    setRoomTutorialStep(0);
+    setShowRoomTutorial(true);
+    if (isMobileViewport) {
+      setMobileActionPanelOpen(true);
+    }
+  }, [myParticipant, isMobileViewport, pushToast]);
+
   const showSocketError = useCallback(
     (fallback: string, resp: any) => {
       pushToast(resp?.error || fallback, "error");
@@ -3131,111 +3191,134 @@ export function RoomClient({
           className="room-header-pills"
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 8,
-            overflowX: "auto",
-            flexWrap: "nowrap",
-            paddingBottom: 2,
+            alignItems: "stretch",
+            gap: 10,
           }}
           data-tour-room="room-header"
         >
-          <span className="pill" style={{ flex: "0 0 auto" }}>
-            Vez:{" "}
-            <strong>
-              {currentParticipant
-                ? currentParticipant.user.name || currentParticipant.user.email
-                : "Aguardando jogadores"}
-            </strong>
-          </span>
-          <span className="pill">
-            Rolagens: <strong>{indicatorState?.rollCountTotal || 0}</strong>
-          </span>
-          <span className="pill">
-            Até iniciar:{" "}
-            <strong>{indicatorState?.rollCountUntilStart || 0}</strong>
-          </span>
-          <span className="pill" style={{ flex: "0 0 auto" }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: state.room.therapistOnline ? "#6ad3b0" : "#ff6b6b",
-                boxShadow: state.room.therapistOnline
-                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
-                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
-              }}
-            />
-            <strong>Terapeuta</strong>
-          </span>
-          <span
-            className="pill"
+          <div
             style={{
-              flex: "0 0 auto",
-              borderColor: roomIsActive
-                ? "rgba(106, 211, 176, 0.6)"
-                : "rgba(255, 107, 107, 0.6)",
-              background: roomIsActive
-                ? "rgba(106, 211, 176, 0.15)"
-                : "rgba(255, 107, 107, 0.15)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              overflowX: "auto",
+              flexWrap: "nowrap",
+              paddingBottom: 2,
+              flex: 1,
+              minWidth: 0,
             }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: roomIsActive ? "#6ad3b0" : "#ff6b6b",
-                boxShadow: roomIsActive
-                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
-                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
-              }}
-            />
-            <strong>Status:</strong> {roomStatusLabel}
-          </span>
-          {isTrialRoom && (
+            <span className="pill" style={{ flex: "0 0 auto" }}>
+              Vez:{" "}
+              <strong>
+                {currentParticipant
+                  ? currentParticipant.user.name || currentParticipant.user.email
+                  : "Aguardando jogadores"}
+              </strong>
+            </span>
+            <span className="pill">
+              Rolagens: <strong>{indicatorState?.rollCountTotal || 0}</strong>
+            </span>
+            <span className="pill">
+              Até iniciar:{" "}
+              <strong>{indicatorState?.rollCountUntilStart || 0}</strong>
+            </span>
+            <span className="pill" style={{ flex: "0 0 auto" }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: state.room.therapistOnline ? "#6ad3b0" : "#ff6b6b",
+                  boxShadow: state.room.therapistOnline
+                    ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                    : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+                }}
+              />
+              <strong>Terapeuta</strong>
+            </span>
             <span
               className="pill"
               style={{
                 flex: "0 0 auto",
-                borderColor: "rgba(241, 213, 154, 0.55)",
-                background: "rgba(241, 213, 154, 0.14)",
+                borderColor: roomIsActive
+                  ? "rgba(106, 211, 176, 0.6)"
+                  : "rgba(255, 107, 107, 0.6)",
+                background: roomIsActive
+                  ? "rgba(106, 211, 176, 0.15)"
+                  : "rgba(255, 107, 107, 0.15)",
               }}
             >
-              <strong>Trial:</strong>{" "}
-              {myPlayerState?.hasStarted
-                ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
-                : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: roomIsActive ? "#6ad3b0" : "#ff6b6b",
+                  boxShadow: roomIsActive
+                    ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                    : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+                }}
+              />
+              <strong>Status:</strong> {roomStatusLabel}
             </span>
-          )}
-          {isTherapistSoloPlay && (
-            <span
-              className="pill"
-              style={{
-                flex: "0 0 auto",
-                borderColor: "rgba(154, 208, 255, 0.55)",
-                background: "rgba(154, 208, 255, 0.14)",
-              }}
-            >
-              <strong>Modo:</strong> terapeuta único jogador (demais visualizam)
-            </span>
-          )}
+            {isTrialRoom && (
+              <span
+                className="pill"
+                style={{
+                  flex: "0 0 auto",
+                  borderColor: "rgba(241, 213, 154, 0.55)",
+                  background: "rgba(241, 213, 154, 0.14)",
+                }}
+              >
+                <strong>Trial:</strong>{" "}
+                {myPlayerState?.hasStarted
+                  ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
+                  : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
+              </span>
+            )}
+            {isTherapistSoloPlay && (
+              <span
+                className="pill"
+                style={{
+                  flex: "0 0 auto",
+                  borderColor: "rgba(154, 208, 255, 0.55)",
+                  background: "rgba(154, 208, 255, 0.14)",
+                }}
+              >
+                <strong>Modo:</strong> terapeuta único jogador (demais visualizam)
+              </span>
+            )}
+          </div>
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => setRulesModalOpen(true)}
+            onClick={() => {
+              setRulesHelpTab("about");
+              setRulesModalOpen(true);
+            }}
             style={{
               flex: "0 0 auto",
-              minWidth: 30,
-              width: 30,
-              height: 30,
-              padding: 0,
+              minWidth: 112,
+              height: 40,
+              padding: "0 12px",
               borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderColor: "rgba(255, 229, 160, 0.88)",
+              background:
+                "linear-gradient(135deg, rgba(245, 204, 106, 0.98), rgba(194, 141, 43, 0.98))",
+              color: "#261500",
+              fontWeight: 800,
+              boxShadow: "0 10px 26px rgba(94, 63, 17, 0.32)",
             }}
-            title="Regras do jogo"
-            aria-label="Regras do jogo"
+            title="Abrir central de ajuda"
+            aria-label="Abrir central de ajuda"
           >
-            ?
+            <span style={{ fontSize: 18, lineHeight: 1 }}>?</span>
+            <span>Ajuda</span>
           </button>
         </div>
 
@@ -5606,46 +5689,212 @@ export function RoomClient({
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 8,
+                alignItems: "center",
               }}
             >
-              <strong>Resumo das regras do Maha Lilah</strong>
-              <button
-                className="btn-secondary"
-                onClick={() => setRulesModalOpen(false)}
-              >
-                Fechar
-              </button>
+              <strong>Central de ajuda do Maha Lilah</strong>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleRestartRoomTutorial}
+                >
+                  Refazer tutorial (onboarding)
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setRulesModalOpen(false)}
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
-            <div className="notice" style={{ display: "grid", gap: 8 }}>
-              <span className="small-muted">
-                <strong>1.</strong> Todos começam na casa <strong>68</strong>.
-              </span>
-              <span className="small-muted">
-                <strong>2.</strong> Para iniciar o jogo, precisa rolar{" "}
-                <strong>6</strong>; ao iniciar, vai para a casa{" "}
-                <strong>6</strong>.
-              </span>
-              <span className="small-muted">
-                <strong>3.</strong> A rolagem do dado so fica ativa com o{" "}
-                <strong>terapeuta online</strong> na sala.
-              </span>
-              <span className="small-muted">
-                <strong>4.</strong> Atalhos podem subir (↗) ou descer (↘),
-                conforme a casa onde o jogador caiu.
-              </span>
-              <span className="small-muted">
-                <strong>5.</strong> A sala conclui quando o jogador retorna a{" "}
-                casa <strong>68</strong> apos ja ter iniciado.
-              </span>
-              <span className="small-muted">
-                <strong>6.</strong> Cada jogada permite tirar ate{" "}
-                <strong>3 cartas</strong>.
-              </span>
-              <span className="small-muted">
-                <strong>7.</strong> Registro terapeutico e ajudas de IA ficam
-                salvos na jornada do jogador.
-              </span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {RULES_HELP_TABS.map((tab) => {
+                const active = rulesHelpTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className="btn-secondary"
+                    onClick={() => setRulesHelpTab(tab.id)}
+                    aria-pressed={active}
+                    style={{
+                      borderColor: active
+                        ? "rgba(217, 164, 65, 0.72)"
+                        : "rgba(217, 164, 65, 0.35)",
+                      background: active
+                        ? "rgba(217, 164, 65, 0.24)"
+                        : "rgba(9, 15, 24, 0.7)",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
+            <span className="small-muted">
+              {RULES_HELP_TABS.find((tab) => tab.id === rulesHelpTab)?.description}
+            </span>
+
+            {rulesHelpTab === "about" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div className="notice" style={{ display: "grid", gap: 6 }}>
+                  <strong>O que é o Maha Lilah?</strong>
+                  <span className="small-muted">
+                    O Maha Lilah é um jogo terapêutico de autoconhecimento. Cada
+                    casa representa um tema simbólico da jornada humana e ajuda a
+                    transformar experiência em insight prático.
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 6 }}>
+                  <strong>Como a sessão funciona</strong>
+                  <span className="small-muted">
+                    A sala combina tabuleiro, cartas, registro terapêutico e
+                    apoio da IA. O objetivo não é "vencer", e sim ampliar
+                    consciência, reconhecer padrões e apoiar decisões concretas
+                    para a vida real.
+                  </span>
+                </div>
+                <div className="notice" style={{ display: "grid", gap: 6 }}>
+                  <strong>Papel de cada participante</strong>
+                  <span className="small-muted">
+                    Jogadores fazem as jogadas e registram percepções. O
+                    terapeuta conduz a sessão, acompanha a jornada e pode apoiar
+                    com sínteses e direcionamento clínico.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {rulesHelpTab === "rules" && (
+              <div className="notice" style={{ display: "grid", gap: 8 }}>
+                <span className="small-muted">
+                  <strong>1.</strong> Todos começam na casa <strong>68</strong>.
+                </span>
+                <span className="small-muted">
+                  <strong>2.</strong> Para iniciar o jogo, é necessário rolar{" "}
+                  <strong>6</strong>; ao iniciar, o jogador vai para a casa{" "}
+                  <strong>6</strong>.
+                </span>
+                <span className="small-muted">
+                  <strong>3.</strong> As jogadas seguem ordem de turnos e o botão
+                  de rolagem só libera para quem está com a vez.
+                </span>
+                <span className="small-muted">
+                  <strong>4.</strong> A rolagem só fica ativa com o{" "}
+                  <strong>terapeuta online</strong> na sala.
+                </span>
+                <span className="small-muted">
+                  <strong>5.</strong> Ao cair em casas com atalho, o jogador
+                  sobe (↗) ou desce (↘) automaticamente.
+                </span>
+                <span className="small-muted">
+                  <strong>6.</strong> Cada jogada permite tirar até{" "}
+                  <strong>3 cartas</strong>.
+                </span>
+                <span className="small-muted">
+                  <strong>7.</strong> Registro terapêutico e ajudas de IA ficam
+                  salvos na jornada do jogador.
+                </span>
+                <span className="small-muted">
+                  <strong>8.</strong> A jornada conclui quando o jogador retorna
+                  para a casa <strong>68</strong> após ter iniciado.
+                </span>
+              </div>
+            )}
+
+            {rulesHelpTab === "controls" && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <div className="notice" style={{ display: "grid", gap: 6 }}>
+                  <strong>Controles da sala (linha superior)</strong>
+                  <span className="small-muted">
+                    <strong>?</strong> Abre esta central de ajuda com regras,
+                    explicações e tutorial.
+                  </span>
+                  <span className="small-muted">
+                    <strong>Rolar dado</strong> faz a jogada da vez e move o pino
+                    no tabuleiro.
+                  </span>
+                  {canCloseRoom && (
+                    <span className="small-muted">
+                      <strong>Avançar vez</strong> passa a vez manualmente quando
+                      necessário na condução da sessão.
+                    </span>
+                  )}
+                  {canCloseRoom && (
+                    <span className="small-muted">
+                      <strong>Encerrar sala</strong> fecha a sessão e finaliza a
+                      rodada atual.
+                    </span>
+                  )}
+                  <span className="small-muted">
+                    <strong>Mostrar/Ocultar nomes</strong> exibe ou esconde os
+                    nomes dentro dos pinos no tabuleiro.
+                  </span>
+                  <span className="small-muted">
+                    <strong>Animação do Dado</strong> liga/desliga o efeito
+                    visual da rolagem.
+                  </span>
+                  <span className="small-muted">
+                    <strong>Voltar ao dashboard</strong> retorna para o painel de
+                    salas sem perder os dados da sessão.
+                  </span>
+                </div>
+
+                <div className="notice" style={{ display: "grid", gap: 6 }}>
+                  <strong>Menu de ações (ícones lateral/inferior)</strong>
+                  {ACTION_ITEMS.map((item) => (
+                    <span key={item.key} className="small-muted">
+                      <strong>
+                        {item.icon} {item.shortLabel}
+                      </strong>{" "}
+                      - {ACTION_ITEM_HELP_TEXT[item.key]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {rulesHelpTab === "howToPlay" && (
+              <div className="notice" style={{ display: "grid", gap: 8 }}>
+                <span className="small-muted">
+                  <strong>1.</strong> Confirme o termo de consentimento para
+                  liberar as ações da sala.
+                </span>
+                <span className="small-muted">
+                  <strong>2.</strong> Veja no topo quem está com a vez e aguarde
+                  o seu turno.
+                </span>
+                <span className="small-muted">
+                  <strong>3.</strong> Clique em <strong>Rolar dado</strong> no
+                  seu turno.
+                </span>
+                <span className="small-muted">
+                  <strong>4.</strong> Se ainda não iniciou, tente obter 6 para
+                  sair da casa 68 e começar pela casa 6.
+                </span>
+                <span className="small-muted">
+                  <strong>5.</strong> Abra o menu <strong>Casa</strong> para
+                  ler o significado terapêutico da posição atual.
+                </span>
+                <span className="small-muted">
+                  <strong>6.</strong> No menu <strong>Carta</strong>, tire até 3
+                  cartas para aprofundar a leitura da jogada.
+                </span>
+                <span className="small-muted">
+                  <strong>7.</strong> No menu <strong>Registro</strong>, anote
+                  emoção, insight, corpo e ação prática.
+                </span>
+                <span className="small-muted">
+                  <strong>8.</strong> No menu <strong>IA</strong>, peça ajuda da
+                  casa atual ou ajuda personalizada pelo caminho.
+                </span>
+                <span className="small-muted">
+                  <strong>9.</strong> Acompanhe <strong>Jornada</strong> e{" "}
+                  <strong>Resumo</strong> para fechar aprendizados ao longo da
+                  sessão.
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

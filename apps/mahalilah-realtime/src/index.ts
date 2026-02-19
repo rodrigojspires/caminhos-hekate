@@ -1424,14 +1424,22 @@ async function rollInRoom(roomId: string, userId: string) {
       },
     });
 
-    const moveCount = await tx.mahaLilahMove.count({
-      where: { roomId: room.id },
+    const participantTurnStats = await tx.mahaLilahMove.aggregate({
+      where: {
+        roomId: room.id,
+        participantId: currentParticipant.id,
+      },
+      _max: {
+        turnNumber: true,
+      },
     });
+    const nextParticipantTurnNumber =
+      (participantTurnStats._max.turnNumber ?? 0) + 1;
 
     await tx.mahaLilahMove.create({
       data: {
         roomId: room.id,
-        turnNumber: moveCount + 1,
+        turnNumber: nextParticipantTurnNumber,
         participantId: currentParticipant.id,
         diceValue: dice,
         fromPos: move.fromHouse,
