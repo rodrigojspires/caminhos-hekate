@@ -946,6 +946,7 @@ export function DashboardClient() {
   const [creating, setCreating] = useState(false);
   const [creatingTrial, setCreatingTrial] = useState(false);
   const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
+  const [deletingInviteIds, setDeletingInviteIds] = useState<Record<string, boolean>>({});
   const [savingTherapistSummaryByParticipantId, setSavingTherapistSummaryByParticipantId] =
     useState<Record<string, boolean>>({});
   const [therapistSummaries, setTherapistSummaries] = useState<
@@ -1577,6 +1578,41 @@ export function DashboardClient() {
     await loadRooms();
   };
 
+  const handleDeleteInvite = async (roomId: string, invite: RoomInvite) => {
+    if (invite.acceptedAt) return;
+
+    const confirmed = window.confirm(
+      `Excluir o convite pendente para ${invite.email}?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingInviteIds((prev) => ({ ...prev, [invite.id]: true }));
+    try {
+      const params = new URLSearchParams({ inviteId: invite.id });
+      const res = await fetch(
+        `/api/mahalilah/rooms/${roomId}/invites?${params.toString()}`,
+        { method: "DELETE" },
+      );
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        pushToast(payload.error || "Erro ao excluir convite.", "error");
+        return;
+      }
+
+      pushToast("Convite excluído com sucesso.", "success");
+      await loadRooms();
+    } catch {
+      pushToast("Erro ao excluir convite.", "error");
+    } finally {
+      setDeletingInviteIds((prev) => {
+        const next = { ...prev };
+        delete next[invite.id];
+        return next;
+      });
+    }
+  };
+
   const handleRemoveParticipant = async (
     roomId: string,
     participantId: string,
@@ -2170,7 +2206,13 @@ export function DashboardClient() {
                     <span className="small-muted">Nenhum convite enviado.</span>
                   ) : (
                     <div style={{ display: "grid", gap: 6 }}>
-                      {room.invites.map((invite) => (
+                      {room.invites.map((invite) => {
+                        const isPending = !invite.acceptedAt;
+                        const isDeletingInvite = Boolean(
+                          deletingInviteIds[invite.id],
+                        );
+
+                        return (
                         <div
                           key={invite.id}
                           style={{
@@ -2220,9 +2262,10 @@ export function DashboardClient() {
                             >
                               {invite.acceptedAt ? "Aceito" : "Pendente"}
                             </span>
-                            {!invite.acceptedAt && (
+                            {isPending && (
                               <button
                                 className="btn-secondary px-3 py-1 text-xs"
+                                disabled={isDeletingInvite}
                                 onClick={() =>
                                   handleSendInvites(room.id, [invite.email])
                                 }
@@ -2230,9 +2273,23 @@ export function DashboardClient() {
                                 Reenviar
                               </button>
                             )}
+                            {isPending && (
+                              <button
+                                className="btn-secondary px-3 py-1 text-xs"
+                                disabled={isDeletingInvite}
+                                onClick={() => handleDeleteInvite(room.id, invite)}
+                                style={{
+                                  borderColor: "rgba(255, 107, 107, 0.45)",
+                                  color: "#ff9f9f",
+                                }}
+                              >
+                                {isDeletingInvite ? "Excluindo..." : "Excluir"}
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

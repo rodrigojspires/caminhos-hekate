@@ -9,9 +9,77 @@ import { sendInviteEmail } from '@/lib/email'
 const InviteSchema = z.object({
   emails: z.array(z.string().email()).min(1)
 })
+const DeleteInviteSchema = z.object({
+  inviteId: z.string().min(1)
+})
 
 interface RouteParams {
   params: { roomId: string }
+}
+
+export async function DELETE(request: Request, { params }: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const room = await prisma.mahaLilahRoom.findUnique({
+      where: { id: params.roomId },
+      select: { id: true, createdByUserId: true }
+    })
+
+    if (!room) {
+      return NextResponse.json({ error: 'Sala não encontrada' }, { status: 404 })
+    }
+
+    if (room.createdByUserId !== session.user.id) {
+      return NextResponse.json({ error: 'Sem permissão para excluir convites' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const parsed = DeleteInviteSchema.safeParse({
+      inviteId: searchParams.get('inviteId')
+    })
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Convite inválido.' }, { status: 400 })
+    }
+
+    const { inviteId } = parsed.data
+    const deleted = await prisma.mahaLilahInvite.deleteMany({
+      where: {
+        id: inviteId,
+        roomId: room.id,
+        acceptedAt: null
+      }
+    })
+
+    if (deleted.count === 0) {
+      const invite = await prisma.mahaLilahInvite.findFirst({
+        where: { id: inviteId, roomId: room.id },
+        select: { acceptedAt: true }
+      })
+
+      if (!invite) {
+        return NextResponse.json({ error: 'Convite não encontrado.' }, { status: 404 })
+      }
+
+      if (invite.acceptedAt) {
+        return NextResponse.json(
+          { error: 'Não é possível excluir um convite já aceito.' },
+          { status: 400 }
+        )
+      }
+
+      return NextResponse.json({ error: 'Não foi possível excluir o convite.' }, { status: 400 })
+    }
+
+    return NextResponse.json({ ok: true, inviteId })
+  } catch (error) {
+    console.error('Erro ao excluir convite Maha Lilah:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
