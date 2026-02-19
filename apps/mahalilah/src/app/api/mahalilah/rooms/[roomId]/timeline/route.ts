@@ -33,6 +33,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         id: true,
         createdByUserId: true,
         isVisibleToPlayers: true,
+        therapistSoloPlay: true,
         code: true,
         participants: {
           select: { id: true, userId: true, role: true },
@@ -57,6 +58,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     const requesterParticipant = room.participants.find(
       (participant) => participant.userId === session.user.id,
     );
+    const therapistParticipant = room.participants.find(
+      (participant) => participant.role === "THERAPIST",
+    );
     const isCreator = room.createdByUserId === session.user.id;
 
     if (!isCreator && !room.isVisibleToPlayers && !isRoomContext) {
@@ -69,7 +73,19 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    const participantScopeId = !isCreator ? requesterParticipant?.id ?? null : null;
+    const shouldUseTherapistScopeForRoomView = Boolean(
+      !isCreator &&
+        isRoomContext &&
+        room.therapistSoloPlay &&
+        requesterParticipant?.role === "PLAYER" &&
+        therapistParticipant?.id,
+    );
+
+    const participantScopeId = !isCreator
+      ? shouldUseTherapistScopeForRoomView
+        ? therapistParticipant?.id ?? null
+        : requesterParticipant?.id ?? null
+      : null;
 
     const [moves, aiReports, standaloneDraws] = await prisma.$transaction([
       prisma.mahaLilahMove.findMany({

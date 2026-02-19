@@ -1664,11 +1664,16 @@ export function RoomClient({
       return;
     }
 
-    setTimelineTargetParticipantId(myParticipant.id);
+    const targetId =
+      isTherapistSoloPlay && therapistParticipantInRoom
+        ? therapistParticipantInRoom.id
+        : myParticipant.id;
+    setTimelineTargetParticipantId(targetId);
   }, [
     state,
     myParticipant,
     isTherapistSoloPlay,
+    therapistParticipantInRoom,
     shouldLockPlayerDropdownForTherapist,
     lockedPlayerParticipantId,
   ]);
@@ -1799,6 +1804,10 @@ export function RoomClient({
     shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
       ? lockedPlayerParticipantId
       : deckParticipantId;
+  const viewerDataParticipantId =
+    isViewerInTherapistSoloPlay && therapistParticipantInRoom
+      ? therapistParticipantInRoom.id
+      : (myParticipant?.id ?? "");
   const deckDisplayParticipantId = effectiveDeckParticipantId;
   const deckTargetParticipantId =
     myParticipant?.id || "";
@@ -1812,23 +1821,33 @@ export function RoomClient({
     const effectiveTargetId =
       myParticipant?.role === "THERAPIST"
         ? effectiveTimelineTargetParticipantId
-        : myParticipant?.id || "__no-participant__";
+        : viewerDataParticipantId || "__no-participant__";
     if (!effectiveTargetId) return timelineMoves;
     return timelineMoves.filter(
       (move) => move.participant.id === effectiveTargetId,
     );
-  }, [timelineMoves, effectiveTimelineTargetParticipantId, myParticipant]);
+  }, [
+    timelineMoves,
+    effectiveTimelineTargetParticipantId,
+    myParticipant,
+    viewerDataParticipantId,
+  ]);
 
   const filteredTimelineReports = useMemo(() => {
     const effectiveTargetId =
       myParticipant?.role === "THERAPIST"
         ? effectiveTimelineTargetParticipantId
-        : myParticipant?.id || "__no-participant__";
+        : viewerDataParticipantId || "__no-participant__";
     if (!effectiveTargetId) return timelineReports;
     return timelineReports.filter(
       (report) => report.participant?.id === effectiveTargetId,
     );
-  }, [timelineReports, effectiveTimelineTargetParticipantId, myParticipant]);
+  }, [
+    timelineReports,
+    effectiveTimelineTargetParticipantId,
+    myParticipant,
+    viewerDataParticipantId,
+  ]);
 
   const timelineTipsByMoveKey = useMemo(() => {
     const tipsByKey = new Map<
@@ -1979,13 +1998,21 @@ export function RoomClient({
     }
 
     if (myParticipant.role === "PLAYER") {
+      if (isTherapistSoloPlay) {
+        return finalReportEligibleParticipants;
+      }
       return finalReportEligibleParticipants.filter(
         (participant) => participant.id === myParticipant.id,
       );
     }
 
     return [myParticipant];
-  }, [myParticipant, isTherapist, finalReportEligibleParticipants]);
+  }, [
+    myParticipant,
+    isTherapist,
+    isTherapistSoloPlay,
+    finalReportEligibleParticipants,
+  ]);
 
   const finalReportPromptTargets = useMemo(() => {
     if (finalReportEligibleParticipants.length > 0)
