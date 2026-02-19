@@ -830,6 +830,7 @@ export function RoomClient({
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
+  const [deckParticipantId, setDeckParticipantId] = useState("");
   const [therapistSummaryParticipantId, setTherapistSummaryParticipantId] =
     useState("");
   const [therapistSummaryDraft, setTherapistSummaryDraft] = useState("");
@@ -1546,6 +1547,40 @@ export function RoomClient({
   }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
 
   useEffect(() => {
+    if (!state || !myParticipant) return;
+
+    if (myParticipant.role === "THERAPIST") {
+      if (shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId) {
+        setDeckParticipantId(lockedPlayerParticipantId);
+        return;
+      }
+      const targetGroup = isTherapistSoloPlay
+        ? state.participants.filter((participant) => participant.role === "THERAPIST")
+        : state.participants;
+      const preferredPlayer = targetGroup.find(
+        (participant) => participant.role === "PLAYER",
+      );
+      const fallbackParticipant = targetGroup[0];
+      const targetId = preferredPlayer?.id || fallbackParticipant?.id || "";
+      setDeckParticipantId((prev) => prev || targetId);
+      return;
+    }
+
+    const targetId =
+      isTherapistSoloPlay && therapistParticipantInRoom
+        ? therapistParticipantInRoom.id
+        : myParticipant.id;
+    setDeckParticipantId(targetId);
+  }, [
+    state,
+    myParticipant,
+    isTherapistSoloPlay,
+    therapistParticipantInRoom,
+    shouldLockPlayerDropdownForTherapist,
+    lockedPlayerParticipantId,
+  ]);
+
+  useEffect(() => {
     if (!shouldAutoSyncTherapistDropdownsByTurn) return;
     if (!currentTurnParticipantId || currentTurnParticipantRole !== "PLAYER")
       return;
@@ -1558,6 +1593,9 @@ export function RoomClient({
       prev === nextParticipantId ? prev : nextParticipantId,
     );
     setSummaryParticipantId((prev) =>
+      prev === nextParticipantId ? prev : nextParticipantId,
+    );
+    setDeckParticipantId((prev) =>
       prev === nextParticipantId ? prev : nextParticipantId,
     );
   }, [
@@ -1573,6 +1611,10 @@ export function RoomClient({
     shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
       ? lockedPlayerParticipantId
       : summaryParticipantId;
+  const effectiveDeckParticipantId =
+    shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
+      ? lockedPlayerParticipantId
+      : deckParticipantId;
 
   const filteredTimelineMoves = useMemo(() => {
     const effectiveTargetId =
@@ -2249,23 +2291,42 @@ export function RoomClient({
   }, [timelineMoves]);
 
   const currentMoveDeckCards = useMemo(() => {
-    if (!state?.lastMove) return [];
+    if (!state?.lastMove || !state?.deckHistory?.length) return [];
+    const effectiveTargetId =
+      myParticipant?.role === "THERAPIST"
+        ? effectiveDeckParticipantId
+        : myParticipant?.id || "";
+    if (!effectiveTargetId) return [];
+    if (state.lastMove.participantId !== effectiveTargetId) return [];
     return state.deckHistory.filter(
-      (draw) => draw.moveId === state.lastMove?.id && Boolean(draw.card),
+      (draw) =>
+        draw.moveId === state.lastMove?.id &&
+        draw.drawnBy.id === effectiveTargetId &&
+        Boolean(draw.card),
     );
-  }, [state?.deckHistory, state?.lastMove]);
+  }, [state?.deckHistory, state?.lastMove, myParticipant, effectiveDeckParticipantId]);
+
+  const filteredDeckHistory = useMemo(() => {
+    if (!state?.deckHistory?.length) return [];
+    const effectiveTargetId =
+      myParticipant?.role === "THERAPIST"
+        ? effectiveDeckParticipantId
+        : myParticipant?.id || "";
+    if (!effectiveTargetId) return [];
+    return state.deckHistory.filter((draw) => draw.drawnBy.id === effectiveTargetId);
+  }, [state?.deckHistory, myParticipant, effectiveDeckParticipantId]);
 
   const deckHistoryByMove = useMemo(() => {
-    if (!state?.deckHistory?.length) return [];
+    if (!filteredDeckHistory.length) return [];
 
     const grouped: Array<{
       key: string;
       moveId: string | null;
       moveTurnNumber: number | null;
-      draws: typeof state.deckHistory;
+      draws: typeof filteredDeckHistory;
     }> = [];
 
-    state.deckHistory.forEach((draw) => {
+    filteredDeckHistory.forEach((draw) => {
       const key = draw.moveId ? `move:${draw.moveId}` : `standalone:${draw.id}`;
       const last = grouped[grouped.length - 1];
 
@@ -2283,7 +2344,7 @@ export function RoomClient({
     });
 
     return grouped;
-  }, [state?.deckHistory]);
+  }, [filteredDeckHistory]);
 
   const openCardPreview = useCallback(
     ({
@@ -3674,6 +3735,21 @@ export function RoomClient({
           {activePanel === "deck" && (
             <div className="grid" style={{ gap: 8 }}>
               <strong>Tirar carta</strong>
+
+              {timelineParticipants.length > 1 && (
+                <select
+                  value={effectiveDeckParticipantId}
+                  disabled={shouldLockPlayerDropdownForTherapist}
+                  onChange={(event) => setDeckParticipantId(event.target.value)}
+                >
+                  {timelineAndSummaryParticipants.map((participant) => (
+                    <option key={participant.id} value={participant.id}>
+                      {participant.user.name || participant.user.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   className="secondary"
@@ -3758,9 +3834,9 @@ export function RoomClient({
                   paddingRight: 2,
                 }}
               >
-                {state.deckHistory.length === 0 ? (
+                {filteredDeckHistory.length === 0 ? (
                   <span className="small-muted">
-                    Nenhuma carta puxada ainda.
+                    Nenhuma carta puxada para este jogador.
                   </span>
                 ) : (
                   deckHistoryByMove.map((group) => (
