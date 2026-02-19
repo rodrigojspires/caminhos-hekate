@@ -19,6 +19,9 @@ function buildCardImageUrl(
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
+    const url = new URL(request.url);
+    const context = url.searchParams.get("context");
+    const isRoomContext = context === "room";
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -56,7 +59,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     );
     const isCreator = room.createdByUserId === session.user.id;
 
-    if (!isCreator && !room.isVisibleToPlayers) {
+    if (!isCreator && !room.isVisibleToPlayers && !isRoomContext) {
       return NextResponse.json(
         {
           error:

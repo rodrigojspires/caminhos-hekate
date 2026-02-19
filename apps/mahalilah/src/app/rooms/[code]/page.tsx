@@ -30,6 +30,7 @@ export const metadata: Metadata = withSeoDefaults(
 
 export default async function RoomPage({ params }: RoomPageProps) {
   const session = await getServerSession(authOptions);
+  const isAdmin = session?.user?.role === "ADMIN";
 
   if (!session?.user?.email) {
     redirect(
@@ -49,7 +50,7 @@ export default async function RoomPage({ params }: RoomPageProps) {
     );
   }
 
-  if (room.status !== "ACTIVE") {
+  if (room.status !== "ACTIVE" && !isAdmin) {
     return (
       <main style={{ paddingTop: 20, paddingBottom: 72 }}>
         <section className="grid" style={{ gap: 14 }}>

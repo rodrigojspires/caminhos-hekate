@@ -40,6 +40,7 @@ type RoomState = {
     status: string;
     planType?: string;
     isTrial?: boolean;
+    therapistPlays?: boolean;
     playerIntentionLocked?: boolean;
     therapistSoloPlay?: boolean;
     aiReportsCount?: number;
@@ -1217,6 +1218,17 @@ export function RoomClient({ code }: { code: string }) {
     );
     return map;
   }, [state]);
+  const playerParticipants =
+    state?.participants.filter((participant) => participant.role === "PLAYER") ||
+    [];
+  const singlePlayerParticipant =
+    playerParticipants.length === 1 ? playerParticipants[0] : null;
+  const therapistHasPlayerState = Boolean(
+    therapistParticipantInRoom &&
+      playerStateMap.has(therapistParticipantInRoom.id),
+  );
+  const therapistPlaysInCurrentRoom =
+    state?.room.therapistPlays ?? therapistHasPlayerState;
 
   const myPlayerState = myParticipant
     ? playerStateMap.get(myParticipant.id)
@@ -1311,6 +1323,19 @@ export function RoomClient({ code }: { code: string }) {
       !isViewerInTherapistSoloPlay,
   );
   const isTherapist = myParticipant?.role === "THERAPIST";
+  const isSinglePlayerWithTherapistObserver = Boolean(
+    !isTherapistSoloPlay &&
+      singlePlayerParticipant &&
+      therapistParticipantInRoom &&
+      !therapistPlaysInCurrentRoom,
+  );
+  const shouldLockPlayerDropdownForTherapist = Boolean(
+    isTherapist && isSinglePlayerWithTherapistObserver && singlePlayerParticipant,
+  );
+  const lockedPlayerParticipantId =
+    shouldLockPlayerDropdownForTherapist && singlePlayerParticipant
+      ? singlePlayerParticipant.id
+      : "";
   const canCloseRoom = myParticipant?.role === "THERAPIST";
   const isPlayerIntentionLocked = Boolean(
     myParticipant?.role === "PLAYER" && state?.room.playerIntentionLocked,
@@ -1324,9 +1349,7 @@ export function RoomClient({ code }: { code: string }) {
       !isViewerInTherapistSoloPlay &&
       !actionsBlockedByConsent,
   );
-  const playerParticipantsCount =
-    state?.participants.filter((participant) => participant.role === "PLAYER")
-      .length || 0;
+  const playerParticipantsCount = playerParticipants.length;
   const canReplicateIntentionToPlayers = Boolean(
     myParticipant?.role === "THERAPIST" &&
       !actionsBlockedByConsent &&
@@ -1349,6 +1372,10 @@ export function RoomClient({ code }: { code: string }) {
       (participant) => participant.role === "THERAPIST",
     );
   }, [state?.participants, myParticipant, isTherapistSoloPlay]);
+  const timelineAndSummaryParticipants =
+    shouldLockPlayerDropdownForTherapist && singlePlayerParticipant
+      ? [singlePlayerParticipant]
+      : timelineParticipants;
 
   const boardParticipants = useMemo(() => {
     if (!state?.participants) return [];
@@ -1360,6 +1387,10 @@ export function RoomClient({ code }: { code: string }) {
     if (!state || !myParticipant) return;
 
     if (myParticipant.role === "THERAPIST") {
+      if (shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId) {
+        setTimelineTargetParticipantId(lockedPlayerParticipantId);
+        return;
+      }
       const targetGroup = isTherapistSoloPlay
         ? state.participants.filter((participant) => participant.role === "THERAPIST")
         : state.participants;
@@ -1373,12 +1404,22 @@ export function RoomClient({ code }: { code: string }) {
     }
 
     setTimelineTargetParticipantId(myParticipant.id);
-  }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
+  }, [
+    state,
+    myParticipant,
+    isTherapistSoloPlay,
+    shouldLockPlayerDropdownForTherapist,
+    lockedPlayerParticipantId,
+  ]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
 
     if (myParticipant.role === "THERAPIST") {
+      if (shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId) {
+        setSummaryParticipantId(lockedPlayerParticipantId);
+        return;
+      }
       const targetGroup = isTherapistSoloPlay
         ? state.participants.filter((participant) => participant.role === "THERAPIST")
         : state.participants;
@@ -1396,7 +1437,14 @@ export function RoomClient({ code }: { code: string }) {
         ? therapistParticipantInRoom.id
         : myParticipant.id;
     setSummaryParticipantId(targetId);
-  }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
+  }, [
+    state,
+    myParticipant,
+    isTherapistSoloPlay,
+    therapistParticipantInRoom,
+    shouldLockPlayerDropdownForTherapist,
+    lockedPlayerParticipantId,
+  ]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
@@ -1420,28 +1468,36 @@ export function RoomClient({ code }: { code: string }) {
         : myParticipant.id;
     setAiHistoryParticipantId(targetId);
   }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
+  const effectiveTimelineTargetParticipantId =
+    shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
+      ? lockedPlayerParticipantId
+      : timelineTargetParticipantId;
+  const effectiveSummaryParticipantId =
+    shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
+      ? lockedPlayerParticipantId
+      : summaryParticipantId;
 
   const filteredTimelineMoves = useMemo(() => {
     const effectiveTargetId =
       myParticipant?.role === "THERAPIST"
-        ? timelineTargetParticipantId
+        ? effectiveTimelineTargetParticipantId
         : myParticipant?.id || "__no-participant__";
     if (!effectiveTargetId) return timelineMoves;
     return timelineMoves.filter(
       (move) => move.participant.id === effectiveTargetId,
     );
-  }, [timelineMoves, timelineTargetParticipantId, myParticipant]);
+  }, [timelineMoves, effectiveTimelineTargetParticipantId, myParticipant]);
 
   const filteredTimelineReports = useMemo(() => {
     const effectiveTargetId =
       myParticipant?.role === "THERAPIST"
-        ? timelineTargetParticipantId
+        ? effectiveTimelineTargetParticipantId
         : myParticipant?.id || "__no-participant__";
     if (!effectiveTargetId) return timelineReports;
     return timelineReports.filter(
       (report) => report.participant?.id === effectiveTargetId,
     );
-  }, [timelineReports, timelineTargetParticipantId, myParticipant]);
+  }, [timelineReports, effectiveTimelineTargetParticipantId, myParticipant]);
 
   const timelineTipsByMoveKey = useMemo(() => {
     const tipsByKey = new Map<
@@ -1616,13 +1672,13 @@ export function RoomClient({ code }: { code: string }) {
   );
 
   const summaryParticipant = useMemo(() => {
-    if (!summaryParticipantId) return null;
+    if (!effectiveSummaryParticipantId) return null;
     return (
       state?.participants.find(
-        (participant) => participant.id === summaryParticipantId,
+        (participant) => participant.id === effectiveSummaryParticipantId,
       ) || null
     );
-  }, [state?.participants, summaryParticipantId]);
+  }, [state?.participants, effectiveSummaryParticipantId]);
 
   const therapistSummaryParticipant = useMemo(() => {
     if (!therapistSummaryParticipantId) return null;
@@ -1638,11 +1694,11 @@ export function RoomClient({ code }: { code: string }) {
     : undefined;
 
   const summaryMoves = useMemo(() => {
-    if (!summaryParticipantId) return [];
+    if (!effectiveSummaryParticipantId) return [];
     return timelineMoves.filter(
-      (move) => move.participant.id === summaryParticipantId,
+      (move) => move.participant.id === effectiveSummaryParticipantId,
     );
-  }, [timelineMoves, summaryParticipantId]);
+  }, [timelineMoves, effectiveSummaryParticipantId]);
 
   const summaryPath = useMemo(() => {
     const path: number[] = [];
@@ -1777,13 +1833,13 @@ export function RoomClient({ code }: { code: string }) {
   }, [summaryMoves]);
 
   const summaryAiTipsCount = useMemo(() => {
-    if (!summaryParticipantId) return 0;
+    if (!effectiveSummaryParticipantId) return 0;
     return timelineReports.filter(
       (report) =>
         report.kind === "TIP" &&
-        report.participant?.id === summaryParticipantId,
+        report.participant?.id === effectiveSummaryParticipantId,
     ).length;
-  }, [timelineReports, summaryParticipantId]);
+  }, [timelineReports, effectiveSummaryParticipantId]);
 
   const myAiUsage = useMemo(() => {
     if (!state || !myParticipant) return null;
@@ -2078,7 +2134,13 @@ export function RoomClient({ code }: { code: string }) {
       !isViewerInTherapistSoloPlay,
   );
   const canUseAiActions = Boolean(
-    !actionsBlockedByConsent && !isViewerInTherapistSoloPlay,
+    myParticipant && !actionsBlockedByConsent && !isViewerInTherapistSoloPlay,
+  );
+  const shouldBlockTherapistAiTipActions = Boolean(
+    isTherapist && isSinglePlayerWithTherapistObserver,
+  );
+  const canUseAiTipActions = Boolean(
+    canUseAiActions && !shouldBlockTherapistAiTipActions,
   );
 
   const timelineMoveTurnById = useMemo(() => {
@@ -2226,7 +2288,10 @@ export function RoomClient({ code }: { code: string }) {
       setTimelineLoading(true);
       setTimelineError(null);
       try {
-        const res = await fetch(`/api/mahalilah/rooms/${state.room.id}/timeline`);
+        const params = new URLSearchParams({ context: "room" });
+        const res = await fetch(
+          `/api/mahalilah/rooms/${state.room.id}/timeline?${params.toString()}`,
+        );
         const payload = await res.json().catch(() => ({}));
 
         if (!res.ok) {
@@ -2348,11 +2413,14 @@ export function RoomClient({ code }: { code: string }) {
         (item) => item.id === participantId,
       );
       if (!participant) return;
+      if (isSinglePlayerWithTherapistObserver && participant.role === "THERAPIST") {
+        return;
+      }
       setTherapistSummaryParticipantId(participant.id);
       setTherapistSummaryDraft(participant.therapistSummary || "");
       setTherapistSummaryModalOpen(true);
     },
-    [state?.participants],
+    [state?.participants, isSinglePlayerWithTherapistObserver],
   );
 
   const handleSaveTherapistSummary = useCallback(async () => {
@@ -3774,6 +3842,11 @@ export function RoomClient({ code }: { code: string }) {
                   final.
                 </span>
               )}
+              {shouldBlockTherapistAiTipActions && (
+                <span className="small-muted">
+                  Neste modo, as ajudas da IA devem ser solicitadas pelo jogador.
+                </span>
+              )}
               <span className="small-muted">
                 Ajudas usadas:{" "}
                 <strong>
@@ -3792,7 +3865,7 @@ export function RoomClient({ code }: { code: string }) {
                   </span>
                   <button
                     className="secondary"
-                    disabled={!canUseAiActions || aiTipLoading}
+                    disabled={!canUseAiTipActions || aiTipLoading}
                     onClick={() => requestAiTip({ mode: "currentHouse" })}
                     style={{
                       background:
@@ -3824,7 +3897,7 @@ export function RoomClient({ code }: { code: string }) {
                       placeholder="Escreva sua dúvida/contexto. Ex.: estou repetindo a mesma dificuldade de comunicação e não sei como sair disso."
                       value={aiPathHelpInput}
                       maxLength={AI_PATH_HELP_MAX_LENGTH}
-                      disabled={!canUseAiActions || aiTipLoading}
+                      disabled={!canUseAiTipActions || aiTipLoading}
                       onChange={(event) =>
                         setAiPathHelpInput(
                           event.target.value.slice(0, AI_PATH_HELP_MAX_LENGTH),
@@ -3844,7 +3917,7 @@ export function RoomClient({ code }: { code: string }) {
                   <button
                     className="secondary"
                     disabled={
-                      !canUseAiActions || aiTipLoading || !aiPathHelpInput.trim()
+                      !canUseAiTipActions || aiTipLoading || !aiPathHelpInput.trim()
                     }
                     onClick={() =>
                       requestAiTip({
@@ -4149,6 +4222,9 @@ export function RoomClient({ code }: { code: string }) {
                   const participantIsTherapist =
                     participant.role === "THERAPIST";
                   const canEditParticipantSummary = isTherapist;
+                  const shouldDisableTherapistSummaryEdit = Boolean(
+                    participantIsTherapist && isSinglePlayerWithTherapistObserver,
+                  );
                   return (
                     <div
                       key={participant.id}
@@ -4202,8 +4278,15 @@ export function RoomClient({ code }: { code: string }) {
                         {canEditParticipantSummary && (
                           <button
                             className="btn-secondary"
-                            disabled={therapistSummarySaving}
-                            title="Abrir observações do terapeuta"
+                            disabled={
+                              therapistSummarySaving ||
+                              shouldDisableTherapistSummaryEdit
+                            }
+                            title={
+                              shouldDisableTherapistSummaryEdit
+                                ? "Edição indisponível: terapeuta fora da fila de jogo."
+                                : "Abrir observações do terapeuta"
+                            }
                             onClick={() => openTherapistSummaryModal(participant.id)}
                             style={{
                               width: 32,
@@ -4238,13 +4321,16 @@ export function RoomClient({ code }: { code: string }) {
 
               {timelineParticipants.length > 1 && (
                 <select
-                  value={timelineTargetParticipantId}
+                  value={effectiveTimelineTargetParticipantId}
+                  disabled={shouldLockPlayerDropdownForTherapist}
                   onChange={(event) =>
                     setTimelineTargetParticipantId(event.target.value)
                   }
                 >
-                  <option value="">Todos os jogadores</option>
-                  {timelineParticipants.map((participant) => (
+                  {!shouldLockPlayerDropdownForTherapist && (
+                    <option value="">Todos os jogadores</option>
+                  )}
+                  {timelineAndSummaryParticipants.map((participant) => (
                     <option key={participant.id} value={participant.id}>
                       {participant.user.name || participant.user.email}
                     </option>
@@ -4463,12 +4549,13 @@ export function RoomClient({ code }: { code: string }) {
 
               {timelineParticipants.length > 1 && (
                 <select
-                  value={summaryParticipantId}
+                  value={effectiveSummaryParticipantId}
+                  disabled={shouldLockPlayerDropdownForTherapist}
                   onChange={(event) =>
                     setSummaryParticipantId(event.target.value)
                   }
                 >
-                  {timelineParticipants.map((participant) => (
+                  {timelineAndSummaryParticipants.map((participant) => (
                     <option key={participant.id} value={participant.id}>
                       {participant.user.name || participant.user.email}
                     </option>

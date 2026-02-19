@@ -70,6 +70,18 @@ export async function GET(request: NextRequest) {
             user: { select: { id: true, name: true, email: true } }
           }
         },
+        moves: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            participant: {
+              select: {
+                displayName: true,
+                user: { select: { name: true, email: true } }
+              }
+            }
+          }
+        },
         invites: true,
         _count: {
           select: {
@@ -82,69 +94,91 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      rooms: rooms.map((room) => ({
-        ...(function resolveTherapistMeta() {
-          const therapistParticipant = room.participants.find(
-            (participant) => participant.role === MahaLilahParticipantRole.THERAPIST
-          )
-          if (therapistParticipant) {
+      rooms: rooms.map((room) => {
+        const lastMove = room.moves[0] || null
+
+        return {
+          ...(function resolveTherapistMeta() {
+            const therapistParticipant = room.participants.find(
+              (participant) => participant.role === MahaLilahParticipantRole.THERAPIST
+            )
+            if (therapistParticipant) {
+              return {
+                therapist: {
+                  name:
+                    therapistParticipant.user.name ||
+                    therapistParticipant.displayName ||
+                    null,
+                  email:
+                    therapistParticipant.user.email ||
+                    room.createdByUser.email,
+                  status: 'ACTIVE' as const
+                }
+              }
+            }
+
+            const therapistInvite = room.invites.find(
+              (invite) => invite.role === MahaLilahInviteRole.THERAPIST
+            )
+            if (therapistInvite) {
+              return {
+                therapist: {
+                  name: null,
+                  email: therapistInvite.email,
+                  status: therapistInvite.acceptedAt
+                    ? ('ACTIVE' as const)
+                    : ('PENDING_INVITE' as const)
+                }
+              }
+            }
+
             return {
               therapist: {
-                name:
-                  therapistParticipant.user.name ||
-                  therapistParticipant.displayName ||
-                  null,
-                email:
-                  therapistParticipant.user.email ||
-                  room.createdByUser.email,
+                name: room.createdByUser.name || null,
+                email: room.createdByUser.email,
                 status: 'ACTIVE' as const
               }
             }
-          }
-
-          const therapistInvite = room.invites.find(
-            (invite) => invite.role === MahaLilahInviteRole.THERAPIST
-          )
-          if (therapistInvite) {
-            return {
-              therapist: {
-                name: null,
-                email: therapistInvite.email,
-                status: therapistInvite.acceptedAt
-                  ? ('ACTIVE' as const)
-                  : ('PENDING_INVITE' as const)
+          })(),
+          id: room.id,
+          code: room.code,
+          status: room.status,
+          planType: room.planType,
+          isTrial: room.isTrial,
+          maxParticipants: room.maxParticipants,
+          therapistPlays: room.therapistPlays,
+          therapistSoloPlay: room.therapistSoloPlay,
+          createdAt: room.createdAt,
+          createdBy: room.createdByUser,
+          orderId: room.orderId,
+          participantsCount: room.participants.filter((participant) => (
+            participant.role === MahaLilahParticipantRole.PLAYER ||
+            (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
+          )).length,
+          invitesCount: room.invites.filter(
+            (invite) => invite.role === MahaLilahInviteRole.PLAYER
+          ).length,
+          stats: room._count,
+          lastMove: lastMove
+            ? {
+                turnNumber: lastMove.turnNumber,
+                diceValue: lastMove.diceValue,
+                fromPos: lastMove.fromPos,
+                toPos: lastMove.toPos,
+                appliedJumpFrom: lastMove.appliedJumpFrom,
+                appliedJumpTo: lastMove.appliedJumpTo,
+                createdAt: lastMove.createdAt,
+                participant: {
+                  name:
+                    lastMove.participant.displayName ||
+                    lastMove.participant.user.name ||
+                    null,
+                  email: lastMove.participant.user.email
+                }
               }
-            }
-          }
-
-          return {
-            therapist: {
-              name: room.createdByUser.name || null,
-              email: room.createdByUser.email,
-              status: 'ACTIVE' as const
-            }
-          }
-        })(),
-        id: room.id,
-        code: room.code,
-        status: room.status,
-        planType: room.planType,
-        isTrial: room.isTrial,
-        maxParticipants: room.maxParticipants,
-        therapistPlays: room.therapistPlays,
-        therapistSoloPlay: room.therapistSoloPlay,
-        createdAt: room.createdAt,
-        createdBy: room.createdByUser,
-        orderId: room.orderId,
-        participantsCount: room.participants.filter((participant) => (
-          participant.role === MahaLilahParticipantRole.PLAYER ||
-          (room.therapistPlays && participant.role === MahaLilahParticipantRole.THERAPIST)
-        )).length,
-        invitesCount: room.invites.filter(
-          (invite) => invite.role === MahaLilahInviteRole.PLAYER
-        ).length,
-        stats: room._count
-      }))
+            : null
+        }
+      })
     })
   } catch (error) {
     console.error('Erro ao listar salas Maha Lilah (admin):', error)

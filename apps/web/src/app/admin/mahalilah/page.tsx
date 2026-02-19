@@ -51,6 +51,19 @@ type Room = {
   participantsCount: number;
   invitesCount: number;
   stats: { moves: number; therapyEntries: number; cardDraws: number };
+  lastMove: {
+    turnNumber: number;
+    diceValue: number;
+    fromPos: number;
+    toPos: number;
+    appliedJumpFrom: number | null;
+    appliedJumpTo: number | null;
+    createdAt: string;
+    participant: {
+      name: string | null;
+      email: string;
+    };
+  } | null;
 };
 
 const statusBadge: Record<string, string> = {
@@ -70,6 +83,7 @@ export default function AdminMahaLilahRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
+  const [openingRoomId, setOpeningRoomId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [therapistEmail, setTherapistEmail] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(4);
@@ -188,6 +202,31 @@ export default function AdminMahaLilahRoomsPage() {
     toast.success(payload.message || "Sala excluída com sucesso.");
     await loadRooms();
     setDeletingRoomId(null);
+  };
+
+  const handleOpenRoom = async (room: Room) => {
+    setOpeningRoomId(room.id);
+    const res = await fetch(`/api/admin/mahalilah/rooms/${room.id}/open`, {
+      method: "POST",
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(payload.error || "Erro ao abrir sala");
+      setOpeningRoomId(null);
+      return;
+    }
+
+    const roomUrl = payload.roomUrl || `${baseUrl}/rooms/${room.code}`;
+    const popup = window.open(roomUrl, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.assign(roomUrl);
+    }
+
+    toast.success("Sala aberta no tabuleiro.");
+
+    await loadRooms();
+    setOpeningRoomId(null);
   };
 
   return (
@@ -334,6 +373,7 @@ export default function AdminMahaLilahRoomsPage() {
                   <TableHead>Jogadores</TableHead>
                   <TableHead>Convites</TableHead>
                   <TableHead>Jogadas</TableHead>
+                  <TableHead>Última jogada</TableHead>
                   <TableHead>Pagamento</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -342,7 +382,7 @@ export default function AdminMahaLilahRoomsPage() {
                 {rooms.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center text-muted-foreground"
                     >
                       Nenhuma sala encontrada.
@@ -353,12 +393,6 @@ export default function AdminMahaLilahRoomsPage() {
                     <TableRow key={room.id}>
                       <TableCell>
                         <div className="font-medium">{room.code}</div>
-                        <Link
-                          href={`${baseUrl}/rooms/${room.code}`}
-                          className="text-xs text-purple-500 hover:underline"
-                        >
-                          Abrir sala
-                        </Link>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -407,18 +441,58 @@ export default function AdminMahaLilahRoomsPage() {
                       </TableCell>
                       <TableCell>{room.invitesCount}</TableCell>
                       <TableCell>{room.stats.moves}</TableCell>
+                      <TableCell>
+                        {room.lastMove ? (
+                          <div className="text-xs leading-5">
+                            <div className="font-medium text-foreground">
+                              #{room.lastMove.turnNumber} • dado {room.lastMove.diceValue}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {room.lastMove.appliedJumpFrom !== null &&
+                              room.lastMove.appliedJumpTo !== null
+                                ? `${room.lastMove.fromPos} → ${room.lastMove.appliedJumpFrom} → ${room.lastMove.appliedJumpTo}`
+                                : `${room.lastMove.fromPos} → ${room.lastMove.toPos}`}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {room.lastMove.participant.name ||
+                                room.lastMove.participant.email}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {new Date(room.lastMove.createdAt).toLocaleString(
+                                "pt-BR",
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Sem jogadas
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>{room.orderId ? "Pago" : "Admin"}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteRoom(room)}
-                          disabled={deletingRoomId === room.id}
-                        >
-                          {deletingRoomId === room.id
-                            ? "Excluindo..."
-                            : "Excluir"}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenRoom(room)}
+                            disabled={openingRoomId === room.id}
+                          >
+                            {openingRoomId === room.id
+                              ? "Abrindo..."
+                              : "Abrir sala"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteRoom(room)}
+                            disabled={deletingRoomId === room.id}
+                          >
+                            {deletingRoomId === room.id
+                              ? "Excluindo..."
+                              : "Excluir"}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

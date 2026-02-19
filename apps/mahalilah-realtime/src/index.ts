@@ -1110,6 +1110,7 @@ async function buildRoomState(roomId: string) {
       status: roomStatus,
       planType: room.planType,
       isTrial: isTrialRoom(room),
+      therapistPlays: room.therapistPlays,
       playerIntentionLocked: room.playerIntentionLocked,
       therapistSoloPlay: room.therapistSoloPlay,
       aiReportsCount: room._count.aiReports,
@@ -1496,6 +1497,7 @@ io.on("connection", (socket: AuthedSocket) => {
         const currentUser = socket.data.user;
         if (!currentUser) throw new Error("Usuário não autenticado");
         const userId = currentUser.id;
+        const isAdminUser = currentUser.role === "ADMIN";
         const previousRoomId = socket.data.roomId || null;
         const room = await prisma.mahaLilahRoom.findUnique({ where: { code } });
         if (!room) throw new Error("Sala não encontrada");
@@ -1503,10 +1505,10 @@ io.on("connection", (socket: AuthedSocket) => {
         const participant = await prisma.mahaLilahParticipant.findFirst({
           where: { roomId: room.id, userId },
         });
-        if (!participant) throw new Error("Sem acesso à sala");
+        if (!participant && !isAdminUser) throw new Error("Sem acesso à sala");
         const roomState = await buildRoomState(room.id);
         if (!roomState) throw new Error("Sala não encontrada");
-        if (roomState.room.status !== "ACTIVE") {
+        if (roomState.room.status !== "ACTIVE" && !isAdminUser) {
           throw buildSocketError(
             "Sala já foi encerrada e não pode mais ser aberta.",
             "ROOM_CLOSED",
