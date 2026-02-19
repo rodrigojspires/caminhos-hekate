@@ -1195,11 +1195,6 @@ export function RoomClient({
   }, [session?.user?.id, pushToast, joinRoom]);
 
   useEffect(() => {
-    if (!state?.lastMove) return;
-    setSelectedHouseNumber(state.lastMove.toPos);
-  }, [state?.lastMove?.id, state?.lastMove?.toPos]);
-
-  useEffect(() => {
     setTimelineLoaded(false);
     setTimelineError(null);
     setTimelineMoves([]);
@@ -1310,6 +1305,39 @@ export function RoomClient({
     ? playerStateMap.get(indicatorParticipant.id)
     : undefined;
   const indicatorHouseNumber = (indicatorState?.position ?? 67) + 1;
+
+  useEffect(() => {
+    if (!state || !myParticipant) return;
+
+    const myState = playerStateMap.get(myParticipant.id);
+    const myHouseNumber = (myState?.position ?? 67) + 1;
+
+    if (!state.lastMove) {
+      setSelectedHouseNumber(myHouseNumber);
+      return;
+    }
+
+    // A última jogada deve atualizar automaticamente para o terapeuta
+    // e para o próprio jogador que acabou de jogar.
+    const shouldFollowLastMove =
+      myParticipant.role === "THERAPIST" ||
+      state.lastMove.participantId === myParticipant.id;
+
+    if (shouldFollowLastMove) {
+      setSelectedHouseNumber(state.lastMove.toPos);
+      return;
+    }
+
+    // Para os demais jogadores, mantém o foco na própria casa.
+    setSelectedHouseNumber(myHouseNumber);
+  }, [
+    state,
+    myParticipant,
+    playerStateMap,
+    state?.lastMove?.id,
+    state?.lastMove?.toPos,
+    state?.lastMove?.participantId,
+  ]);
 
   const selectedHouse =
     getHouseByNumber(selectedHouseNumber) ||
