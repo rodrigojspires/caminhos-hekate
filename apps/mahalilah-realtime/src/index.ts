@@ -1845,6 +1845,7 @@ io.on("connection", (socket: AuthedSocket) => {
           where: { roomId: socket.data.roomId, userId: socket.data.user.id },
         });
         if (!participant) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(participant);
         const room = await prisma.mahaLilahRoom.findUnique({
           where: { id: socket.data.roomId },
           select: { playerIntentionLocked: true, therapistSoloPlay: true },
@@ -2237,6 +2238,11 @@ io.on("connection", (socket: AuthedSocket) => {
       try {
         if (!socket.data.user || !socket.data.roomId)
           throw new Error("Sala não selecionada");
+        const participant = await prisma.mahaLilahParticipant.findFirst({
+          where: { roomId: socket.data.roomId, userId: socket.data.user.id },
+        });
+        if (!participant) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(participant);
         await advanceTurnInRoom(socket.data.roomId, socket.data.user.id);
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
@@ -2253,6 +2259,11 @@ io.on("connection", (socket: AuthedSocket) => {
       try {
         if (!socket.data.user || !socket.data.roomId)
           throw new Error("Sala não selecionada");
+        const participant = await prisma.mahaLilahParticipant.findFirst({
+          where: { roomId: socket.data.roomId, userId: socket.data.user.id },
+        });
+        if (!participant) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(participant);
         await closeRoom(socket.data.roomId, socket.data.user.id);
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);

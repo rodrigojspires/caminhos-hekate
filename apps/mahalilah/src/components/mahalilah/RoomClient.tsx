@@ -1318,13 +1318,17 @@ export function RoomClient({ code }: { code: string }) {
     myParticipant && !isViewerInTherapistSoloPlay,
   );
   const canEditSessionIntention = Boolean(
-    myParticipant && !isPlayerIntentionLocked && !isViewerInTherapistSoloPlay,
+    myParticipant &&
+      !isPlayerIntentionLocked &&
+      !isViewerInTherapistSoloPlay &&
+      !actionsBlockedByConsent,
   );
   const playerParticipantsCount =
     state?.participants.filter((participant) => participant.role === "PLAYER")
       .length || 0;
   const canReplicateIntentionToPlayers = Boolean(
     myParticipant?.role === "THERAPIST" &&
+      !actionsBlockedByConsent &&
       !isTherapistSoloPlay &&
       playerParticipantsCount > 1,
   );
@@ -1956,12 +1960,19 @@ export function RoomClient({ code }: { code: string }) {
 
   const handleSelectActionPanel = useCallback(
     (panel: ActionPanel) => {
+      if (actionsBlockedByConsent) {
+        pushToast(
+          "Aceite o termo de consentimento para liberar o menu da sala.",
+          "warning",
+        );
+        return;
+      }
       setActivePanel(panel);
       if (isMobileViewport) {
         setMobileActionPanelOpen(true);
       }
     },
-    [isMobileViewport],
+    [actionsBlockedByConsent, isMobileViewport, pushToast],
   );
 
   const openDiceRollModal = useCallback(() => {
@@ -3343,6 +3354,7 @@ export function RoomClient({ code }: { code: string }) {
                 <button
                   key={item.key}
                   className={isActive ? "btn-primary" : "btn-secondary"}
+                  disabled={actionsBlockedByConsent}
                   onClick={() => handleSelectActionPanel(item.key)}
                   title={item.label}
                   data-tour-room={
@@ -4616,6 +4628,7 @@ export function RoomClient({ code }: { code: string }) {
             <button
               key={`mobile-${item.key}`}
               className={isActive ? "btn-primary" : "btn-secondary"}
+              disabled={actionsBlockedByConsent}
               onClick={() => handleSelectActionPanel(item.key)}
               title={item.label}
               data-tour-room={
