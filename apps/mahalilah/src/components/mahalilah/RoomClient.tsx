@@ -249,6 +249,12 @@ type TutorialStep = {
 
 type RoomTutorialRole = "THERAPIST" | "PLAYER";
 type RulesHelpTab = "about" | "rules" | "controls" | "howToPlay";
+type ChakraMarker = {
+  houseNumber: number;
+  label: string;
+  color: string;
+  rowTint: string;
+};
 
 const COLORS = [
   "#2f7f6f",
@@ -258,6 +264,65 @@ const COLORS = [
   "#7a5aa5",
   "#d5a439",
 ];
+const CHAKRA_MARKERS: ChakraMarker[] = [
+  {
+    houseNumber: 5,
+    label: "Chakra Básico",
+    color: "#cf4a43",
+    rowTint: "rgba(207, 74, 67, 0.14)",
+  },
+  {
+    houseNumber: 14,
+    label: "Chakra Umbilical",
+    color: "#e08c3f",
+    rowTint: "rgba(224, 140, 63, 0.13)",
+  },
+  {
+    houseNumber: 23,
+    label: "Chakra Plexo Solar",
+    color: "#d4b54d",
+    rowTint: "rgba(212, 181, 77, 0.12)",
+  },
+  {
+    houseNumber: 32,
+    label: "Chakra Cardíaco",
+    color: "#54ab6f",
+    rowTint: "rgba(84, 171, 111, 0.12)",
+  },
+  {
+    houseNumber: 41,
+    label: "Chakra Laríngeo",
+    color: "#4ca6d6",
+    rowTint: "rgba(76, 166, 214, 0.11)",
+  },
+  {
+    houseNumber: 50,
+    label: "Chakra Frontal",
+    color: "#5b6dd1",
+    rowTint: "rgba(91, 109, 209, 0.12)",
+  },
+  {
+    houseNumber: 59,
+    label: "Chakra Coronário",
+    color: "#8e66c9",
+    rowTint: "rgba(142, 102, 201, 0.12)",
+  },
+  {
+    houseNumber: 68,
+    label: "Iluminação",
+    color: "#e2c77a",
+    rowTint: "rgba(226, 199, 122, 0.12)",
+  },
+];
+const CHAKRA_BY_HOUSE = new Map(
+  CHAKRA_MARKERS.map((chakra) => [chakra.houseNumber, chakra]),
+);
+const CHAKRA_BY_ROW = new Map(
+  CHAKRA_MARKERS.map((chakra) => [
+    Math.floor((chakra.houseNumber - 1) / BOARD_COLS),
+    chakra,
+  ]),
+);
 const TRIAL_POST_START_MOVE_LIMIT = 5;
 const AI_PATH_HELP_MAX_LENGTH = 600;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
@@ -3884,6 +3949,14 @@ export function RoomClient({
               const house = getHouseByNumber(cell.houseNumber);
               const jumpTarget = jumpMap.get(cell.houseNumber);
               const isSelected = indicatorHouseNumber === cell.houseNumber;
+              const chakra = CHAKRA_BY_HOUSE.get(cell.houseNumber) || null;
+              const chakraRow =
+                CHAKRA_BY_ROW.get(
+                  Math.floor((cell.houseNumber - 1) / BOARD_COLS),
+                ) || null;
+              const rowBackground = chakraRow
+                ? `linear-gradient(180deg, ${chakraRow.rowTint}, rgba(10, 16, 26, 0.62))`
+                : "linear-gradient(180deg, rgba(12, 19, 30, 0.54), rgba(10, 16, 26, 0.62))";
               const sanskritName =
                 HOUSE_SANSKRIT_NAMES[cell.houseNumber - 1] || "";
               const portugueseName = house?.title || `Casa ${cell.houseNumber}`;
@@ -3915,8 +3988,8 @@ export function RoomClient({
                       ? "1px solid rgba(217, 164, 65, 0.75)"
                       : "1px solid rgba(255, 255, 255, 0.12)",
                     background: isSelected
-                      ? "rgba(217, 164, 65, 0.16)"
-                      : "rgba(12, 19, 30, 0.48)",
+                      ? `linear-gradient(180deg, rgba(217, 164, 65, 0.16), rgba(217, 164, 65, 0.05)), ${rowBackground}`
+                      : rowBackground,
                     padding: 6,
                     display: "grid",
                     gridTemplateRows: showBoardNames
@@ -3937,22 +4010,57 @@ export function RoomClient({
                     <span className="small-muted" style={{ fontSize: 11 }}>
                       {cell.houseNumber}
                     </span>
-                    {jumpTarget && (
-                      <span
-                        className="small-muted"
-                        style={{
-                          fontSize: 10,
-                          color:
-                            jumpTarget > cell.houseNumber
-                              ? "#9fe6cc"
-                              : "#ffc0a8",
-                        }}
-                        title={`Atalho ${cell.houseNumber} para ${jumpTarget}`}
-                      >
-                        {jumpTarget > cell.houseNumber ? "↗" : "↘"}{" "}
-                        {jumpTarget}
-                      </span>
-                    )}
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      {chakra && (
+                        <span
+                          title={`${chakra.label} • Casa ${cell.houseNumber}`}
+                          aria-label={chakra.label}
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 999,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "1px solid rgba(255, 255, 255, 0.38)",
+                            boxShadow:
+                              "0 0 0 1px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.28)",
+                            background: `radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.92), ${chakra.color})`,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 4,
+                              height: 4,
+                              borderRadius: 999,
+                              background: "rgba(255, 255, 255, 0.9)",
+                            }}
+                          />
+                        </span>
+                      )}
+                      {jumpTarget && (
+                        <span
+                          className="small-muted"
+                          style={{
+                            fontSize: 10,
+                            color:
+                              jumpTarget > cell.houseNumber
+                                ? "#9fe6cc"
+                                : "#ffc0a8",
+                          }}
+                          title={`Atalho ${cell.houseNumber} para ${jumpTarget}`}
+                        >
+                          {jumpTarget > cell.houseNumber ? "↗" : "↘"}{" "}
+                          {jumpTarget}
+                        </span>
+                      )}
+                    </span>
                   </div>
                   {showBoardNames && (
                     <span
