@@ -827,6 +827,22 @@ function getDiceFaceSymbol(face: number) {
   return symbols[face - 1] || "⚀";
 }
 
+function getSocketDisconnectMessage(reason: string) {
+  if (reason === "io server disconnect") {
+    return "Sua sessão foi desconectada pelo servidor.";
+  }
+  if (reason === "io client disconnect") {
+    return "Conexão encerrada nesta aba.";
+  }
+  if (reason === "ping timeout") {
+    return "Conexão com a sala perdida por inatividade/rede instável.";
+  }
+  if (reason === "transport close" || reason === "transport error") {
+    return "Conexão com a sala foi interrompida.";
+  }
+  return "Conexão com a sala foi perdida.";
+}
+
 export function RoomClient({
   code,
   adminOpenToken,
@@ -841,6 +857,9 @@ export function RoomClient({
   const [fatalErrorCode, setFatalErrorCode] = useState<string | null>(null);
   const [forceTakeoverLoading, setForceTakeoverLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketReconnecting, setSocketReconnecting] = useState(false);
+  const [socketConnectionMessage, setSocketConnectionMessage] = useState("");
   const [selectedHouseNumber, setSelectedHouseNumber] = useState(68);
   const [activePanel, setActivePanel] = useState<ActionPanel>("house");
   const [therapy, setTherapy] = useState({
@@ -963,9 +982,12 @@ export function RoomClient({
       options?: {
         forceTakeover?: boolean;
         onSettled?: () => void;
+        skipLoading?: boolean;
       },
     ) => {
-      setLoading(true);
+      if (!options?.skipLoading) {
+        setLoading(true);
+      }
       setFatalError(null);
       setFatalErrorCode(null);
 
@@ -1132,11 +1154,15 @@ export function RoomClient({
 
     let cancelled = false;
     let currentSocket: Socket | null = null;
+    let hasConnectedAtLeastOnce = false;
 
     const connect = async () => {
       setLoading(true);
       setFatalError(null);
       setFatalErrorCode(null);
+      setSocketConnected(false);
+      setSocketReconnecting(false);
+      setSocketConnectionMessage("Conectando à sala...");
 
       const res = await fetch("/api/mahalilah/realtime/token");
       if (!res.ok) {
@@ -1144,6 +1170,9 @@ export function RoomClient({
           setFatalError("Não foi possível autenticar no realtime.");
           setFatalErrorCode(null);
           setLoading(false);
+          setSocketConnected(false);
+          setSocketReconnecting(false);
+          setSocketConnectionMessage("Falha de autenticação no realtime.");
           pushToast("Não foi possível autenticar no realtime.", "error");
         }
         return;
@@ -1158,8 +1187,51 @@ export function RoomClient({
       });
       currentSocket = s;
 
+      s.on("connect", () => {
+        if (cancelled) return;
+        const isReconnect = hasConnectedAtLeastOnce;
+        hasConnectedAtLeastOnce = true;
+        setSocketConnected(true);
+        setSocketReconnecting(false);
+        setSocketConnectionMessage("");
+        joinRoom(s, { skipLoading: isReconnect });
+        if (isReconnect) {
+          pushToast("Conexão restabelecida. Sala sincronizada.", "success");
+        }
+      });
+
+      s.on("disconnect", (reason) => {
+        if (cancelled) return;
+        setSocketConnected(false);
+        setSocketReconnecting(false);
+        setSocketConnectionMessage(getSocketDisconnectMessage(reason));
+        setRollInFlight(false);
+        clearDiceTimers();
+        setDiceRolling(false);
+        setDiceModalOpen(false);
+        setDiceResult(null);
+        pushToast("Conexão com a sala perdida. Tentando reconectar...", "warning");
+      });
+
+      s.io.on("reconnect_attempt", () => {
+        if (cancelled) return;
+        setSocketReconnecting(true);
+        setSocketConnectionMessage("Tentando reconectar com a sala...");
+      });
+
+      s.io.on("reconnect_failed", () => {
+        if (cancelled) return;
+        setSocketReconnecting(false);
+        setSocketConnectionMessage("Não foi possível reconectar automaticamente.");
+        pushToast(
+          "Não foi possível reconectar automaticamente. Recarregue a página.",
+          "error",
+        );
+      });
+
       s.on("connect_error", (err) => {
         if (!cancelled) {
+          setSocketConnected(false);
           pushToast(err.message || "Erro de conexão com a sala.", "error");
         }
       });
@@ -1224,7 +1296,6 @@ export function RoomClient({
       );
 
       setSocket(s);
-      joinRoom(s);
     };
 
     connect();
@@ -1232,11 +1303,36 @@ export function RoomClient({
     return () => {
       cancelled = true;
       if (currentSocket) {
+        currentSocket.io.removeAllListeners();
         currentSocket.removeAllListeners();
         currentSocket.disconnect();
       }
     };
-  }, [session?.user?.id, pushToast, joinRoom]);
+  }, [session?.user?.id, pushToast, joinRoom, clearDiceTimers]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const ensureSocketConnected = () => {
+      if (document.visibilityState === "hidden") return;
+      if (socket.connected) return;
+      setSocketReconnecting(true);
+      setSocketConnectionMessage("Tentando reconectar com a sala...");
+      socket.connect();
+    };
+
+    window.addEventListener("focus", ensureSocketConnected);
+    window.addEventListener("online", ensureSocketConnected);
+    window.addEventListener("pageshow", ensureSocketConnected);
+    document.addEventListener("visibilitychange", ensureSocketConnected);
+
+    return () => {
+      window.removeEventListener("focus", ensureSocketConnected);
+      window.removeEventListener("online", ensureSocketConnected);
+      window.removeEventListener("pageshow", ensureSocketConnected);
+      document.removeEventListener("visibilitychange", ensureSocketConnected);
+    };
+  }, [socket]);
 
   useEffect(() => {
     setTimelineLoaded(false);
@@ -1438,6 +1534,7 @@ export function RoomClient({
     myParticipant && !myParticipant.consentAcceptedAt,
   );
   const actionsBlockedByConsent = needsConsent && !consentAccepted;
+  const socketReady = Boolean(socket && socketConnected && socket.connected);
   const isViewerInTherapistSoloPlay = Boolean(
     isTherapistSoloPlay && myParticipant?.role === "PLAYER",
   );
@@ -1457,7 +1554,8 @@ export function RoomClient({
     state?.lastMove &&
       myParticipant &&
       state.lastMove.participantId === myParticipant.id &&
-      !isViewerInTherapistSoloPlay,
+      !isViewerInTherapistSoloPlay &&
+      socketReady,
   );
   const isTherapist = myParticipant?.role === "THERAPIST";
   const isSinglePlayerWithTherapistObserver = Boolean(
@@ -1484,14 +1582,16 @@ export function RoomClient({
     myParticipant &&
       !isPlayerIntentionLocked &&
       !isViewerInTherapistSoloPlay &&
-      !actionsBlockedByConsent,
+      !actionsBlockedByConsent &&
+      socketReady,
   );
   const playerParticipantsCount = playerParticipants.length;
   const canReplicateIntentionToPlayers = Boolean(
     myParticipant?.role === "THERAPIST" &&
       !actionsBlockedByConsent &&
       !isTherapistSoloPlay &&
-      playerParticipantsCount > 1,
+      playerParticipantsCount > 1 &&
+      socketReady,
   );
   const shouldAutoSyncTherapistDropdownsByTurn = Boolean(
     isTherapist && !isTherapistSoloPlay && playerParticipantsCount > 1,
@@ -1503,7 +1603,8 @@ export function RoomClient({
       state?.room.status === "ACTIVE" &&
       !actionsBlockedByConsent &&
       !trialLimitReached &&
-      state?.room.therapistOnline,
+      state?.room.therapistOnline &&
+      socketReady,
   );
 
   const timelineParticipants = useMemo(() => {
@@ -2305,7 +2406,15 @@ export function RoomClient({
   );
 
   const handleRoll = () => {
-    if (!socket || rollInFlight) return;
+    if (!socket || !socket.connected || rollInFlight) {
+      if (!rollInFlight) {
+        pushToast(
+          "Sem conexão com a sala. Aguarde a reconexão para rolar o dado.",
+          "warning",
+        );
+      }
+      return;
+    }
 
     handleSelectActionPanel("house");
     setRollInFlight(true);
@@ -2358,10 +2467,14 @@ export function RoomClient({
       state.lastMove.participantId === myParticipant.id &&
       remainingDrawsInCurrentMove > 0 &&
       !actionsBlockedByConsent &&
-      !isViewerInTherapistSoloPlay,
+      !isViewerInTherapistSoloPlay &&
+      socketReady,
   );
   const canUseAiActions = Boolean(
-    myParticipant && !actionsBlockedByConsent && !isViewerInTherapistSoloPlay,
+    myParticipant &&
+      !actionsBlockedByConsent &&
+      !isViewerInTherapistSoloPlay &&
+      socketReady,
   );
   const shouldBlockTherapistAiTipActions = Boolean(
     isTherapist && isSinglePlayerWithTherapistObserver,
@@ -2450,7 +2563,13 @@ export function RoomClient({
   );
 
   const handleDraw = () => {
-    if (!socket || !state || !myParticipant) return;
+    if (!socket || !socket.connected || !state || !myParticipant) {
+      pushToast(
+        "Sem conexão com a sala. Aguarde a reconexão para tirar carta.",
+        "warning",
+      );
+      return;
+    }
     if (!state.lastMove || state.lastMove.participantId !== myParticipant.id) {
       pushToast(
         "Você precisa fazer uma jogada antes de tirar carta.",
@@ -2488,7 +2607,13 @@ export function RoomClient({
   };
 
   const handleSaveTherapy = () => {
-    if (!socket || !state?.lastMove) return;
+    if (!socket || !socket.connected || !state?.lastMove) {
+      pushToast(
+        "Sem conexão com a sala. Aguarde a reconexão para salvar o registro.",
+        "warning",
+      );
+      return;
+    }
 
     if (!myParticipant || state.lastMove.participantId !== myParticipant.id) {
       pushToast(
@@ -2582,7 +2707,13 @@ export function RoomClient({
       mode: "currentHouse" | "pathQuestion";
       question?: string;
     }) => {
-      if (!socket) return;
+      if (!socket || !socket.connected) {
+        pushToast(
+          "Sem conexão com a sala. Aguarde a reconexão para usar a IA.",
+          "warning",
+        );
+        return;
+      }
 
       const normalizedQuestion =
         typeof question === "string"
@@ -2736,7 +2867,13 @@ export function RoomClient({
   }, [therapistSummarySaving]);
 
   const closeRoom = useCallback(() => {
-    if (!socket) return;
+    if (!socket || !socket.connected) {
+      pushToast(
+        "Sem conexão com a sala. Aguarde a reconexão para encerrar.",
+        "warning",
+      );
+      return;
+    }
     socket.emit("room:close", {}, (resp: any) => {
       if (!resp?.ok) {
         showSocketError("Erro ao encerrar sala", resp);
@@ -2752,7 +2889,13 @@ export function RoomClient({
       allPlayers?: boolean;
       successMessage?: string;
     }) => {
-      if (!socket) return false;
+      if (!socket || !socket.connected) {
+        pushToast(
+          "Sem conexão com a sala. Aguarde a reconexão para gerar resumo.",
+          "warning",
+        );
+        return false;
+      }
 
       setFinalReportLoading(true);
       try {
@@ -3063,6 +3206,16 @@ export function RoomClient({
 
   const roomIsActive = state.room.status === "ACTIVE";
   const roomStatusLabel = roomIsActive ? "Ativa" : "Finalizada";
+  const connectionStatusLabel = socketReady
+    ? "Conectado"
+    : socketReconnecting
+      ? "Reconectando..."
+      : "Desconectado";
+  const connectionStatusColor = socketReady
+    ? "#6ad3b0"
+    : socketReconnecting
+      ? "#ffcf5a"
+      : "#ff6b6b";
   const currentRoomTutorialStep = roomTutorialSteps[roomTutorialStep] || null;
   const roomTutorialPopover = getRoomTutorialPopoverPosition(
     roomTutorialTargetRect,
@@ -3225,6 +3378,41 @@ export function RoomClient({
               Até iniciar:{" "}
               <strong>{indicatorState?.rollCountUntilStart || 0}</strong>
             </span>
+            <span
+              className="pill"
+              style={{
+                flex: "0 0 auto",
+                borderColor: socketReady
+                  ? "rgba(106, 211, 176, 0.6)"
+                  : socketReconnecting
+                    ? "rgba(255, 207, 90, 0.6)"
+                    : "rgba(255, 107, 107, 0.6)",
+                background: socketReady
+                  ? "rgba(106, 211, 176, 0.15)"
+                  : socketReconnecting
+                    ? "rgba(255, 207, 90, 0.15)"
+                    : "rgba(255, 107, 107, 0.15)",
+              }}
+              title={
+                socketConnectionMessage ||
+                "Status da conexão em tempo real com a sala."
+              }
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: connectionStatusColor,
+                  boxShadow: socketReady
+                    ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                    : socketReconnecting
+                      ? "0 0 0 3px rgba(255, 207, 90, 0.22)"
+                      : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+                }}
+              />
+              <strong>Conexão:</strong> {connectionStatusLabel}
+            </span>
             <span className="pill" style={{ flex: "0 0 auto" }}>
               <span
                 style={{
@@ -3345,6 +3533,10 @@ export function RoomClient({
           >
             {rollInFlight
               ? "Rolando..."
+              : !socketReady
+              ? socketReconnecting
+                ? "Reconectando..."
+                : "Sem conexão"
               : trialLimitReached
               ? "Trial bloqueada"
               : !state.room.therapistOnline
@@ -3364,7 +3556,9 @@ export function RoomClient({
                 })
               }
               disabled={
-                state.room.status !== "ACTIVE" || actionsBlockedByConsent
+                state.room.status !== "ACTIVE" ||
+                actionsBlockedByConsent ||
+                !socketReady
               }
               style={{ flex: "0 0 auto" }}
             >
@@ -3378,7 +3572,8 @@ export function RoomClient({
               disabled={
                 state.room.status !== "ACTIVE" ||
                 actionsBlockedByConsent ||
-                finalReportLoading
+                finalReportLoading ||
+                !socketReady
               }
               style={{ flex: "0 0 auto" }}
             >
@@ -3427,6 +3622,34 @@ export function RoomClient({
             </Link>
           
         </div>
+
+        {!socketReady && (
+          <div className="notice" style={{ display: "grid", gap: 6 }}>
+            <strong>
+              {socketReconnecting
+                ? "Reconectando com a sala..."
+                : "Você está desconectado da sala."}
+            </strong>
+            <span className="small-muted">
+              {socketConnectionMessage ||
+                "As ações da sessão ficam bloqueadas até a conexão voltar."}
+            </span>
+            {socket && !socket.connected && (
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setSocketReconnecting(true);
+                  setSocketConnectionMessage("Tentando reconectar com a sala...");
+                  socket.connect();
+                }}
+                disabled={socketReconnecting}
+                style={{ width: "fit-content" }}
+              >
+                {socketReconnecting ? "Reconectando..." : "Tentar reconectar"}
+              </button>
+            )}
+          </div>
+        )}
 
         {isTrialRoom && trialLimitReached && (
           <div className="notice" style={{ display: "grid", gap: 6 }}>
@@ -5754,7 +5977,7 @@ export function RoomClient({
                   <strong>Como a sessão funciona</strong>
                   <span className="small-muted">
                     A sala combina tabuleiro, cartas, registro terapêutico e
-                    apoio da IA. O objetivo não é "vencer", e sim ampliar
+                    apoio da IA. O objetivo não é &quot;vencer&quot;, e sim ampliar
                     consciência, reconhecer padrões e apoiar decisões concretas
                     para a vida real.
                   </span>
