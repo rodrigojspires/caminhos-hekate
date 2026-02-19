@@ -2508,27 +2508,45 @@ export function RoomClient({
     return grouped;
   }, [filteredDeckHistory]);
 
-  const currentMoveDeckGroup = useMemo(() => {
+  const currentDeckMove = useMemo(() => {
+    if (!deckDisplayParticipantId) return null;
+
+    if (
+      state?.lastMove &&
+      state.lastMove.participantId === deckDisplayParticipantId
+    ) {
+      return {
+        moveId: state.lastMove.id,
+        moveTurnNumber: state.lastMove.turnNumber,
+      };
+    }
+
     for (let index = deckHistoryByMove.length - 1; index >= 0; index -= 1) {
       const group = deckHistoryByMove[index];
-      if (group.moveId) return group;
+      if (group.moveId) {
+        return {
+          moveId: group.moveId,
+          moveTurnNumber: group.moveTurnNumber,
+        };
+      }
     }
+
     return null;
-  }, [deckHistoryByMove]);
+  }, [state?.lastMove, deckDisplayParticipantId, deckHistoryByMove]);
 
   const cardsDrawnInCurrentMove = useMemo(() => {
-    if (!currentMoveDeckGroup) return 0;
-    return currentMoveDeckGroup.draws.reduce((sum, draw) => {
+    if (!currentDeckMove?.moveId) return 0;
+    return filteredDeckHistory
+      .filter((draw) => draw.moveId === currentDeckMove.moveId)
+      .reduce((sum, draw) => {
       if (draw.cards.length > 0) return sum + draw.cards.length;
       if (draw.card) return sum + 1;
       return sum;
-    }, 0);
-  }, [currentMoveDeckGroup]);
+      }, 0);
+  }, [filteredDeckHistory, currentDeckMove]);
 
   const remainingDrawsInCurrentMove = Math.max(0, 3 - cardsDrawnInCurrentMove);
-  const hasOwnMoveForDeck = Boolean(
-    myPlayerState && myPlayerState.rollCountTotal > 0,
-  );
+  const hasOwnMoveForDeck = Boolean(currentDeckMove?.moveId);
   const canDrawCard =
     canInitiateDraw &&
     hasOwnMoveForDeck &&
@@ -2543,14 +2561,16 @@ export function RoomClient({
   }, [timelineMoves]);
 
   const currentMoveDeckCards = useMemo(() => {
-    if (!currentMoveDeckGroup) return [];
-    return currentMoveDeckGroup.draws.filter((draw) => Boolean(draw.card));
-  }, [currentMoveDeckGroup]);
+    if (!currentDeckMove?.moveId) return [];
+    return filteredDeckHistory.filter(
+      (draw) => draw.moveId === currentDeckMove.moveId && Boolean(draw.card),
+    );
+  }, [filteredDeckHistory, currentDeckMove]);
 
-  const currentMoveTurnNumber = currentMoveDeckGroup
-    ? currentMoveDeckGroup.moveTurnNumber ??
-      (currentMoveDeckGroup.moveId
-        ? timelineMoveTurnById.get(currentMoveDeckGroup.moveId) ?? null
+  const currentMoveTurnNumber = currentDeckMove
+    ? currentDeckMove.moveTurnNumber ??
+      (currentDeckMove.moveId
+        ? timelineMoveTurnById.get(currentDeckMove.moveId) ?? null
         : null)
     : null;
 
