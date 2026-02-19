@@ -1940,6 +1940,12 @@ export function DashboardClient() {
                 participantStats.participantId === currentUserParticipant.id,
             )
           : [];
+    const indicatorStatsByParticipantId = new Map(
+      room.stats.byParticipant.map((participantStats) => [
+        participantStats.participantId,
+        participantStats,
+      ]),
+    );
     const shouldShowNewChip =
       Boolean(room.isAutoCreatedFromCheckout) &&
       room.stats.rollsTotal === 0 &&
@@ -2042,53 +2048,24 @@ export function DashboardClient() {
           data-tour-dashboard={isTutorialPrimaryRoom ? "room-indicators" : undefined}
         >
           <div className="dashboard-room-indicators-row">
-            {indicatorStatsByParticipant.length === 0 ? (
-              <span className="small-muted">
-                Sem indicadores por jogador nesta sala.
+            <div
+              className="dashboard-room-pill-row"
+              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+            >
+              <span className="pill">Jogadas (sala): {room.stats.moves}</span>
+              <span className="pill">Rolagens (sala): {room.stats.rollsTotal}</span>
+              <span className="pill">
+                Até iniciar (sala): {room.stats.rollsUntilStart}
               </span>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {indicatorStatsByParticipant.map((participantStats) => (
-                  <div
-                    key={participantStats.participantId}
-                    className="notice"
-                    style={{
-                      display: "grid",
-                      gap: 6,
-                      borderColor:
-                        participantStats.role === "THERAPIST"
-                          ? "rgba(217, 164, 65, 0.45)"
-                          : "var(--border)",
-                    }}
-                  >
-                    <strong style={{ fontSize: 12 }}>
-                      {participantStats.participantName}
-                    </strong>
-                    <div
-                      className="dashboard-room-pill-row"
-                      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-                    >
-                      <span className="pill">Jogadas: {participantStats.moves}</span>
-                      <span className="pill">
-                        Rolagens: {participantStats.rollsTotal}
-                      </span>
-                      <span className="pill">
-                        Até iniciar: {participantStats.rollsUntilStart}
-                      </span>
-                      <span className="pill">
-                        Registros: {participantStats.therapyEntries}
-                      </span>
-                      <span className="pill">
-                        Cartas: {participantStats.cardDraws}
-                      </span>
-                      <span className="pill">
-                        Relatórios IA: {participantStats.aiReports}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+              <span className="pill">
+                Registros (sala): {room.stats.therapyEntries}
+              </span>
+              <span className="pill">Cartas (sala): {room.stats.cardDraws}</span>
+              <span className="pill">Relatórios IA (sala): {room.stats.aiReports}</span>
+              <span className="small-muted">
+                Por jogador: aba Participantes.
+              </span>
+            </div>
           </div>
           <button
             className="btn-secondary dashboard-room-expand-btn"
@@ -2327,6 +2304,8 @@ export function DashboardClient() {
                     const isTherapist = participant.role === "THERAPIST";
                     const canEditParticipantSummary =
                       room.viewerRole === "THERAPIST";
+                    const participantStats =
+                      indicatorStatsByParticipantId.get(participant.id) || null;
                     const participantSummaryValue =
                       therapistSummaries[participant.id] ??
                       participant.therapistSummary ??
@@ -2406,6 +2385,32 @@ export function DashboardClient() {
                             </button>
                           )}
                         </div>
+
+                        {participantStats ? (
+                          <div
+                            className="dashboard-room-pill-row"
+                            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                          >
+                            <span className="pill">Jogadas: {participantStats.moves}</span>
+                            <span className="pill">
+                              Rolagens: {participantStats.rollsTotal}
+                            </span>
+                            <span className="pill">
+                              Até iniciar: {participantStats.rollsUntilStart}
+                            </span>
+                            <span className="pill">
+                              Registros: {participantStats.therapyEntries}
+                            </span>
+                            <span className="pill">Cartas: {participantStats.cardDraws}</span>
+                            <span className="pill">
+                              Relatórios IA: {participantStats.aiReports}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="small-muted">
+                            Sem indicadores para este participante.
+                          </span>
+                        )}
 
                         {canEditParticipantSummary && (
                           <div className="notice" style={{ display: "grid", gap: 8 }}>
