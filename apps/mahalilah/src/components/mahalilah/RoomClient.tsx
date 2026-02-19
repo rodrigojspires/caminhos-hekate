@@ -3420,14 +3420,18 @@ export function RoomClient({
                     {tokens.map((token, tokenIndex) => {
                       const isCurrentTurnToken =
                         token.participant.id === currentParticipant?.id;
+                      const participantLabel =
+                        token.participant.user.name ||
+                        token.participant.user.email;
+                      const participantInitial = participantLabel
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase();
 
                       return (
                         <span
                           key={`${token.participant.id}-${tokenIndex}`}
-                          title={
-                            token.participant.user.name ||
-                            token.participant.user.email
-                          }
+                          title={participantLabel}
                           style={{
                             width: 14,
                             height: 14,
@@ -3443,9 +3447,18 @@ export function RoomClient({
                               : "none",
                             transform: "translateZ(0)",
                             background: token.color,
-                            display: "inline-block",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 8,
+                            lineHeight: 1,
+                            fontWeight: 800,
+                            color: "#ffffff",
+                            textShadow: "0 1px 1px rgba(0,0,0,0.65)",
                           }}
-                        />
+                        >
+                          {participantInitial}
+                        </span>
                       );
                     })}
                   </div>
