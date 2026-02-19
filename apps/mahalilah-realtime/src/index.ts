@@ -2236,6 +2236,14 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
         ensureNotViewerInTherapistSoloMode(room, participant);
+        const lastMove = await prisma.mahaLilahMove.findFirst({
+          where: { roomId: room.id, participantId: participant.id },
+          orderBy: [{ turnNumber: "desc" }, { createdAt: "desc" }],
+          select: { turnNumber: true, toPos: true },
+        });
+        if (!lastMove) {
+          throw new Error("Faça ao menos uma jogada antes de pedir ajuda da IA.");
+        }
 
         const { tipsLimit } = await getRoomAiLimits(room);
 
@@ -2279,11 +2287,6 @@ io.on("connection", (socket: AuthedSocket) => {
         });
 
         const content = await callOpenAI(prompt);
-        const lastMove = await prisma.mahaLilahMove.findFirst({
-          where: { roomId: room.id, participantId: participant.id },
-          orderBy: { createdAt: "desc" },
-          select: { turnNumber: true, toPos: true },
-        });
         const houseNumber =
           context.currentHouse &&
           typeof context.currentHouse.number === "number"

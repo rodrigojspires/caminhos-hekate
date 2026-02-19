@@ -2470,11 +2470,16 @@ export function RoomClient({
       !isViewerInTherapistSoloPlay &&
       socketReady,
   );
+  const hasOwnMoveForAiTip = Boolean(
+    myPlayerState && myPlayerState.rollCountTotal > 0,
+  );
   const shouldBlockTherapistAiTipActions = Boolean(
     isTherapist && isSinglePlayerWithTherapistObserver,
   );
   const canUseAiTipActions = Boolean(
-    canUseAiActions && !shouldBlockTherapistAiTipActions,
+    canUseAiActions &&
+      hasOwnMoveForAiTip &&
+      !shouldBlockTherapistAiTipActions,
   );
 
   const filteredDeckHistory = useMemo(() => {
@@ -2789,6 +2794,13 @@ export function RoomClient({
         );
         return;
       }
+      if (!hasOwnMoveForAiTip) {
+        pushToast(
+          "Faça ao menos uma jogada antes de pedir ajuda da IA.",
+          "warning",
+        );
+        return;
+      }
 
       const normalizedQuestion =
         typeof question === "string"
@@ -2856,7 +2868,7 @@ export function RoomClient({
         },
       );
     },
-    [socket, pushToast, showSocketError, loadTimelineData],
+    [socket, pushToast, hasOwnMoveForAiTip, showSocketError, loadTimelineData],
   );
 
   const openTherapistSummaryModal = useCallback(
@@ -4498,6 +4510,11 @@ export function RoomClient({
                   Neste modo, as ajudas da IA devem ser solicitadas pelo jogador.
                 </span>
               )}
+              {!hasOwnMoveForAiTip && canUseAiActions && (
+                <span className="small-muted">
+                  Faça ao menos uma jogada para liberar as ajudas da IA.
+                </span>
+              )}
               <span className="small-muted">
                 Ajudas usadas:{" "}
                 <strong>
@@ -6062,7 +6079,7 @@ export function RoomClient({
                   className="btn-secondary"
                   onClick={handleRestartRoomTutorial}
                 >
-                  Refazer tutorial (onboarding)
+                  Refazer tutorial
                 </button>
                 <button
                   className="btn-secondary"
