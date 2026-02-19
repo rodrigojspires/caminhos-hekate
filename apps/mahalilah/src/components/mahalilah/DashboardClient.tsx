@@ -22,6 +22,18 @@ type RoomParticipant = {
   user: { id: string; name: string | null; email: string };
 };
 
+type RoomParticipantStats = {
+  participantId: string;
+  participantName: string;
+  role: string;
+  moves: number;
+  rollsTotal: number;
+  rollsUntilStart: number;
+  therapyEntries: number;
+  cardDraws: number;
+  aiReports: number;
+};
+
 type RoomStats = {
   moves: number;
   therapyEntries: number;
@@ -29,7 +41,7 @@ type RoomStats = {
   aiReports: number;
   rollsTotal: number;
   rollsUntilStart: number;
-  rollsParticipantName: string | null;
+  byParticipant: RoomParticipantStats[];
 };
 
 type Room = {
@@ -1883,14 +1895,20 @@ export function DashboardClient() {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     });
+    const indicatorStatsByParticipant =
+      room.viewerRole === "THERAPIST"
+        ? room.stats.byParticipant
+        : currentUserParticipant
+          ? room.stats.byParticipant.filter(
+              (participantStats) =>
+                participantStats.participantId === currentUserParticipant.id,
+            )
+          : [];
     const shouldShowNewChip =
       Boolean(room.isAutoCreatedFromCheckout) &&
       room.stats.rollsTotal === 0 &&
       room.stats.moves === 0;
     const isDeletingRoom = Boolean(deletingRoomIds[room.id]);
-    const rollsParticipantSuffix = room.stats.rollsParticipantName
-      ? ` (${room.stats.rollsParticipantName})`
-      : "";
     const roomModeLabel = room.therapistSoloPlay
       ? "Terapeuta joga sozinho (demais visualizam)"
       : room.therapistPlays
@@ -1988,21 +2006,53 @@ export function DashboardClient() {
           data-tour-dashboard={isTutorialPrimaryRoom ? "room-indicators" : undefined}
         >
           <div className="dashboard-room-indicators-row">
-            <div
-              className="dashboard-room-pill-row"
-              style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-            >
-              <span className="pill">Jogadas: {room.stats.moves}</span>
-              <span className="pill">
-                Rolagens{rollsParticipantSuffix}: {room.stats.rollsTotal}
+            {indicatorStatsByParticipant.length === 0 ? (
+              <span className="small-muted">
+                Sem indicadores por jogador nesta sala.
               </span>
-              <span className="pill">
-                Até iniciar{rollsParticipantSuffix}: {room.stats.rollsUntilStart}
-              </span>
-              <span className="pill">Registros: {room.stats.therapyEntries}</span>
-              <span className="pill">Cartas: {room.stats.cardDraws}</span>
-              <span className="pill">Relatórios IA: {room.stats.aiReports}</span>
-            </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {indicatorStatsByParticipant.map((participantStats) => (
+                  <div
+                    key={participantStats.participantId}
+                    className="notice"
+                    style={{
+                      display: "grid",
+                      gap: 6,
+                      borderColor:
+                        participantStats.role === "THERAPIST"
+                          ? "rgba(217, 164, 65, 0.45)"
+                          : "var(--border)",
+                    }}
+                  >
+                    <strong style={{ fontSize: 12 }}>
+                      {participantStats.participantName}
+                    </strong>
+                    <div
+                      className="dashboard-room-pill-row"
+                      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                    >
+                      <span className="pill">Jogadas: {participantStats.moves}</span>
+                      <span className="pill">
+                        Rolagens: {participantStats.rollsTotal}
+                      </span>
+                      <span className="pill">
+                        Até iniciar: {participantStats.rollsUntilStart}
+                      </span>
+                      <span className="pill">
+                        Registros: {participantStats.therapyEntries}
+                      </span>
+                      <span className="pill">
+                        Cartas: {participantStats.cardDraws}
+                      </span>
+                      <span className="pill">
+                        Relatórios IA: {participantStats.aiReports}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <button
             className="btn-secondary dashboard-room-expand-btn"

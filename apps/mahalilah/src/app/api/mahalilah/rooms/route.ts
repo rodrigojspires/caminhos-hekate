@@ -406,11 +406,6 @@ export async function GET(request: Request) {
               user: { select: { id: true, name: true, email: true } }
             }
           },
-          gameState: {
-            select: {
-              currentTurnIndex: true
-            }
-          },
           playerStates: true,
           _count: {
             select: {
@@ -433,6 +428,79 @@ export async function GET(request: Request) {
       }),
       findActiveQuota(session.user.id, planSettingsByType)
     ])
+
+    const roomIds = rooms.map((room) => room.id)
+    const roomIdsFilter = roomIds.length > 0 ? { in: roomIds } : undefined
+
+    const [
+      movesByRoomParticipant,
+      therapyEntriesByRoomParticipant,
+      cardDrawsByRoomParticipant,
+      aiReportsByRoomParticipant
+    ] = roomIdsFilter
+      ? await Promise.all([
+          prisma.mahaLilahMove.groupBy({
+            by: ['roomId', 'participantId'],
+            where: { roomId: roomIdsFilter },
+            _count: { _all: true }
+          }),
+          prisma.mahaLilahTherapyEntry.groupBy({
+            by: ['roomId', 'participantId'],
+            where: { roomId: roomIdsFilter },
+            _count: { _all: true }
+          }),
+          prisma.mahaLilahCardDraw.groupBy({
+            by: ['roomId', 'drawnByParticipantId'],
+            where: {
+              roomId: roomIdsFilter,
+              drawnByParticipantId: { not: null }
+            },
+            _count: { _all: true }
+          }),
+          prisma.mahaLilahAiReport.groupBy({
+            by: ['roomId', 'participantId'],
+            where: {
+              roomId: roomIdsFilter,
+              participantId: { not: null }
+            },
+            _count: { _all: true }
+          })
+        ])
+      : [[], [], [], []]
+
+    const movesCountByRoomParticipant = new Map<string, number>()
+    movesByRoomParticipant.forEach((item) => {
+      movesCountByRoomParticipant.set(
+        `${item.roomId}:${item.participantId}`,
+        item._count._all
+      )
+    })
+
+    const therapyEntriesCountByRoomParticipant = new Map<string, number>()
+    therapyEntriesByRoomParticipant.forEach((item) => {
+      therapyEntriesCountByRoomParticipant.set(
+        `${item.roomId}:${item.participantId}`,
+        item._count._all
+      )
+    })
+
+    const cardDrawsCountByRoomParticipant = new Map<string, number>()
+    cardDrawsByRoomParticipant.forEach((item) => {
+      if (!item.drawnByParticipantId) return
+      cardDrawsCountByRoomParticipant.set(
+        `${item.roomId}:${item.drawnByParticipantId}`,
+        item._count._all
+      )
+    })
+
+    const aiReportsCountByRoomParticipant = new Map<string, number>()
+    aiReportsByRoomParticipant.forEach((item) => {
+      if (!item.participantId) return
+      aiReportsCountByRoomParticipant.set(
+        `${item.roomId}:${item.participantId}`,
+        item._count._all
+      )
+    })
 
     const catalogLimitedPlanMaxRooms =
       planSettingsByType.get(MahaLilahPlanType.SUBSCRIPTION_LIMITED)
@@ -474,33 +542,33 @@ export async function GET(request: Request) {
         const therapistParticipant = room.participants.find(
           (participant) => participant.role === MahaLilahParticipantRole.THERAPIST
         )
-        const turnParticipants = room.participants.filter(
-          (participant) => participant.role === MahaLilahParticipantRole.PLAYER
-        )
-        if (room.therapistPlays && therapistParticipant) {
-          turnParticipants.push(therapistParticipant)
-        }
-        const currentTurnParticipant =
-          turnParticipants.length > 0
-            ? turnParticipants[
-                ((room.gameState?.currentTurnIndex ?? 0) % turnParticipants.length +
-                  turnParticipants.length) %
-                  turnParticipants.length
-              ]
-            : null
-        const statsParticipant =
-          viewerRole === MahaLilahParticipantRole.THERAPIST
-            ? currentTurnParticipant || viewerParticipant || null
-            : viewerParticipant || null
-        const statsState = statsParticipant
-          ? room.playerStates.find(
-              (state) => state.participantId === statsParticipant.id
+        const statsByParticipant = room.participants.map((participant) => {
+          const playerState =
+            room.playerStates.find(
+              (state) => state.participantId === participant.id
             ) || null
-          : null
-        const rollsTotal = statsState?.rollCountTotal || 0
-        const rollsUntilStart = statsState?.rollCountUntilStart || 0
-        const rollsParticipantName =
-          statsParticipant?.user.name || statsParticipant?.user.email || null
+          const mapKey = `${room.id}:${participant.id}`
+          return {
+            participantId: participant.id,
+            participantName: participant.user.name || participant.user.email,
+            role: participant.role,
+            moves: movesCountByRoomParticipant.get(mapKey) || 0,
+            rollsTotal: playerState?.rollCountTotal || 0,
+            rollsUntilStart: playerState?.rollCountUntilStart || 0,
+            therapyEntries:
+              therapyEntriesCountByRoomParticipant.get(mapKey) || 0,
+            cardDraws: cardDrawsCountByRoomParticipant.get(mapKey) || 0,
+            aiReports: aiReportsCountByRoomParticipant.get(mapKey) || 0
+          }
+        })
+        const rollsTotal = statsByParticipant.reduce(
+          (sum, participantStats) => sum + participantStats.rollsTotal,
+          0
+        )
+        const rollsUntilStart = statsByParticipant.reduce(
+          (sum, participantStats) => sum + participantStats.rollsUntilStart,
+          0
+        )
         const orderMetadata = (room.order?.metadata as any) || {}
         const autoRoomId = orderMetadata?.mahalilah?.autoRoomId
         const isAutoCreatedFromCheckout =
@@ -548,7 +616,7 @@ export async function GET(request: Request) {
             aiReports: room._count.aiReports,
             rollsTotal,
             rollsUntilStart,
-            rollsParticipantName
+            byParticipant: statsByParticipant
           },
           startHouse: RULES.start.house
         }
