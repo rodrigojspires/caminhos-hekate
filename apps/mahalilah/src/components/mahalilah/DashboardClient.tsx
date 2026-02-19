@@ -964,6 +964,9 @@ export function DashboardClient() {
   const [activeDetailTabs, setActiveDetailTabs] = useState<
     Record<string, RoomDetailsTab>
   >({});
+  const [participantTabFilters, setParticipantTabFilters] = useState<
+    Record<string, string>
+  >({});
   const [timelineParticipantFilters, setTimelineParticipantFilters] = useState<
     Record<string, string>
   >({});
@@ -1847,6 +1850,18 @@ export function DashboardClient() {
       : currentUserParticipant
         ? [currentUserParticipant]
         : [];
+    const selectedParticipantTabId = participantTabFilters[room.id] || "";
+    const hasSelectedParticipantTab = visibleParticipants.some(
+      (participant) => participant.id === selectedParticipantTabId,
+    );
+    const effectiveParticipantTabId = hasSelectedParticipantTab
+      ? selectedParticipantTabId
+      : visibleParticipants[0]?.id || "";
+    const participantsInCurrentTab = effectiveParticipantTabId
+      ? visibleParticipants.filter(
+          (participant) => participant.id === effectiveParticipantTabId,
+        )
+      : visibleParticipants;
 
     const filteredMoves = (roomDetails?.moves || []).filter((move) =>
       effectiveSelectedParticipantId
@@ -2299,8 +2314,36 @@ export function DashboardClient() {
             {activeTab === "participants" && (
               <div className="grid" style={{ gap: 10 }}>
                 <strong>Participantes</strong>
+                {visibleParticipants.length > 1 && (
+                  <div
+                    style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                    role="tablist"
+                    aria-label="Selecionar participante"
+                  >
+                    {visibleParticipants.map((participant) => {
+                      const isActive = participant.id === effectiveParticipantTabId;
+                      return (
+                        <button
+                          key={`participant-tab-${participant.id}`}
+                          role="tab"
+                          aria-selected={isActive}
+                          className={isActive ? "btn-primary" : "btn-secondary"}
+                          onClick={() =>
+                            setParticipantTabFilters((prev) => ({
+                              ...prev,
+                              [room.id]: participant.id,
+                            }))
+                          }
+                          style={{ padding: "6px 10px" }}
+                        >
+                          {participant.user.name || participant.user.email}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div style={{ display: "grid", gap: 6 }}>
-                  {visibleParticipants.map((participant) => {
+                  {participantsInCurrentTab.map((participant) => {
                     const isTherapist = participant.role === "THERAPIST";
                     const canEditParticipantSummary =
                       room.viewerRole === "THERAPIST";
