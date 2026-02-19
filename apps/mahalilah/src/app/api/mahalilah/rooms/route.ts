@@ -451,18 +451,12 @@ export async function GET(request: Request) {
           }),
           prisma.mahaLilahCardDraw.groupBy({
             by: ['roomId', 'drawnByParticipantId'],
-            where: {
-              roomId: roomIdsFilter,
-              drawnByParticipantId: { not: null }
-            },
+            where: { roomId: roomIdsFilter },
             _count: { _all: true }
           }),
           prisma.mahaLilahAiReport.groupBy({
             by: ['roomId', 'participantId'],
-            where: {
-              roomId: roomIdsFilter,
-              participantId: { not: null }
-            },
+            where: { roomId: roomIdsFilter },
             _count: { _all: true }
           })
         ])
