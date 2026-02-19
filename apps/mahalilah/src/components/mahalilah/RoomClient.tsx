@@ -1560,7 +1560,10 @@ export function RoomClient({
     myPlayerState && myPlayerState.rollCountTotal > 0,
   );
   const canSaveTherapy =
-    canLogTherapy && hasOwnMoveForTherapy && !actionsBlockedByConsent;
+    canLogTherapy &&
+    hasOwnMoveForTherapy &&
+    state?.room.status === "ACTIVE" &&
+    !actionsBlockedByConsent;
   const isTherapist = myParticipant?.role === "THERAPIST";
   const isSinglePlayerWithTherapistObserver = Boolean(
     !isTherapistSoloPlay &&
@@ -1944,33 +1947,7 @@ export function RoomClient({
     return reportsByParticipantId;
   }, [timelineReports]);
 
-  const finalReportParticipants = useMemo(() => {
-    if (!state?.participants || !myParticipant) return [];
-
-    if (isTherapistSoloPlay) {
-      const therapistOnly = state.participants.filter(
-        (participant) => participant.role === "THERAPIST",
-      );
-      return therapistOnly;
-    }
-
-    const players = state.participants.filter(
-      (participant) => participant.role === "PLAYER",
-    );
-
-    if (isTherapist) {
-      if (players.length > 0) return players;
-      return [myParticipant];
-    }
-
-    if (myParticipant.role === "PLAYER") {
-      return players.filter((participant) => participant.id === myParticipant.id);
-    }
-
-    return [myParticipant];
-  }, [state?.participants, myParticipant, isTherapist, isTherapistSoloPlay]);
-
-  const finalReportPromptTargets = useMemo(() => {
+  const finalReportEligibleParticipants = useMemo(() => {
     if (!state?.participants) return [];
 
     if (isTherapistSoloPlay) {
@@ -1979,16 +1956,42 @@ export function RoomClient({
       );
     }
 
-    const players = state.participants.filter(
+    if (therapistPlaysInCurrentRoom) {
+      return state.participants;
+    }
+
+    return state.participants.filter(
       (participant) => participant.role === "PLAYER",
     );
-    if (players.length > 0) return players;
+  }, [state?.participants, isTherapistSoloPlay, therapistPlaysInCurrentRoom]);
 
-    const therapist = state.participants.find(
+  const finalReportParticipants = useMemo(() => {
+    if (!myParticipant) return [];
+
+    if (isTherapist) {
+      if (finalReportEligibleParticipants.length > 0)
+        return finalReportEligibleParticipants;
+      return [myParticipant];
+    }
+
+    if (myParticipant.role === "PLAYER") {
+      return finalReportEligibleParticipants.filter(
+        (participant) => participant.id === myParticipant.id,
+      );
+    }
+
+    return [myParticipant];
+  }, [myParticipant, isTherapist, finalReportEligibleParticipants]);
+
+  const finalReportPromptTargets = useMemo(() => {
+    if (finalReportEligibleParticipants.length > 0)
+      return finalReportEligibleParticipants;
+
+    const therapist = state?.participants?.find(
       (participant) => participant.role === "THERAPIST",
     );
     return therapist ? [therapist] : [];
-  }, [state?.participants, isTherapistSoloPlay]);
+  }, [finalReportEligibleParticipants, state?.participants]);
 
   const finalReportPromptTargetIds = useMemo(
     () => new Set(finalReportPromptTargets.map((participant) => participant.id)),
@@ -2658,6 +2661,14 @@ export function RoomClient({
     if (!socket || !socket.connected || !myParticipant) {
       pushToast(
         "Sem conexão com a sala. Aguarde a reconexão para salvar o registro.",
+        "warning",
+      );
+      return;
+    }
+
+    if (state?.room.status !== "ACTIVE") {
+      pushToast(
+        "A sala está encerrada. Não é possível salvar novos registros.",
         "warning",
       );
       return;
@@ -4364,6 +4375,10 @@ export function RoomClient({
               ) : !socketReady ? (
                 <span className="small-muted">
                   Aguardando reconexão para salvar o registro.
+                </span>
+              ) : state.room.status !== "ACTIVE" ? (
+                <span className="small-muted">
+                  Sala encerrada. Novos registros terapêuticos estão bloqueados.
                 </span>
               ) : !hasOwnMoveForTherapy ? (
                 <span className="small-muted">

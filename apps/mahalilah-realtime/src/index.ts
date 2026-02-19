@@ -2024,9 +2024,10 @@ io.on("connection", (socket: AuthedSocket) => {
         ensureConsentAccepted(participant);
         const room = await prisma.mahaLilahRoom.findUnique({
           where: { id: socket.data.roomId },
-          select: { therapistSoloPlay: true },
+          select: { status: true, therapistSoloPlay: true },
         });
         if (!room) throw new Error("Sala não encontrada");
+        if (room.status !== "ACTIVE") throw new Error("Sala não está ativa");
         ensureNotViewerInTherapistSoloMode(room, participant);
 
         let move = null as Awaited<
@@ -2434,16 +2435,13 @@ io.on("connection", (socket: AuthedSocket) => {
         }
         ensureConsentAccepted(therapist);
 
+        const turnParticipants = getTurnParticipants(
+          room.participants,
+          room.therapistPlays,
+          room.therapistSoloPlay,
+        );
         let participantIds = Array.from(
-          new Set(
-            room.participants
-              .filter((participant) =>
-                room.therapistSoloPlay
-                  ? participant.role === "THERAPIST"
-                  : participant.role !== "THERAPIST",
-              )
-              .map((participant) => participant.id),
-          ),
+          new Set(turnParticipants.map((participant) => participant.id)),
         );
 
         // Trial com somente terapeuta (ou sala sem players elegiveis):
