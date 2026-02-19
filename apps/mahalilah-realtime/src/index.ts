@@ -1,5 +1,5 @@
 import { createServer } from "http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import path from "path";
@@ -89,25 +89,27 @@ const AI_TIP_QUESTION_MAX_LENGTH = Number(
 const AI_OUT_OF_SCOPE_MESSAGE =
   "Posso ajudar apenas com questões do Maha Lilah e da sessão em andamento. Reformule sua pergunta com foco no jogo atual.";
 
+type SocketUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  role?: string | null;
+};
+
+type SocketData = {
+  user?: SocketUser;
+  roomId?: string;
+};
+
 const httpServer = createServer();
-const io = new Server(httpServer, {
+const io = new Server<any, any, any, SocketData>(httpServer, {
   cors: {
     origin: CLIENT_URLS,
     credentials: true,
   },
 });
 
-type AuthedSocket = Parameters<typeof io.on>[1] & {
-  data: {
-    user?: {
-      id: string;
-      email: string;
-      name?: string | null;
-      role?: string | null;
-    };
-    roomId?: string;
-  };
-};
+type AuthedSocket = Socket<any, any, any, SocketData>;
 
 const actionCooldowns = new Map<string, number>();
 const roomUserConnections = new Map<string, Map<string, number>>();
@@ -228,6 +230,12 @@ type ClaimUserSessionResult =
       existingSocketId: string | null;
     };
 
+type ForceClaimUserSessionResult = {
+  replacedRoomId: string | null;
+  replacedSocketId: string | null;
+  replacedInstanceId: string | null;
+};
+
 async function claimUserActiveSession(
   userId: string,
   roomId: string,
@@ -291,6 +299,61 @@ async function claimUserActiveSession(
     ok: false,
     existingRoomId: existingRoomIdRaw ? String(existingRoomIdRaw) : null,
     existingSocketId: existingSocketIdRaw ? String(existingSocketIdRaw) : null,
+  };
+}
+
+async function forceClaimUserActiveSession(
+  userId: string,
+  roomId: string,
+  socketId: string,
+): Promise<ForceClaimUserSessionResult> {
+  await ensureRedisConnected();
+  const key = buildUserActiveSessionKey(userId);
+  const raw = await redis.eval(
+    `
+      local key = KEYS[1]
+      local socketId = ARGV[1]
+      local roomId = ARGV[2]
+      local instanceId = ARGV[3]
+      local updatedAt = ARGV[4]
+      local ttlMs = tonumber(ARGV[5])
+
+      local existingSocketId = redis.call('HGET', key, 'socketId') or ''
+      local existingRoomId = redis.call('HGET', key, 'roomId') or ''
+      local existingInstanceId = redis.call('HGET', key, 'instanceId') or ''
+
+      redis.call('HSET', key,
+        'socketId', socketId,
+        'roomId', roomId,
+        'instanceId', instanceId,
+        'updatedAt', updatedAt
+      )
+      redis.call('PEXPIRE', key, ttlMs)
+
+      return {existingRoomId, existingSocketId, existingInstanceId}
+    `,
+    1,
+    key,
+    socketId,
+    roomId,
+    REALTIME_INSTANCE_ID,
+    new Date().toISOString(),
+    String(USER_SESSION_TTL_MS),
+  );
+
+  const normalized = Array.isArray(raw) ? raw : [raw];
+  const replacedRoomIdRaw = normalized[0];
+  const replacedSocketIdRaw = normalized[1];
+  const replacedInstanceIdRaw = normalized[2];
+
+  return {
+    replacedRoomId: replacedRoomIdRaw ? String(replacedRoomIdRaw) : null,
+    replacedSocketId: replacedSocketIdRaw
+      ? String(replacedSocketIdRaw)
+      : null,
+    replacedInstanceId: replacedInstanceIdRaw
+      ? String(replacedInstanceIdRaw)
+      : null,
   };
 }
 
@@ -1492,8 +1555,14 @@ io.on("connection", (socket: AuthedSocket) => {
 
   socket.on(
     "room:join",
-    async ({ code }: { code: string }, callback?: (payload: any) => void) => {
+    async (
+      payload: { code: string; forceTakeover?: boolean },
+      callback?: (payload: any) => void,
+    ) => {
       try {
+        const code = payload?.code;
+        const forceTakeover = Boolean(payload?.forceTakeover);
+        if (!code) throw new Error("Código da sala não informado");
         const currentUser = socket.data.user;
         if (!currentUser) throw new Error("Usuário não autenticado");
         const userId = currentUser.id;
@@ -1515,7 +1584,18 @@ io.on("connection", (socket: AuthedSocket) => {
           );
         }
 
-        const claimed = await claimUserActiveSession(userId, room.id, socket.id);
+        let claimed = await claimUserActiveSession(userId, room.id, socket.id);
+        let forcedClaim: ForceClaimUserSessionResult | null = null;
+
+        if (!claimed.ok && forceTakeover) {
+          forcedClaim = await forceClaimUserActiveSession(
+            userId,
+            room.id,
+            socket.id,
+          );
+          claimed = { ok: true };
+        }
+
         if (!claimed.ok) {
           const sameRoom = claimed.existingRoomId === room.id;
           throw buildSocketError(
@@ -1524,6 +1604,25 @@ io.on("connection", (socket: AuthedSocket) => {
               : "Você já está conectado em outra sala. Feche a sessão ativa antes de entrar em uma nova sala.",
             "CONCURRENT_ROOM_SESSION",
           );
+        }
+
+        if (
+          forcedClaim?.replacedSocketId &&
+          forcedClaim.replacedSocketId !== socket.id
+        ) {
+          const replacedSocket = io.sockets.sockets.get(
+            forcedClaim.replacedSocketId,
+          );
+          if (replacedSocket) {
+            replacedSocket.emit("session:terminated", {
+              code: "FORCED_TAKEOVER",
+              message:
+                "Sua sessão foi encerrada porque esta conta entrou na sala em outro dispositivo.",
+            });
+            setTimeout(() => {
+              replacedSocket.disconnect(true);
+            }, 50);
+          }
         }
 
         try {

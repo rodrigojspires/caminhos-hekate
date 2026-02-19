@@ -789,6 +789,8 @@ export function RoomClient({ code }: { code: string }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [state, setState] = useState<RoomState | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [fatalErrorCode, setFatalErrorCode] = useState<string | null>(null);
+  const [forceTakeoverLoading, setForceTakeoverLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedHouseNumber, setSelectedHouseNumber] = useState(68);
   const [activePanel, setActivePanel] = useState<ActionPanel>("house");
@@ -903,6 +905,56 @@ export function RoomClient({ code }: { code: string }) {
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  const joinRoom = useCallback(
+    (
+      targetSocket: Socket,
+      options?: {
+        forceTakeover?: boolean;
+        onSettled?: () => void;
+      },
+    ) => {
+      setLoading(true);
+      setFatalError(null);
+      setFatalErrorCode(null);
+
+      targetSocket.emit(
+        "room:join",
+        {
+          code,
+          forceTakeover: Boolean(options?.forceTakeover),
+        },
+        (resp: any) => {
+          options?.onSettled?.();
+          if (!resp?.ok) {
+            const message = resp?.error || "Não foi possível entrar na sala.";
+            setFatalError(message);
+            setFatalErrorCode(
+              typeof resp?.code === "string" ? resp.code : null,
+            );
+            setLoading(false);
+            pushToast(message, "error");
+            return;
+          }
+
+          setState(resp.state);
+          setLoading(false);
+          setFatalError(null);
+          setFatalErrorCode(null);
+        },
+      );
+    },
+    [code, pushToast],
+  );
+
+  const handleForceTakeoverJoin = useCallback(() => {
+    if (!socket) return;
+    setForceTakeoverLoading(true);
+    joinRoom(socket, {
+      forceTakeover: true,
+      onSettled: () => setForceTakeoverLoading(false),
+    });
+  }, [socket, joinRoom]);
 
   const clearDiceTimers = useCallback(() => {
     if (diceSpinIntervalRef.current !== null) {
@@ -1032,11 +1084,13 @@ export function RoomClient({ code }: { code: string }) {
     const connect = async () => {
       setLoading(true);
       setFatalError(null);
+      setFatalErrorCode(null);
 
       const res = await fetch("/api/mahalilah/realtime/token");
       if (!res.ok) {
         if (!cancelled) {
           setFatalError("Não foi possível autenticar no realtime.");
+          setFatalErrorCode(null);
           setLoading(false);
           pushToast("Não foi possível autenticar no realtime.", "error");
         }
@@ -1063,7 +1117,23 @@ export function RoomClient({ code }: { code: string }) {
           setState(payload);
           setLoading(false);
           setFatalError(null);
+          setFatalErrorCode(null);
         }
+      });
+
+      s.on("session:terminated", (payload: any) => {
+        if (cancelled) return;
+        const message =
+          typeof payload?.message === "string" && payload.message.trim()
+            ? payload.message
+            : "Sua sessão foi encerrada porque a conta entrou na sala em outro dispositivo.";
+        setState(null);
+        setFatalError(message);
+        setFatalErrorCode(
+          typeof payload?.code === "string" ? payload.code : "SESSION_TERMINATED",
+        );
+        setLoading(false);
+        pushToast(message, "error");
       });
 
       s.on(
@@ -1101,21 +1171,8 @@ export function RoomClient({ code }: { code: string }) {
         },
       );
 
-      s.emit("room:join", { code }, (resp: any) => {
-        if (cancelled) return;
-        if (!resp?.ok) {
-          const message = resp?.error || "Não foi possível entrar na sala.";
-          setFatalError(message);
-          setLoading(false);
-          pushToast(message, "error");
-          return;
-        }
-        setState(resp.state);
-        setLoading(false);
-        setFatalError(null);
-      });
-
       setSocket(s);
+      joinRoom(s);
     };
 
     connect();
@@ -1127,7 +1184,7 @@ export function RoomClient({ code }: { code: string }) {
         currentSocket.disconnect();
       }
     };
-  }, [session?.user?.id, code, pushToast]);
+  }, [session?.user?.id, pushToast, joinRoom]);
 
   useEffect(() => {
     if (!state?.lastMove) return;
@@ -2795,7 +2852,24 @@ export function RoomClient({ code }: { code: string }) {
   }
 
   if (!state) {
-    return <div className="card">{fatalError || "Sala indisponível."}</div>;
+    const canForceTakeover =
+      fatalErrorCode === "CONCURRENT_ROOM_SESSION" && Boolean(socket);
+    return (
+      <div className="card" style={{ display: "grid", gap: 10 }}>
+        <span>{fatalError || "Sala indisponível."}</span>
+        {canForceTakeover && (
+          <button
+            className="btn-primary"
+            onClick={handleForceTakeoverJoin}
+            disabled={forceTakeoverLoading}
+          >
+            {forceTakeoverLoading
+              ? "Desconectando outra sessão..."
+              : "Desconectar outra sessão e entrar"}
+          </button>
+        )}
+      </div>
+    );
   }
 
   const roomIsActive = state.room.status === "ACTIVE";
