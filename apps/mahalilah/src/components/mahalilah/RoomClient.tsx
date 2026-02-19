@@ -19,6 +19,7 @@ type Participant = {
   id: string;
   role: string;
   user: { id: string; name: string | null; email: string };
+  online?: boolean;
   consentAcceptedAt: string | null;
   gameIntention?: string | null;
   therapistSummary?: string | null;
@@ -1788,6 +1789,14 @@ export function RoomClient({
     shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
       ? lockedPlayerParticipantId
       : deckParticipantId;
+  const deckDisplayParticipantId = effectiveDeckParticipantId;
+  const deckTargetParticipantId =
+    myParticipant?.id || "";
+  const isDeckViewingSelf = Boolean(
+    deckDisplayParticipantId &&
+      deckTargetParticipantId &&
+      deckDisplayParticipantId === deckTargetParticipantId,
+  );
 
   const filteredTimelineMoves = useMemo(() => {
     const effectiveTargetId =
@@ -2442,30 +2451,9 @@ export function RoomClient({
     });
   };
 
-  const cardsDrawnInCurrentMove = useMemo(() => {
-    if (!state?.lastMove || !myParticipant) return 0;
-    if (state.lastMove.participantId !== myParticipant.id) return 0;
-
-    return state.deckHistory
-      .filter(
-        (draw) =>
-          draw.moveId === state.lastMove?.id &&
-          draw.drawnBy.id === myParticipant.id,
-      )
-      .reduce((sum, draw) => {
-        if (draw.cards.length > 0) return sum + draw.cards.length;
-        if (draw.card) return sum + 1;
-        return sum;
-      }, 0);
-  }, [state?.deckHistory, state?.lastMove, myParticipant]);
-
-  const remainingDrawsInCurrentMove = Math.max(0, 3 - cardsDrawnInCurrentMove);
-
-  const canDrawCard = Boolean(
-    state?.lastMove &&
-      myParticipant &&
-      state.lastMove.participantId === myParticipant.id &&
-      remainingDrawsInCurrentMove > 0 &&
+  const canInitiateDraw = Boolean(
+    deckTargetParticipantId &&
+      isDeckViewingSelf &&
       !actionsBlockedByConsent &&
       !isViewerInTherapistSoloPlay &&
       socketReady,
@@ -2483,39 +2471,12 @@ export function RoomClient({
     canUseAiActions && !shouldBlockTherapistAiTipActions,
   );
 
-  const timelineMoveTurnById = useMemo(() => {
-    const byId = new Map<string, number>();
-    timelineMoves.forEach((move) => {
-      byId.set(move.id, move.turnNumber);
-    });
-    return byId;
-  }, [timelineMoves]);
-
-  const currentMoveDeckCards = useMemo(() => {
-    if (!state?.lastMove || !state?.deckHistory?.length) return [];
-    const effectiveTargetId =
-      myParticipant?.role === "THERAPIST"
-        ? effectiveDeckParticipantId
-        : myParticipant?.id || "";
-    if (!effectiveTargetId) return [];
-    if (state.lastMove.participantId !== effectiveTargetId) return [];
-    return state.deckHistory.filter(
-      (draw) =>
-        draw.moveId === state.lastMove?.id &&
-        draw.drawnBy.id === effectiveTargetId &&
-        Boolean(draw.card),
-    );
-  }, [state?.deckHistory, state?.lastMove, myParticipant, effectiveDeckParticipantId]);
-
   const filteredDeckHistory = useMemo(() => {
-    if (!state?.deckHistory?.length) return [];
-    const effectiveTargetId =
-      myParticipant?.role === "THERAPIST"
-        ? effectiveDeckParticipantId
-        : myParticipant?.id || "";
-    if (!effectiveTargetId) return [];
-    return state.deckHistory.filter((draw) => draw.drawnBy.id === effectiveTargetId);
-  }, [state?.deckHistory, myParticipant, effectiveDeckParticipantId]);
+    if (!state?.deckHistory?.length || !deckDisplayParticipantId) return [];
+    return state.deckHistory.filter(
+      (draw) => draw.drawnBy.id === deckDisplayParticipantId,
+    );
+  }, [state?.deckHistory, deckDisplayParticipantId]);
 
   const deckHistoryByMove = useMemo(() => {
     if (!filteredDeckHistory.length) return [];
@@ -2547,6 +2508,49 @@ export function RoomClient({
     return grouped;
   }, [filteredDeckHistory]);
 
+  const currentMoveDeckGroup = useMemo(
+    () => deckHistoryByMove.find((group) => Boolean(group.moveId)) || null,
+    [deckHistoryByMove],
+  );
+
+  const cardsDrawnInCurrentMove = useMemo(() => {
+    if (!currentMoveDeckGroup) return 0;
+    return currentMoveDeckGroup.draws.reduce((sum, draw) => {
+      if (draw.cards.length > 0) return sum + draw.cards.length;
+      if (draw.card) return sum + 1;
+      return sum;
+    }, 0);
+  }, [currentMoveDeckGroup]);
+
+  const remainingDrawsInCurrentMove = Math.max(0, 3 - cardsDrawnInCurrentMove);
+  const hasOwnMoveForDeck = Boolean(
+    myPlayerState && myPlayerState.rollCountTotal > 0,
+  );
+  const canDrawCard =
+    canInitiateDraw &&
+    hasOwnMoveForDeck &&
+    remainingDrawsInCurrentMove > 0;
+
+  const timelineMoveTurnById = useMemo(() => {
+    const byId = new Map<string, number>();
+    timelineMoves.forEach((move) => {
+      byId.set(move.id, move.turnNumber);
+    });
+    return byId;
+  }, [timelineMoves]);
+
+  const currentMoveDeckCards = useMemo(() => {
+    if (!currentMoveDeckGroup) return [];
+    return currentMoveDeckGroup.draws.filter((draw) => Boolean(draw.card));
+  }, [currentMoveDeckGroup]);
+
+  const currentMoveTurnNumber = currentMoveDeckGroup
+    ? currentMoveDeckGroup.moveTurnNumber ??
+      (currentMoveDeckGroup.moveId
+        ? timelineMoveTurnById.get(currentMoveDeckGroup.moveId) ?? null
+        : null)
+    : null;
+
   const openCardPreview = useCallback(
     ({
       card,
@@ -2570,15 +2574,29 @@ export function RoomClient({
       );
       return;
     }
-    if (!state.lastMove || state.lastMove.participantId !== myParticipant.id) {
+    if (!deckTargetParticipantId) {
       pushToast(
-        "Você precisa fazer uma jogada antes de tirar carta.",
+        "Participante inválido para tirar carta.",
+        "warning",
+      );
+      return;
+    }
+    if (!isDeckViewingSelf) {
+      pushToast(
+        "Cada participante só pode tirar carta para si. Selecione seu nome.",
+        "warning",
+      );
+      return;
+    }
+    if (!hasOwnMoveForDeck) {
+      pushToast(
+        "Você precisa fazer ao menos uma jogada para tirar carta.",
         "warning",
       );
       return;
     }
 
-    socket.emit("deck:draw", { moveId: state.lastMove.id }, (resp: any) => {
+    socket.emit("deck:draw", { participantId: deckTargetParticipantId }, (resp: any) => {
       if (!resp?.ok) {
         showSocketError("Erro ao tirar carta", resp);
       } else {
@@ -2593,10 +2611,14 @@ export function RoomClient({
             "success",
           );
           if (resp?.card) {
+            const moveTurnNumber =
+              typeof resp?.moveTurnNumber === "number"
+                ? resp.moveTurnNumber
+                : null;
             openCardPreview({
               card: resp.card,
               title: `Carta #${resp.card.cardNumber}`,
-              subtitle: `Jogada #${state.lastMove?.turnNumber ?? "—"}${counter ? ` • ${counter}` : ""}`,
+              subtitle: `Jogada #${moveTurnNumber ?? "—"}${counter ? ` • ${counter}` : ""}`,
             });
           }
         } else {
@@ -4098,12 +4120,25 @@ export function RoomClient({
                   Tirar carta
                 </button>
                 <span className="small-muted">
-                  Nesta jogada: <strong>{cardsDrawnInCurrentMove}/3</strong>
+                  Na jogada vinculada: <strong>{cardsDrawnInCurrentMove}/3</strong>
                 </span>
               </div>
-              {!canDrawCard && (
+              <span className="small-muted">
+                A carta será vinculada à sua jogada mais recente.
+              </span>
+              {!isDeckViewingSelf && (
                 <span className="small-muted">
-                  A tiragem fica disponível para o jogador que acabou de rolar.
+                  Cada participante só pode tirar carta para si mesmo. Selecione seu nome.
+                </span>
+              )}
+              {isDeckViewingSelf && !hasOwnMoveForDeck && (
+                <span className="small-muted">
+                  Faça pelo menos uma jogada para liberar a tiragem.
+                </span>
+              )}
+              {remainingDrawsInCurrentMove === 0 && cardsDrawnInCurrentMove > 0 && (
+                <span className="small-muted">
+                  Limite de 3 cartas atingido nesta jogada.
                 </span>
               )}
 
@@ -4115,7 +4150,9 @@ export function RoomClient({
                     gap: 8,
                   }}
                 >
-                  <strong style={{ fontSize: 12 }}>Cartas da jogada atual</strong>
+                  <strong style={{ fontSize: 12 }}>
+                    Cartas da jogada vinculada
+                  </strong>
                   <div
                     style={{
                       display: "flex",
@@ -4144,7 +4181,7 @@ export function RoomClient({
                             openCardPreview({
                               card: draw.card!,
                               title: `Carta #${draw.card!.cardNumber}`,
-                              subtitle: `Jogada #${state.lastMove?.turnNumber ?? "—"}`,
+                              subtitle: `Jogada #${currentMoveTurnNumber ?? "—"}`,
                             })
                           }
                         >
@@ -4761,6 +4798,7 @@ export function RoomClient({
               <div style={{ display: "grid", gap: 6 }}>
                 {state.participants.map((participant) => {
                   const isCurrent = participant.id === currentParticipant?.id;
+                  const participantOnline = Boolean(participant.online);
                   const participantPinColor =
                     participantPinColorMap.get(participant.id) || null;
                   const participantIsTherapist =
@@ -4824,6 +4862,32 @@ export function RoomClient({
                             style={{ padding: "2px 7px", fontSize: 11 }}
                           >
                             {participantIsTherapist ? "Terapeuta" : "Jogador"}
+                          </span>
+                          <span
+                            className="pill"
+                            style={{
+                              padding: "2px 7px",
+                              fontSize: 11,
+                              borderColor: participantOnline
+                                ? "rgba(106, 211, 176, 0.6)"
+                                : "rgba(255, 107, 107, 0.6)",
+                              background: participantOnline
+                                ? "rgba(106, 211, 176, 0.15)"
+                                : "rgba(255, 107, 107, 0.15)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 999,
+                                background: participantOnline ? "#6ad3b0" : "#ff6b6b",
+                                boxShadow: participantOnline
+                                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
+                                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+                              }}
+                            />
+                            {participantOnline ? "Online" : "Offline"}
                           </span>
                           {isCurrent && (
                             <span

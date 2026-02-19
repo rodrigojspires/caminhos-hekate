@@ -262,6 +262,12 @@ function hasTherapistOnline(
   );
 }
 
+function hasParticipantOnline(roomId: string, userId: string) {
+  const users = roomUserConnections.get(roomId);
+  if (!users || users.size === 0) return false;
+  return (users.get(userId) || 0) > 0;
+}
+
 function buildSocketError(message: string, code?: string) {
   const error = new Error(message) as Error & { code?: string };
   if (code) error.code = code;
@@ -1255,6 +1261,7 @@ async function buildRoomState(roomId: string) {
       id: p.id,
       role: p.role,
       user: p.user,
+      online: hasParticipantOnline(room.id, p.userId),
       consentAcceptedAt: p.consentAcceptedAt,
       gameIntention: p.gameIntention,
       therapistSummary: p.therapistSummary,
@@ -1847,7 +1854,10 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "deck:draw",
     async (
-      { moveId }: { moveId?: string },
+      {
+        moveId,
+        participantId,
+      }: { moveId?: string; participantId?: string },
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -1864,31 +1874,53 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!room) throw new Error("Sala não encontrada");
         if (room.status !== "ACTIVE") throw new Error("Sala não está ativa");
 
-        const participant = room.participants.find(
+        const requesterParticipant = room.participants.find(
           (p) => p.userId === socket.data.user?.id,
         );
-        if (!participant) throw new Error("Participante não encontrado");
-        ensureConsentAccepted(participant);
-        ensureNotViewerInTherapistSoloMode(room, participant);
+        if (!requesterParticipant) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requesterParticipant);
+        ensureNotViewerInTherapistSoloMode(room, requesterParticipant);
 
-        if (!moveId) {
-          throw new Error("Faça uma jogada antes de tirar carta");
+        const targetParticipant = requesterParticipant;
+        if (
+          typeof participantId === "string" &&
+          participantId.trim() &&
+          participantId !== requesterParticipant.id
+        ) {
+          throw new Error(
+            "Cada participante só pode tirar carta para si mesmo.",
+          );
         }
 
-        const move = await prisma.mahaLilahMove.findUnique({
-          where: { id: moveId },
-        });
-        if (!move || move.roomId !== room.id)
-          throw new Error("Jogada inválida");
-        if (move.participantId !== participant.id) {
-          throw new Error("Jogada não pertence ao participante");
+        let move = null as Awaited<
+          ReturnType<typeof prisma.mahaLilahMove.findUnique>
+        > | null;
+        if (moveId) {
+          move = await prisma.mahaLilahMove.findUnique({
+            where: { id: moveId },
+          });
+        } else {
+          move = await prisma.mahaLilahMove.findFirst({
+            where: {
+              roomId: room.id,
+              participantId: targetParticipant.id,
+            },
+            orderBy: [{ turnNumber: "desc" }, { createdAt: "desc" }],
+          });
+        }
+
+        if (!move || move.roomId !== room.id) {
+          throw new Error("Este participante ainda não fez jogada para tirar carta.");
+        }
+        if (move.participantId !== targetParticipant.id) {
+          throw new Error("Jogada não pertence ao participante selecionado.");
         }
 
         const existingDraws = await prisma.mahaLilahCardDraw.findMany({
           where: {
             roomId: room.id,
             moveId: move.id,
-            drawnByParticipantId: participant.id,
+            drawnByParticipantId: targetParticipant.id,
           },
           select: {
             cards: true,
@@ -1930,7 +1962,7 @@ io.on("connection", (socket: AuthedSocket) => {
           data: {
             roomId: room.id,
             moveId: move.id,
-            drawnByParticipantId: participant.id,
+            drawnByParticipantId: targetParticipant.id,
             cards: [selectedCard.cardNumber],
             deckId: selectedCard.deckId,
             cardId: selectedCard.id,
@@ -1959,6 +1991,9 @@ io.on("connection", (socket: AuthedSocket) => {
               imageExtension: selectedCard.deck.imageExtension,
             },
           },
+          participantId: targetParticipant.id,
+          moveId: move.id,
+          moveTurnNumber: move.turnNumber,
           drawCountInMove: alreadyDrawnInMove + 1,
           drawLimitInMove: 3,
         });
