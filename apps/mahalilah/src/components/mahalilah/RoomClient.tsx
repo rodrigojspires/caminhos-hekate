@@ -2508,10 +2508,13 @@ export function RoomClient({
     return grouped;
   }, [filteredDeckHistory]);
 
-  const currentMoveDeckGroup = useMemo(
-    () => deckHistoryByMove.find((group) => Boolean(group.moveId)) || null,
-    [deckHistoryByMove],
-  );
+  const currentMoveDeckGroup = useMemo(() => {
+    for (let index = deckHistoryByMove.length - 1; index >= 0; index -= 1) {
+      const group = deckHistoryByMove[index];
+      if (group.moveId) return group;
+    }
+    return null;
+  }, [deckHistoryByMove]);
 
   const cardsDrawnInCurrentMove = useMemo(() => {
     if (!currentMoveDeckGroup) return 0;
