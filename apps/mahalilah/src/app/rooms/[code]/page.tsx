@@ -9,6 +9,9 @@ import { withSeoDefaults } from "@/lib/marketing/seo";
 
 interface RoomPageProps {
   params: { code: string };
+  searchParams?: {
+    adminOpenToken?: string | string[];
+  };
 }
 
 export const dynamic = "force-dynamic";
@@ -28,13 +31,27 @@ export const metadata: Metadata = withSeoDefaults(
   { noIndex: true, canonicalPath: "/rooms" },
 );
 
-export default async function RoomPage({ params }: RoomPageProps) {
+function getSingleSearchParam(
+  value: string | string[] | undefined,
+): string | null {
+  if (typeof value === "string" && value.trim()) return value;
+  if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
+    return value[0];
+  }
+  return null;
+}
+
+export default async function RoomPage({ params, searchParams }: RoomPageProps) {
   const session = await getServerSession(authOptions);
   const isAdmin = session?.user?.role === "ADMIN";
+  const adminOpenToken = getSingleSearchParam(searchParams?.adminOpenToken);
 
   if (!session?.user?.email) {
+    const callbackPath = adminOpenToken
+      ? `/rooms/${params.code}?adminOpenToken=${encodeURIComponent(adminOpenToken)}`
+      : `/rooms/${params.code}`;
     redirect(
-      `/login?callbackUrl=${encodeURIComponent(`/rooms/${params.code}`)}`,
+      `/login?callbackUrl=${encodeURIComponent(callbackPath)}`,
     );
   }
 
@@ -50,7 +67,10 @@ export default async function RoomPage({ params }: RoomPageProps) {
     );
   }
 
-  if (room.status !== "ACTIVE" && !isAdmin) {
+  const hasAdminOpenAccess = Boolean(adminOpenToken);
+  const canAccessClosedRoom = isAdmin || hasAdminOpenAccess;
+
+  if (room.status !== "ACTIVE" && !canAccessClosedRoom) {
     return (
       <main style={{ paddingTop: 20, paddingBottom: 72 }}>
         <section className="grid" style={{ gap: 14 }}>
@@ -74,7 +94,10 @@ export default async function RoomPage({ params }: RoomPageProps) {
   return (
     <main style={{ paddingTop: 20, paddingBottom: 72 }}>
       <section className="grid" style={{ gap: 14 }}>
-        <RoomClient code={params.code} />
+        <RoomClient
+          code={params.code}
+          adminOpenToken={adminOpenToken || undefined}
+        />
       </section>
     </main>
   );

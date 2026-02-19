@@ -205,28 +205,40 @@ export default function AdminMahaLilahRoomsPage() {
   };
 
   const handleOpenRoom = async (room: Room) => {
-    setOpeningRoomId(room.id);
-    const res = await fetch(`/api/admin/mahalilah/rooms/${room.id}/open`, {
-      method: "POST",
-    });
-
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      toast.error(payload.error || "Erro ao abrir sala");
-      setOpeningRoomId(null);
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      toast.error(
+        "Nao foi possivel abrir nova aba. Permita pop-ups para este site.",
+      );
       return;
     }
 
-    const roomUrl = payload.roomUrl || `${baseUrl}/rooms/${room.code}`;
-    const popup = window.open(roomUrl, "_blank", "noopener,noreferrer");
-    if (!popup) {
-      window.location.assign(roomUrl);
+    popup.opener = null;
+    setOpeningRoomId(room.id);
+    try {
+      const res = await fetch(`/api/admin/mahalilah/rooms/${room.id}/open`, {
+        method: "POST",
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(payload.error || "Erro ao abrir sala");
+        popup.close();
+        return;
+      }
+
+      const roomUrl = payload.roomUrl || `${baseUrl}/rooms/${room.code}`;
+      popup.location.href = roomUrl;
+
+      toast.success("Sala aberta no tabuleiro.");
+      await loadRooms();
+    } catch (error) {
+      popup.close();
+      console.error("Erro ao abrir sala Maha Lilah pelo dashboard admin:", error);
+      toast.error("Erro ao abrir sala");
+    } finally {
+      setOpeningRoomId(null);
     }
-
-    toast.success("Sala aberta no tabuleiro.");
-
-    await loadRooms();
-    setOpeningRoomId(null);
   };
 
   return (
@@ -328,6 +340,7 @@ export default function AdminMahaLilahRoomsPage() {
               </div>
             </div>
             <Button
+              type="button"
               onClick={handleCreateRoom}
               disabled={creating || !therapistEmail}
             >
@@ -353,7 +366,7 @@ export default function AdminMahaLilahRoomsPage() {
                 <SelectItem value="COMPLETED">Concluídas</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="secondary" onClick={() => loadRooms()}>
+            <Button type="button" variant="secondary" onClick={() => loadRooms()}>
               Atualizar
             </Button>
           </div>
@@ -473,6 +486,7 @@ export default function AdminMahaLilahRoomsPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
+                            type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenRoom(room)}
@@ -483,6 +497,7 @@ export default function AdminMahaLilahRoomsPage() {
                               : "Abrir sala"}
                           </Button>
                           <Button
+                            type="button"
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteRoom(room)}

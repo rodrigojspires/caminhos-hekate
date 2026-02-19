@@ -784,7 +784,13 @@ function getDiceFaceSymbol(face: number) {
   return symbols[face - 1] || "⚀";
 }
 
-export function RoomClient({ code }: { code: string }) {
+export function RoomClient({
+  code,
+  adminOpenToken,
+}: {
+  code: string;
+  adminOpenToken?: string;
+}) {
   const { data: session } = useSession();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [state, setState] = useState<RoomState | null>(null);
@@ -923,6 +929,7 @@ export function RoomClient({ code }: { code: string }) {
         {
           code,
           forceTakeover: Boolean(options?.forceTakeover),
+          adminOpenToken: adminOpenToken || undefined,
         },
         (resp: any) => {
           options?.onSettled?.();
@@ -944,7 +951,7 @@ export function RoomClient({ code }: { code: string }) {
         },
       );
     },
-    [code, pushToast],
+    [code, adminOpenToken, pushToast],
   );
 
   const handleForceTakeoverJoin = useCallback(() => {

@@ -5,6 +5,10 @@ import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 
+type ApiResponse = {
+  message?: string
+}
+
 const authErrorMessage = (code: string | null) => {
   if (!code) return null
   if (code === 'CredentialsSignin') return 'Email ou senha incorretos.'
@@ -34,12 +38,23 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [resendError, setResendError] = useState<string | null>(null)
+
+  const showResendVerification =
+    errorCode === 'EMAIL_NOT_VERIFIED' ||
+    (!error && queryError === 'EMAIL_NOT_VERIFIED')
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setLoading(true)
     setError(null)
+    setErrorCode(null)
+    setResendMessage(null)
+    setResendError(null)
 
     const result = await signIn('credentials', {
       email,
@@ -49,12 +64,54 @@ export function LoginForm() {
     })
 
     if (result?.error) {
+      setErrorCode(result.error)
       setError(authErrorMessage(result.error))
       setLoading(false)
       return
     }
 
     window.location.href = safeCallback
+  }
+
+  const handleResendVerification = async () => {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!normalizedEmail) {
+      setResendError('Informe seu email para reenviar a validação.')
+      return
+    }
+
+    setResendLoading(true)
+    setResendMessage(null)
+    setResendError(null)
+
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          callbackUrl: safeCallback
+        })
+      })
+
+      const data: ApiResponse = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setResendError(data.message || 'Não foi possível reenviar o email de validação.')
+        setResendLoading(false)
+        return
+      }
+
+      setResendMessage(
+        data.message ||
+          'Se o email existir e ainda não estiver verificado, enviaremos um novo link de confirmação.'
+      )
+      setResendLoading(false)
+    } catch {
+      setResendError('Não foi possível reenviar o email de validação.')
+      setResendLoading(false)
+    }
   }
 
   return (
@@ -70,11 +127,45 @@ export function LoginForm() {
       {error && (
         <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
           {error}
+          {showResendVerification && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="text-gold underline hover:text-gold-soft disabled:opacity-60"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+              >
+                {resendLoading ? 'Reenviando...' : 'Reenviar validação'}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {!error && queryError && (
         <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
           {authErrorMessage(queryError)}
+          {queryError === 'EMAIL_NOT_VERIFIED' && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="text-gold underline hover:text-gold-soft disabled:opacity-60"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+              >
+                {resendLoading ? 'Reenviando...' : 'Reenviar validação'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {resendError && (
+        <div className="rounded-2xl border border-gold/40 bg-surface/70 p-3 text-sm text-gold-soft">
+          {resendError}
+        </div>
+      )}
+      {resendMessage && (
+        <div className="notice good">
+          {resendMessage}
         </div>
       )}
       {!error && !queryError && verifiedStatus === 'success' && (

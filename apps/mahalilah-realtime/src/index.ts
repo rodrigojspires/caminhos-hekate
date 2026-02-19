@@ -43,6 +43,7 @@ const USER_SESSION_HEARTBEAT_MS = Number(
 const REALTIME_INSTANCE_ID =
   process.env.MAHALILAH_REALTIME_INSTANCE_ID || randomUUID();
 const USER_ACTIVE_SESSION_KEY_PREFIX = "mahalilah:realtime:user-active-session";
+const ADMIN_OPEN_TOKEN_KEY_PREFIX = "mahalilah:admin-open-token";
 
 if (!REDIS_URL) {
   throw new Error(
@@ -100,6 +101,75 @@ type SocketData = {
   user?: SocketUser;
   roomId?: string;
 };
+
+function getMahaLilahOpenSecret() {
+  return process.env.MAHALILAH_SOCKET_SECRET || process.env.NEXTAUTH_SECRET;
+}
+
+function hasValidLegacyAdminOpenToken(params: {
+  token: string | null | undefined;
+  roomId: string;
+  roomCode: string;
+}) {
+  if (!params.token) return false;
+  const secret = getMahaLilahOpenSecret();
+  if (!secret) return false;
+
+  try {
+    const payload = jwt.verify(params.token, secret) as {
+      scope?: string;
+      roomId?: string;
+      roomCode?: string;
+    };
+
+    return (
+      payload.scope === "mahalilah_admin_room_open" &&
+      payload.roomId === params.roomId &&
+      payload.roomCode === params.roomCode
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildAdminOpenTokenKey(token: string) {
+  return `${ADMIN_OPEN_TOKEN_KEY_PREFIX}:${token}`;
+}
+
+async function hasValidAdminOpenToken(params: {
+  token: string | null | undefined;
+  roomId: string;
+  roomCode: string;
+}) {
+  if (!params.token) return false;
+  if (params.token.length > 512) return false;
+
+  try {
+    await ensureRedisConnected();
+    const rawGrant = await redis.get(buildAdminOpenTokenKey(params.token));
+    if (rawGrant) {
+      const grant = JSON.parse(rawGrant) as {
+        scope?: string;
+        roomId?: string;
+        roomCode?: string;
+      };
+      if (
+        grant.scope === "mahalilah_admin_room_open" &&
+        grant.roomId === params.roomId &&
+        grant.roomCode === params.roomCode
+      ) {
+        return true;
+      }
+    }
+  } catch (error) {
+    console.error(
+      "[mahalilah-realtime] falha ao validar ticket adminOpenToken no Redis:",
+      error,
+    );
+  }
+
+  return hasValidLegacyAdminOpenToken(params);
+}
 
 const httpServer = createServer();
 const io = new Server<any, any, any, SocketData>(httpServer, {
@@ -1556,12 +1626,20 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "room:join",
     async (
-      payload: { code: string; forceTakeover?: boolean },
+      payload: {
+        code: string;
+        forceTakeover?: boolean;
+        adminOpenToken?: string;
+      },
       callback?: (payload: any) => void,
     ) => {
       try {
         const code = payload?.code;
         const forceTakeover = Boolean(payload?.forceTakeover);
+        const adminOpenToken =
+          typeof payload?.adminOpenToken === "string"
+            ? payload.adminOpenToken
+            : null;
         if (!code) throw new Error("Código da sala não informado");
         const currentUser = socket.data.user;
         if (!currentUser) throw new Error("Usuário não autenticado");
@@ -1570,14 +1648,25 @@ io.on("connection", (socket: AuthedSocket) => {
         const previousRoomId = socket.data.roomId || null;
         const room = await prisma.mahaLilahRoom.findUnique({ where: { code } });
         if (!room) throw new Error("Sala não encontrada");
+        const hasAdminOpenAccess = await hasValidAdminOpenToken({
+          token: adminOpenToken,
+          roomId: room.id,
+          roomCode: room.code,
+        });
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
           where: { roomId: room.id, userId },
         });
-        if (!participant && !isAdminUser) throw new Error("Sem acesso à sala");
+        if (!participant && !isAdminUser && !hasAdminOpenAccess) {
+          throw new Error("Sem acesso à sala");
+        }
         const roomState = await buildRoomState(room.id);
         if (!roomState) throw new Error("Sala não encontrada");
-        if (roomState.room.status !== "ACTIVE" && !isAdminUser) {
+        if (
+          roomState.room.status !== "ACTIVE" &&
+          !isAdminUser &&
+          !hasAdminOpenAccess
+        ) {
           throw buildSocketError(
             "Sala já foi encerrada e não pode mais ser aberta.",
             "ROOM_CLOSED",
