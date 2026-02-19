@@ -1420,6 +1420,11 @@ export function RoomClient({
       !isTherapistSoloPlay &&
       playerParticipantsCount > 1,
   );
+  const shouldAutoSyncTherapistDropdownsByTurn = Boolean(
+    isTherapist && !isTherapistSoloPlay && playerParticipantsCount > 1,
+  );
+  const currentTurnParticipantId = currentParticipant?.id || "";
+  const currentTurnParticipantRole = currentParticipant?.role || "";
   const canRoll = Boolean(
     isMyTurn &&
       state?.room.status === "ACTIVE" &&
@@ -1446,6 +1451,13 @@ export function RoomClient({
     if (!isTherapistSoloPlay) return state.participants;
     return state.participants.filter((participant) => participant.role === "THERAPIST");
   }, [state?.participants, isTherapistSoloPlay]);
+  const participantPinColorMap = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    boardParticipants.forEach((participant, participantIndex) => {
+      colorMap.set(participant.id, COLORS[participantIndex % COLORS.length]);
+    });
+    return colorMap;
+  }, [boardParticipants]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
@@ -1532,6 +1544,27 @@ export function RoomClient({
         : myParticipant.id;
     setAiHistoryParticipantId(targetId);
   }, [state, myParticipant, isTherapistSoloPlay, therapistParticipantInRoom]);
+
+  useEffect(() => {
+    if (!shouldAutoSyncTherapistDropdownsByTurn) return;
+    if (!currentTurnParticipantId || currentTurnParticipantRole !== "PLAYER")
+      return;
+
+    const nextParticipantId = currentTurnParticipantId;
+    setAiHistoryParticipantId((prev) =>
+      prev === nextParticipantId ? prev : nextParticipantId,
+    );
+    setTimelineTargetParticipantId((prev) =>
+      prev === nextParticipantId ? prev : nextParticipantId,
+    );
+    setSummaryParticipantId((prev) =>
+      prev === nextParticipantId ? prev : nextParticipantId,
+    );
+  }, [
+    shouldAutoSyncTherapistDropdownsByTurn,
+    currentTurnParticipantId,
+    currentTurnParticipantRole,
+  ]);
   const effectiveTimelineTargetParticipantId =
     shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
       ? lockedPlayerParticipantId
@@ -3294,9 +3327,9 @@ export function RoomClient({
                 HOUSE_SANSKRIT_NAMES[cell.houseNumber - 1] || "";
               const portugueseName = house?.title || `Casa ${cell.houseNumber}`;
               const tokens = boardParticipants
-                .map((participant, participantIndex) => ({
+                .map((participant) => ({
                   participant,
-                  color: COLORS[participantIndex % COLORS.length],
+                  color: participantPinColorMap.get(participant.id) || COLORS[0],
                   state: playerStateMap.get(participant.id),
                 }))
                 .filter(
@@ -4300,6 +4333,8 @@ export function RoomClient({
               <div style={{ display: "grid", gap: 6 }}>
                 {state.participants.map((participant) => {
                   const isCurrent = participant.id === currentParticipant?.id;
+                  const participantPinColor =
+                    participantPinColorMap.get(participant.id) || null;
                   const participantIsTherapist =
                     participant.role === "THERAPIST";
                   const canEditParticipantSummary = isTherapist;
@@ -4338,6 +4373,21 @@ export function RoomClient({
                             flexWrap: "wrap",
                           }}
                         >
+                          {participantPinColor && (
+                            <span
+                              aria-hidden="true"
+                              title="Cor do pino no tabuleiro"
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: 999,
+                                display: "inline-block",
+                                background: participantPinColor,
+                                border: "1px solid rgba(255,255,255,0.72)",
+                                boxShadow: "0 1px 5px rgba(0,0,0,.28)",
+                              }}
+                            />
+                          )}
                           <strong style={{ fontSize: 13 }}>
                             {participant.user.name || participant.user.email}
                           </strong>

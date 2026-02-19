@@ -489,6 +489,7 @@ function TrashIcon() {
 const DASHBOARD_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
+const DASHBOARD_ROOMS_POLL_MS = 15_000;
 
 const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
   Record<DashboardTutorialTarget, RoomDetailsTab>
@@ -1066,8 +1067,11 @@ export function DashboardClient() {
   };
 
   const loadRooms = useCallback(
-    async (override?: Partial<Filters>) => {
-      setLoading(true);
+    async (override?: Partial<Filters>, options?: { silent?: boolean }) => {
+      const silent = Boolean(options?.silent);
+      if (!silent) {
+        setLoading(true);
+      }
       const activeFilters = {
         status: override?.status ?? filters.status,
         from: override?.from ?? filters.from,
@@ -1079,38 +1083,48 @@ export function DashboardClient() {
       if (activeFilters.from) params.set("from", activeFilters.from);
       if (activeFilters.to) params.set("to", activeFilters.to);
 
-      const res = await fetch(
-        `/api/mahalilah/rooms${params.toString() ? `?${params.toString()}` : ""}`,
-      );
-      if (!res.ok) {
-        pushToast("Não foi possível carregar as salas.", "error");
-        setLoading(false);
-        return;
+      try {
+        const res = await fetch(
+          `/api/mahalilah/rooms${params.toString() ? `?${params.toString()}` : ""}`,
+        );
+        if (!res.ok) {
+          if (!silent) {
+            pushToast("Não foi possível carregar as salas.", "error");
+          }
+          return;
+        }
+        const data = await res.json();
+        const nextRooms = data.rooms || [];
+        setCurrentUserId(data.currentUserId || null);
+        setRooms(nextRooms);
+        setTherapistSummaries(
+          nextRooms.reduce(
+            (acc: Record<string, string>, room: Room) => {
+              room.participants.forEach((participant) => {
+                acc[participant.id] = participant.therapistSummary || "";
+              });
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
+        );
+        setRoomQuota(data.roomQuota || null);
+        setCanCreateRoom(Boolean(data.canCreateRoom));
+        setCanUseTherapistSoloPlay(Boolean(data.canUseTherapistSoloPlay));
+        if (!data.canUseTherapistSoloPlay) {
+          setTherapistSoloPlay(false);
+        }
+        setHasUsedTrial(Boolean(data.hasUsedTrial));
+        setTrialRoomStatus(data.trialRoomStatus || null);
+      } catch {
+        if (!silent) {
+          pushToast("Não foi possível carregar as salas.", "error");
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
       }
-      const data = await res.json();
-      const nextRooms = data.rooms || [];
-      setCurrentUserId(data.currentUserId || null);
-      setRooms(nextRooms);
-      setTherapistSummaries(
-        nextRooms.reduce(
-          (acc: Record<string, string>, room: Room) => {
-            room.participants.forEach((participant) => {
-              acc[participant.id] = participant.therapistSummary || "";
-            });
-            return acc;
-          },
-          {} as Record<string, string>,
-        ),
-      );
-      setRoomQuota(data.roomQuota || null);
-      setCanCreateRoom(Boolean(data.canCreateRoom));
-      setCanUseTherapistSoloPlay(Boolean(data.canUseTherapistSoloPlay));
-      if (!data.canUseTherapistSoloPlay) {
-        setTherapistSoloPlay(false);
-      }
-      setHasUsedTrial(Boolean(data.hasUsedTrial));
-      setTrialRoomStatus(data.trialRoomStatus || null);
-      setLoading(false);
     },
     [filters, pushToast],
   );
@@ -1155,6 +1169,38 @@ export function DashboardClient() {
 
   useEffect(() => {
     loadRooms();
+  }, [loadRooms]);
+
+  useEffect(() => {
+    let pollingInFlight = false;
+
+    const runSilentRefresh = async () => {
+      if (pollingInFlight) return;
+      pollingInFlight = true;
+      try {
+        await loadRooms(undefined, { silent: true });
+      } finally {
+        pollingInFlight = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void runSilentRefresh();
+    }, DASHBOARD_ROOMS_POLL_MS);
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void runSilentRefresh();
+    };
+
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+    };
   }, [loadRooms]);
 
   useEffect(() => {
