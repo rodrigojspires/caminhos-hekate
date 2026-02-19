@@ -6,13 +6,21 @@ export function VideoSection({
   title,
   subtitle,
   bullets,
-  mediaLabel
+  mediaLabel,
+  videoSrc,
+  videoType,
+  videoFallbackSrc,
+  videoFallbackType
 }: {
   eyebrow?: string
   title: string
   subtitle?: string
   bullets?: string[]
   mediaLabel: string
+  videoSrc?: string
+  videoType?: string
+  videoFallbackSrc?: string
+  videoFallbackType?: string
 }) {
   return (
     <SectionShell>
@@ -30,7 +38,28 @@ export function VideoSection({
             </ul>
           )}
         </div>
-        <MediaPlaceholder variant="video" label={mediaLabel} />
+        {videoSrc ? (
+          <div className="relative w-full overflow-hidden rounded-3xl border border-border/70 bg-surface/85 shadow-soft">
+            <video
+              aria-label={mediaLabel}
+              className="aspect-[16/9] w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              controls
+            >
+              <source src={videoSrc} type={videoType || undefined} />
+              {videoFallbackSrc && <source src={videoFallbackSrc} type={videoFallbackType || undefined} />}
+            </video>
+            <div className="border-t border-border/70 bg-surface/90 px-4 py-2 text-xs text-ink-muted">
+              O vídeo inicia sem som. Use o controle de áudio do player para ativar quando quiser.
+            </div>
+          </div>
+        ) : (
+          <MediaPlaceholder variant="video" label={mediaLabel} />
+        )}
       </div>
     </SectionShell>
   )

@@ -200,6 +200,8 @@ export default async function HomePage() {
         title="Veja o ciclo completo em menos de 90 segundos"
         subtitle="Da criação da sala ao fechamento: tabuleiro ao vivo e online, registro e síntese — com ritmo, beleza e clareza."
         mediaLabel="Vídeo curto mostrando criação da sala, convites, jogadas, cartas e síntese"
+        videoSrc="/marketing/videos/demonstracao.mp4"
+        videoType="video/mp4"
         bullets={[
           'Criação de sala em segundos (sem configuração técnica)',
           'Convite por e-mail com link único e entrada segura',
