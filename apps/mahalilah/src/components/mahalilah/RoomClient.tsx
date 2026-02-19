@@ -20,6 +20,10 @@ type Participant = {
   role: string;
   user: { id: string; name: string | null; email: string };
   online?: boolean;
+  lastMoveId?: string | null;
+  lastMoveTurnNumber?: number | null;
+  lastMoveDiceValue?: number | null;
+  lastMoveToPos?: number | null;
   consentAcceptedAt: string | null;
   gameIntention?: string | null;
   therapistSummary?: string | null;
@@ -2519,8 +2523,34 @@ export function RoomClient({
     return grouped;
   }, [filteredDeckHistory]);
 
+  const deckDisplayParticipant = useMemo(() => {
+    if (!deckDisplayParticipantId || !state?.participants?.length) return null;
+    return (
+      state.participants.find(
+        (participant) => participant.id === deckDisplayParticipantId,
+      ) ?? null
+    );
+  }, [deckDisplayParticipantId, state?.participants]);
+
   const currentDeckMove = useMemo(() => {
     if (!deckDisplayParticipantId) return null;
+
+    if (deckDisplayParticipant) {
+      const hasParticipantMoveInfo =
+        deckDisplayParticipant.lastMoveId !== undefined ||
+        deckDisplayParticipant.lastMoveTurnNumber !== undefined;
+
+      if (deckDisplayParticipant.lastMoveId) {
+        return {
+          moveId: deckDisplayParticipant.lastMoveId,
+          moveTurnNumber: deckDisplayParticipant.lastMoveTurnNumber ?? null,
+        };
+      }
+
+      if (hasParticipantMoveInfo) {
+        return null;
+      }
+    }
 
     if (
       state?.lastMove &&
@@ -2543,7 +2573,12 @@ export function RoomClient({
     }
 
     return null;
-  }, [state?.lastMove, deckDisplayParticipantId, deckHistoryByMove]);
+  }, [
+    state?.lastMove,
+    deckDisplayParticipantId,
+    deckHistoryByMove,
+    deckDisplayParticipant,
+  ]);
 
   const cardsDrawnInCurrentMove = useMemo(() => {
     if (!currentDeckMove?.moveId) return 0;

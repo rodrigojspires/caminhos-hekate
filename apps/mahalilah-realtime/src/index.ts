@@ -1215,6 +1215,26 @@ async function buildRoomState(roomId: string) {
     where: { roomId: room.id, participantId: { in: turnParticipantIds } },
   });
 
+  const latestMovesByParticipantEntries = await Promise.all(
+    room.participants.map(async (participant) => {
+      const latestMove = await prisma.mahaLilahMove.findFirst({
+        where: {
+          roomId: room.id,
+          participantId: participant.id,
+        },
+        orderBy: [{ turnNumber: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          turnNumber: true,
+          diceValue: true,
+          toPos: true,
+        },
+      });
+      return [participant.id, latestMove] as const;
+    }),
+  );
+  const latestMovesByParticipant = new Map(latestMovesByParticipantEntries);
+
   let roomStatus = room.status;
   if (
     room.status === "ACTIVE" &&
@@ -1262,6 +1282,12 @@ async function buildRoomState(roomId: string) {
       role: p.role,
       user: p.user,
       online: hasParticipantOnline(room.id, p.userId),
+      lastMoveId: latestMovesByParticipant.get(p.id)?.id || null,
+      lastMoveTurnNumber:
+        latestMovesByParticipant.get(p.id)?.turnNumber ?? null,
+      lastMoveDiceValue:
+        latestMovesByParticipant.get(p.id)?.diceValue ?? null,
+      lastMoveToPos: latestMovesByParticipant.get(p.id)?.toPos ?? null,
       consentAcceptedAt: p.consentAcceptedAt,
       gameIntention: p.gameIntention,
       therapistSummary: p.therapistSummary,
