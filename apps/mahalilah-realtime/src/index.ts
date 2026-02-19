@@ -2117,18 +2117,19 @@ io.on("connection", (socket: AuthedSocket) => {
       try {
         if (!socket.data.user || !socket.data.roomId)
           throw new Error("Sala não selecionada");
+        const roomId = socket.data.roomId;
         enforceCooldown(
-          `participant-intention:${socket.data.user.id}:${socket.data.roomId}`,
+          `participant-intention:${socket.data.user.id}:${roomId}`,
           THERAPY_COOLDOWN_MS,
         );
 
         const participant = await prisma.mahaLilahParticipant.findFirst({
-          where: { roomId: socket.data.roomId, userId: socket.data.user.id },
+          where: { roomId, userId: socket.data.user.id },
         });
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
         const room = await prisma.mahaLilahRoom.findUnique({
-          where: { id: socket.data.roomId },
+          where: { id: roomId },
           select: { playerIntentionLocked: true, therapistSoloPlay: true },
         });
         if (!room) throw new Error("Sala não encontrada");
@@ -2144,14 +2145,46 @@ io.on("connection", (socket: AuthedSocket) => {
             ? intention.trim().slice(0, PLAYER_INTENTION_MAX_LENGTH)
             : "";
 
-        await prisma.mahaLilahParticipant.update({
-          where: { id: participant.id },
-          data: { gameIntention: normalizedIntention || null },
-        });
+        const shouldReplicateTherapistIntentionInSoloPlay = Boolean(
+          participant.role === "THERAPIST" && room.therapistSoloPlay,
+        );
 
-        const state = await buildRoomState(socket.data.roomId);
-        if (state) io.to(socket.data.roomId).emit("room:state", state);
-        callback?.({ ok: true, intention: normalizedIntention || null });
+        let replicatedPlayersCount = 0;
+
+        if (shouldReplicateTherapistIntentionInSoloPlay) {
+          replicatedPlayersCount = await prisma.$transaction(async (tx) => {
+            await tx.mahaLilahParticipant.update({
+              where: { id: participant.id },
+              data: { gameIntention: normalizedIntention || null },
+            });
+
+            const updatedPlayers = await tx.mahaLilahParticipant.updateMany({
+              where: {
+                roomId,
+                role: "PLAYER",
+              },
+              data: { gameIntention: normalizedIntention || null },
+            });
+
+            return updatedPlayers.count;
+          });
+        } else {
+          await prisma.mahaLilahParticipant.update({
+            where: { id: participant.id },
+            data: { gameIntention: normalizedIntention || null },
+          });
+        }
+
+        const state = await buildRoomState(roomId);
+        if (state) io.to(roomId).emit("room:state", state);
+        callback?.({
+          ok: true,
+          intention: normalizedIntention || null,
+          replicatedToPlayers: shouldReplicateTherapistIntentionInSoloPlay,
+          updatedPlayers: shouldReplicateTherapistIntentionInSoloPlay
+            ? replicatedPlayersCount
+            : 0,
+        });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
       }

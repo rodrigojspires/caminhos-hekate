@@ -2120,6 +2120,18 @@ export function RoomClient({
           return;
         }
         setAiIntention(typeof resp.intention === "string" ? resp.intention : "");
+        if (resp?.replicatedToPlayers) {
+          const replicatedCount =
+            typeof resp?.updatedPlayers === "number" ? resp.updatedPlayers : null;
+          setAiIntentionSavedLabel(
+            replicatedCount !== null
+              ? replicatedCount === 1
+                ? "Intenção salva e replicada para 1 jogador."
+                : `Intenção salva e replicada para ${replicatedCount} jogadores.`
+              : "Intenção salva e replicada para os jogadores.",
+          );
+          return;
+        }
         setAiIntentionSavedLabel("Intenção salva na sala.");
       },
     );
