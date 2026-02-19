@@ -131,7 +131,7 @@ export function LoginForm() {
             <div className="mt-2">
               <button
                 type="button"
-                className="text-gold underline hover:text-gold-soft disabled:opacity-60"
+                className="text-black underline hover:text-black/80 disabled:opacity-60"
                 onClick={handleResendVerification}
                 disabled={resendLoading}
               >
@@ -148,7 +148,7 @@ export function LoginForm() {
             <div className="mt-2">
               <button
                 type="button"
-                className="text-gold underline hover:text-gold-soft disabled:opacity-60"
+                className="text-black underline hover:text-black/80 disabled:opacity-60"
                 onClick={handleResendVerification}
                 disabled={resendLoading}
               >
