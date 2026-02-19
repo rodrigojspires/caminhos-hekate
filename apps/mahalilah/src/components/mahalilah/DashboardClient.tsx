@@ -1844,6 +1844,9 @@ export function DashboardClient() {
           : currentUserParticipant
             ? [currentUserParticipant]
             : [];
+    const exportableParticipantIds = new Set(
+      exportableParticipants.map((participant) => participant.id),
+    );
 
     const visibleParticipants = room.canManage
       ? room.participants
@@ -2344,6 +2347,9 @@ export function DashboardClient() {
                     const isTherapist = participant.role === "THERAPIST";
                     const canEditParticipantSummary =
                       room.viewerRole === "THERAPIST";
+                    const canExportParticipant = exportableParticipantIds.has(
+                      participant.id,
+                    );
                     const participantStats =
                       indicatorStatsByParticipantId.get(participant.id) || null;
                     const participantSummaryValue =
@@ -2451,6 +2457,26 @@ export function DashboardClient() {
                             Sem indicadores para este participante.
                           </span>
                         )}
+
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <strong style={{ fontSize: 12 }}>Exportação</strong>
+                          {canExportParticipant ? (
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                className="btn-secondary"
+                                onClick={() => handleExport(room.id, participant.id)}
+                              >
+                                Exportar PDF
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="small-muted">
+                              {room.therapistSoloPlay && room.viewerRole !== "THERAPIST"
+                                ? "Exportação disponível apenas para o terapeuta neste modo."
+                                : "Este participante não está disponível para exportação."}
+                            </span>
+                          )}
+                        </div>
 
                         {canEditParticipantSummary && (
                           <div className="notice" style={{ display: "grid", gap: 8 }}>
@@ -3083,34 +3109,6 @@ export function DashboardClient() {
               </>
             )}
 
-            <div style={{ display: "grid", gap: 8 }}>
-              <strong>
-                {room.viewerRole === "THERAPIST"
-                  ? "Exportar PDF por participante"
-                  : "Exportar meu PDF"}
-              </strong>
-              {exportableParticipants.length === 0 ? (
-                <span className="small-muted">
-                  {room.therapistSoloPlay && room.viewerRole !== "THERAPIST"
-                    ? "Exportação disponível apenas para o terapeuta neste modo."
-                    : "Nenhum participante disponível para exportação."}
-                </span>
-              ) : (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {exportableParticipants.map((participant) => (
-                    <button
-                      key={participant.id}
-                      className="btn-secondary"
-                      onClick={() => handleExport(room.id, participant.id)}
-                    >
-                      {room.viewerRole === "THERAPIST"
-                        ? getParticipantDisplayName(participant)
-                        : "Exportar meu PDF"}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>
