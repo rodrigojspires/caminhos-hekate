@@ -2070,11 +2070,6 @@ export function DashboardClient() {
               className="dashboard-room-pill-row"
               style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
             >
-              <span className="pill">Jogadas (sala): {room.stats.moves}</span>
-              <span className="pill">Rolagens (sala): {room.stats.rollsTotal}</span>
-              <span className="pill">
-                Até iniciar (sala): {room.stats.rollsUntilStart}
-              </span>
               <span className="pill">
                 Registros (sala): {room.stats.therapyEntries}
               </span>
