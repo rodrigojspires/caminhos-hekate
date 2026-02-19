@@ -15,8 +15,6 @@ const staticRoutes: Array<{
   { path: '/para-grupos', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/recursos', changeFrequency: 'monthly', priority: 0.85 },
   { path: '/deck', changeFrequency: 'monthly', priority: 0.7 },
-  { path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
-  { path: '/seguranca-privacidade', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/faq', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/contato', changeFrequency: 'monthly', priority: 0.65 },
   { path: '/termos', changeFrequency: 'yearly', priority: 0.4 },

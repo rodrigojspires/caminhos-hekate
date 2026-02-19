@@ -21,8 +21,6 @@ Site oficial: ${MAHA_LILAH_SITE_URL}
 - Para terapeutas: ${MAHA_LILAH_SITE_URL}/para-terapeutas
 - Para grupos: ${MAHA_LILAH_SITE_URL}/para-grupos
 - FAQ: ${MAHA_LILAH_SITE_URL}/faq
-- Blog: ${MAHA_LILAH_SITE_URL}/blog
-- Segurança e privacidade: ${MAHA_LILAH_SITE_URL}/seguranca-privacidade
 
 ## Conteúdo detalhado para IA
 - ${MAHA_LILAH_SITE_URL}/llms-full.txt
