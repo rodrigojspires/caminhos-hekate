@@ -29,7 +29,6 @@ export default function RegisterPage() {
             </p>
             <RegisterForm />
           </div>
-          <MediaPlaceholder variant="vertical" label="Imagem institucional: criação de conta" />
         </div>
       </SectionShell>
     </div>
