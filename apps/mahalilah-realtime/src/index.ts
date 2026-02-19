@@ -84,8 +84,10 @@ const PLAYER_INTENTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
 );
 const AI_TIP_QUESTION_MAX_LENGTH = Number(
-  process.env.MAHALILAH_AI_TIP_QUESTION_MAX_LENGTH || 500,
+  process.env.MAHALILAH_AI_TIP_QUESTION_MAX_LENGTH || 600,
 );
+const AI_OUT_OF_SCOPE_MESSAGE =
+  "Posso ajudar apenas com questões do Maha Lilah e da sessão em andamento. Reformule sua pergunta com foco no jogo atual.";
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -376,7 +378,7 @@ async function callOpenAI(prompt: string) {
         {
           role: "system",
           content:
-            "Você é um terapeuta que utiliza o jogo Maha Lilah para facilitar insights simbólicos e reflexões profundas. Responda em português, de modo claro, acolhedor e sempre conectando as respostas ao significado simbólico de cada casa no tabuleiro.",
+            "Você é um assistente terapêutico especializado no jogo Maha Lilah. Responda em português, de modo claro e acolhedor. Você só pode responder conteúdos relacionados ao Maha Lilah e à sessão em andamento, usando apenas o contexto fornecido. Se a solicitação estiver fora do escopo da partida/sessão atual, recuse educadamente e responda exatamente com a mensagem de recusa definida no prompt do usuário. Nunca invente contexto que não esteja nos dados fornecidos.",
         },
         { role: "user", content: prompt },
       ],
@@ -485,10 +487,10 @@ function buildAiTipPrompt({
   const intentionText = participantIntention || "não informada";
 
   if (mode === "pathQuestion") {
-    return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\nPergunta/contexto enviado pelo jogador: ${question || "não informado"}\n\nCom base no caminho percorrido até este momento, responda em português, de forma terapêutica e prática, trazendo:\n1) Leitura simbólica do caminho até agora (incluindo padrões/repetições relevantes);\n2) Resposta direta à pergunta/contexto da pessoa;\n3) Uma pergunta de auto-investigação para aprofundar o insight;\n4) Uma orientação breve para o próximo passo no jogo e na vida real\n\nSeja acolhedor, claro e específico ao contexto atual do jogador.`;
+    return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\nPergunta/contexto enviado pelo jogador: ${question || "não informado"}\n\nRegra obrigatória de escopo: se a pergunta/contexto não estiver relacionada ao Maha Lilah ou à sessão atual, responda exatamente com:\n"${AI_OUT_OF_SCOPE_MESSAGE}"\n\nSe a pergunta estiver no escopo, responda em português, de forma terapêutica e prática, trazendo:\n1) Leitura simbólica do caminho até agora (incluindo padrões/repetições relevantes);\n2) Resposta direta à pergunta/contexto da pessoa;\n3) Uma pergunta de auto-investigação para aprofundar o insight;\n4) Uma orientação breve para o próximo passo no jogo e na vida real\n\nSeja acolhedor, claro e específico ao contexto atual do jogador.`;
   }
 
-  return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\n\nCom base na casa atual e no caminho percorrido até aqui, gere em português:\n1) Uma hipótese terapêutica sobre o significado simbólico da casa atual;\n2) Uma conexão objetiva desta casa com o trajeto percorrido até agora;\n3) Uma pergunta de insight para o jogador;\n4) Uma orientação breve para o próximo passo no jogo e na vida real.\n\nSeja reflexivo, acolhedor e focado em entendimento da casa atual.`;
+  return `Contexto do jogo (JSON):\n${contextJson}\n\nIntenção da sessão: ${intentionText}\n\nRegra obrigatória de escopo: se faltar contexto para responder algo sobre o jogo atual, responda exatamente com:\n"${AI_OUT_OF_SCOPE_MESSAGE}"\n\nCom base na casa atual e no caminho percorrido até aqui, gere em português:\n1) Uma hipótese terapêutica sobre o significado simbólico da casa atual;\n2) Uma conexão objetiva desta casa com o trajeto percorrido até agora;\n3) Uma pergunta de insight para o jogador;\n4) Uma orientação breve para o próximo passo no jogo e na vida real.\n\nSeja reflexivo, acolhedor e focado em entendimento da casa atual.`;
 }
 
 async function loadPlanAiLimitsByType() {

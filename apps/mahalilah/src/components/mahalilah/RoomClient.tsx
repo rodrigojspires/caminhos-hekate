@@ -252,6 +252,7 @@ const COLORS = [
   "#d5a439",
 ];
 const TRIAL_POST_START_MOVE_LIMIT = 5;
+const AI_PATH_HELP_MAX_LENGTH = 600;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
 const ROOM_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const ROOM_ONBOARDING_THERAPIST_VERSION_KEY =
@@ -2273,7 +2274,9 @@ export function RoomClient({ code }: { code: string }) {
       if (!socket) return;
 
       const normalizedQuestion =
-        typeof question === "string" ? question.trim() : "";
+        typeof question === "string"
+          ? question.trim().slice(0, AI_PATH_HELP_MAX_LENGTH)
+          : "";
       if (mode === "pathQuestion" && !normalizedQuestion) {
         pushToast(
           "Escreva seu contexto/pergunta antes de pedir a ajuda pelo caminho.",
@@ -3820,11 +3823,22 @@ export function RoomClient({ code }: { code: string }) {
                     <textarea
                       placeholder="Escreva sua dúvida/contexto. Ex.: estou repetindo a mesma dificuldade de comunicação e não sei como sair disso."
                       value={aiPathHelpInput}
+                      maxLength={AI_PATH_HELP_MAX_LENGTH}
                       disabled={!canUseAiActions || aiTipLoading}
                       onChange={(event) =>
-                        setAiPathHelpInput(event.target.value)
+                        setAiPathHelpInput(
+                          event.target.value.slice(0, AI_PATH_HELP_MAX_LENGTH),
+                        )
                       }
                     />
+                    <span className="small-muted">
+                      A IA responde somente sobre o Maha Lilah e a sessão em
+                      andamento.
+                    </span>
+                    <span className="small-muted" style={{ justifySelf: "end" }}>
+                      {aiPathHelpInput.length}/{AI_PATH_HELP_MAX_LENGTH}{" "}
+                      caracteres
+                    </span>
                   </label>
 
                   <button
