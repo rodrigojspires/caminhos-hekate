@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Pencil, Plus, Loader2, Users } from 'lucide-react'
+import { Calendar, Pencil, Plus, Loader2, Trash2, Users } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface EventItem {
   id: string
@@ -22,6 +23,7 @@ export default function AdminEventsPage() {
   const router = useRouter()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +41,30 @@ export default function AdminEventsPage() {
     }
     load()
   }, [])
+
+  const removeEvent = async (eventId: string, eventTitle?: string) => {
+    if (!confirm(`Deseja excluir o evento${eventTitle ? ` "${eventTitle}"` : ''}?`)) return
+
+    try {
+      setDeletingId(eventId)
+      const response = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao excluir evento')
+      }
+
+      setEvents((prev) => prev.filter((eventItem) => eventItem.id.replace(/-r\d+$/, '') !== eventId))
+      toast.success('Evento excluído')
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir evento')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const groupedEvents = useMemo(() => {
     const groups = new Map<
@@ -178,6 +204,14 @@ export default function AdminEventsPage() {
                   >
                     <Users className="w-4 h-4" />
                     Inscritos
+                  </button>
+                  <button
+                    onClick={() => removeEvent(group.id, group.base?.title)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm border border-red-300 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    disabled={deletingId === group.id}
+                  >
+                    {deletingId === group.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    Excluir
                   </button>
                 </div>
               </div>

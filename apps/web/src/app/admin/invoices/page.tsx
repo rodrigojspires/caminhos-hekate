@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from 'react'
+import { Loader2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 type Invoice = {
   id: string
@@ -18,6 +20,7 @@ type Invoice = {
 export default function InvoicesAdminPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [status, setStatus] = useState<string>('')
   const [query, setQuery] = useState<string>('')
 
@@ -36,6 +39,30 @@ export default function InvoicesAdminPage() {
   }, [status, query])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  const removeInvoice = async (invoiceId: string) => {
+    if (!confirm('Deseja excluir esta fatura?')) return
+
+    try {
+      setDeletingId(invoiceId)
+      const response = await fetch(`/api/admin/invoices/${invoiceId}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao excluir fatura')
+      }
+
+      setInvoices((prev) => prev.filter((invoice) => invoice.id !== invoiceId))
+      toast.success('Fatura excluída')
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir fatura')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -67,13 +94,14 @@ export default function InvoicesAdminPage() {
               <th className="px-4 py-2 text-left">Status</th>
               <th className="px-4 py-2 text-left">Pago em</th>
               <th className="px-4 py-2 text-left">Criado em</th>
+              <th className="px-4 py-2 text-left">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {loading ? (
-              <tr><td className="px-4 py-6" colSpan={7}>Carregando...</td></tr>
+              <tr><td className="px-4 py-6" colSpan={8}>Carregando...</td></tr>
             ) : invoices.length === 0 ? (
-              <tr><td className="px-4 py-6" colSpan={7}>Nenhuma fatura encontrada</td></tr>
+              <tr><td className="px-4 py-6" colSpan={8}>Nenhuma fatura encontrada</td></tr>
             ) : (
               invoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
@@ -84,6 +112,20 @@ export default function InvoicesAdminPage() {
                   <td className="px-4 py-2">{inv.status}</td>
                   <td className="px-4 py-2">{inv.paidAt ? new Date(inv.paidAt).toLocaleString('pt-BR') : '-'}</td>
                   <td className="px-4 py-2">{new Date(inv.createdAt).toLocaleString('pt-BR')}</td>
+                  <td className="px-4 py-2">
+                    <button
+                      className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
+                      onClick={() => removeInvoice(inv.id)}
+                      disabled={deletingId === inv.id}
+                    >
+                      {deletingId === inv.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                      Excluir
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -93,4 +135,3 @@ export default function InvoicesAdminPage() {
     </div>
   )
 }
-
