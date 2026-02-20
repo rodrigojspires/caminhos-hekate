@@ -8,6 +8,7 @@ import {
   BOARD_COLS,
   BOARD_ROWS,
   JUMPS,
+  getJumpType,
   getHouseByNumber,
   getHousePrompt,
 } from "@hekate/mahalilah-core";
@@ -269,6 +270,31 @@ type JumpPinAnimationState = {
   endY: number;
   phase: "start" | "moving";
 };
+type BoardPoint = { x: number; y: number };
+type LadderGeometry = {
+  railA: { x1: number; y1: number; x2: number; y2: number };
+  railB: { x1: number; y1: number; x2: number; y2: number };
+  rungs: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+};
+type SnakeGeometry = {
+  path: string;
+  head: BoardPoint;
+  tail: BoardPoint;
+};
+type BoardJumpOverlay =
+  | {
+      key: string;
+      jumpType: "flecha";
+      jump: { from: number; to: number };
+      ladder: LadderGeometry;
+    }
+  | {
+      key: string;
+      jumpType: "cobra";
+      jump: { from: number; to: number };
+      snake: SnakeGeometry;
+      headAngle: number;
+    };
 
 const COLORS = [
   "#2f7f6f",
@@ -734,6 +760,110 @@ function clampTutorialNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function clampBoardNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function buildLadderGeometry(start: BoardPoint, end: BoardPoint) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 10) return null;
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const px = -uy;
+  const py = ux;
+  const railHalf = clampBoardNumber(length * 0.045, 4.4, 7.6);
+  const rungCount = Math.max(3, Math.min(8, Math.round(length / 34)));
+  const railInset = clampBoardNumber(length * 0.08, 4, 10);
+  const innerStart = {
+    x: start.x + ux * railInset,
+    y: start.y + uy * railInset,
+  };
+  const innerEnd = {
+    x: end.x - ux * railInset,
+    y: end.y - uy * railInset,
+  };
+  const innerDx = innerEnd.x - innerStart.x;
+  const innerDy = innerEnd.y - innerStart.y;
+  const rungs: LadderGeometry["rungs"] = [];
+
+  for (let index = 1; index <= rungCount; index += 1) {
+    const progress = index / (rungCount + 1);
+    const centerX = innerStart.x + innerDx * progress;
+    const centerY = innerStart.y + innerDy * progress;
+    rungs.push({
+      x1: centerX + px * railHalf * 0.95,
+      y1: centerY + py * railHalf * 0.95,
+      x2: centerX - px * railHalf * 0.95,
+      y2: centerY - py * railHalf * 0.95,
+    });
+  }
+
+  return {
+    railA: {
+      x1: innerStart.x + px * railHalf,
+      y1: innerStart.y + py * railHalf,
+      x2: innerEnd.x + px * railHalf,
+      y2: innerEnd.y + py * railHalf,
+    },
+    railB: {
+      x1: innerStart.x - px * railHalf,
+      y1: innerStart.y - py * railHalf,
+      x2: innerEnd.x - px * railHalf,
+      y2: innerEnd.y - py * railHalf,
+    },
+    rungs,
+  } satisfies LadderGeometry;
+}
+
+function buildSnakeGeometry(start: BoardPoint, end: BoardPoint) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 12) return null;
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const px = -uy;
+  const py = ux;
+  const waveCount = Math.max(2, Math.min(3, Math.round(length / 120) + 1));
+  const checkpoints = waveCount * 2;
+  const amplitude = clampBoardNumber(length * 0.075, 6.5, 15);
+  const points: BoardPoint[] = [start];
+
+  for (let index = 1; index < checkpoints; index += 1) {
+    const progress = index / checkpoints;
+    const sign = index % 2 === 0 ? -1 : 1;
+    const taper = Math.sin(Math.PI * progress);
+    points.push({
+      x: start.x + dx * progress + px * amplitude * sign * taper,
+      y: start.y + dy * progress + py * amplitude * sign * taper,
+    });
+  }
+
+  points.push(end);
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const control = points[index];
+    const next = points[index + 1];
+    const midX = (control.x + next.x) / 2;
+    const midY = (control.y + next.y) / 2;
+    path += ` Q ${control.x} ${control.y} ${midX} ${midY}`;
+  }
+
+  const penultimate = points[points.length - 2];
+  path += ` Q ${penultimate.x} ${penultimate.y} ${end.x} ${end.y}`;
+
+  return {
+    path,
+    head: end,
+    tail: start,
+  } satisfies SnakeGeometry;
+}
+
 type RoomTutorialPopoverPosition = {
   width: number;
   height: number;
@@ -1042,6 +1172,10 @@ export function RoomClient({
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
   const [jumpPinAnimation, setJumpPinAnimation] =
     useState<JumpPinAnimationState | null>(null);
+  const [boardOverlayViewport, setBoardOverlayViewport] = useState({
+    width: 0,
+    height: 0,
+  });
   const syncedIntentionRef = useRef("");
   const completionStateByParticipantRef = useRef<Map<string, boolean>>(
     new Map(),
@@ -1149,6 +1283,25 @@ export function RoomClient({
     }
   }, []);
 
+  const syncBoardOverlayViewport = useCallback(() => {
+    const boardElement = boardGridRef.current;
+    if (!boardElement) return;
+
+    const nextWidth = Math.max(
+      0,
+      boardElement.clientWidth - BOARD_GRID_PADDING * 2,
+    );
+    const nextHeight = Math.max(
+      0,
+      boardElement.clientHeight - BOARD_GRID_PADDING * 2,
+    );
+    setBoardOverlayViewport((previous) =>
+      previous.width === nextWidth && previous.height === nextHeight
+        ? previous
+        : { width: nextWidth, height: nextHeight },
+    );
+  }, []);
+
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(DICE_ANIMATION_STORAGE_KEY);
@@ -1253,6 +1406,26 @@ export function RoomClient({
     mediaQuery.addListener(syncViewport);
     return () => mediaQuery.removeListener(syncViewport);
   }, []);
+
+  useEffect(() => {
+    syncBoardOverlayViewport();
+    if (typeof ResizeObserver !== "function") {
+      window.addEventListener("resize", syncBoardOverlayViewport);
+      return () =>
+        window.removeEventListener("resize", syncBoardOverlayViewport);
+    }
+
+    const observer = new ResizeObserver(syncBoardOverlayViewport);
+    if (boardGridRef.current) {
+      observer.observe(boardGridRef.current);
+    }
+    window.addEventListener("resize", syncBoardOverlayViewport);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncBoardOverlayViewport);
+    };
+  }, [syncBoardOverlayViewport, loading, state?.room.id]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -1537,6 +1710,57 @@ export function RoomClient({
     },
     [boardCellByHouse],
   );
+  const boardJumpOverlays = useMemo<BoardJumpOverlay[]>(() => {
+    if (boardOverlayViewport.width <= 0 || boardOverlayViewport.height <= 0) {
+      return [];
+    }
+
+    const overlays: BoardJumpOverlay[] = [];
+    JUMPS.forEach((jump) => {
+      const startCenter = getBoardHouseCenter(jump.from);
+      const endCenter = getBoardHouseCenter(jump.to);
+      if (!startCenter || !endCenter) return;
+
+      const start = {
+        x: startCenter.x - BOARD_GRID_PADDING,
+        y: startCenter.y - BOARD_GRID_PADDING,
+      };
+      const end = {
+        x: endCenter.x - BOARD_GRID_PADDING,
+        y: endCenter.y - BOARD_GRID_PADDING,
+      };
+      const jumpType =
+        getJumpType(jump.from) || (jump.to > jump.from ? "flecha" : "cobra");
+
+      if (jumpType === "flecha") {
+        const ladder = buildLadderGeometry(start, end);
+        if (!ladder) return;
+        overlays.push({
+          key: `${jump.from}-${jump.to}`,
+          jumpType,
+          jump: { from: jump.from, to: jump.to },
+          ladder,
+        });
+        return;
+      }
+
+      const snake = buildSnakeGeometry(start, end);
+      if (!snake) return;
+      overlays.push({
+        key: `${jump.from}-${jump.to}`,
+        jumpType: "cobra",
+        jump: { from: jump.from, to: jump.to },
+        snake,
+        headAngle: Math.atan2(end.y - start.y, end.x - start.x),
+      });
+    });
+
+    return overlays;
+  }, [
+    boardOverlayViewport.width,
+    boardOverlayViewport.height,
+    getBoardHouseCenter,
+  ]);
 
   const currentParticipant = useMemo(() => {
     if (!state) return null;
@@ -4219,7 +4443,7 @@ export function RoomClient({
                       justifyContent: "space-between",
                       gap: 4,
                       position: "relative",
-                      zIndex: 1,
+                      zIndex: 4,
                     }}
                   >
                     <span className="small-muted" style={{ fontSize: 11 }}>
@@ -4253,7 +4477,7 @@ export function RoomClient({
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                         position: "relative",
-                        zIndex: 1,
+                        zIndex: 4,
                       }}
                       title={sanskritName}
                     >
@@ -4267,7 +4491,7 @@ export function RoomClient({
                       flexWrap: "wrap",
                       alignSelf: showBoardNames ? "center" : "end",
                       position: "relative",
-                      zIndex: 1,
+                      zIndex: 4,
                     }}
                   >
                     {tokens.map((token, tokenIndex) => {
@@ -4326,7 +4550,7 @@ export function RoomClient({
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                         position: "relative",
-                        zIndex: 1,
+                        zIndex: 4,
                       }}
                       title={portugueseName}
                     >
@@ -4336,6 +4560,107 @@ export function RoomClient({
                 </div>
               );
             })}
+            {boardOverlayViewport.width > 0 &&
+              boardOverlayViewport.height > 0 && (
+                <svg
+                  aria-hidden
+                  viewBox={`0 0 ${boardOverlayViewport.width} ${boardOverlayViewport.height}`}
+                  preserveAspectRatio="none"
+                  style={{
+                    position: "absolute",
+                    inset: BOARD_GRID_PADDING,
+                    pointerEvents: "none",
+                    zIndex: 2,
+                    opacity: 0.92,
+                  }}
+                >
+                  {boardJumpOverlays.map((overlay) => {
+                    if (overlay.jumpType === "flecha") {
+                      return (
+                        <g key={overlay.key} opacity={0.3}>
+                          <line
+                            x1={overlay.ladder.railA.x1}
+                            y1={overlay.ladder.railA.y1}
+                            x2={overlay.ladder.railA.x2}
+                            y2={overlay.ladder.railA.y2}
+                            stroke="rgba(228, 195, 120, 0.78)"
+                            strokeWidth={2.1}
+                            strokeLinecap="round"
+                          />
+                          <line
+                            x1={overlay.ladder.railB.x1}
+                            y1={overlay.ladder.railB.y1}
+                            x2={overlay.ladder.railB.x2}
+                            y2={overlay.ladder.railB.y2}
+                            stroke="rgba(228, 195, 120, 0.78)"
+                            strokeWidth={2.1}
+                            strokeLinecap="round"
+                          />
+                          {overlay.ladder.rungs.map((rung, index) => (
+                            <line
+                              key={`${overlay.key}-rung-${index}`}
+                              x1={rung.x1}
+                              y1={rung.y1}
+                              x2={rung.x2}
+                              y2={rung.y2}
+                              stroke="rgba(239, 215, 156, 0.72)"
+                              strokeWidth={1.2}
+                              strokeLinecap="round"
+                            />
+                          ))}
+                        </g>
+                      );
+                    }
+
+                    const eyeX =
+                      overlay.snake.head.x -
+                      Math.cos(overlay.headAngle) * 2.2 +
+                      Math.cos(overlay.headAngle + Math.PI / 2) * 1.2;
+                    const eyeY =
+                      overlay.snake.head.y -
+                      Math.sin(overlay.headAngle) * 2.2 +
+                      Math.sin(overlay.headAngle + Math.PI / 2) * 1.2;
+                    return (
+                      <g key={overlay.key} opacity={0.26}>
+                        <path
+                          d={overlay.snake.path}
+                          fill="none"
+                          stroke="rgba(74, 149, 203, 0.78)"
+                          strokeWidth={5.4}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d={overlay.snake.path}
+                          fill="none"
+                          stroke="rgba(146, 211, 250, 0.62)"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx={overlay.snake.head.x}
+                          cy={overlay.snake.head.y}
+                          r={3.6}
+                          fill="rgba(152, 214, 250, 0.76)"
+                        />
+                        <circle
+                          cx={overlay.snake.tail.x}
+                          cy={overlay.snake.tail.y}
+                          r={2.2}
+                          fill="rgba(74, 149, 203, 0.58)"
+                        />
+                        <circle
+                          cx={eyeX}
+                          cy={eyeY}
+                          r={0.8}
+                          fill="rgba(10, 22, 34, 0.9)"
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
             {jumpPinAnimation && (
               <span
                 aria-hidden
