@@ -4326,7 +4326,13 @@ export function RoomClient({
                 finalReportLoading ||
                 !socketReady
               }
-              style={{ flex: "0 0 auto" }}
+              style={{
+                flex: "0 0 auto",
+                color: "rgba(255, 188, 188, 0.98)",
+                borderColor: "rgba(214, 89, 89, 0.72)",
+                background:
+                  "linear-gradient(180deg, rgba(118, 44, 44, 0.34), rgba(82, 28, 28, 0.26))",
+              }}
             >
               Encerrar sala
             </button>
@@ -4483,25 +4489,54 @@ export function RoomClient({
             onClick={() => setDiceAnimationEnabled((prev) => !prev)}
             style={{
               flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: 10,
               display: "inline-flex",
-              gap: 8,
               alignItems: "center",
+              justifyContent: "center",
+              color: diceAnimationEnabled
+                ? "rgba(163, 233, 209, 0.98)"
+                : undefined,
+              borderColor: diceAnimationEnabled
+                ? "rgba(106, 211, 176, 0.72)"
+                : undefined,
+              background: diceAnimationEnabled
+                ? "linear-gradient(180deg, rgba(54, 118, 103, 0.34), rgba(35, 82, 72, 0.26))"
+                : undefined,
             }}
             title="Ativar ou desativar animação do dado"
+            aria-label="Alternar animação do dado"
             aria-pressed={diceAnimationEnabled}
           >
-            <span
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              aria-hidden
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: diceAnimationEnabled ? "#6ad3b0" : "#ff6b6b",
-                boxShadow: diceAnimationEnabled
-                  ? "0 0 0 3px rgba(106, 211, 176, 0.22)"
-                  : "0 0 0 3px rgba(255, 107, 107, 0.22)",
+                filter: diceAnimationEnabled
+                  ? "drop-shadow(0 0 5px rgba(106, 211, 176, 0.28))"
+                  : "none",
               }}
-            />
-            <span>Animação do Dado</span>
+            >
+              <rect
+                x="5"
+                y="5"
+                width="14"
+                height="14"
+                rx="3"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <circle cx="9" cy="9" r="1" fill="currentColor" />
+              <circle cx="15" cy="9" r="1" fill="currentColor" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+              <circle cx="9" cy="15" r="1" fill="currentColor" />
+              <circle cx="15" cy="15" r="1" fill="currentColor" />
+            </svg>
           </button>
             <Link
               href="/dashboard"
