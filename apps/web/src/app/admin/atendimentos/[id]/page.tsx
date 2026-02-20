@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, CheckCircle2, Loader2, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/therapeutic-care'
 
@@ -176,10 +176,11 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
   const [savingNotes, setSavingNotes] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
   const [process, setProcess] = useState<TherapeuticProcess | null>(null)
-  const [users, setUsers] = useState<UserOption[]>([])
+  const [therapists, setTherapists] = useState<UserOption[]>([])
   const [therapies, setTherapies] = useState<Therapy[]>([])
   const [sessionDrafts, setSessionDrafts] = useState<Record<string, SessionDraft>>({})
   const [savingSessionId, setSavingSessionId] = useState<string | null>(null)
+  const [movingBudgetItemId, setMovingBudgetItemId] = useState<string | null>(null)
   const [payingInstallmentId, setPayingInstallmentId] = useState<string | null>(null)
 
   const [notesDraft, setNotesDraft] = useState('')
@@ -208,7 +209,7 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
 
       const [processRes, usersRes, therapiesRes] = await Promise.all([
         fetch(`/api/admin/atendimentos/processos/${params.id}`, { cache: 'no-store' }),
-        fetch('/api/admin/users?limit=300', { cache: 'no-store' }),
+        fetch('/api/admin/users?limit=400&sortBy=name&sortOrder=asc&isTherapist=true', { cache: 'no-store' }),
         fetch('/api/admin/atendimentos/terapias?active=true', { cache: 'no-store' }),
       ])
 
@@ -224,7 +225,7 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
       setProcess(loadedProcess)
       setNotesDraft(loadedProcess.notes || '')
       setStatusDraft(loadedProcess.status)
-      setUsers(
+      setTherapists(
         Array.isArray(usersData.users)
           ? usersData.users.map((user: any) => ({ id: user.id, name: user.name, email: user.email }))
           : [],
@@ -421,6 +422,43 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : 'Erro ao remover item do orçamento')
+    }
+  }
+
+  const moveBudgetItem = async (itemId: string, direction: 'UP' | 'DOWN') => {
+    if (!process) return
+
+    const orderedItems = [...process.budgetItems].sort((a, b) => {
+      if (a.sortOrder === b.sortOrder) return a.id.localeCompare(b.id)
+      return a.sortOrder - b.sortOrder
+    })
+
+    const currentIndex = orderedItems.findIndex((item) => item.id === itemId)
+    if (currentIndex < 0) return
+
+    const targetIndex = direction === 'UP' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= orderedItems.length) return
+
+    try {
+      setMovingBudgetItemId(itemId)
+      const response = await fetch(`/api/admin/atendimentos/processos/${process.id}/orcamentos/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sortOrder: targetIndex,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Erro ao mover item do orçamento')
+
+      toast.success('Ordem do orçamento atualizada')
+      await loadData()
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao mover item do orçamento')
+    } finally {
+      setMovingBudgetItemId(null)
     }
   }
 
@@ -711,9 +749,9 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
               </tr>
             </thead>
             <tbody>
-              {process.budgetItems.map((item) => (
+              {process.budgetItems.map((item, index) => (
                 <tr key={item.id} className="border-b">
-                  <td className="px-3 py-2">{item.sortOrder}</td>
+                  <td className="px-3 py-2">{index + 1}</td>
                   <td className="px-3 py-2">{item.therapyNameSnapshot}</td>
                   <td className="px-3 py-2">{item.quantity}</td>
                   <td className="px-3 py-2">{formatCurrency(Number(item.unitValue))}</td>
@@ -722,13 +760,32 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
                   <td className="px-3 py-2 font-medium">{formatCurrency(Number(item.netTotal))}</td>
                   {process.status === 'IN_ANALYSIS' && (
                     <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="rounded border p-1 hover:bg-muted disabled:opacity-40"
+                          onClick={() => moveBudgetItem(item.id, 'UP')}
+                          title="Subir"
+                          disabled={movingBudgetItemId === item.id || index === 0}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          className="rounded border p-1 hover:bg-muted disabled:opacity-40"
+                          onClick={() => moveBudgetItem(item.id, 'DOWN')}
+                          title="Descer"
+                          disabled={movingBudgetItemId === item.id || index === process.budgetItems.length - 1}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
                       <button
                         className="rounded border p-1 text-red-600 hover:bg-red-50"
                         onClick={() => removeBudgetItem(item.id)}
                         title="Remover"
+                        disabled={movingBudgetItemId === item.id}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -898,8 +955,8 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
                       })
                     }
                   >
-                    <option value="">Quem está atendendo</option>
-                    {users.map((user) => (
+                    <option value="">Terapeuta</option>
+                    {therapists.map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name || 'Sem nome'} - {user.email}
                       </option>

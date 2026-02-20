@@ -13,6 +13,7 @@ interface User {
   name: string
   email: string
   dateOfBirth?: string | null
+  isTherapist?: boolean
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -21,6 +22,7 @@ interface UserFormData {
   name: string
   email: string
   dateOfBirth: string
+  isTherapist: boolean
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -37,6 +39,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
     name: user?.name || '',
     email: user?.email || '',
     dateOfBirth: user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
+    isTherapist: Boolean(user?.isTherapist),
     role: (user?.role as any) || 'VISITOR',
     subscriptionTier: (user?.subscriptionTier as any) || 'FREE'
   })
@@ -50,6 +53,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
         name: user.name,
         email: user.email,
         dateOfBirth: user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
+        isTherapist: Boolean(user.isTherapist),
         role: user.role as any,
         subscriptionTier: user.subscriptionTier as any
       })
@@ -120,6 +124,26 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
             onChange={(e) => handleChange('dateOfBirth', e.target.value)}
             disabled={loading}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="isTherapist">Terapeuta Caminhos de Hekate</Label>
+          <Select
+            value={formData.isTherapist ? 'true' : 'false'}
+            onValueChange={(value) => {
+              setFormData((prev) => ({ ...prev, isTherapist: value === 'true' }))
+              setHasChanges(true)
+            }}
+            disabled={loading}
+          >
+            <SelectTrigger id="isTherapist">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="false">Não</SelectItem>
+              <SelectItem value="true">Sim</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

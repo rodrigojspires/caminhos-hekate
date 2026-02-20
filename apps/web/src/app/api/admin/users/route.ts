@@ -17,6 +17,7 @@ const createUserSchema = z.object({
   email: z.string().email('Email inválido'),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).default('VISITOR'),
   subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).default('FREE'),
+  isTherapist: z.boolean().optional().default(false),
   dateOfBirth: optionalDateField
 })
 
@@ -26,6 +27,7 @@ const updateUserSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).optional(),
   subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional(),
+  isTherapist: z.boolean().optional(),
   dateOfBirth: optionalDateField
 })
 
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role')
     const subscriptionTier = searchParams.get('subscriptionTier')
     const registrationPortal = searchParams.get('registrationPortal')
+    const isTherapist = searchParams.get('isTherapist')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -70,6 +73,8 @@ export async function GET(request: NextRequest) {
     if (role) where.role = role
     if (subscriptionTier) where.subscriptionTier = subscriptionTier
     if (registrationPortal) where.registrationPortal = registrationPortal
+    if (isTherapist === 'true') where.isTherapist = true
+    if (isTherapist === 'false') where.isTherapist = false
 
     // Buscar usuários
     const [users, total] = await Promise.all([
@@ -84,6 +89,7 @@ export async function GET(request: NextRequest) {
           email: true,
           role: true,
           subscriptionTier: true,
+          isTherapist: true,
           dateOfBirth: true,
           registrationPortal: true,
           createdAt: true,
@@ -159,6 +165,7 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
         subscriptionTier: true,
+        isTherapist: true,
         dateOfBirth: true,
         createdAt: true
       }

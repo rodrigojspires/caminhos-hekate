@@ -187,6 +187,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       where: { id: params.id },
       include: {
         budgetItems: {
+          include: {
+            therapy: {
+              select: {
+                defaultSessions: true,
+              },
+            },
+          },
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
         sessions: {
@@ -279,7 +286,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }> = []
 
       for (const item of process.budgetItems) {
-        for (let sessionNumber = 1; sessionNumber <= item.quantity; sessionNumber += 1) {
+        const defaultSessions = Math.max(1, Number(item.therapy?.defaultSessions ?? 1))
+        const totalSessionsForItem = Math.max(1, Number(item.quantity)) * defaultSessions
+
+        for (let sessionNumber = 1; sessionNumber <= totalSessionsForItem; sessionNumber += 1) {
           sessionsToCreate.push({
             processId: process.id,
             budgetItemId: item.id,

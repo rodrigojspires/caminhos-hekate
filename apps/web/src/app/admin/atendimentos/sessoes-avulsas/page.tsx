@@ -11,6 +11,7 @@ type UserOption = {
   id: string
   name: string | null
   email: string
+  isTherapist?: boolean
 }
 
 type Therapy = {
@@ -90,7 +91,9 @@ export default function SessoesAvulsasPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [users, setUsers] = useState<UserOption[]>([])
+  const [therapists, setTherapists] = useState<UserOption[]>([])
+  const [patientSearch, setPatientSearch] = useState('')
+  const [patientOptions, setPatientOptions] = useState<UserOption[]>([])
   const [therapies, setTherapies] = useState<Therapy[]>([])
   const [sessions, setSessions] = useState<SingleSession[]>([])
 
@@ -111,26 +114,59 @@ export default function SessoesAvulsasPage() {
     manualDueDates: [''],
   })
 
+  const userDisplay = useCallback((user: UserOption) => {
+    return `${user.name || 'Sem nome'} - ${user.email}`
+  }, [])
+
+  const syncPatientSelection = useCallback(
+    (inputValue: string, options: UserOption[]) => {
+      const normalized = inputValue.trim().toLowerCase()
+      const matchedUser = options.find((user) => {
+        if (user.email.toLowerCase() === normalized) return true
+        return userDisplay(user).toLowerCase() === normalized
+      })
+
+      setForm((prev) => ({
+        ...prev,
+        patientUserId: matchedUser?.id || '',
+      }))
+    },
+    [userDisplay],
+  )
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
 
-      const [usersRes, therapiesRes, sessionsRes] = await Promise.all([
-        fetch('/api/admin/users?limit=300', { cache: 'no-store' }),
+      const [patientsRes, therapistsRes, therapiesRes, sessionsRes] = await Promise.all([
+        fetch('/api/admin/users?limit=40&sortBy=name&sortOrder=asc', { cache: 'no-store' }),
+        fetch('/api/admin/users?limit=400&sortBy=name&sortOrder=asc&isTherapist=true', { cache: 'no-store' }),
         fetch('/api/admin/atendimentos/terapias?active=true', { cache: 'no-store' }),
         fetch('/api/admin/atendimentos/sessoes-avulsas', { cache: 'no-store' }),
       ])
 
-      const usersData = usersRes.ok ? await usersRes.json() : { users: [] }
+      const patientsData = patientsRes.ok ? await patientsRes.json() : { users: [] }
+      const therapistsData = therapistsRes.ok ? await therapistsRes.json() : { users: [] }
       const therapiesData = therapiesRes.ok ? await therapiesRes.json() : { therapies: [] }
       const sessionsData = sessionsRes.ok ? await sessionsRes.json() : { sessions: [] }
 
-      setUsers(
-        Array.isArray(usersData.users)
-          ? usersData.users.map((user: any) => ({
+      setPatientOptions(
+        Array.isArray(patientsData.users)
+          ? patientsData.users.map((user: any) => ({
               id: user.id,
               name: user.name,
               email: user.email,
+            }))
+          : [],
+      )
+
+      setTherapists(
+        Array.isArray(therapistsData.users)
+          ? therapistsData.users.map((user: any) => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              isTherapist: Boolean(user.isTherapist),
             }))
           : [],
       )
@@ -157,19 +193,54 @@ export default function SessoesAvulsasPage() {
 
   const suggestedAmount = useMemo(() => {
     if (!selectedTherapy) return 0
-    const value = Number(selectedTherapy.value || 0)
-    if (selectedTherapy.valuePerSession) return value
     return Number(selectedTherapy.singleSessionValue ?? selectedTherapy.value ?? 0)
   }, [selectedTherapy])
 
   useEffect(() => {
-    if (!selectedTherapy) return
-    if (form.chargedAmount) return
-    setForm((prev) => ({
-      ...prev,
-      chargedAmount: suggestedAmount > 0 ? String(suggestedAmount) : '',
-    }))
-  }, [selectedTherapy, suggestedAmount, form.chargedAmount])
+    if (status !== 'authenticated') return
+
+    const normalizedSearch = patientSearch.trim()
+    const controller = new AbortController()
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          limit: '40',
+          sortBy: 'name',
+          sortOrder: 'asc',
+        })
+
+        if (normalizedSearch) {
+          params.set('search', normalizedSearch)
+        }
+
+        const response = await fetch(`/api/admin/users?${params.toString()}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+
+        const data = response.ok ? await response.json() : { users: [] }
+        const nextOptions: UserOption[] = Array.isArray(data.users)
+          ? data.users.map((user: any) => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+            }))
+          : []
+
+        setPatientOptions(nextOptions)
+        syncPatientSelection(patientSearch, nextOptions)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error(error)
+      }
+    }, 280)
+
+    return () => {
+      controller.abort()
+      clearTimeout(timeoutId)
+    }
+  }, [patientSearch, status, syncPatientSelection])
 
   useEffect(() => {
     setForm((prev) => {
@@ -199,7 +270,7 @@ export default function SessoesAvulsasPage() {
 
   const createSession = async () => {
     if (!form.patientUserId || !form.therapyId) {
-      toast.error('Selecione usuário e terapia')
+      toast.error('Selecione um usuário válido e a terapia')
       return
     }
 
@@ -246,6 +317,7 @@ export default function SessoesAvulsasPage() {
         firstDueDate: '',
         manualDueDates: [''],
       })
+      setPatientSearch('')
       await load()
     } catch (error) {
       console.error(error)
@@ -262,6 +334,8 @@ export default function SessoesAvulsasPage() {
   if (session?.user?.role !== 'ADMIN') {
     return <div className="py-12 text-center text-muted-foreground">Acesso restrito ao administrador.</div>
   }
+
+  const patientDatalistId = 'single-session-patient-datalist'
 
   return (
     <div className="space-y-6">
@@ -282,139 +356,188 @@ export default function SessoesAvulsasPage() {
       <div className="rounded-lg border bg-card p-4">
         <h2 className="mb-3 text-lg font-semibold">Nova sessão avulsa</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.patientUserId}
-            onChange={(event) => setForm((prev) => ({ ...prev, patientUserId: event.target.value }))}
-          >
-            <option value="">Usuário</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name || 'Sem nome'} - {user.email}
-              </option>
-            ))}
-          </select>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Usuário</label>
+            <input
+              className="w-full rounded border bg-background px-3 py-2"
+              type="text"
+              list={patientDatalistId}
+              value={patientSearch}
+              placeholder="Digite nome ou e-mail para buscar"
+              onChange={(event) => {
+                const value = event.target.value
+                setPatientSearch(value)
+                syncPatientSelection(value, patientOptions)
+              }}
+              onBlur={(event) => syncPatientSelection(event.target.value, patientOptions)}
+            />
+            <datalist id={patientDatalistId}>
+              {patientOptions.map((user) => (
+                <option key={user.id} value={userDisplay(user)} />
+              ))}
+            </datalist>
+          </div>
 
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.therapyId}
-            onChange={(event) => setForm((prev) => ({ ...prev, therapyId: event.target.value }))}
-          >
-            <option value="">Terapia</option>
-            {therapies.map((therapy) => (
-              <option key={therapy.id} value={therapy.id}>
-                {therapy.name}
-              </option>
-            ))}
-          </select>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Terapia</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.therapyId}
+              onChange={(event) => {
+                const therapyId = event.target.value
+                const therapy = therapies.find((item) => item.id === therapyId) || null
+                const therapyAmount = Number(therapy?.singleSessionValue ?? therapy?.value ?? 0)
 
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.therapistUserId}
-            onChange={(event) => setForm((prev) => ({ ...prev, therapistUserId: event.target.value }))}
-          >
-            <option value="">Usuário que atendeu (opcional)</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name || 'Sem nome'} - {user.email}
-              </option>
-            ))}
-          </select>
+                setForm((prev) => ({
+                  ...prev,
+                  therapyId,
+                  chargedAmount: therapyId ? String(therapyAmount > 0 ? therapyAmount : '') : '',
+                }))
+              }}
+            >
+              <option value="">Selecione</option>
+              {therapies.map((therapy) => (
+                <option key={therapy.id} value={therapy.id}>
+                  {therapy.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <input
-            type="date"
-            className="rounded border bg-background px-3 py-2"
-            value={form.sessionDate}
-            onChange={(event) => setForm((prev) => ({ ...prev, sessionDate: event.target.value }))}
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Terapeuta</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.therapistUserId}
+              onChange={(event) => setForm((prev) => ({ ...prev, therapistUserId: event.target.value }))}
+            >
+              <option value="">Não informado</option>
+              {therapists.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || 'Sem nome'} - {user.email}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.mode}
-            onChange={(event) => setForm((prev) => ({ ...prev, mode: event.target.value as typeof prev.mode }))}
-          >
-            <option value="">Modo</option>
-            <option value="IN_PERSON">Presencial</option>
-            <option value="DISTANCE">Distância</option>
-            <option value="ONLINE">Online</option>
-          </select>
-
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.status}
-            onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as typeof prev.status }))}
-          >
-            <option value="PENDING">Pendente</option>
-            <option value="COMPLETED">Concluída</option>
-            <option value="CANCELED">Cancelada</option>
-          </select>
-
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            className="rounded border bg-background px-3 py-2"
-            value={form.chargedAmount}
-            onChange={(event) => setForm((prev) => ({ ...prev, chargedAmount: event.target.value }))}
-            placeholder="Valor cobrado"
-          />
-
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.paymentMethod}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                paymentMethod: event.target.value as typeof prev.paymentMethod,
-              }))
-            }
-          >
-            <option value="PIX">PIX</option>
-            <option value="CARD_MERCADO_PAGO">Cartão / Mercado Pago</option>
-            <option value="NUBANK">Nubank</option>
-          </select>
-
-          <input
-            type="number"
-            min={1}
-            max={36}
-            className="rounded border bg-background px-3 py-2"
-            value={form.installmentsCount}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                installmentsCount: Math.max(1, Number(event.target.value) || 1),
-              }))
-            }
-            placeholder="Parcelas"
-          />
-
-          <select
-            className="rounded border bg-background px-3 py-2"
-            value={form.dueDateMode}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                dueDateMode: event.target.value as typeof prev.dueDateMode,
-              }))
-            }
-          >
-            <option value="AUTOMATIC_MONTHLY">Vencimento mensal automático</option>
-            <option value="MANUAL">Vencimento manual</option>
-          </select>
-
-          {form.dueDateMode === 'AUTOMATIC_MONTHLY' ? (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Data da sessão</label>
             <input
               type="date"
-              className="rounded border bg-background px-3 py-2"
-              value={form.firstDueDate}
-              onChange={(event) => setForm((prev) => ({ ...prev, firstDueDate: event.target.value }))}
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.sessionDate}
+              onChange={(event) => setForm((prev) => ({ ...prev, sessionDate: event.target.value }))}
             />
-          ) : (
-            <div className="rounded border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              Preencha as datas abaixo
-            </div>
-          )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Modo</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.mode}
+              onChange={(event) => setForm((prev) => ({ ...prev, mode: event.target.value as typeof prev.mode }))}
+            >
+              <option value="">Selecione</option>
+              <option value="IN_PERSON">Presencial</option>
+              <option value="DISTANCE">Distância</option>
+              <option value="ONLINE">Online</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.status}
+              onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as typeof prev.status }))}
+            >
+              <option value="PENDING">Pendente</option>
+              <option value="COMPLETED">Concluída</option>
+              <option value="CANCELED">Cancelada</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Valor avulso</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.chargedAmount}
+              onChange={(event) => setForm((prev) => ({ ...prev, chargedAmount: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Forma de pagamento</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.paymentMethod}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  paymentMethod: event.target.value as typeof prev.paymentMethod,
+                }))
+              }
+            >
+              <option value="PIX">PIX</option>
+              <option value="CARD_MERCADO_PAGO">Cartão / Mercado Pago</option>
+              <option value="NUBANK">Nubank</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Número de parcelas</label>
+            <input
+              type="number"
+              min={1}
+              max={36}
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.installmentsCount}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  installmentsCount: Math.max(1, Number(event.target.value) || 1),
+                }))
+              }
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Modo de vencimento</label>
+            <select
+              className="w-full rounded border bg-background px-3 py-2"
+              value={form.dueDateMode}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  dueDateMode: event.target.value as typeof prev.dueDateMode,
+                }))
+              }
+            >
+              <option value="AUTOMATIC_MONTHLY">Mensal automático</option>
+              <option value="MANUAL">Manual</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              {form.dueDateMode === 'AUTOMATIC_MONTHLY' ? 'Primeiro vencimento' : 'Datas manuais'}
+            </label>
+            {form.dueDateMode === 'AUTOMATIC_MONTHLY' ? (
+              <input
+                type="date"
+                className="w-full rounded border bg-background px-3 py-2"
+                value={form.firstDueDate}
+                onChange={(event) => setForm((prev) => ({ ...prev, firstDueDate: event.target.value }))}
+              />
+            ) : (
+              <div className="rounded border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Preencha as datas abaixo
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-2 text-xs text-muted-foreground">
@@ -424,34 +547,40 @@ export default function SessoesAvulsasPage() {
         {form.dueDateMode === 'MANUAL' && (
           <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
             {form.manualDueDates.map((dueDate, index) => (
-              <input
-                key={index}
-                type="date"
-                className="rounded border bg-background px-3 py-2"
-                value={dueDate}
-                onChange={(event) => {
-                  const next = [...form.manualDueDates]
-                  next[index] = event.target.value
-                  setForm((prev) => ({ ...prev, manualDueDates: next }))
-                }}
-              />
+              <div key={index} className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">{`${index + 1}ª parcela`}</label>
+                <input
+                  type="date"
+                  className="w-full rounded border bg-background px-3 py-2"
+                  value={dueDate}
+                  onChange={(event) => {
+                    const next = [...form.manualDueDates]
+                    next[index] = event.target.value
+                    setForm((prev) => ({ ...prev, manualDueDates: next }))
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <textarea
-            className="min-h-[90px] rounded border bg-background px-3 py-2 text-sm"
-            placeholder="Comentários da sessão"
-            value={form.comments}
-            onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
-          />
-          <textarea
-            className="min-h-[90px] rounded border bg-background px-3 py-2 text-sm"
-            placeholder="Dados da sessão (texto livre)"
-            value={form.sessionData}
-            onChange={(event) => setForm((prev) => ({ ...prev, sessionData: event.target.value }))}
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Comentários da sessão</label>
+            <textarea
+              className="min-h-[90px] w-full rounded border bg-background px-3 py-2 text-sm"
+              value={form.comments}
+              onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Dados da sessão</label>
+            <textarea
+              className="min-h-[90px] w-full rounded border bg-background px-3 py-2 text-sm"
+              value={form.sessionData}
+              onChange={(event) => setForm((prev) => ({ ...prev, sessionData: event.target.value }))}
+            />
+          </div>
         </div>
 
         <div className="mt-3">
@@ -478,7 +607,7 @@ export default function SessoesAvulsasPage() {
                 <th className="px-3 py-2">Modo</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Valor</th>
-                <th className="px-3 py-2">Atendente</th>
+                <th className="px-3 py-2">Terapeuta</th>
                 <th className="px-3 py-2">Pagamento</th>
                 <th className="px-3 py-2">Parcelas</th>
               </tr>

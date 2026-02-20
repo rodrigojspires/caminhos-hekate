@@ -112,11 +112,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Terapia não encontrada' }, { status: 404 })
     }
 
+    if (data.therapistUserId) {
+      const therapist = await prisma.user.findFirst({
+        where: {
+          id: data.therapistUserId,
+          isTherapist: true,
+        },
+        select: { id: true },
+      })
+
+      if (!therapist) {
+        return NextResponse.json({ error: 'Terapeuta inválido' }, { status: 400 })
+      }
+    }
+
     const sessionDate = parseDate(data.sessionDate) ?? new Date()
 
-    const fallbackChargedAmount = therapy.valuePerSession
-      ? Number(therapy.value)
-      : Number(therapy.singleSessionValue ?? therapy.value)
+    const fallbackChargedAmount = Number(therapy.singleSessionValue ?? therapy.value)
 
     const chargedAmount = roundCurrency(data.chargedAmount ?? fallbackChargedAmount)
 

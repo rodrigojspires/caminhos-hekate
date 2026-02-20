@@ -23,6 +23,7 @@ model User {
   document                      String?
   dateOfBirth                   DateTime?
   role                          Role                           @default(VISITOR)
+  isTherapist                   Boolean                        @default(false)
   registrationPortal            RegistrationPortal?
   subscriptionTier              SubscriptionTier               @default(FREE)
   twoFactorEnabled              Boolean                        @default(false)

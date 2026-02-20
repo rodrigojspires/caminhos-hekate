@@ -12,6 +12,10 @@ const updateBudgetItemSchema = z.object({
   discountAmount: z.coerce.number().min(0).nullable().optional(),
 })
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; itemId: string } },
@@ -68,36 +72,71 @@ export async function PUT(
       discountAmount,
     })
 
-    const item = await prisma.therapeuticBudgetItem.update({
-      where: { id: currentItem.id },
-      data: {
-        therapyId: therapy.id,
-        quantity,
-        sortOrder: data.sortOrder,
-        discountPercent,
-        discountAmount,
-        therapyNameSnapshot: therapy.name,
-        therapyValueSnapshot: therapy.value,
-        valuePerSessionSnapshot: therapy.valuePerSession,
-        singleSessionValueSnapshot: therapy.singleSessionValue,
-        unitValue: calculated.unitValue,
-        grossTotal: calculated.grossTotal,
-        discountTotal: calculated.discountTotal,
-        netTotal: calculated.netTotal,
-      },
-      include: {
-        therapy: {
-          select: {
-            id: true,
-            name: true,
-            value: true,
-            valuePerSession: true,
-            defaultSessions: true,
-            singleSessionValue: true,
-            active: true,
+    const orderedItems = await prisma.therapeuticBudgetItem.findMany({
+      where: { processId: params.id },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, sortOrder: true },
+    })
+
+    const currentIndex = orderedItems.findIndex((item) => item.id === currentItem.id)
+    if (currentIndex < 0) {
+      return NextResponse.json({ error: 'Item de orçamento não encontrado' }, { status: 404 })
+    }
+
+    const reorderedIds = orderedItems.map((item) => item.id)
+    if (data.sortOrder !== undefined) {
+      const targetIndex = clamp(data.sortOrder, 0, reorderedIds.length - 1)
+      reorderedIds.splice(currentIndex, 1)
+      reorderedIds.splice(targetIndex, 0, currentItem.id)
+    }
+
+    const item = await prisma.$transaction(async (tx) => {
+      const orderMap = new Map(reorderedIds.map((id, index) => [id, index]))
+
+      const updatedCurrentItem = await tx.therapeuticBudgetItem.update({
+        where: { id: currentItem.id },
+        data: {
+          therapyId: therapy.id,
+          quantity,
+          sortOrder: orderMap.get(currentItem.id) ?? currentIndex,
+          discountPercent,
+          discountAmount,
+          therapyNameSnapshot: therapy.name,
+          therapyValueSnapshot: therapy.value,
+          valuePerSessionSnapshot: therapy.valuePerSession,
+          singleSessionValueSnapshot: therapy.singleSessionValue,
+          unitValue: calculated.unitValue,
+          grossTotal: calculated.grossTotal,
+          discountTotal: calculated.discountTotal,
+          netTotal: calculated.netTotal,
+        },
+        include: {
+          therapy: {
+            select: {
+              id: true,
+              name: true,
+              value: true,
+              valuePerSession: true,
+              defaultSessions: true,
+              singleSessionValue: true,
+              active: true,
+            },
           },
         },
-      },
+      })
+
+      for (const entry of orderedItems) {
+        if (entry.id === currentItem.id) continue
+        const nextSortOrder = orderMap.get(entry.id)
+        if (nextSortOrder === undefined || nextSortOrder === entry.sortOrder) continue
+
+        await tx.therapeuticBudgetItem.update({
+          where: { id: entry.id },
+          data: { sortOrder: nextSortOrder },
+        })
+      }
+
+      return updatedCurrentItem
     })
 
     return NextResponse.json({ item })
@@ -135,11 +174,31 @@ export async function DELETE(
       )
     }
 
-    await prisma.therapeuticBudgetItem.deleteMany({
-      where: { id: params.itemId, processId: params.id },
+    const deleted = await prisma.$transaction(async (tx) => {
+      const removed = await tx.therapeuticBudgetItem.deleteMany({
+        where: { id: params.itemId, processId: params.id },
+      })
+
+      const remaining = await tx.therapeuticBudgetItem.findMany({
+        where: { processId: params.id },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, sortOrder: true },
+      })
+
+      for (let index = 0; index < remaining.length; index += 1) {
+        const item = remaining[index]
+        if (item.sortOrder === index) continue
+
+        await tx.therapeuticBudgetItem.update({
+          where: { id: item.id },
+          data: { sortOrder: index },
+        })
+      }
+
+      return removed
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, deleted: deleted.count })
   } catch (error) {
     console.error('Erro ao remover item de orçamento:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

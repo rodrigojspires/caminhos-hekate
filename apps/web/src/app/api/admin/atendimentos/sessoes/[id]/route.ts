@@ -55,6 +55,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Data de sessão inválida' }, { status: 400 })
     }
 
+    if (data.therapistUserId) {
+      const therapist = await prisma.user.findFirst({
+        where: {
+          id: data.therapistUserId,
+          isTherapist: true,
+        },
+        select: { id: true },
+      })
+
+      if (!therapist) {
+        return NextResponse.json({ error: 'Terapeuta inválido' }, { status: 400 })
+      }
+    }
+
     const updated = await prisma.therapeuticSession.update({
       where: { id: session.id },
       data: {

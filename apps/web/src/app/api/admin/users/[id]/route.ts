@@ -18,6 +18,7 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).optional(),
   subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional(),
+  isTherapist: z.boolean().optional(),
   dateOfBirth: optionalDateField
 })
 
@@ -53,6 +54,7 @@ export async function GET(
         dateOfBirth: true,
         role: true,
         subscriptionTier: true,
+        isTherapist: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -175,7 +177,7 @@ export async function GET(
         therapyName: session.budgetItem.therapyNameSnapshot,
         sessionDate: session.sessionDate,
         createdAt: session.createdAt,
-        referenceDate: session.sessionDate ?? session.createdAt,
+        referenceDate: session.sessionDate ?? new Date(0),
         status: session.status,
         mode: session.mode,
         comments: session.comments,
@@ -192,7 +194,7 @@ export async function GET(
       therapyName: session.therapyNameSnapshot,
       sessionDate: session.sessionDate,
       createdAt: session.createdAt,
-      referenceDate: session.sessionDate ?? session.createdAt,
+      referenceDate: session.sessionDate ?? new Date(0),
       status: session.status,
       mode: session.mode,
       comments: session.comments,
@@ -278,6 +280,7 @@ export async function PUT(
         dateOfBirth: true,
         role: true,
         subscriptionTier: true,
+        isTherapist: true,
         createdAt: true,
         updatedAt: true
       }

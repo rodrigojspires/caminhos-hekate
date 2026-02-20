@@ -10,6 +10,7 @@ interface UserFormData {
   name: string
   email: string
   dateOfBirth: string
+  isTherapist: boolean
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }

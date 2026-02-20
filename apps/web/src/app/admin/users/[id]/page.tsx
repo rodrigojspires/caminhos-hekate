@@ -56,6 +56,7 @@ interface User {
   name: string
   email: string
   dateOfBirth: string | null
+  isTherapist: boolean
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   emailVerified: string | null
@@ -89,6 +90,7 @@ interface UserFormData {
   name: string
   email: string
   dateOfBirth: string
+  isTherapist: boolean
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -196,6 +198,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
       const normalizedUser: User = {
         ...userData,
+        isTherapist: Boolean(userData.isTherapist),
         orders: Array.isArray(userData.orders)
           ? userData.orders.map((order: any) => ({
               ...order,
@@ -638,13 +641,13 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                   </tr>
                 ) : (
                   user.therapeuticSessions.map((sessionItem) => {
-                    const referenceDate = sessionItem.sessionDate ?? sessionItem.createdAt
+                    const sessionDateLabel = sessionItem.sessionDate
+                      ? format(new Date(sessionItem.sessionDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+                      : 'Data da sessão não informada'
 
                     return (
                       <tr key={sessionItem.id} className="hover:bg-white/5">
-                        <td className="px-3 py-2">
-                          {format(new Date(referenceDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                        </td>
+                        <td className="px-3 py-2">{sessionDateLabel}</td>
                         <td className="px-3 py-2">
                           {sessionItem.source === 'PROCESS' ? 'Processo terapêutico' : 'Sessão avulsa'}
                         </td>

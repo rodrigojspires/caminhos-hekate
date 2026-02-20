@@ -50,29 +50,50 @@ export default function AtendimentosPage() {
   const { data: session, status } = useSession()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [users, setUsers] = useState<UserOption[]>([])
+  const [patientSearch, setPatientSearch] = useState('')
+  const [patientOptions, setPatientOptions] = useState<UserOption[]>([])
   const [processes, setProcesses] = useState<ProcessSummary[]>([])
   const [form, setForm] = useState({
     patientUserId: '',
     notes: '',
   })
 
+  const userDisplay = useCallback((user: UserOption) => {
+    return `${user.name || 'Sem nome'} - ${user.email}`
+  }, [])
+
+  const syncPatientSelection = useCallback(
+    (inputValue: string, options: UserOption[]) => {
+      const normalized = inputValue.trim().toLowerCase()
+      const matchedUser = options.find((user) => {
+        if (user.email.toLowerCase() === normalized) return true
+        return userDisplay(user).toLowerCase() === normalized
+      })
+
+      setForm((prev) => ({
+        ...prev,
+        patientUserId: matchedUser?.id || '',
+      }))
+    },
+    [userDisplay],
+  )
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
 
-      const [usersRes, processRes] = await Promise.all([
-        fetch('/api/admin/users?limit=200', { cache: 'no-store' }),
+      const [patientsRes, processRes] = await Promise.all([
+        fetch('/api/admin/users?limit=40&sortBy=name&sortOrder=asc', { cache: 'no-store' }),
         fetch('/api/admin/atendimentos/processos', { cache: 'no-store' }),
       ])
 
-      if (!usersRes.ok) throw new Error('Falha ao buscar usuários')
+      if (!patientsRes.ok) throw new Error('Falha ao buscar usuários')
       if (!processRes.ok) throw new Error('Falha ao buscar processos')
 
-      const usersData = await usersRes.json()
+      const usersData = await patientsRes.json()
       const processData = await processRes.json()
 
-      setUsers(
+      setPatientOptions(
         Array.isArray(usersData.users)
           ? usersData.users.map((user: any) => ({
               id: user.id,
@@ -95,6 +116,52 @@ export default function AtendimentosPage() {
     if (status !== 'authenticated') return
     load()
   }, [load, status])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+
+    const normalizedSearch = patientSearch.trim()
+    const controller = new AbortController()
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          limit: '40',
+          sortBy: 'name',
+          sortOrder: 'asc',
+        })
+
+        if (normalizedSearch) {
+          params.set('search', normalizedSearch)
+        }
+
+        const response = await fetch(`/api/admin/users?${params.toString()}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+
+        const data = response.ok ? await response.json() : { users: [] }
+        const nextOptions: UserOption[] = Array.isArray(data.users)
+          ? data.users.map((user: any) => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+            }))
+          : []
+
+        setPatientOptions(nextOptions)
+        syncPatientSelection(patientSearch, nextOptions)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error(error)
+      }
+    }, 280)
+
+    return () => {
+      controller.abort()
+      clearTimeout(timeoutId)
+    }
+  }, [patientSearch, status, syncPatientSelection])
 
   const createProcess = async () => {
     if (!form.patientUserId) {
@@ -120,6 +187,7 @@ export default function AtendimentosPage() {
 
       toast.success('Processo terapêutico criado')
       setForm({ patientUserId: '', notes: '' })
+      setPatientSearch('')
       await load()
       if (data?.process?.id) {
         router.push(`/admin/atendimentos/${data.process.id}`)
@@ -148,6 +216,8 @@ export default function AtendimentosPage() {
   if (session?.user?.role !== 'ADMIN') {
     return <div className="py-12 text-center text-muted-foreground">Acesso restrito ao administrador.</div>
   }
+
+  const patientDatalistId = 'therapeutic-process-patient-datalist'
 
   return (
     <div className="space-y-6">
@@ -206,24 +276,36 @@ export default function AtendimentosPage() {
       <div className="rounded-lg border bg-card p-4">
         <h2 className="mb-3 text-lg font-semibold">Novo Processo Terapêutico</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <select
-            className="rounded-md border bg-background px-3 py-2"
-            value={form.patientUserId}
-            onChange={(event) => setForm((prev) => ({ ...prev, patientUserId: event.target.value }))}
-          >
-            <option value="">Selecione o usuário</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {(user.name || 'Sem nome')} - {user.email}
-              </option>
-            ))}
-          </select>
-          <input
-            className="rounded-md border bg-background px-3 py-2 md:col-span-2"
-            placeholder="Observação inicial (opcional)"
-            value={form.notes}
-            onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Usuário</label>
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2"
+              type="text"
+              list={patientDatalistId}
+              value={patientSearch}
+              placeholder="Digite nome ou e-mail para buscar"
+              onChange={(event) => {
+                const value = event.target.value
+                setPatientSearch(value)
+                syncPatientSelection(value, patientOptions)
+              }}
+              onBlur={(event) => syncPatientSelection(event.target.value, patientOptions)}
+            />
+            <datalist id={patientDatalistId}>
+              {patientOptions.map((user) => (
+                <option key={user.id} value={userDisplay(user)} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">Observação inicial (opcional)</label>
+            <textarea
+              className="min-h-[100px] w-full rounded-md border bg-background px-3 py-2"
+              value={form.notes}
+              onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+            />
+          </div>
         </div>
         <div className="mt-3">
           <button
@@ -244,6 +326,7 @@ export default function AtendimentosPage() {
             <thead>
               <tr className="border-b text-left text-muted-foreground">
                 <th className="px-4 py-3">Paciente</th>
+                <th className="px-4 py-3">Criado por</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Orçamento</th>
                 <th className="px-4 py-3">Sessões</th>
@@ -257,6 +340,10 @@ export default function AtendimentosPage() {
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">{process.patient?.name || 'Sem nome'}</div>
                     <div className="text-muted-foreground">{process.patient?.email}</div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="font-medium">{process.createdBy?.name || 'Sem nome'}</div>
+                    <div className="text-muted-foreground">{process.createdBy?.email}</div>
                   </td>
                   <td className="px-4 py-3 align-top">{statusLabel[process.status]}</td>
                   <td className="px-4 py-3 align-top">{formatCurrency(process.budgetTotal || 0)}</td>
@@ -278,7 +365,7 @@ export default function AtendimentosPage() {
               ))}
               {processes.length === 0 && (
                 <tr>
-                  <td className="px-4 py-10 text-center text-muted-foreground" colSpan={6}>
+                  <td className="px-4 py-10 text-center text-muted-foreground" colSpan={7}>
                     Nenhum processo terapêutico encontrado.
                   </td>
                 </tr>
