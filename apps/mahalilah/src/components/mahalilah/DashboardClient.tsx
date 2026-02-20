@@ -3128,7 +3128,8 @@ export function DashboardClient() {
     roomQuota.roomsRemaining !== null &&
     roomQuota.roomsRemaining <= 0;
   const hasSingleSessionOrPlan =
-    canCreateRoom || createdRooms.some((room) => !room.isTrial);
+    canCreateRoom ||
+    rooms.some((room) => !room.isTrial && room.viewerRole === "THERAPIST");
   const showTrialUpgradeCard =
     hasUsedTrial === true &&
     trialRoomStatus !== null &&

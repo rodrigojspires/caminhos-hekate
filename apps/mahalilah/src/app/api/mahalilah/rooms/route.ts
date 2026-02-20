@@ -420,8 +420,18 @@ export async function GET(request: Request) {
       findEntitlement(session.user.id, 1, planSettingsByType),
       prisma.mahaLilahRoom.findFirst({
         where: {
-          createdByUserId: session.user.id,
-          isTrial: true
+          isTrial: true,
+          OR: [
+            { createdByUserId: session.user.id },
+            {
+              participants: {
+                some: {
+                  userId: session.user.id,
+                  role: MahaLilahParticipantRole.THERAPIST
+                }
+              }
+            }
+          ]
         },
         orderBy: { createdAt: 'desc' },
         select: { id: true, status: true }
