@@ -262,19 +262,34 @@ type JumpPinAnimationState = {
   fromHouse: number;
   toHouse: number;
   isUp: boolean;
+  isJumpSegment: boolean;
   color: string;
   initial: string;
   startX: number;
   startY: number;
   endX: number;
   endY: number;
+  durationMs: number;
   phase: "start" | "moving";
 };
+type PinMoveSegment = {
+  fromHouse: number;
+  toHouse: number;
+  isJumpSegment: boolean;
+};
+type PendingPinAnimation = {
+  moveId: string;
+  participantId: string;
+  color: string;
+  initial: string;
+  segments: PinMoveSegment[];
+};
 type BoardPoint = { x: number; y: number };
-type LadderGeometry = {
-  railA: { x1: number; y1: number; x2: number; y2: number };
-  railB: { x1: number; y1: number; x2: number; y2: number };
-  rungs: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+type ArrowGeometry = {
+  shaft: { x1: number; y1: number; x2: number; y2: number };
+  tip: BoardPoint;
+  headLeft: BoardPoint;
+  headRight: BoardPoint;
 };
 type SnakeGeometry = {
   path: string;
@@ -286,7 +301,7 @@ type BoardJumpOverlay =
       key: string;
       jumpType: "flecha";
       jump: { from: number; to: number };
-      ladder: LadderGeometry;
+      arrow: ArrowGeometry;
     }
   | {
       key: string;
@@ -376,7 +391,9 @@ const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
 const DICE_SPIN_INTERVAL_MS = 90;
 const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
-const JUMP_PIN_ANIMATION_MS = 900;
+const PIN_MOVE_ANIMATION_MS = 820;
+const PIN_JUMP_SEGMENT_ANIMATION_MS = 920;
+const PIN_MOVE_SEGMENT_DELAY_MS = 120;
 const THERAPY_EMOTION_OPTIONS = [
   "Abandono (sentimento de)",
   "Admiração",
@@ -764,7 +781,7 @@ function clampBoardNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function buildLadderGeometry(start: BoardPoint, end: BoardPoint) {
+function buildArrowGeometry(start: BoardPoint, end: BoardPoint) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const length = Math.hypot(dx, dy);
@@ -774,48 +791,36 @@ function buildLadderGeometry(start: BoardPoint, end: BoardPoint) {
   const uy = dy / length;
   const px = -uy;
   const py = ux;
-  const railHalf = clampBoardNumber(length * 0.045, 4.4, 7.6);
-  const rungCount = Math.max(3, Math.min(8, Math.round(length / 34)));
-  const railInset = clampBoardNumber(length * 0.08, 4, 10);
-  const innerStart = {
-    x: start.x + ux * railInset,
-    y: start.y + uy * railInset,
+  const headLength = clampBoardNumber(length * 0.12, 8, 16);
+  const headWidth = clampBoardNumber(length * 0.06, 4, 9);
+  const shaftEnd = {
+    x: end.x - ux * headLength * 0.58,
+    y: end.y - uy * headLength * 0.58,
   };
-  const innerEnd = {
-    x: end.x - ux * railInset,
-    y: end.y - uy * railInset,
+  const headBase = {
+    x: end.x - ux * headLength,
+    y: end.y - uy * headLength,
   };
-  const innerDx = innerEnd.x - innerStart.x;
-  const innerDy = innerEnd.y - innerStart.y;
-  const rungs: LadderGeometry["rungs"] = [];
-
-  for (let index = 1; index <= rungCount; index += 1) {
-    const progress = index / (rungCount + 1);
-    const centerX = innerStart.x + innerDx * progress;
-    const centerY = innerStart.y + innerDy * progress;
-    rungs.push({
-      x1: centerX + px * railHalf * 0.95,
-      y1: centerY + py * railHalf * 0.95,
-      x2: centerX - px * railHalf * 0.95,
-      y2: centerY - py * railHalf * 0.95,
-    });
-  }
+  const headLeft = {
+    x: headBase.x + px * headWidth,
+    y: headBase.y + py * headWidth,
+  };
+  const headRight = {
+    x: headBase.x - px * headWidth,
+    y: headBase.y - py * headWidth,
+  };
 
   return {
-    railA: {
-      x1: innerStart.x + px * railHalf,
-      y1: innerStart.y + py * railHalf,
-      x2: innerEnd.x + px * railHalf,
-      y2: innerEnd.y + py * railHalf,
+    shaft: {
+      x1: start.x,
+      y1: start.y,
+      x2: shaftEnd.x,
+      y2: shaftEnd.y,
     },
-    railB: {
-      x1: innerStart.x - px * railHalf,
-      y1: innerStart.y - py * railHalf,
-      x2: innerEnd.x - px * railHalf,
-      y2: innerEnd.y - py * railHalf,
-    },
-    rungs,
-  } satisfies LadderGeometry;
+    tip: end,
+    headLeft,
+    headRight,
+  } satisfies ArrowGeometry;
 }
 
 function buildSnakeGeometry(start: BoardPoint, end: BoardPoint) {
@@ -1117,6 +1122,7 @@ export function RoomClient({
     useState(false);
   const [therapistSummarySaving, setTherapistSummarySaving] = useState(false);
   const [showBoardNames, setShowBoardNames] = useState(false);
+  const [showBoardShortcuts, setShowBoardShortcuts] = useState(true);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [rulesHelpTab, setRulesHelpTab] = useState<RulesHelpTab>("about");
   const [diceAnimationEnabled, setDiceAnimationEnabled] = useState(true);
@@ -1172,6 +1178,8 @@ export function RoomClient({
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
   const [jumpPinAnimation, setJumpPinAnimation] =
     useState<JumpPinAnimationState | null>(null);
+  const [pendingPinAnimation, setPendingPinAnimation] =
+    useState<PendingPinAnimation | null>(null);
   const [boardOverlayViewport, setBoardOverlayViewport] = useState({
     width: 0,
     height: 0,
@@ -1188,7 +1196,7 @@ export function RoomClient({
   const diceCloseTimeoutRef = useRef<number | null>(null);
   const jumpPinAnimationTimeoutRef = useRef<number | null>(null);
   const jumpPinAnimationFrameRef = useRef<number | null>(null);
-  const handledJumpMoveIdRef = useRef<string | null>(null);
+  const handledPinMoveIdRef = useRef<string | null>(null);
   const boardGridRef = useRef<HTMLDivElement | null>(null);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
@@ -1487,6 +1495,7 @@ export function RoomClient({
         clearDiceTimers();
         clearJumpPinAnimationTimers();
         setJumpPinAnimation(null);
+        setPendingPinAnimation(null);
         setDiceRolling(false);
         setDiceModalOpen(false);
         setDiceResult(null);
@@ -1638,8 +1647,9 @@ export function RoomClient({
     setTherapistSummaryModalOpen(false);
     setTherapistSummarySaving(false);
     setJumpPinAnimation(null);
+    setPendingPinAnimation(null);
     clearJumpPinAnimationTimers();
-    handledJumpMoveIdRef.current = null;
+    handledPinMoveIdRef.current = null;
     completionStateByParticipantRef.current = new Map();
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
@@ -1733,13 +1743,13 @@ export function RoomClient({
         getJumpType(jump.from) || (jump.to > jump.from ? "flecha" : "cobra");
 
       if (jumpType === "flecha") {
-        const ladder = buildLadderGeometry(start, end);
-        if (!ladder) return;
+        const arrow = buildArrowGeometry(start, end);
+        if (!arrow) return;
         overlays.push({
           key: `${jump.from}-${jump.to}`,
           jumpType,
           jump: { from: jump.from, to: jump.to },
-          ladder,
+          arrow,
         });
         return;
       }
@@ -2023,22 +2033,74 @@ export function RoomClient({
     return colorMap;
   }, [boardParticipants]);
 
+  const runPendingPinAnimation = useCallback(
+    (pending: PendingPinAnimation, segmentIndex = 0) => {
+      const segment = pending.segments[segmentIndex];
+      if (!segment) {
+        setJumpPinAnimation(null);
+        return;
+      }
+
+      const startCenter = getBoardHouseCenter(segment.fromHouse);
+      const endCenter = getBoardHouseCenter(segment.toHouse);
+      if (!startCenter || !endCenter) {
+        setJumpPinAnimation(null);
+        return;
+      }
+
+      const animationId = `${pending.moveId}:${segmentIndex}:${Date.now()}`;
+      const durationMs = segment.isJumpSegment
+        ? PIN_JUMP_SEGMENT_ANIMATION_MS
+        : PIN_MOVE_ANIMATION_MS;
+
+      setJumpPinAnimation({
+        id: animationId,
+        participantId: pending.participantId,
+        fromHouse: segment.fromHouse,
+        toHouse: segment.toHouse,
+        isUp: segment.toHouse > segment.fromHouse,
+        isJumpSegment: segment.isJumpSegment,
+        color: pending.color,
+        initial: pending.initial,
+        startX: startCenter.x,
+        startY: startCenter.y,
+        endX: endCenter.x,
+        endY: endCenter.y,
+        durationMs,
+        phase: "start",
+      });
+
+      jumpPinAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        setJumpPinAnimation((previous) =>
+          previous && previous.id === animationId
+            ? { ...previous, phase: "moving" }
+            : previous,
+        );
+        jumpPinAnimationFrameRef.current = null;
+      });
+
+      jumpPinAnimationTimeoutRef.current = window.setTimeout(() => {
+        jumpPinAnimationTimeoutRef.current = null;
+        const nextSegmentIndex = segmentIndex + 1;
+        if (nextSegmentIndex < pending.segments.length) {
+          runPendingPinAnimation(pending, nextSegmentIndex);
+          return;
+        }
+        setJumpPinAnimation((previous) =>
+          previous && previous.id.startsWith(`${pending.moveId}:`)
+            ? null
+            : previous,
+        );
+      }, durationMs + PIN_MOVE_SEGMENT_DELAY_MS);
+    },
+    [getBoardHouseCenter],
+  );
+
   useEffect(() => {
     const move = state?.lastMove;
     if (!move) return;
-    if (
-      move.appliedJumpFrom === null ||
-      move.appliedJumpFrom === undefined ||
-      move.appliedJumpTo === null ||
-      move.appliedJumpTo === undefined
-    ) {
-      return;
-    }
-    if (handledJumpMoveIdRef.current === move.id) return;
-
-    const startCenter = getBoardHouseCenter(move.appliedJumpFrom);
-    const endCenter = getBoardHouseCenter(move.appliedJumpTo);
-    if (!startCenter || !endCenter) return;
+    if (handledPinMoveIdRef.current === move.id) return;
+    if (pendingPinAnimation?.moveId === move.id) return;
 
     const movingParticipant =
       state?.participants.find((participant) => participant.id === move.participantId) ||
@@ -2049,46 +2111,92 @@ export function RoomClient({
     const pinColor = movingParticipant
       ? participantPinColorMap.get(movingParticipant.id) || COLORS[0]
       : COLORS[0];
-    const animationId = `${move.id}:${Date.now()}`;
 
-    handledJumpMoveIdRef.current = move.id;
-    clearJumpPinAnimationTimers();
-    setJumpPinAnimation({
-      id: animationId,
+    const segments: PinMoveSegment[] = [];
+    const hasJump =
+      move.appliedJumpFrom !== null &&
+      move.appliedJumpFrom !== undefined &&
+      move.appliedJumpTo !== null &&
+      move.appliedJumpTo !== undefined;
+
+    if (hasJump) {
+      const jumpFrom = move.appliedJumpFrom!;
+      const jumpTo = move.appliedJumpTo!;
+      if (move.fromPos !== jumpFrom) {
+        segments.push({
+          fromHouse: move.fromPos,
+          toHouse: jumpFrom,
+          isJumpSegment: false,
+        });
+      }
+      if (jumpFrom !== jumpTo) {
+        segments.push({
+          fromHouse: jumpFrom,
+          toHouse: jumpTo,
+          isJumpSegment: true,
+        });
+      }
+    } else if (move.fromPos !== move.toPos) {
+      segments.push({
+        fromHouse: move.fromPos,
+        toHouse: move.toPos,
+        isJumpSegment: false,
+      });
+    }
+
+    if (segments.length === 0) {
+      handledPinMoveIdRef.current = move.id;
+      setPendingPinAnimation(null);
+      return;
+    }
+
+    setPendingPinAnimation({
+      moveId: move.id,
       participantId: move.participantId,
-      fromHouse: move.appliedJumpFrom,
-      toHouse: move.appliedJumpTo,
-      isUp: move.appliedJumpTo > move.appliedJumpFrom,
       color: pinColor,
       initial: participantLabel.trim().charAt(0).toUpperCase() || "•",
-      startX: startCenter.x,
-      startY: startCenter.y,
-      endX: endCenter.x,
-      endY: endCenter.y,
-      phase: "start",
+      segments,
     });
-
-    jumpPinAnimationFrameRef.current = window.requestAnimationFrame(() => {
-      setJumpPinAnimation((previous) =>
-        previous && previous.id === animationId
-          ? { ...previous, phase: "moving" }
-          : previous,
-      );
-      jumpPinAnimationFrameRef.current = null;
-    });
-
-    jumpPinAnimationTimeoutRef.current = window.setTimeout(() => {
-      setJumpPinAnimation((previous) =>
-        previous && previous.id === animationId ? null : previous,
-      );
-      jumpPinAnimationTimeoutRef.current = null;
-    }, JUMP_PIN_ANIMATION_MS + 220);
   }, [
     state?.lastMove,
     state?.participants,
-    getBoardHouseCenter,
     participantPinColorMap,
+    pendingPinAnimation?.moveId,
+  ]);
+
+  useEffect(() => {
+    if (!pendingPinAnimation) return;
+    if (jumpPinAnimation) return;
+    if (diceModalOpen || diceRolling || rollInFlight) return;
+    if (boardOverlayViewport.width <= 0 || boardOverlayViewport.height <= 0) {
+      return;
+    }
+
+    const firstSegment = pendingPinAnimation.segments[0];
+    if (!firstSegment) {
+      handledPinMoveIdRef.current = pendingPinAnimation.moveId;
+      setPendingPinAnimation(null);
+      return;
+    }
+    const startCenter = getBoardHouseCenter(firstSegment.fromHouse);
+    const endCenter = getBoardHouseCenter(firstSegment.toHouse);
+    if (!startCenter || !endCenter) return;
+
+    handledPinMoveIdRef.current = pendingPinAnimation.moveId;
+    clearJumpPinAnimationTimers();
+    runPendingPinAnimation(pendingPinAnimation, 0);
+    setPendingPinAnimation(null);
+  }, [
+    pendingPinAnimation,
+    jumpPinAnimation,
+    diceModalOpen,
+    diceRolling,
+    rollInFlight,
+    boardOverlayViewport.width,
+    boardOverlayViewport.height,
+    getBoardHouseCenter,
     clearJumpPinAnimationTimers,
+    runPendingPinAnimation,
   ]);
 
   useEffect(() => {
@@ -3876,6 +3984,8 @@ export function RoomClient({
     activeAiModalEntry?.content || aiContentModal?.content || "";
   const aiModalSubtitle =
     activeAiModalEntry?.subtitle || aiContentModal?.subtitle;
+  const animatedParticipantId =
+    jumpPinAnimation?.participantId || pendingPinAnimation?.participantId || null;
 
   return (
     <div className="grid room-shell" style={{ gap: 14 }}>
@@ -4222,11 +4332,150 @@ export function RoomClient({
             </button>
           )}
           <button
+            type="button"
             className="secondary"
             onClick={() => setShowBoardNames((prev) => !prev)}
-            style={{ flex: "0 0 auto" }}
+            title={`Camada de nomes: ${showBoardNames ? "ligada" : "desligada"}`}
+            aria-label="Alternar camada de nomes"
+            aria-pressed={showBoardNames}
+            style={{
+              flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: showBoardNames ? "rgba(222, 238, 255, 0.98)" : undefined,
+              borderColor: showBoardNames
+                ? "rgba(154, 208, 255, 0.72)"
+                : undefined,
+              background: showBoardNames
+                ? "linear-gradient(180deg, rgba(67, 102, 146, 0.34), rgba(45, 74, 110, 0.26))"
+                : undefined,
+            }}
           >
-            {showBoardNames ? "Ocultar nomes" : "Mostrar nomes"}
+            <span
+              style={{
+                position: "relative",
+                width: 18,
+                height: 18,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M4 9L12 5L20 9L12 13L4 9Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4 13L12 17L20 13"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  right: -4,
+                  bottom: -5,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+              >
+                A
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setShowBoardShortcuts((prev) => !prev)}
+            title={`Camada de atalhos: ${showBoardShortcuts ? "ligada" : "desligada"}`}
+            aria-label="Alternar camada de atalhos"
+            aria-pressed={showBoardShortcuts}
+            style={{
+              flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: showBoardShortcuts
+                ? "rgba(235, 218, 172, 0.98)"
+                : undefined,
+              borderColor: showBoardShortcuts
+                ? "rgba(224, 191, 127, 0.72)"
+                : undefined,
+              background: showBoardShortcuts
+                ? "linear-gradient(180deg, rgba(136, 104, 49, 0.34), rgba(92, 68, 28, 0.26))"
+                : undefined,
+            }}
+          >
+            <span
+              style={{
+                position: "relative",
+                width: 18,
+                height: 18,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M4 9L12 5L20 9L12 13L4 9Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4 13L12 17L20 13"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  right: -4,
+                  bottom: -5,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+              >
+                ↗
+              </span>
+            </span>
           </button>
           <button
             type="button"
@@ -4385,7 +4634,8 @@ export function RoomClient({
                 }))
                 .filter(
                   (item) =>
-                    (item.state?.position ?? -1) + 1 === cell.houseNumber,
+                    (item.state?.position ?? -1) + 1 === cell.houseNumber &&
+                    item.participant.id !== animatedParticipantId,
                 );
 
               return (
@@ -4449,7 +4699,7 @@ export function RoomClient({
                     <span className="small-muted" style={{ fontSize: 11 }}>
                       {cell.houseNumber}
                     </span>
-                    {jumpTarget && (
+                    {showBoardShortcuts && jumpTarget && (
                       <span
                         className="small-muted"
                         style={{
@@ -4560,7 +4810,8 @@ export function RoomClient({
                 </div>
               );
             })}
-            {boardOverlayViewport.width > 0 &&
+            {showBoardShortcuts &&
+              boardOverlayViewport.width > 0 &&
               boardOverlayViewport.height > 0 && (
                 <svg
                   aria-hidden
@@ -4579,35 +4830,28 @@ export function RoomClient({
                       return (
                         <g key={overlay.key} opacity={0.3}>
                           <line
-                            x1={overlay.ladder.railA.x1}
-                            y1={overlay.ladder.railA.y1}
-                            x2={overlay.ladder.railA.x2}
-                            y2={overlay.ladder.railA.y2}
-                            stroke="rgba(228, 195, 120, 0.78)"
-                            strokeWidth={2.1}
+                            x1={overlay.arrow.shaft.x1}
+                            y1={overlay.arrow.shaft.y1}
+                            x2={overlay.arrow.shaft.x2}
+                            y2={overlay.arrow.shaft.y2}
+                            stroke="rgba(233, 198, 124, 0.8)"
+                            strokeWidth={2.6}
                             strokeLinecap="round"
                           />
-                          <line
-                            x1={overlay.ladder.railB.x1}
-                            y1={overlay.ladder.railB.y1}
-                            x2={overlay.ladder.railB.x2}
-                            y2={overlay.ladder.railB.y2}
-                            stroke="rgba(228, 195, 120, 0.78)"
-                            strokeWidth={2.1}
+                          <path
+                            d={`M ${overlay.arrow.headLeft.x} ${overlay.arrow.headLeft.y} L ${overlay.arrow.tip.x} ${overlay.arrow.tip.y} L ${overlay.arrow.headRight.x} ${overlay.arrow.headRight.y}`}
+                            fill="none"
+                            stroke="rgba(245, 220, 162, 0.84)"
+                            strokeWidth={2.4}
                             strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
-                          {overlay.ladder.rungs.map((rung, index) => (
-                            <line
-                              key={`${overlay.key}-rung-${index}`}
-                              x1={rung.x1}
-                              y1={rung.y1}
-                              x2={rung.x2}
-                              y2={rung.y2}
-                              stroke="rgba(239, 215, 156, 0.72)"
-                              strokeWidth={1.2}
-                              strokeLinecap="round"
-                            />
-                          ))}
+                          <circle
+                            cx={overlay.arrow.shaft.x1}
+                            cy={overlay.arrow.shaft.y1}
+                            r={1.45}
+                            fill="rgba(245, 220, 162, 0.72)"
+                          />
                         </g>
                       );
                     }
@@ -4664,7 +4908,7 @@ export function RoomClient({
             {jumpPinAnimation && (
               <span
                 aria-hidden
-                title={`Atalho ${jumpPinAnimation.fromHouse} ${jumpPinAnimation.isUp ? "↗" : "↘"} ${jumpPinAnimation.toHouse}`}
+                title={`${jumpPinAnimation.isJumpSegment ? "Atalho" : "Movimento"} ${jumpPinAnimation.fromHouse} ${jumpPinAnimation.isUp ? "↗" : "↘"} ${jumpPinAnimation.toHouse}`}
                 style={{
                   position: "absolute",
                   left: 0,
@@ -4689,7 +4933,7 @@ export function RoomClient({
                   transform: `translate(${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endX : jumpPinAnimation.startX) - 9}px, ${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endY : jumpPinAnimation.startY) - 9}px)`,
                   transition:
                     jumpPinAnimation.phase === "moving"
-                      ? `transform ${JUMP_PIN_ANIMATION_MS}ms cubic-bezier(0.18, 0.84, 0.36, 1)`
+                      ? `transform ${jumpPinAnimation.durationMs}ms cubic-bezier(0.18, 0.84, 0.36, 1)`
                       : "none",
                 }}
               >
@@ -6936,8 +7180,12 @@ export function RoomClient({
                     </span>
                   )}
                   <span className="small-muted">
-                    <strong>Mostrar/Ocultar nomes</strong> exibe ou esconde os
-                    nomes dentro dos pinos no tabuleiro.
+                    <strong>Ícone de camada A</strong> liga/desliga os nomes das
+                    casas no tabuleiro.
+                  </span>
+                  <span className="small-muted">
+                    <strong>Ícone de camada ↗</strong> liga/desliga a visualização
+                    dos atalhos (setas e cobras).
                   </span>
                   <span className="small-muted">
                     <strong>Animação do Dado</strong> liga/desliga o efeito
