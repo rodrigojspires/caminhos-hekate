@@ -4699,7 +4699,7 @@ export function RoomClient({
                     <span className="small-muted" style={{ fontSize: 11 }}>
                       {cell.houseNumber}
                     </span>
-                    {showBoardShortcuts && jumpTarget && (
+                    {jumpTarget && (
                       <span
                         className="small-muted"
                         style={{
