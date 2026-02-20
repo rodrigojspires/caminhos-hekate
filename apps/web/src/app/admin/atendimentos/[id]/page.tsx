@@ -182,6 +182,7 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
   const [savingSessionId, setSavingSessionId] = useState<string | null>(null)
   const [movingBudgetItemId, setMovingBudgetItemId] = useState<string | null>(null)
   const [payingInstallmentId, setPayingInstallmentId] = useState<string | null>(null)
+  const [deletingProcess, setDeletingProcess] = useState(false)
 
   const [notesDraft, setNotesDraft] = useState('')
   const [statusDraft, setStatusDraft] = useState<TherapeuticProcess['status']>('IN_ANALYSIS')
@@ -567,6 +568,36 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
     }
   }
 
+  const deleteProcess = async () => {
+    if (!process) return
+
+    const patientName = process.patient?.name || process.patient?.email || 'este paciente'
+    const shouldDelete = confirm(
+      `Deseja excluir o processo terapêutico de ${patientName}?\n\nEssa ação remove orçamento, sessões e financeiro relacionados.`,
+    )
+    if (!shouldDelete) return
+
+    try {
+      setDeletingProcess(true)
+      const response = await fetch(`/api/admin/atendimentos/processos/${process.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao excluir processo terapêutico')
+      }
+
+      toast.success('Processo terapêutico excluído')
+      router.push('/admin/atendimentos')
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir processo terapêutico')
+    } finally {
+      setDeletingProcess(false)
+    }
+  }
+
   if (status === 'loading' || loading) {
     return <div className="py-12 text-center text-muted-foreground">Carregando processo...</div>
   }
@@ -598,6 +629,14 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
             Status atual: {processStatusLabel[process.status]}
           </p>
         </div>
+        <button
+          className="inline-flex items-center gap-2 rounded border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-60"
+          onClick={deleteProcess}
+          disabled={deletingProcess}
+        >
+          {deletingProcess ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          Excluir processo
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

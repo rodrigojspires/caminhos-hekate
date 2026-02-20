@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Plus, Eye, Settings2, Landmark } from 'lucide-react'
+import { Plus, Eye, Settings2, Landmark, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/therapeutic-care'
 
@@ -50,6 +50,7 @@ export default function AtendimentosPage() {
   const { data: session, status } = useSession()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [patientSearch, setPatientSearch] = useState('')
   const [patientOptions, setPatientOptions] = useState<UserOption[]>([])
   const [processes, setProcesses] = useState<ProcessSummary[]>([])
@@ -226,6 +227,34 @@ export default function AtendimentosPage() {
     }
   }
 
+  const removeProcess = async (process: ProcessSummary) => {
+    const patientName = process.patient?.name || process.patient?.email || 'este paciente'
+    const shouldDelete = confirm(
+      `Deseja excluir o processo terapêutico de ${patientName}?\n\nEssa ação remove também orçamento, sessões e financeiro relacionados.`,
+    )
+    if (!shouldDelete) return
+
+    try {
+      setDeletingId(process.id)
+      const response = await fetch(`/api/admin/atendimentos/processos/${process.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao excluir processo terapêutico')
+      }
+
+      toast.success('Processo terapêutico excluído')
+      await load()
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir processo terapêutico')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const totals = useMemo(() => {
     return {
       totalProcesses: processes.length,
@@ -379,13 +408,27 @@ export default function AtendimentosPage() {
                     <div className="text-muted-foreground">{formatCurrency(process.openInstallmentsAmount || 0)}</div>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <button
-                      className="inline-flex items-center gap-2 rounded border px-2 py-1 hover:bg-muted"
-                      onClick={() => router.push(`/admin/atendimentos/${process.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Abrir
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="inline-flex items-center gap-2 rounded border px-2 py-1 hover:bg-muted"
+                        onClick={() => router.push(`/admin/atendimentos/${process.id}`)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Abrir
+                      </button>
+                      <button
+                        className="inline-flex items-center gap-2 rounded border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                        onClick={() => removeProcess(process)}
+                        disabled={deletingId === process.id}
+                      >
+                        {deletingId === process.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

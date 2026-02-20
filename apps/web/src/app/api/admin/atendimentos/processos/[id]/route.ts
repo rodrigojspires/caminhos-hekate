@@ -360,5 +360,80 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
+const PROCESS_NOT_FOUND_ERROR = 'THERAPEUTIC_PROCESS_NOT_FOUND'
+
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+  const { error } = await requireAdmin()
+  if (error) return error
+
+  try {
+    let deletedProcessId = ''
+
+    await prisma.$transaction(async (tx) => {
+      const process = await tx.therapeuticProcess.findUnique({
+        where: { id: params.id },
+        select: {
+          id: true,
+          order: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      })
+
+      if (!process) {
+        throw new Error(PROCESS_NOT_FOUND_ERROR)
+      }
+
+      if (process.order) {
+        await tx.therapeuticOrderInstallment.deleteMany({
+          where: {
+            orderId: process.order.id,
+          },
+        })
+      }
+
+      await tx.therapeuticOrder.deleteMany({
+        where: {
+          processId: process.id,
+        },
+      })
+
+      await tx.therapeuticSession.deleteMany({
+        where: {
+          processId: process.id,
+        },
+      })
+
+      await tx.therapeuticBudgetItem.deleteMany({
+        where: {
+          processId: process.id,
+        },
+      })
+
+      await tx.therapeuticProcess.delete({
+        where: {
+          id: process.id,
+        },
+      })
+
+      deletedProcessId = process.id
+    })
+
+    return NextResponse.json({
+      success: true,
+      id: deletedProcessId,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message === PROCESS_NOT_FOUND_ERROR) {
+      return NextResponse.json({ error: 'Processo não encontrado' }, { status: 404 })
+    }
+
+    console.error('Erro ao excluir processo terapêutico:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
+}
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
