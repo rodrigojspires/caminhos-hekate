@@ -23,6 +23,7 @@ import {
   View,
   Dice6,
   Layers3,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ const menuItems = [
   { title: "Pedidos", href: "/admin/orders", icon: ArrowRightLeft },
   { title: "Cursos", href: "/admin/courses", icon: BookMarked },
   { title: "Eventos", href: "/admin/events", icon: CalendarDays },
+  { title: "Atendimentos", href: "/admin/atendimentos", icon: HeartPulse },
   { title: "Comunidade", href: "/admin/community", icon: MessageSquare },
   { title: "Gamificação", href: "/admin/gamification", icon: Trophy },
   {

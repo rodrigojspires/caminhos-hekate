@@ -20,6 +20,7 @@ export async function GET() {
       name: true,
       phone: true,
       document: true,
+      dateOfBirth: true,
       addresses: {
         orderBy: { updatedAt: 'desc' },
         take: 10,
@@ -100,6 +101,7 @@ export async function GET() {
       name: user.name,
       phone: user.phone,
       document: user.document,
+      dateOfBirth: user.dateOfBirth?.toISOString().slice(0, 10) ?? null,
     },
     addresses: uniqueAddresses,
     billingAddressId: billing?.id ?? null,
@@ -132,6 +134,7 @@ export async function PUT(request: NextRequest) {
     name?: string | null
     phone?: string | null
     document?: string | null
+    dateOfBirth?: string | null
     billingAddress?: Partial<{
       street: string | null
       number: string | null
@@ -151,7 +154,7 @@ export async function PUT(request: NextRequest) {
       zipCode: string | null
     }> | null
   }
-  const { name, phone, document, billingAddress, shippingAddress } = body
+  const { name, phone, document, dateOfBirth, billingAddress, shippingAddress } = body
 
   type AddressPayload = {
     street?: string | null
@@ -191,10 +194,25 @@ export async function PUT(request: NextRequest) {
   })
 
   await prisma.$transaction(async (tx) => {
+    const parsedDateOfBirth = (() => {
+      if (dateOfBirth === undefined) return undefined
+      if (dateOfBirth === null || dateOfBirth === '') return null
+      const parsed = new Date(dateOfBirth)
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed
+    })()
+
     try {
-      await tx.user.update({ where: { id: session.user.id }, data: { name: name ?? undefined, phone: phone ?? undefined, document: document ?? undefined } })
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: {
+          name: name ?? undefined,
+          phone: phone ?? undefined,
+          document: document ?? undefined,
+          dateOfBirth: parsedDateOfBirth,
+        },
+      })
     } catch {
-      await tx.user.update({ where: { id: session.user.id }, data: { name } })
+      await tx.user.update({ where: { id: session.user.id }, data: { name, dateOfBirth: parsedDateOfBirth } })
     }
     const billingData = mapAddressUpdate(billingAddress)
     if (billingData && Object.keys(billingData).length > 0) {

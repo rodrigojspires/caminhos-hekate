@@ -2,15 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
-import { Prisma } from '@prisma/client'
 import { z } from 'zod'
+
+const optionalDateField = z.preprocess((value) => {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+  if (value instanceof Date) return value
+  const parsed = new Date(String(value))
+  return Number.isNaN(parsed.getTime()) ? value : parsed
+}, z.date().nullable().optional())
 
 // Schema de validação para atualização de usuário
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).optional(),
-  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional()
+  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional(),
+  dateOfBirth: optionalDateField
 })
 
 interface RouteParams {
@@ -42,6 +50,7 @@ export async function GET(
         id: true,
         name: true,
         email: true,
+        dateOfBirth: true,
         role: true,
         subscriptionTier: true,
         createdAt: true,
@@ -95,6 +104,56 @@ export async function GET(
               }
             }
           }
+        },
+        therapeuticProcessesAsPatient: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            status: true,
+            sessions: {
+              orderBy: [{ sessionDate: 'desc' }, { createdAt: 'desc' }],
+              select: {
+                id: true,
+                sessionNumber: true,
+                sessionDate: true,
+                createdAt: true,
+                status: true,
+                mode: true,
+                comments: true,
+                budgetItem: {
+                  select: {
+                    therapyNameSnapshot: true
+                  }
+                },
+                therapist: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        therapeuticSingleSessionsAsPatient: {
+          orderBy: [{ sessionDate: 'desc' }, { createdAt: 'desc' }],
+          select: {
+            id: true,
+            sessionDate: true,
+            createdAt: true,
+            status: true,
+            mode: true,
+            comments: true,
+            therapyNameSnapshot: true,
+            therapist: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
         }
       }
     })
@@ -106,7 +165,54 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(user)
+    const processSessions = user.therapeuticProcessesAsPatient.flatMap((process) =>
+      process.sessions.map((session) => ({
+        id: session.id,
+        source: 'PROCESS' as const,
+        processId: process.id,
+        processStatus: process.status,
+        sessionNumber: session.sessionNumber,
+        therapyName: session.budgetItem.therapyNameSnapshot,
+        sessionDate: session.sessionDate,
+        createdAt: session.createdAt,
+        referenceDate: session.sessionDate ?? session.createdAt,
+        status: session.status,
+        mode: session.mode,
+        comments: session.comments,
+        therapist: session.therapist
+      }))
+    )
+
+    const singleSessions = user.therapeuticSingleSessionsAsPatient.map((session) => ({
+      id: session.id,
+      source: 'SINGLE' as const,
+      processId: null,
+      processStatus: null,
+      sessionNumber: null,
+      therapyName: session.therapyNameSnapshot,
+      sessionDate: session.sessionDate,
+      createdAt: session.createdAt,
+      referenceDate: session.sessionDate ?? session.createdAt,
+      status: session.status,
+      mode: session.mode,
+      comments: session.comments,
+      therapist: session.therapist
+    }))
+
+    const therapeuticSessions = [...processSessions, ...singleSessions]
+      .sort((a, b) => b.referenceDate.getTime() - a.referenceDate.getTime())
+      .map(({ referenceDate, ...item }) => item)
+
+    const {
+      therapeuticProcessesAsPatient,
+      therapeuticSingleSessionsAsPatient,
+      ...userData
+    } = user
+
+    return NextResponse.json({
+      ...userData,
+      therapeuticSessions
+    })
   } catch (error) {
     console.error('Erro ao buscar usuário:', error)
     return NextResponse.json(
@@ -169,6 +275,7 @@ export async function PUT(
         id: true,
         name: true,
         email: true,
+        dateOfBirth: true,
         role: true,
         subscriptionTier: true,
         createdAt: true,

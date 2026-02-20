@@ -21,6 +21,7 @@ model User {
   bio                           String?
   phone                         String?
   document                      String?
+  dateOfBirth                   DateTime?
   role                          Role                           @default(VISITOR)
   registrationPortal            RegistrationPortal?
   subscriptionTier              SubscriptionTier               @default(FREE)
@@ -111,6 +112,12 @@ model User {
   mahaLilahParticipants         MahaLilahParticipant[]
   mahaLilahInvitesSent          MahaLilahInvite[]              @relation("MahaLilahInviteSender")
   createdCardDecks              CardDeck[]
+  therapeuticProcessesAsPatient TherapeuticProcess[]           @relation("TherapeuticProcessPatient")
+  therapeuticProcessesCreated   TherapeuticProcess[]           @relation("TherapeuticProcessCreator")
+  therapeuticSessionsAsTherapist TherapeuticSession[]          @relation("TherapeuticSessionTherapist")
+  therapeuticSingleSessionsAsPatient TherapeuticSingleSession[] @relation("TherapeuticSingleSessionPatient")
+  therapeuticSingleSessionsCreated TherapeuticSingleSession[]   @relation("TherapeuticSingleSessionCreator")
+  therapeuticSingleSessionsAsTherapist TherapeuticSingleSession[] @relation("TherapeuticSingleSessionTherapist")
 }
 
 model Account {
@@ -418,6 +425,199 @@ model Shipment {
   updatedAt         DateTime  @updatedAt
   address           Address   @relation(fields: [addressId], references: [id])
   order             Order     @relation(fields: [orderId], references: [id])
+}
+
+model Therapy {
+  id                String                  @id @default(cuid())
+  name              String
+  value             Decimal                 @db.Decimal(10, 2)
+  valuePerSession   Boolean                 @default(true)
+  defaultSessions   Int                     @default(1)
+  singleSessionValue Decimal?               @db.Decimal(10, 2)
+  active            Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  budgetItems       TherapeuticBudgetItem[]
+  singleSessions    TherapeuticSingleSession[]
+
+  @@index([active])
+  @@index([name])
+}
+
+model TherapeuticProcess {
+  id             String                   @id @default(cuid())
+  patientUserId  String
+  createdByUserId String
+  status         TherapeuticProcessStatus @default(IN_ANALYSIS)
+  notes          String?
+  startedAt      DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  patient        User                     @relation("TherapeuticProcessPatient", fields: [patientUserId], references: [id])
+  createdBy      User                     @relation("TherapeuticProcessCreator", fields: [createdByUserId], references: [id])
+  budgetItems    TherapeuticBudgetItem[]
+  sessions       TherapeuticSession[]
+  order          TherapeuticOrder?
+
+  @@index([patientUserId])
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TherapeuticBudgetItem {
+  id                         String              @id @default(cuid())
+  processId                  String
+  therapyId                  String
+  quantity                   Int
+  sortOrder                  Int                 @default(0)
+  discountPercent            Decimal?            @db.Decimal(5, 2)
+  discountAmount             Decimal?            @db.Decimal(10, 2)
+  therapyNameSnapshot        String
+  therapyValueSnapshot       Decimal             @db.Decimal(10, 2)
+  valuePerSessionSnapshot    Boolean
+  singleSessionValueSnapshot Decimal?            @db.Decimal(10, 2)
+  unitValue                  Decimal             @db.Decimal(10, 2)
+  grossTotal                 Decimal             @db.Decimal(10, 2)
+  discountTotal              Decimal             @default(0) @db.Decimal(10, 2)
+  netTotal                   Decimal             @db.Decimal(10, 2)
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  process                    TherapeuticProcess  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  therapy                    Therapy             @relation(fields: [therapyId], references: [id])
+  sessions                   TherapeuticSession[]
+
+  @@index([processId, sortOrder])
+  @@index([therapyId])
+}
+
+model TherapeuticSession {
+  id              String                 @id @default(cuid())
+  processId       String
+  budgetItemId    String
+  sessionNumber   Int
+  orderIndex      Int
+  status          TherapeuticSessionStatus @default(PENDING)
+  therapistUserId String?
+  sessionDate     DateTime?
+  comments        String?
+  sessionData     String?
+  mode            TherapeuticSessionMode?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  process         TherapeuticProcess     @relation(fields: [processId], references: [id], onDelete: Cascade)
+  budgetItem      TherapeuticBudgetItem  @relation(fields: [budgetItemId], references: [id], onDelete: Cascade)
+  therapist       User?                  @relation("TherapeuticSessionTherapist", fields: [therapistUserId], references: [id])
+
+  @@unique([processId, budgetItemId, sessionNumber])
+  @@index([processId, orderIndex])
+  @@index([therapistUserId])
+  @@index([status])
+}
+
+model TherapeuticSingleSession {
+  id                         String                   @id @default(cuid())
+  patientUserId              String
+  therapyId                  String
+  createdByUserId            String
+  therapistUserId            String?
+  sessionDate                DateTime
+  mode                       TherapeuticSessionMode?
+  status                     TherapeuticSessionStatus @default(COMPLETED)
+  comments                   String?
+  sessionData                String?
+  therapyNameSnapshot        String
+  therapyValueSnapshot       Decimal                  @db.Decimal(10, 2)
+  valuePerSessionSnapshot    Boolean
+  singleSessionValueSnapshot Decimal?                 @db.Decimal(10, 2)
+  chargedAmount              Decimal                  @db.Decimal(10, 2)
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  patient                    User                     @relation("TherapeuticSingleSessionPatient", fields: [patientUserId], references: [id])
+  therapy                    Therapy                  @relation(fields: [therapyId], references: [id])
+  createdBy                  User                     @relation("TherapeuticSingleSessionCreator", fields: [createdByUserId], references: [id])
+  therapist                  User?                    @relation("TherapeuticSingleSessionTherapist", fields: [therapistUserId], references: [id])
+  order                      TherapeuticSingleSessionOrder?
+
+  @@index([patientUserId, sessionDate])
+  @@index([therapyId])
+  @@index([createdByUserId])
+  @@index([therapistUserId])
+  @@index([status])
+}
+
+model TherapeuticSingleSessionOrder {
+  id                String                                @id @default(cuid())
+  singleSessionId   String                                @unique
+  status            TherapeuticOrderStatus                @default(OPEN)
+  paymentMethod     TherapeuticPaymentMethod
+  dueDateMode       TherapeuticDueDateMode
+  installmentsCount Int
+  firstDueDate      DateTime?
+  totalAmount       Decimal                               @db.Decimal(10, 2)
+  createdAt         DateTime                              @default(now())
+  updatedAt         DateTime                              @updatedAt
+  singleSession     TherapeuticSingleSession              @relation(fields: [singleSessionId], references: [id], onDelete: Cascade)
+  installments      TherapeuticSingleSessionInstallment[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TherapeuticSingleSessionInstallment {
+  id                String                      @id @default(cuid())
+  orderId           String
+  installmentNumber Int
+  amount            Decimal                     @db.Decimal(10, 2)
+  dueDate           DateTime
+  status            TherapeuticInstallmentStatus @default(OPEN)
+  paidAt            DateTime?
+  paidAmount        Decimal?                    @db.Decimal(10, 2)
+  paymentNote       String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  order             TherapeuticSingleSessionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, installmentNumber])
+  @@index([status, dueDate])
+  @@index([orderId])
+}
+
+model TherapeuticOrder {
+  id               String                        @id @default(cuid())
+  processId        String                        @unique
+  status           TherapeuticOrderStatus        @default(OPEN)
+  paymentMethod    TherapeuticPaymentMethod
+  dueDateMode      TherapeuticDueDateMode
+  installmentsCount Int
+  firstDueDate     DateTime?
+  totalAmount      Decimal                       @db.Decimal(10, 2)
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+  process          TherapeuticProcess            @relation(fields: [processId], references: [id], onDelete: Cascade)
+  installments     TherapeuticOrderInstallment[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TherapeuticOrderInstallment {
+  id              String                      @id @default(cuid())
+  orderId         String
+  installmentNumber Int
+  amount          Decimal                     @db.Decimal(10, 2)
+  dueDate         DateTime
+  status          TherapeuticInstallmentStatus @default(OPEN)
+  paidAt          DateTime?
+  paidAmount      Decimal?                    @db.Decimal(10, 2)
+  paymentNote     String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+  order           TherapeuticOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, installmentNumber])
+  @@index([status, dueDate])
+  @@index([orderId])
 }
 
 model Review {
@@ -1028,6 +1228,50 @@ enum PaymentStatus {
   REJECTED
   CANCELLED
   REFUNDED
+}
+
+enum TherapeuticProcessStatus {
+  IN_ANALYSIS
+  IN_TREATMENT
+  NOT_APPROVED
+  CANCELED
+  FINISHED
+}
+
+enum TherapeuticSessionStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
+enum TherapeuticSessionMode {
+  IN_PERSON
+  DISTANCE
+  ONLINE
+}
+
+enum TherapeuticPaymentMethod {
+  PIX
+  CARD_MERCADO_PAGO
+  NUBANK
+}
+
+enum TherapeuticDueDateMode {
+  AUTOMATIC_MONTHLY
+  MANUAL
+}
+
+enum TherapeuticOrderStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELED
+}
+
+enum TherapeuticInstallmentStatus {
+  OPEN
+  PAID
+  CANCELED
 }
 
 enum PostStatus {

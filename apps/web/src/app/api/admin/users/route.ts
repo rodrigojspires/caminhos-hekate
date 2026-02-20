@@ -4,12 +4,20 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 
+const optionalDateField = z.preprocess((value) => {
+  if (value === null || value === undefined || value === '') return undefined
+  if (value instanceof Date) return value
+  const parsed = new Date(String(value))
+  return Number.isNaN(parsed.getTime()) ? value : parsed
+}, z.date().optional())
+
 // Schema de validação para criação de usuário
 const createUserSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).default('VISITOR'),
-  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).default('FREE')
+  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).default('FREE'),
+  dateOfBirth: optionalDateField
 })
 
 // Schema de validação para atualização de usuário
@@ -17,7 +25,8 @@ const updateUserSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').optional(),
   email: z.string().email('Email inválido').optional(),
   role: z.enum(['ADMIN', 'EDITOR', 'MEMBER', 'VISITOR']).optional(),
-  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional()
+  subscriptionTier: z.enum(['FREE', 'INICIADO', 'ADEPTO', 'SACERDOCIO']).optional(),
+  dateOfBirth: optionalDateField
 })
 
 // GET - Listar usuários com filtros e paginação
@@ -75,6 +84,7 @@ export async function GET(request: NextRequest) {
           email: true,
           role: true,
           subscriptionTier: true,
+          dateOfBirth: true,
           registrationPortal: true,
           createdAt: true,
           updatedAt: true,
@@ -149,6 +159,7 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
         subscriptionTier: true,
+        dateOfBirth: true,
         createdAt: true
       }
     })

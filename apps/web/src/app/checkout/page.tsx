@@ -52,6 +52,7 @@ export default function CheckoutPage() {
     email: '',
     phone: '',
     document: '',
+    dateOfBirth: '',
     billing: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' },
     shipping: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' },
   })
@@ -318,6 +319,7 @@ export default function CheckoutPage() {
           email: data.user?.email || prev.email || session?.user?.email || '',
           phone: data.user?.phone || prev.phone || '',
           document: data.user?.document || prev.document || '',
+          dateOfBirth: data.user?.dateOfBirth || prev.dateOfBirth || '',
           billing: data.billingAddress
             ? {
                 ...prev.billing,
@@ -422,6 +424,7 @@ export default function CheckoutPage() {
           name: form.name,
           phone: form.phone,
           document: form.document,
+          dateOfBirth: form.dateOfBirth || null,
         }
 
         if (selectedBillingAddressId === NEW_ADDRESS_OPTION) {
@@ -532,6 +535,7 @@ export default function CheckoutPage() {
               )}
               <input placeholder="Telefone" className="border rounded px-3 py-2" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneBR(e.target.value) })} />
               <input placeholder="CPF/CNPJ" className="border rounded px-3 py-2" value={form.document} onChange={(e) => setForm({ ...form, document: formatDocumentBR(e.target.value) })} />
+              <input type="date" className="border rounded px-3 py-2" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
             </div>
           </section>
           <section className="border rounded p-4">

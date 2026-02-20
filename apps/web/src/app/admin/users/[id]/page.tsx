@@ -32,10 +32,30 @@ interface UserAddress {
   updatedAt: string
 }
 
+interface TherapeuticTimelineItem {
+  id: string
+  source: 'PROCESS' | 'SINGLE'
+  processId: string | null
+  processStatus: 'IN_ANALYSIS' | 'IN_TREATMENT' | 'NOT_APPROVED' | 'CANCELED' | 'FINISHED' | null
+  sessionNumber: number | null
+  therapyName: string
+  sessionDate: string | null
+  createdAt: string
+  status: 'PENDING' | 'COMPLETED' | 'CANCELED'
+  mode: 'IN_PERSON' | 'DISTANCE' | 'ONLINE' | null
+  comments: string | null
+  therapist: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+}
+
 interface User {
   id: string
   name: string
   email: string
+  dateOfBirth: string | null
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
   emailVerified: string | null
@@ -62,11 +82,13 @@ interface User {
       title: string
     }
   }>
+  therapeuticSessions: TherapeuticTimelineItem[]
 }
 
 interface UserFormData {
   name: string
   email: string
+  dateOfBirth: string
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -102,6 +124,29 @@ const getAddressTypeLabel = (address: UserAddress) => {
   if (name.includes('cobr')) return 'Cobrança'
   if (name.includes('entreg')) return 'Entrega'
   return null
+}
+
+const therapeuticSessionStatusLabel: Record<TherapeuticTimelineItem['status'], string> = {
+  PENDING: 'Pendente',
+  COMPLETED: 'Concluída',
+  CANCELED: 'Cancelada',
+}
+
+const therapeuticSessionModeLabel: Record<Exclude<TherapeuticTimelineItem['mode'], null>, string> = {
+  IN_PERSON: 'Presencial',
+  DISTANCE: 'Distância',
+  ONLINE: 'Online',
+}
+
+const therapeuticProcessStatusLabel: Record<
+  Exclude<TherapeuticTimelineItem['processStatus'], null>,
+  string
+> = {
+  IN_ANALYSIS: 'Em análise',
+  IN_TREATMENT: 'Em tratamento',
+  NOT_APPROVED: 'Não aprovado',
+  CANCELED: 'Cancelado',
+  FINISHED: 'Finalizado',
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
@@ -161,6 +206,28 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           ? userData.addresses.map(normalizeAddress)
           : [],
         enrollments: Array.isArray(userData.enrollments) ? userData.enrollments : [],
+        therapeuticSessions: Array.isArray(userData.therapeuticSessions)
+          ? userData.therapeuticSessions.map((item: any) => ({
+              id: String(item.id),
+              source: item.source === 'SINGLE' ? 'SINGLE' : 'PROCESS',
+              processId: item.processId ?? null,
+              processStatus: item.processStatus ?? null,
+              sessionNumber: typeof item.sessionNumber === 'number' ? item.sessionNumber : null,
+              therapyName: item.therapyName ?? '',
+              sessionDate: item.sessionDate ?? null,
+              createdAt: item.createdAt,
+              status: item.status,
+              mode: item.mode ?? null,
+              comments: item.comments ?? null,
+              therapist: item.therapist
+                ? {
+                    id: String(item.therapist.id),
+                    name: item.therapist.name ?? null,
+                    email: item.therapist.email,
+                  }
+                : null,
+            }))
+          : [],
       }
 
       setUser(normalizedUser)
@@ -327,6 +394,17 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             }`}
           >
             Assinatura
+          </button>
+
+          <button
+            onClick={() => setActiveTab('sessions')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-all ${
+              activeTab === 'sessions'
+                ? 'border-hekate-gold text-hekate-gold'
+                : 'border-transparent text-hekate-pearl/60 hover:text-hekate-pearl hover:border-hekate-gold/50'
+            }`}
+          >
+            Atendimentos ({user.therapeuticSessions.length})
           </button>
         </nav>
       </div>
@@ -526,6 +604,97 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 Nenhum curso encontrado
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'sessions' && (
+        <div className="glass rounded-lg border border-hekate-gold/20">
+          <div className="p-6 border-b border-hekate-gold/20">
+            <h2 className="text-lg font-semibold text-hekate-pearl">Sessões de Atendimento</h2>
+            <p className="text-sm text-hekate-pearl/60 mt-1">
+              Sessões avulsas e sessões de processo, ordenadas por data.
+            </p>
+          </div>
+          <div className="p-6 overflow-x-auto">
+            <table className="min-w-full text-sm text-left">
+              <thead className="text-hekate-pearl/60">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Data</th>
+                  <th className="px-3 py-2 font-medium">Origem</th>
+                  <th className="px-3 py-2 font-medium">Terapia</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Modo</th>
+                  <th className="px-3 py-2 font-medium">Atendente</th>
+                  <th className="px-3 py-2 font-medium">Processo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 text-hekate-pearl">
+                {user.therapeuticSessions.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-hekate-pearl/60">
+                      Nenhuma sessão encontrada para este usuário.
+                    </td>
+                  </tr>
+                ) : (
+                  user.therapeuticSessions.map((sessionItem) => {
+                    const referenceDate = sessionItem.sessionDate ?? sessionItem.createdAt
+
+                    return (
+                      <tr key={sessionItem.id} className="hover:bg-white/5">
+                        <td className="px-3 py-2">
+                          {format(new Date(referenceDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                        </td>
+                        <td className="px-3 py-2">
+                          {sessionItem.source === 'PROCESS' ? 'Processo terapêutico' : 'Sessão avulsa'}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{sessionItem.therapyName || '-'}</div>
+                          {sessionItem.sessionNumber ? (
+                            <div className="text-xs text-hekate-pearl/60">Sessão #{sessionItem.sessionNumber}</div>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2">
+                          {therapeuticSessionStatusLabel[sessionItem.status] ?? sessionItem.status}
+                        </td>
+                        <td className="px-3 py-2">
+                          {sessionItem.mode ? therapeuticSessionModeLabel[sessionItem.mode] : '-'}
+                        </td>
+                        <td className="px-3 py-2">
+                          {sessionItem.therapist ? (
+                            <>
+                              <div className="font-medium">{sessionItem.therapist.name || 'Sem nome'}</div>
+                              <div className="text-hekate-pearl/60">{sessionItem.therapist.email}</div>
+                            </>
+                          ) : (
+                            <span className="text-hekate-pearl/60">Não informado</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {sessionItem.processId ? (
+                            <div className="space-y-1">
+                              <button
+                                className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                                onClick={() => router.push(`/admin/atendimentos/${sessionItem.processId}`)}
+                              >
+                                Abrir processo
+                              </button>
+                              <div className="text-xs text-hekate-pearl/60">
+                                {sessionItem.processStatus
+                                  ? therapeuticProcessStatusLabel[sessionItem.processStatus]
+                                  : '-'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-hekate-pearl/60">Sessão avulsa</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

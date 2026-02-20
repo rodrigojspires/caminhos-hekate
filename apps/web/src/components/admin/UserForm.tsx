@@ -12,6 +12,7 @@ interface User {
   id: string
   name: string
   email: string
+  dateOfBirth?: string | null
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -19,6 +20,7 @@ interface User {
 interface UserFormData {
   name: string
   email: string
+  dateOfBirth: string
   role: 'ADMIN' | 'EDITOR' | 'MEMBER' | 'VISITOR'
   subscriptionTier: 'FREE' | 'INICIADO' | 'ADEPTO' | 'SACERDOCIO'
 }
@@ -34,6 +36,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
   const [formData, setFormData] = useState<UserFormData>({
     name: user?.name || '',
     email: user?.email || '',
+    dateOfBirth: user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
     role: (user?.role as any) || 'VISITOR',
     subscriptionTier: (user?.subscriptionTier as any) || 'FREE'
   })
@@ -46,6 +49,7 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
       setFormData({
         name: user.name,
         email: user.email,
+        dateOfBirth: user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
         role: user.role as any,
         subscriptionTier: user.subscriptionTier as any
       })
@@ -105,6 +109,17 @@ export function UserForm({ user, onSave, loading = false, isCreating = false }: 
             className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined}
           />
           {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dateOfBirth">Data de Nascimento</Label>
+          <Input
+            id="dateOfBirth"
+            type="date"
+            value={formData.dateOfBirth}
+            onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+            disabled={loading}
+          />
         </div>
 
         <div className="space-y-2">
