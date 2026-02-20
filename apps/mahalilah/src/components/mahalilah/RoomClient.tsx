@@ -255,6 +255,20 @@ type ChakraMarker = {
   imageFile: string;
   rowTint: string;
 };
+type JumpPinAnimationState = {
+  id: string;
+  participantId: string;
+  fromHouse: number;
+  toHouse: number;
+  isUp: boolean;
+  color: string;
+  initial: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  phase: "start" | "moving";
+};
 
 const COLORS = [
   "#2f7f6f",
@@ -323,6 +337,8 @@ const CHAKRA_BY_ROW = new Map(
     chakra,
   ]),
 );
+const BOARD_GRID_GAP = 4;
+const BOARD_GRID_PADDING = 6;
 const TRIAL_POST_START_MOVE_LIMIT = 5;
 const AI_PATH_HELP_MAX_LENGTH = 600;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
@@ -334,6 +350,7 @@ const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
 const DICE_SPIN_INTERVAL_MS = 90;
 const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
+const JUMP_PIN_ANIMATION_MS = 900;
 const THERAPY_EMOTION_OPTIONS = [
   "Abandono (sentimento de)",
   "Admiração",
@@ -1023,6 +1040,8 @@ export function RoomClient({
     useState<CardPreviewModalState | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileActionPanelOpen, setMobileActionPanelOpen] = useState(false);
+  const [jumpPinAnimation, setJumpPinAnimation] =
+    useState<JumpPinAnimationState | null>(null);
   const syncedIntentionRef = useRef("");
   const completionStateByParticipantRef = useRef<Map<string, boolean>>(
     new Map(),
@@ -1033,6 +1052,10 @@ export function RoomClient({
   const diceSpinIntervalRef = useRef<number | null>(null);
   const diceRevealTimeoutRef = useRef<number | null>(null);
   const diceCloseTimeoutRef = useRef<number | null>(null);
+  const jumpPinAnimationTimeoutRef = useRef<number | null>(null);
+  const jumpPinAnimationFrameRef = useRef<number | null>(null);
+  const handledJumpMoveIdRef = useRef<string | null>(null);
+  const boardGridRef = useRef<HTMLDivElement | null>(null);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
     const id = Date.now() + Math.floor(Math.random() * 10000);
@@ -1115,6 +1138,17 @@ export function RoomClient({
     }
   }, []);
 
+  const clearJumpPinAnimationTimers = useCallback(() => {
+    if (jumpPinAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(jumpPinAnimationTimeoutRef.current);
+      jumpPinAnimationTimeoutRef.current = null;
+    }
+    if (jumpPinAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(jumpPinAnimationFrameRef.current);
+      jumpPinAnimationFrameRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(DICE_ANIMATION_STORAGE_KEY);
@@ -1140,8 +1174,9 @@ export function RoomClient({
   useEffect(
     () => () => {
       clearDiceTimers();
+      clearJumpPinAnimationTimers();
     },
-    [clearDiceTimers],
+    [clearDiceTimers, clearJumpPinAnimationTimers],
   );
 
   useEffect(() => {
@@ -1277,6 +1312,8 @@ export function RoomClient({
         setSocketConnectionMessage(getSocketDisconnectMessage(reason));
         setRollInFlight(false);
         clearDiceTimers();
+        clearJumpPinAnimationTimers();
+        setJumpPinAnimation(null);
         setDiceRolling(false);
         setDiceModalOpen(false);
         setDiceResult(null);
@@ -1378,7 +1415,13 @@ export function RoomClient({
         currentSocket.disconnect();
       }
     };
-  }, [session?.user?.id, pushToast, joinRoom, clearDiceTimers]);
+  }, [
+    session?.user?.id,
+    pushToast,
+    joinRoom,
+    clearDiceTimers,
+    clearJumpPinAnimationTimers,
+  ]);
 
   useEffect(() => {
     if (!socket) return;
@@ -1421,10 +1464,13 @@ export function RoomClient({
     setTherapistSummaryDraft("");
     setTherapistSummaryModalOpen(false);
     setTherapistSummarySaving(false);
+    setJumpPinAnimation(null);
+    clearJumpPinAnimationTimers();
+    handledJumpMoveIdRef.current = null;
     completionStateByParticipantRef.current = new Map();
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
-  }, [state?.room.id, clearDiceTimers]);
+  }, [state?.room.id, clearDiceTimers, clearJumpPinAnimationTimers]);
 
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
@@ -1446,6 +1492,50 @@ export function RoomClient({
   const jumpMap = useMemo(
     () => new Map(JUMPS.map((jump) => [jump.from, jump.to])),
     [],
+  );
+  const boardCellByHouse = useMemo(() => {
+    const map = new Map<number, { row: number; col: number }>();
+    boardCells.forEach((cell) => {
+      map.set(cell.houseNumber, { row: cell.row, col: cell.col });
+    });
+    return map;
+  }, [boardCells]);
+
+  const getBoardHouseCenter = useCallback(
+    (houseNumber: number) => {
+      const boardElement = boardGridRef.current;
+      if (!boardElement) return null;
+      const cell = boardCellByHouse.get(houseNumber);
+      if (!cell) return null;
+
+      const visualRowIndex = BOARD_ROWS - 1 - cell.row;
+      const visualColIndex = cell.col;
+      const innerWidth = Math.max(
+        0,
+        boardElement.clientWidth - BOARD_GRID_PADDING * 2,
+      );
+      const innerHeight = Math.max(
+        0,
+        boardElement.clientHeight - BOARD_GRID_PADDING * 2,
+      );
+      const cellWidth =
+        (innerWidth - BOARD_GRID_GAP * (BOARD_COLS - 1)) / BOARD_COLS;
+      const cellHeight =
+        (innerHeight - BOARD_GRID_GAP * (BOARD_ROWS - 1)) / BOARD_ROWS;
+
+      if (cellWidth <= 0 || cellHeight <= 0) return null;
+
+      const x =
+        BOARD_GRID_PADDING +
+        visualColIndex * (cellWidth + BOARD_GRID_GAP) +
+        cellWidth / 2;
+      const y =
+        BOARD_GRID_PADDING +
+        visualRowIndex * (cellHeight + BOARD_GRID_GAP) +
+        cellHeight / 2;
+      return { x, y };
+    },
+    [boardCellByHouse],
   );
 
   const currentParticipant = useMemo(() => {
@@ -1708,6 +1798,107 @@ export function RoomClient({
     });
     return colorMap;
   }, [boardParticipants]);
+
+  useEffect(() => {
+    const move = state?.lastMove;
+    if (!move) return;
+    if (
+      move.appliedJumpFrom === null ||
+      move.appliedJumpFrom === undefined ||
+      move.appliedJumpTo === null ||
+      move.appliedJumpTo === undefined
+    ) {
+      return;
+    }
+    if (handledJumpMoveIdRef.current === move.id) return;
+
+    const startCenter = getBoardHouseCenter(move.appliedJumpFrom);
+    const endCenter = getBoardHouseCenter(move.appliedJumpTo);
+    if (!startCenter || !endCenter) return;
+
+    const movingParticipant =
+      state?.participants.find((participant) => participant.id === move.participantId) ||
+      null;
+    const participantLabel = movingParticipant
+      ? getParticipantDisplayName(movingParticipant)
+      : "Jogador";
+    const pinColor = movingParticipant
+      ? participantPinColorMap.get(movingParticipant.id) || COLORS[0]
+      : COLORS[0];
+    const animationId = `${move.id}:${Date.now()}`;
+
+    handledJumpMoveIdRef.current = move.id;
+    clearJumpPinAnimationTimers();
+    setJumpPinAnimation({
+      id: animationId,
+      participantId: move.participantId,
+      fromHouse: move.appliedJumpFrom,
+      toHouse: move.appliedJumpTo,
+      isUp: move.appliedJumpTo > move.appliedJumpFrom,
+      color: pinColor,
+      initial: participantLabel.trim().charAt(0).toUpperCase() || "•",
+      startX: startCenter.x,
+      startY: startCenter.y,
+      endX: endCenter.x,
+      endY: endCenter.y,
+      phase: "start",
+    });
+
+    jumpPinAnimationFrameRef.current = window.requestAnimationFrame(() => {
+      setJumpPinAnimation((previous) =>
+        previous && previous.id === animationId
+          ? { ...previous, phase: "moving" }
+          : previous,
+      );
+      jumpPinAnimationFrameRef.current = null;
+    });
+
+    jumpPinAnimationTimeoutRef.current = window.setTimeout(() => {
+      setJumpPinAnimation((previous) =>
+        previous && previous.id === animationId ? null : previous,
+      );
+      jumpPinAnimationTimeoutRef.current = null;
+    }, JUMP_PIN_ANIMATION_MS + 220);
+  }, [
+    state?.lastMove,
+    state?.participants,
+    getBoardHouseCenter,
+    participantPinColorMap,
+    clearJumpPinAnimationTimers,
+  ]);
+
+  useEffect(() => {
+    if (!jumpPinAnimation) return;
+    if (typeof ResizeObserver !== "function") return;
+
+    const refreshAnimationCoordinates = () => {
+      setJumpPinAnimation((previous) => {
+        if (!previous) return previous;
+        const startCenter = getBoardHouseCenter(previous.fromHouse);
+        const endCenter = getBoardHouseCenter(previous.toHouse);
+        if (!startCenter || !endCenter) return previous;
+        return {
+          ...previous,
+          startX: startCenter.x,
+          startY: startCenter.y,
+          endX: endCenter.x,
+          endY: endCenter.y,
+        };
+      });
+    };
+
+    refreshAnimationCoordinates();
+    const observer = new ResizeObserver(refreshAnimationCoordinates);
+    if (boardGridRef.current) {
+      observer.observe(boardGridRef.current);
+    }
+    window.addEventListener("resize", refreshAnimationCoordinates);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", refreshAnimationCoordinates);
+    };
+  }, [jumpPinAnimation?.id, getBoardHouseCenter]);
 
   useEffect(() => {
     if (!state || !myParticipant) return;
@@ -3930,16 +4121,18 @@ export function RoomClient({
         >
           <div
             className="room-board-grid"
+            ref={boardGridRef}
             style={{
               display: "grid",
+              position: "relative",
               gridTemplateColumns: `repeat(${BOARD_COLS}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${BOARD_ROWS}, minmax(0, 1fr))`,
-              gap: 4,
+              gap: BOARD_GRID_GAP,
               aspectRatio: "9 / 10",
               width: "100%",
               maxWidth: "100%",
               borderRadius: 16,
-              padding: 6,
+              padding: BOARD_GRID_PADDING,
               border: "1px solid rgba(217, 164, 65, 0.25)",
               background:
                 "radial-gradient(circle at 50% 40%, rgba(43, 65, 94, 0.35), rgba(10, 16, 26, 0.94))",
@@ -4143,6 +4336,41 @@ export function RoomClient({
                 </div>
               );
             })}
+            {jumpPinAnimation && (
+              <span
+                aria-hidden
+                title={`Atalho ${jumpPinAnimation.fromHouse} ${jumpPinAnimation.isUp ? "↗" : "↘"} ${jumpPinAnimation.toHouse}`}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: 18,
+                  height: 18,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.82)",
+                  boxShadow:
+                    "0 2px 10px rgba(0,0,0,.38), 0 0 0 2px rgba(0,0,0,.42), 0 0 0 6px rgba(255,255,255,.12)",
+                  background: jumpPinAnimation.color,
+                  color: "#fff",
+                  fontSize: 9,
+                  lineHeight: 1,
+                  fontWeight: 800,
+                  textShadow: "0 1px 1px rgba(0,0,0,.65)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none",
+                  zIndex: 30,
+                  transform: `translate(${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endX : jumpPinAnimation.startX) - 9}px, ${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endY : jumpPinAnimation.startY) - 9}px)`,
+                  transition:
+                    jumpPinAnimation.phase === "moving"
+                      ? `transform ${JUMP_PIN_ANIMATION_MS}ms cubic-bezier(0.18, 0.84, 0.36, 1)`
+                      : "none",
+                }}
+              >
+                {jumpPinAnimation.initial}
+              </span>
+            )}
           </div>
         </div>
 
