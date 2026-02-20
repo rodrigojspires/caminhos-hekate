@@ -2071,12 +2071,14 @@ export function RoomClient({
       });
 
       jumpPinAnimationFrameRef.current = window.requestAnimationFrame(() => {
-        setJumpPinAnimation((previous) =>
-          previous && previous.id === animationId
-            ? { ...previous, phase: "moving" }
-            : previous,
-        );
-        jumpPinAnimationFrameRef.current = null;
+        jumpPinAnimationFrameRef.current = window.requestAnimationFrame(() => {
+          setJumpPinAnimation((previous) =>
+            previous && previous.id === animationId
+              ? { ...previous, phase: "moving" }
+              : previous,
+          );
+          jumpPinAnimationFrameRef.current = null;
+        });
       });
 
       jumpPinAnimationTimeoutRef.current = window.setTimeout(() => {
@@ -4966,10 +4968,8 @@ export function RoomClient({
                   pointerEvents: "none",
                   zIndex: 30,
                   transform: `translate(${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endX : jumpPinAnimation.startX) - 9}px, ${(jumpPinAnimation.phase === "moving" ? jumpPinAnimation.endY : jumpPinAnimation.startY) - 9}px)`,
-                  transition:
-                    jumpPinAnimation.phase === "moving"
-                      ? `transform ${jumpPinAnimation.durationMs}ms cubic-bezier(0.18, 0.84, 0.36, 1)`
-                      : "none",
+                  transition: `transform ${jumpPinAnimation.durationMs}ms cubic-bezier(0.18, 0.84, 0.36, 1)`,
+                  willChange: "transform",
                 }}
               >
                 {jumpPinAnimation.initial}
