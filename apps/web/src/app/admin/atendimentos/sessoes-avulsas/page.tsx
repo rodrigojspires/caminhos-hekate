@@ -118,21 +118,43 @@ export default function SessoesAvulsasPage() {
     return `${user.name || 'Sem nome'} - ${user.email}`
   }, [])
 
-  const syncPatientSelection = useCallback(
+  const findPatientByInput = useCallback(
     (inputValue: string, options: UserOption[]) => {
       const normalized = inputValue.trim().toLowerCase()
-      const matchedUser = options.find((user) => {
-        if (user.email.toLowerCase() === normalized) return true
-        return userDisplay(user).toLowerCase() === normalized
-      })
+      if (!normalized) return null
+
+      const byLabel = options.find((user) => userDisplay(user).toLowerCase() === normalized)
+      if (byLabel) return byLabel
+
+      return options.find((user) => user.email.toLowerCase() === normalized) || null
+    },
+    [userDisplay],
+  )
+
+  const syncPatientSelection = useCallback(
+    (inputValue: string, options: UserOption[]) => {
+      const matchedUser = findPatientByInput(inputValue, options)
 
       setForm((prev) => ({
         ...prev,
         patientUserId: matchedUser?.id || '',
       }))
     },
-    [userDisplay],
+    [findPatientByInput],
   )
+
+  const getUserSearchTerm = useCallback((inputValue: string) => {
+    const value = inputValue.trim()
+    if (!value) return ''
+
+    const maybeEmail = value.split(' - ').pop()?.trim() || ''
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (emailPattern.test(maybeEmail)) {
+      return maybeEmail
+    }
+
+    return value
+  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -210,8 +232,9 @@ export default function SessoesAvulsasPage() {
           sortOrder: 'asc',
         })
 
-        if (normalizedSearch) {
-          params.set('search', normalizedSearch)
+        const searchTerm = getUserSearchTerm(normalizedSearch)
+        if (searchTerm) {
+          params.set('search', searchTerm)
         }
 
         const response = await fetch(`/api/admin/users?${params.toString()}`, {
@@ -240,7 +263,7 @@ export default function SessoesAvulsasPage() {
       controller.abort()
       clearTimeout(timeoutId)
     }
-  }, [patientSearch, status, syncPatientSelection])
+  }, [getUserSearchTerm, patientSearch, status, syncPatientSelection])
 
   useEffect(() => {
     setForm((prev) => {
@@ -269,7 +292,10 @@ export default function SessoesAvulsasPage() {
   }, [form.installmentsCount, form.dueDateMode, form.firstDueDate])
 
   const createSession = async () => {
-    if (!form.patientUserId || !form.therapyId) {
+    const resolvedPatientUserId =
+      form.patientUserId || findPatientByInput(patientSearch, patientOptions)?.id || ''
+
+    if (!resolvedPatientUserId || !form.therapyId) {
       toast.error('Selecione um usuário válido e a terapia')
       return
     }
@@ -280,7 +306,7 @@ export default function SessoesAvulsasPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patientUserId: form.patientUserId,
+          patientUserId: resolvedPatientUserId,
           therapyId: form.therapyId,
           therapistUserId: form.therapistUserId || null,
           sessionDate: form.sessionDate || null,
