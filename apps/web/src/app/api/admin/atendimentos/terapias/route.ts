@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     const therapies = await prisma.therapy.findMany({
       where,
-      orderBy: [{ active: 'desc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
     })
 
     return NextResponse.json({ therapies })

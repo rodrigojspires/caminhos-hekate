@@ -70,14 +70,52 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
   if (error) return error
 
   try {
-    const therapy = await prisma.therapy.update({
+    const existing = await prisma.therapy.findUnique({
       where: { id: params.id },
-      data: { active: false },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            budgetItems: true,
+            singleSessions: true,
+          },
+        },
+      },
     })
 
-    return NextResponse.json({ therapy })
+    if (!existing) {
+      return NextResponse.json({ error: 'Terapia não encontrada' }, { status: 404 })
+    }
+
+    const hasLinks =
+      (existing._count?.budgetItems ?? 0) > 0 ||
+      (existing._count?.singleSessions ?? 0) > 0
+
+    if (hasLinks) {
+      const therapy = await prisma.therapy.update({
+        where: { id: params.id },
+        data: { active: false },
+      })
+
+      return NextResponse.json({
+        therapy,
+        deleted: false,
+        mode: 'soft',
+        message: 'Terapia possui vínculos e foi apenas desativada.',
+      })
+    }
+
+    await prisma.therapy.delete({
+      where: { id: params.id },
+    })
+
+    return NextResponse.json({
+      deleted: true,
+      mode: 'hard',
+      message: 'Terapia excluída com sucesso.',
+    })
   } catch (error) {
-    console.error('Erro ao desativar terapia:', error)
+    console.error('Erro ao excluir terapia:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

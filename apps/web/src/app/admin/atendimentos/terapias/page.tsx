@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/therapeutic-care'
 
@@ -22,6 +22,7 @@ export default function TherapiesPage() {
   const { data: session, status } = useSession()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [therapies, setTherapies] = useState<Therapy[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -139,6 +140,32 @@ export default function TherapiesPage() {
     } catch (error) {
       console.error(error)
       toast.error(error instanceof Error ? error.message : 'Erro ao atualizar status')
+    }
+  }
+
+  const removeTherapy = async (therapy: Therapy) => {
+    if (!confirm(`Deseja excluir a terapia "${therapy.name}"?`)) return
+
+    try {
+      setDeletingId(therapy.id)
+      const response = await fetch(`/api/admin/atendimentos/terapias/${therapy.id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Erro ao excluir terapia')
+
+      if (data?.mode === 'soft') {
+        toast.success(data?.message || 'Terapia desativada por possuir vínculos')
+      } else {
+        toast.success('Terapia excluída')
+      }
+
+      await load()
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir terapia')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -295,6 +322,18 @@ export default function TherapiesPage() {
                         onClick={() => toggleActive(therapy)}
                       >
                         {therapy.active ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button
+                        className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                        onClick={() => removeTherapy(therapy)}
+                        disabled={deletingId === therapy.id}
+                      >
+                        {deletingId === therapy.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                        Excluir
                       </button>
                     </div>
                   </td>
