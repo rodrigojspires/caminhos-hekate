@@ -38,6 +38,9 @@
     },
     "db:seed:prod": {
       "cache": false
+    },
+    "db:seed:therapies": {
+      "cache": false
     }
   }
 }

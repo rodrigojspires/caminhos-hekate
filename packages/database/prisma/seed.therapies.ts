@@ -87,3 +87,40 @@ export async function seedTherapies(prisma: PrismaClient) {
 
   await prisma.$transaction(operations)
 }
+
+async function tryLoadDotenv() {
+  try {
+    const [{ config }, path] = await Promise.all([
+      import('dotenv') as Promise<{ config: (options?: any) => void }>,
+      import('path') as Promise<typeof import('path')>,
+    ])
+    config({ path: path.resolve(process.cwd(), '../../.env') })
+    config()
+  } catch {
+    // ignore
+  }
+}
+
+export async function runSeedTherapiesOnly() {
+  await tryLoadDotenv()
+  const prisma = new PrismaClient()
+
+  try {
+    console.log('🌱 Iniciando seed exclusivo de terapias...')
+    await seedTherapies(prisma)
+    console.log(`✅ Terapias criadas/atualizadas: ${THERAPY_SEED_DATA.length}`)
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+if (process.argv[1] && process.argv[1].endsWith('seed.therapies.ts')) {
+  runSeedTherapiesOnly()
+    .then(() => {
+      console.log('🎉 Seed de terapias concluído')
+    })
+    .catch((error) => {
+      console.error('❌ Erro no seed de terapias:', error)
+      process.exit(1)
+    })
+}
