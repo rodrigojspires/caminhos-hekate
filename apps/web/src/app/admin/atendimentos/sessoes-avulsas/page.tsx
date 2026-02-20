@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Eye, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/therapeutic-care'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type UserOption = {
   id: string
@@ -58,8 +59,19 @@ type SingleSession = {
       dueDate: string
       amount: number
       status: 'OPEN' | 'PAID' | 'CANCELED'
+      paidAt?: string | null
     }>
   } | null
+}
+
+type EditSessionForm = {
+  therapistUserId: string
+  sessionDate: string
+  mode: '' | 'IN_PERSON' | 'DISTANCE' | 'ONLINE'
+  status: 'PENDING' | 'COMPLETED' | 'CANCELED'
+  chargedAmount: string
+  comments: string
+  sessionData: string
 }
 
 const modeLabel: Record<NonNullable<SingleSession['mode']>, string> = {
@@ -74,6 +86,12 @@ const statusLabel: Record<SingleSession['status'], string> = {
   CANCELED: 'Cancelada',
 }
 
+const installmentStatusLabel: Record<'OPEN' | 'PAID' | 'CANCELED', string> = {
+  OPEN: 'Em aberto',
+  PAID: 'Pago',
+  CANCELED: 'Cancelado',
+}
+
 const paymentMethodLabel = {
   PIX: 'PIX',
   CARD_MERCADO_PAGO: 'Cartão / Mercado Pago',
@@ -85,23 +103,40 @@ const dueDateModeLabel = {
   MANUAL: 'Manual',
 } as const
 
+function getTodayDateInputValue() {
+  const now = new Date()
+  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+  return localTime.toISOString().slice(0, 10)
+}
+
+function toDateInput(value?: string | null): string {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
 export default function SessoesAvulsasPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingEdition, setSavingEdition] = useState(false)
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
+  const [payingInstallmentId, setPayingInstallmentId] = useState<string | null>(null)
   const [therapists, setTherapists] = useState<UserOption[]>([])
   const [patientSearch, setPatientSearch] = useState('')
   const [patientOptions, setPatientOptions] = useState<UserOption[]>([])
   const [therapies, setTherapies] = useState<Therapy[]>([])
   const [sessions, setSessions] = useState<SingleSession[]>([])
+  const [viewSession, setViewSession] = useState<SingleSession | null>(null)
+  const [editSession, setEditSession] = useState<SingleSession | null>(null)
+  const [editForm, setEditForm] = useState<EditSessionForm | null>(null)
 
   const [form, setForm] = useState({
     patientUserId: '',
     therapyId: '',
     therapistUserId: '',
-    sessionDate: '',
+    sessionDate: getTodayDateInputValue(),
     mode: '' as '' | 'IN_PERSON' | 'DISTANCE' | 'ONLINE',
     status: 'COMPLETED' as 'PENDING' | 'COMPLETED' | 'CANCELED',
     chargedAmount: '',
@@ -156,7 +191,7 @@ export default function SessoesAvulsasPage() {
     return value
   }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<SingleSession[]> => {
     try {
       setLoading(true)
 
@@ -193,11 +228,16 @@ export default function SessoesAvulsasPage() {
           : [],
       )
 
-      setTherapies(Array.isArray(therapiesData.therapies) ? therapiesData.therapies : [])
-      setSessions(Array.isArray(sessionsData.sessions) ? sessionsData.sessions : [])
+      const nextTherapies = Array.isArray(therapiesData.therapies) ? therapiesData.therapies : []
+      const nextSessions: SingleSession[] = Array.isArray(sessionsData.sessions) ? sessionsData.sessions : []
+
+      setTherapies(nextTherapies)
+      setSessions(nextSessions)
+      return nextSessions
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar sessões avulsas')
+      return []
     } finally {
       setLoading(false)
     }
@@ -331,7 +371,7 @@ export default function SessoesAvulsasPage() {
         patientUserId: '',
         therapyId: '',
         therapistUserId: '',
-        sessionDate: '',
+        sessionDate: getTodayDateInputValue(),
         mode: '',
         status: 'COMPLETED',
         chargedAmount: '',
@@ -350,6 +390,113 @@ export default function SessoesAvulsasPage() {
       toast.error(error instanceof Error ? error.message : 'Erro ao criar sessão avulsa')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const refreshAfterMutation = useCallback(async () => {
+    const nextSessions = await load()
+    setViewSession((prev) => (prev ? nextSessions.find((item) => item.id === prev.id) || null : null))
+    setEditSession((prev) => (prev ? nextSessions.find((item) => item.id === prev.id) || null : null))
+    return nextSessions
+  }, [load])
+
+  const openEditSession = (sessionItem: SingleSession) => {
+    setEditSession(sessionItem)
+    setEditForm({
+      therapistUserId: sessionItem.therapistUserId || '',
+      sessionDate: toDateInput(sessionItem.sessionDate),
+      mode: sessionItem.mode || '',
+      status: sessionItem.status,
+      chargedAmount: String(Number(sessionItem.chargedAmount || 0)),
+      comments: sessionItem.comments || '',
+      sessionData: sessionItem.sessionData || '',
+    })
+  }
+
+  const saveEditedSession = async () => {
+    if (!editSession || !editForm) return
+
+    if (!editForm.sessionDate) {
+      toast.error('Informe a data da sessão')
+      return
+    }
+
+    try {
+      setSavingEdition(true)
+      const response = await fetch(`/api/admin/atendimentos/sessoes-avulsas/${editSession.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          therapistUserId: editForm.therapistUserId || null,
+          sessionDate: editForm.sessionDate,
+          mode: editForm.mode || null,
+          status: editForm.status,
+          chargedAmount: editForm.chargedAmount ? Number(editForm.chargedAmount) : undefined,
+          comments: editForm.comments || null,
+          sessionData: editForm.sessionData || null,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Erro ao atualizar sessão avulsa')
+
+      toast.success('Sessão avulsa atualizada')
+      await refreshAfterMutation()
+      setEditSession(null)
+      setEditForm(null)
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar sessão avulsa')
+    } finally {
+      setSavingEdition(false)
+    }
+  }
+
+  const removeSingleSession = async (sessionItem: SingleSession) => {
+    if (!confirm('Deseja excluir esta sessão avulsa? O financeiro vinculado também será removido.')) return
+
+    try {
+      setDeletingSessionId(sessionItem.id)
+      const response = await fetch(`/api/admin/atendimentos/sessoes-avulsas/${sessionItem.id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Erro ao excluir sessão avulsa')
+
+      toast.success('Sessão avulsa excluída')
+      await refreshAfterMutation()
+      if (viewSession?.id === sessionItem.id) setViewSession(null)
+      if (editSession?.id === sessionItem.id) {
+        setEditSession(null)
+        setEditForm(null)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir sessão avulsa')
+    } finally {
+      setDeletingSessionId(null)
+    }
+  }
+
+  const markInstallmentAsPaid = async (installmentId: string) => {
+    try {
+      setPayingInstallmentId(installmentId)
+      const response = await fetch(`/api/admin/atendimentos/parcelas/${installmentId}/baixa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paidAt: new Date().toISOString() }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Erro ao dar baixa na parcela')
+
+      toast.success('Parcela baixada com sucesso')
+      await refreshAfterMutation()
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao dar baixa na parcela')
+    } finally {
+      setPayingInstallmentId(null)
     }
   }
 
@@ -636,36 +783,87 @@ export default function SessoesAvulsasPage() {
                 <th className="px-3 py-2">Terapeuta</th>
                 <th className="px-3 py-2">Pagamento</th>
                 <th className="px-3 py-2">Parcelas</th>
+                <th className="px-3 py-2">Baixa</th>
+                <th className="px-3 py-2">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {sessions.map((sessionItem) => (
-                <tr key={sessionItem.id} className="border-b">
-                  <td className="px-3 py-2">{new Date(sessionItem.sessionDate).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{sessionItem.patient?.name || 'Sem nome'}</div>
-                    <div className="text-muted-foreground">{sessionItem.patient?.email}</div>
-                  </td>
-                  <td className="px-3 py-2">{sessionItem.therapyNameSnapshot}</td>
-                  <td className="px-3 py-2">{sessionItem.mode ? modeLabel[sessionItem.mode] : '-'}</td>
-                  <td className="px-3 py-2">{statusLabel[sessionItem.status]}</td>
-                  <td className="px-3 py-2">{formatCurrency(Number(sessionItem.chargedAmount))}</td>
-                  <td className="px-3 py-2">{sessionItem.therapist?.name || '-'}</td>
-                  <td className="px-3 py-2">
-                    {sessionItem.order
-                      ? `${paymentMethodLabel[sessionItem.order.paymentMethod]} • ${dueDateModeLabel[sessionItem.order.dueDateMode]}`
-                      : '-'}
-                  </td>
-                  <td className="px-3 py-2">
-                    {sessionItem.order
-                      ? `${sessionItem.order.installments.filter((item) => item.status === 'OPEN').length} em aberto / ${sessionItem.order.installmentsCount}`
-                      : '-'}
-                  </td>
-                </tr>
-              ))}
+              {sessions.map((sessionItem) => {
+                const openInstallments = sessionItem.order?.installments.filter((item) => item.status === 'OPEN') || []
+                const nextOpenInstallment = openInstallments[0]
+                const paidInstallmentsCount = sessionItem.order
+                  ? sessionItem.order.installments.filter((item) => item.status === 'PAID').length
+                  : 0
+
+                return (
+                  <tr key={sessionItem.id} className="border-b">
+                    <td className="px-3 py-2">{new Date(sessionItem.sessionDate).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{sessionItem.patient?.name || 'Sem nome'}</div>
+                      <div className="text-muted-foreground">{sessionItem.patient?.email}</div>
+                    </td>
+                    <td className="px-3 py-2">{sessionItem.therapyNameSnapshot}</td>
+                    <td className="px-3 py-2">{sessionItem.mode ? modeLabel[sessionItem.mode] : '-'}</td>
+                    <td className="px-3 py-2">{statusLabel[sessionItem.status]}</td>
+                    <td className="px-3 py-2">{formatCurrency(Number(sessionItem.chargedAmount))}</td>
+                    <td className="px-3 py-2">{sessionItem.therapist?.name || '-'}</td>
+                    <td className="px-3 py-2">
+                      {sessionItem.order
+                        ? `${paymentMethodLabel[sessionItem.order.paymentMethod]} • ${dueDateModeLabel[sessionItem.order.dueDateMode]}`
+                        : '-'}
+                    </td>
+                    <td className="px-3 py-2">
+                      {sessionItem.order
+                        ? `${openInstallments.length} em aberto / ${paidInstallmentsCount} pagas`
+                        : '-'}
+                    </td>
+                    <td className="px-3 py-2">
+                      {!sessionItem.order && <span className="text-muted-foreground">-</span>}
+                      {sessionItem.order && !nextOpenInstallment && <span className="text-green-600">Quitado</span>}
+                      {sessionItem.order && nextOpenInstallment && (
+                        <button
+                          className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
+                          onClick={() => markInstallmentAsPaid(nextOpenInstallment.id)}
+                          disabled={payingInstallmentId === nextOpenInstallment.id}
+                        >
+                          {payingInstallmentId === nextOpenInstallment.id
+                            ? 'Baixando...'
+                            : `Baixar ${nextOpenInstallment.installmentNumber}/${sessionItem.order.installmentsCount}`}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-muted"
+                          onClick={() => setViewSession(sessionItem)}
+                        >
+                          <Eye className="h-3 w-3" />
+                          Visualizar
+                        </button>
+                        <button
+                          className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-muted"
+                          onClick={() => openEditSession(sessionItem)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Editar
+                        </button>
+                        <button
+                          className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          onClick={() => removeSingleSession(sessionItem)}
+                          disabled={deletingSessionId === sessionItem.id}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {deletingSessionId === sessionItem.id ? 'Excluindo...' : 'Excluir'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {sessions.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
+                  <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground">
                     Nenhuma sessão avulsa registrada.
                   </td>
                 </tr>
@@ -674,6 +872,258 @@ export default function SessoesAvulsasPage() {
           </table>
         </div>
       </div>
+
+      <Dialog open={!!viewSession} onOpenChange={(open) => !open && setViewSession(null)}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Visualizar sessão avulsa</DialogTitle>
+            <DialogDescription>Detalhes da sessão e do financeiro.</DialogDescription>
+          </DialogHeader>
+
+          {viewSession && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Usuário</div>
+                  <div className="font-medium">{viewSession.patient?.name || 'Sem nome'}</div>
+                  <div className="text-muted-foreground">{viewSession.patient?.email}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Terapia</div>
+                  <div className="font-medium">{viewSession.therapyNameSnapshot}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Data da sessão</div>
+                  <div className="font-medium">{new Date(viewSession.sessionDate).toLocaleDateString('pt-BR')}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="font-medium">{statusLabel[viewSession.status]}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Modo</div>
+                  <div className="font-medium">{viewSession.mode ? modeLabel[viewSession.mode] : '-'}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="text-xs text-muted-foreground">Terapeuta</div>
+                  <div className="font-medium">{viewSession.therapist?.name || 'Não informado'}</div>
+                </div>
+                <div className="rounded border p-3 md:col-span-2">
+                  <div className="text-xs text-muted-foreground">Valor cobrado</div>
+                  <div className="text-base font-semibold">{formatCurrency(Number(viewSession.chargedAmount))}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded border p-3">
+                  <div className="mb-1 text-xs text-muted-foreground">Comentários</div>
+                  <div className="whitespace-pre-wrap">{viewSession.comments || '-'}</div>
+                </div>
+                <div className="rounded border p-3">
+                  <div className="mb-1 text-xs text-muted-foreground">Dados da sessão</div>
+                  <div className="whitespace-pre-wrap">{viewSession.sessionData || '-'}</div>
+                </div>
+              </div>
+
+              <div className="rounded border p-3">
+                <div className="mb-2 font-medium">Financeiro</div>
+                {!viewSession.order && (
+                  <div className="text-muted-foreground">Nenhum pedido financeiro encontrado.</div>
+                )}
+
+                {viewSession.order && (
+                  <div className="space-y-3">
+                    <div className="text-xs text-muted-foreground">
+                      {paymentMethodLabel[viewSession.order.paymentMethod]} •{' '}
+                      {dueDateModeLabel[viewSession.order.dueDateMode]} •{' '}
+                      {viewSession.order.installmentsCount} parcelas
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-muted-foreground">
+                            <th className="px-2 py-1">Parcela</th>
+                            <th className="px-2 py-1">Vencimento</th>
+                            <th className="px-2 py-1">Valor</th>
+                            <th className="px-2 py-1">Status</th>
+                            <th className="px-2 py-1">Baixa</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {viewSession.order.installments.map((installment) => (
+                            <tr key={installment.id} className="border-b">
+                              <td className="px-2 py-1">
+                                {installment.installmentNumber}/{viewSession.order?.installmentsCount}
+                              </td>
+                              <td className="px-2 py-1">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</td>
+                              <td className="px-2 py-1">{formatCurrency(Number(installment.amount))}</td>
+                              <td className="px-2 py-1">{installmentStatusLabel[installment.status]}</td>
+                              <td className="px-2 py-1">
+                                {installment.status === 'OPEN' ? (
+                                  <button
+                                    className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
+                                    onClick={() => markInstallmentAsPaid(installment.id)}
+                                    disabled={payingInstallmentId === installment.id}
+                                  >
+                                    {payingInstallmentId === installment.id ? 'Baixando...' : 'Dar baixa'}
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!editSession}
+        onOpenChange={(open) => {
+          if (open) return
+          setEditSession(null)
+          setEditForm(null)
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar sessão avulsa</DialogTitle>
+            <DialogDescription>Atualize os dados da sessão selecionada.</DialogDescription>
+          </DialogHeader>
+
+          {editSession && editForm && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Data da sessão</label>
+                  <input
+                    type="date"
+                    className="w-full rounded border bg-background px-3 py-2"
+                    value={editForm.sessionDate}
+                    onChange={(event) =>
+                      setEditForm((prev) => (prev ? { ...prev, sessionDate: event.target.value } : prev))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Terapeuta</label>
+                  <select
+                    className="w-full rounded border bg-background px-3 py-2"
+                    value={editForm.therapistUserId}
+                    onChange={(event) =>
+                      setEditForm((prev) => (prev ? { ...prev, therapistUserId: event.target.value } : prev))
+                    }
+                  >
+                    <option value="">Não informado</option>
+                    {therapists.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name || 'Sem nome'} - {user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Modo</label>
+                  <select
+                    className="w-full rounded border bg-background px-3 py-2"
+                    value={editForm.mode}
+                    onChange={(event) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, mode: event.target.value as EditSessionForm['mode'] } : prev,
+                      )
+                    }
+                  >
+                    <option value="">Selecione</option>
+                    <option value="IN_PERSON">Presencial</option>
+                    <option value="DISTANCE">Distância</option>
+                    <option value="ONLINE">Online</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Status</label>
+                  <select
+                    className="w-full rounded border bg-background px-3 py-2"
+                    value={editForm.status}
+                    onChange={(event) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, status: event.target.value as EditSessionForm['status'] } : prev,
+                      )
+                    }
+                  >
+                    <option value="PENDING">Pendente</option>
+                    <option value="COMPLETED">Concluída</option>
+                    <option value="CANCELED">Cancelada</option>
+                  </select>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground">Valor avulso</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-full rounded border bg-background px-3 py-2"
+                    value={editForm.chargedAmount}
+                    onChange={(event) =>
+                      setEditForm((prev) => (prev ? { ...prev, chargedAmount: event.target.value } : prev))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Comentários da sessão</label>
+                  <textarea
+                    className="min-h-[90px] w-full rounded border bg-background px-3 py-2 text-sm"
+                    value={editForm.comments}
+                    onChange={(event) =>
+                      setEditForm((prev) => (prev ? { ...prev, comments: event.target.value } : prev))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Dados da sessão</label>
+                  <textarea
+                    className="min-h-[90px] w-full rounded border bg-background px-3 py-2 text-sm"
+                    value={editForm.sessionData}
+                    onChange={(event) =>
+                      setEditForm((prev) => (prev ? { ...prev, sessionData: event.target.value } : prev))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  className="rounded border px-3 py-2 text-sm hover:bg-muted"
+                  onClick={() => {
+                    setEditSession(null)
+                    setEditForm(null)
+                  }}
+                  disabled={savingEdition}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="inline-flex items-center gap-2 rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                  onClick={saveEditedSession}
+                  disabled={savingEdition}
+                >
+                  {savingEdition && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Salvar alterações
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
