@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { seedTherapies } from './seed.therapies';
 
 // Try to load .env files if dotenv is available; otherwise, continue
 async function tryLoadDotenv() {
@@ -1108,6 +1109,9 @@ Total: R$ {{total}}`,
   ]);
 
   console.log('✅ Configurações criadas');
+
+  await seedTherapies(prisma)
+  console.log('✅ Terapias criadas/atualizadas')
 
   console.log('\n🎉 Seed concluído com sucesso!');
   console.log(`\n📧 Admin: ${process.env.ADMIN_EMAIL || 'admin@caminhosdehekate.com.br'}`);

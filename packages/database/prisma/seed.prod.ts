@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
+import { seedTherapies } from './seed.therapies'
 
 // Try to load .env files if dotenv is available; otherwise, continue
 async function tryLoadDotenv() {
@@ -389,6 +390,8 @@ export async function runSeedProd() {
       mahaLimitedSubscriptionPlanId,
       mahaUnlimitedSubscriptionPlanId,
     )
+
+    await seedTherapies(prisma)
 
     console.log('✅ Seed de produção finalizado sem apagar dados existentes')
   } finally {
