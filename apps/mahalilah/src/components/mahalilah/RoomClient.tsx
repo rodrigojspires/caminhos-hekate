@@ -749,6 +749,10 @@ function getRoomTutorialSteps({
 }): TutorialStep[] {
   if (!role) return [];
 
+  const firstStepsDescription =
+    role === "THERAPIST"
+      ? "Primeiros passos: defina a intenção de jogo, oriente o turno e peça a primeira rolagem. Use o botão Ajuda (?) sempre que necessário. Em sessões longas, faça pausas breves para respiração e hidratação; para conforto visual, tema claro e modo leitura ajudam bastante."
+      : "Primeiros passos: defina sua intenção de jogo, aguarde sua vez e clique em Rolar dado quando o botão liberar. Use o botão Ajuda (?) sempre que necessário. Se cansar durante a sessão, pause, respire e tome água; para leitura mais confortável, experimente tema claro e modo leitura.";
   const controlDescription =
     role === "THERAPIST"
       ? 'Use "Rolar dado" na vez atual, "Avançar vez" para conduzir a rodada e "Encerrar sala" para fechamento. Ao concluir a jornada, você pode gerar relatório final direto pela sala.'
@@ -769,8 +773,7 @@ function getRoomTutorialSteps({
   return [
     {
       title: "Indicadores da sala",
-      description:
-        "No topo você acompanha vez atual, rolagens, status da sala, status do terapeuta e sinalizações de teste/modo de jogo em tempo real.",
+      description: firstStepsDescription,
       target: "room-header",
     },
     {
@@ -3340,6 +3343,8 @@ export function RoomClient({
 
   useEffect(() => {
     if (!myParticipant || !roomOnboardingLoaded) return;
+    if (actionsBlockedByConsent) return;
+
     const role = myParticipant.role === "THERAPIST" ? "THERAPIST" : "PLAYER";
     if (roomTutorialInitializedRole === role) return;
 
@@ -3354,6 +3359,7 @@ export function RoomClient({
     setRoomTutorialStep(0);
     setShowRoomTutorial(true);
   }, [
+    actionsBlockedByConsent,
     myParticipant,
     roomOnboardingLoaded,
     roomOnboardingSeen.player,
