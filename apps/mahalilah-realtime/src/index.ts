@@ -3136,10 +3136,12 @@ async function evaluateTemporalInterventionsForRoom(params: { roomId: string }) 
         },
       },
       participants: {
+        orderBy: { joinedAt: "asc" },
         select: {
           id: true,
           role: true,
           userId: true,
+          consentAcceptedAt: true,
         },
       },
       moves: {
@@ -3170,6 +3172,10 @@ async function evaluateTemporalInterventionsForRoom(params: { roomId: string }) 
     (room.gameState?.currentTurnIndex ?? 0) % turnParticipants.length;
   const activeTurnParticipant = turnParticipants[safeTurnIndex];
   if (!activeTurnParticipant) return [];
+  const therapistOnline = hasTherapistOnline(room.id, room.participants);
+  const isRollAvailableForActiveTurnParticipant = Boolean(
+    therapistOnline && activeTurnParticipant.consentAcceptedAt,
+  );
 
   const turnStartedAt = room.gameState?.turnStartedAt || new Date();
   const elapsedMs = Date.now() - new Date(turnStartedAt).getTime();
@@ -3227,7 +3233,7 @@ async function evaluateTemporalInterventionsForRoom(params: { roomId: string }) 
 
   const inactivitySoftConfig = pickEnabledConfig("turn_idle_soft");
   const inactivityHardConfig = pickEnabledConfig("turn_idle_hard");
-  if (inactivityHardConfig) {
+  if (isRollAvailableForActiveTurnParticipant && inactivityHardConfig) {
     const hardThresholdSeconds = Math.max(
       1,
       inactivityHardConfig.thresholds.inactivitySeconds ||
@@ -3264,7 +3270,7 @@ async function evaluateTemporalInterventionsForRoom(params: { roomId: string }) 
     }
   }
 
-  if (inactivitySoftConfig) {
+  if (isRollAvailableForActiveTurnParticipant && inactivitySoftConfig) {
     const softThresholdSeconds = Math.max(
       1,
       inactivitySoftConfig.thresholds.inactivitySeconds ||
