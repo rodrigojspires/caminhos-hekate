@@ -2936,11 +2936,47 @@ export function RoomClient({
   }, [filteredTimelineInterventions]);
 
   const interventionCenterItems = useMemo(() => {
-    return [...timelineInterventions].sort(
+    return [...filteredTimelineInterventions].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [timelineInterventions]);
+  }, [filteredTimelineInterventions]);
+
+  const interventionCenterCountsByParticipant = useMemo(() => {
+    const counts = new Map<
+      string,
+      { id: string; label: string; total: number; active: number }
+    >();
+
+    timelineAndSummaryParticipants.forEach((participant) => {
+      counts.set(participant.id, {
+        id: participant.id,
+        label: getParticipantDisplayName(participant),
+        total: 0,
+        active: 0,
+      });
+    });
+
+    timelineInterventions.forEach((intervention) => {
+      const participantId = intervention.participant?.id;
+      if (!participantId) return;
+      const active = isInterventionActive(intervention) ? 1 : 0;
+      const existing = counts.get(participantId);
+      if (existing) {
+        existing.total += 1;
+        existing.active += active;
+        return;
+      }
+      counts.set(participantId, {
+        id: participantId,
+        label: getParticipantDisplayName(intervention.participant),
+        total: 1,
+        active,
+      });
+    });
+
+    return Array.from(counts.values());
+  }, [timelineAndSummaryParticipants, timelineInterventions]);
 
   const activeInterventionCenterItems = useMemo(() => {
     return interventionCenterItems.filter((intervention) =>
@@ -5113,6 +5149,45 @@ export function RoomClient({
                 Fechar
               </button>
             </div>
+            {isTherapist && timelineAndSummaryParticipants.length > 1 && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <label
+                  className="small-muted"
+                  style={{ display: "grid", gap: 4 }}
+                >
+                  Filtrar intervenções
+                  <select
+                    value={effectiveTimelineTargetParticipantId}
+                    disabled={shouldLockPlayerDropdownForTherapist}
+                    onChange={(event) =>
+                      setTimelineTargetParticipantId(event.target.value)
+                    }
+                  >
+                    {!shouldLockPlayerDropdownForTherapist && (
+                      <option value="">Todos os jogadores</option>
+                    )}
+                    {timelineAndSummaryParticipants.map((participant) => (
+                      <option key={participant.id} value={participant.id}>
+                        {participant.user.name || participant.user.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="small-muted">Intervenções por jogador</span>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {interventionCenterCountsByParticipant.map((entry) => (
+                      <span key={entry.id} className="pill">
+                        {entry.label}:{" "}
+                        <strong>
+                          {entry.active}/{entry.total}
+                        </strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
             {timelineLoading && !timelineLoaded ? (
               <span className="small-muted">Carregando intervenções...</span>
             ) : interventionCenterVisibleItems.length === 0 ? (
