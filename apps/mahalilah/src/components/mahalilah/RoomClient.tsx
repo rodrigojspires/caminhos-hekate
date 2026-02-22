@@ -4854,41 +4854,33 @@ export function RoomClient({
       ? activeInterventionCenterItems.length
       : interventionCenterItems.length) > interventionCenterVisibleItems.length;
 
-  const handleTimelineTargetParticipantChange = useCallback(
-    (nextParticipantId: string) => {
-      setTimelineTargetParticipantId(nextParticipantId);
+  const handleTimelineTargetParticipantChange = (nextParticipantId: string) => {
+    setTimelineTargetParticipantId(nextParticipantId);
 
-      if (!isTherapist || shouldLockPlayerDropdownForTherapist) {
-        setTimelineTargetManualMode(false);
-        return;
-      }
+    if (!isTherapist || shouldLockPlayerDropdownForTherapist) {
+      setTimelineTargetManualMode(false);
+      return;
+    }
 
-      if (timelineAndSummaryParticipants.length <= 1) {
-        setTimelineTargetManualMode(false);
-        return;
-      }
+    if (timelineAndSummaryParticipants.length <= 1) {
+      setTimelineTargetManualMode(false);
+      return;
+    }
 
-      if (!currentTurnParticipantId) {
-        setTimelineTargetManualMode(Boolean(nextParticipantId));
-        return;
-      }
+    if (!currentTurnParticipantId) {
+      setTimelineTargetManualMode(Boolean(nextParticipantId));
+      return;
+    }
 
-      setTimelineTargetManualMode(nextParticipantId !== currentTurnParticipantId);
-    },
-    [
-      isTherapist,
-      shouldLockPlayerDropdownForTherapist,
-      timelineAndSummaryParticipants.length,
-      currentTurnParticipantId,
-    ],
-  );
+    setTimelineTargetManualMode(nextParticipantId !== currentTurnParticipantId);
+  };
 
-  const handleEnableTimelineTargetAutoMode = useCallback(() => {
+  const handleEnableTimelineTargetAutoMode = () => {
     setTimelineTargetManualMode(false);
     if (currentTurnParticipantId) {
       setTimelineTargetParticipantId(currentTurnParticipantId);
     }
-  }, [currentTurnParticipantId]);
+  };
 
   const openTimelinePanel = (participantId?: string) => {
     if (participantId) {
