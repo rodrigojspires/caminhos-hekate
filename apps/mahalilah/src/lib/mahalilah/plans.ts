@@ -35,6 +35,7 @@ type SingleSessionConfig = {
   tipsPerPlayer: number
   summaryLimit: number
   progressSummaryEveryMoves: number
+  interventionLimitPerParticipant: number
   marketing: PlanMarketingContent
   pricingTiers: SingleSessionPricingTier[]
   pricesByParticipants: Record<string, number>
@@ -55,6 +56,7 @@ type SubscriptionConfig = {
   tipsPerPlayer: number
   summaryLimit: number
   progressSummaryEveryMoves: number
+  interventionLimitPerParticipant: number
   marketing: PlanMarketingContent
 }
 
@@ -76,6 +78,7 @@ export type ResolvedPlan = {
   tipsPerPlayer: number
   summaryLimit: number
   progressSummaryEveryMoves: number
+  interventionLimitPerParticipant: number
   durationDays: number
   subscriptionPlanId?: string
   pricingTier?: SingleSessionPricingTier
@@ -204,6 +207,7 @@ function buildMarketingContent({
   tipsPerPlayer,
   summaryLimit,
   progressSummaryEveryMoves,
+  interventionLimitPerParticipant,
   pricesByParticipants,
 }: {
   planType: PlanType
@@ -214,6 +218,7 @@ function buildMarketingContent({
   tipsPerPlayer: number
   summaryLimit: number
   progressSummaryEveryMoves: number
+  interventionLimitPerParticipant: number
   pricesByParticipants: Record<string, number>
 }): PlanMarketingContent {
   const aiSummaryLabel = `${name}: ${tipsPerPlayer} ${pluralize(
@@ -226,6 +231,7 @@ function buildMarketingContent({
     progressSummaryEveryMoves > 0
       ? `Síntese "O Caminho até agora": a cada ${progressSummaryEveryMoves} jogadas`
       : 'Síntese "O Caminho até agora" desativada',
+    `Intervenções assistidas: até ${interventionLimitPerParticipant} por jogador/sessão`,
   ]
 
   const fallbackByType: Record<PlanType, PlanMarketingContent> = {
@@ -338,6 +344,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const singleSessionProgressSummaryEveryMoves = Number(
     singleSession.progressSummaryEveryMoves,
   )
+  const singleSessionInterventionLimitPerParticipant = Number(
+    (singleSession as any).interventionLimitPerParticipant ?? 8,
+  )
   const singleSessionAllowTherapistSoloPlay = Boolean(
     (singleSession as any).allowTherapistSoloPlay ?? true,
   )
@@ -372,6 +381,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const subscriptionUnlimitedProgressSummaryEveryMoves = Number(
     subscriptionUnlimited.progressSummaryEveryMoves,
   )
+  const subscriptionUnlimitedInterventionLimitPerParticipant = Number(
+    (subscriptionUnlimited as any).interventionLimitPerParticipant ?? 8,
+  )
   const subscriptionUnlimitedAllowTherapistSoloPlay = Boolean(
     (subscriptionUnlimited as any).allowTherapistSoloPlay ?? true,
   )
@@ -385,6 +397,9 @@ export async function getPlanConfig(): Promise<PlanConfig> {
   const subscriptionLimitedSummaryLimit = Number(subscriptionLimited.summaryLimit)
   const subscriptionLimitedProgressSummaryEveryMoves = Number(
     subscriptionLimited.progressSummaryEveryMoves,
+  )
+  const subscriptionLimitedInterventionLimitPerParticipant = Number(
+    (subscriptionLimited as any).interventionLimitPerParticipant ?? 8,
   )
   const subscriptionLimitedAllowTherapistSoloPlay = Boolean(
     (subscriptionLimited as any).allowTherapistSoloPlay ?? true,
@@ -406,6 +421,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       tipsPerPlayer: singleSessionTipsPerPlayer,
       summaryLimit: singleSessionSummaryLimit,
       progressSummaryEveryMoves: singleSessionProgressSummaryEveryMoves,
+      interventionLimitPerParticipant:
+        singleSessionInterventionLimitPerParticipant,
       marketing: buildMarketingContent({
         planType: 'SINGLE_SESSION',
         name: singleSession.name,
@@ -415,6 +432,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         tipsPerPlayer: singleSessionTipsPerPlayer,
         summaryLimit: singleSessionSummaryLimit,
         progressSummaryEveryMoves: singleSessionProgressSummaryEveryMoves,
+        interventionLimitPerParticipant:
+          singleSessionInterventionLimitPerParticipant,
         pricesByParticipants: singleSessionPricesByParticipants,
       }),
       pricingTiers: tiers,
@@ -435,6 +454,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
       summaryLimit: subscriptionUnlimitedSummaryLimit,
       progressSummaryEveryMoves: subscriptionUnlimitedProgressSummaryEveryMoves,
+      interventionLimitPerParticipant:
+        subscriptionUnlimitedInterventionLimitPerParticipant,
       marketing: buildMarketingContent({
         planType: 'SUBSCRIPTION',
         name: subscriptionUnlimited.name,
@@ -444,6 +465,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         tipsPerPlayer: subscriptionUnlimitedTipsPerPlayer,
         summaryLimit: subscriptionUnlimitedSummaryLimit,
         progressSummaryEveryMoves: subscriptionUnlimitedProgressSummaryEveryMoves,
+        interventionLimitPerParticipant:
+          subscriptionUnlimitedInterventionLimitPerParticipant,
         pricesByParticipants: {},
       }),
     },
@@ -462,6 +485,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
       tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
       summaryLimit: subscriptionLimitedSummaryLimit,
       progressSummaryEveryMoves: subscriptionLimitedProgressSummaryEveryMoves,
+      interventionLimitPerParticipant:
+        subscriptionLimitedInterventionLimitPerParticipant,
       marketing: buildMarketingContent({
         planType: 'SUBSCRIPTION_LIMITED',
         name: subscriptionLimited.name,
@@ -471,6 +496,8 @@ export async function getPlanConfig(): Promise<PlanConfig> {
         tipsPerPlayer: subscriptionLimitedTipsPerPlayer,
         summaryLimit: subscriptionLimitedSummaryLimit,
         progressSummaryEveryMoves: subscriptionLimitedProgressSummaryEveryMoves,
+        interventionLimitPerParticipant:
+          subscriptionLimitedInterventionLimitPerParticipant,
         pricesByParticipants: {},
       }),
     },
@@ -517,6 +544,8 @@ export async function resolvePlan(
       tipsPerPlayer: config.singleSession.tipsPerPlayer,
       summaryLimit: config.singleSession.summaryLimit,
       progressSummaryEveryMoves: config.singleSession.progressSummaryEveryMoves,
+      interventionLimitPerParticipant:
+        config.singleSession.interventionLimitPerParticipant,
       durationDays: config.singleSession.durationDays,
       pricingTier: tier,
     }
@@ -548,6 +577,8 @@ export async function resolvePlan(
       summaryLimit: config.subscriptionUnlimited.summaryLimit,
       progressSummaryEveryMoves:
         config.subscriptionUnlimited.progressSummaryEveryMoves,
+      interventionLimitPerParticipant:
+        config.subscriptionUnlimited.interventionLimitPerParticipant,
       durationDays,
       subscriptionPlanId: config.subscriptionUnlimited.subscriptionPlanId,
     }
@@ -577,6 +608,8 @@ export async function resolvePlan(
     tipsPerPlayer: config.subscriptionLimited.tipsPerPlayer,
     summaryLimit: config.subscriptionLimited.summaryLimit,
     progressSummaryEveryMoves: config.subscriptionLimited.progressSummaryEveryMoves,
+    interventionLimitPerParticipant:
+      config.subscriptionLimited.interventionLimitPerParticipant,
     durationDays,
     subscriptionPlanId: config.subscriptionLimited.subscriptionPlanId,
   }

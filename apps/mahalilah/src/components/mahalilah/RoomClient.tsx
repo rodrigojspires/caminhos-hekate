@@ -161,6 +161,33 @@ type TimelineAiReport = {
   } | null;
 };
 
+type TimelineIntervention = {
+  id: string;
+  triggerId: string;
+  severity: "INFO" | "ATTENTION" | "CRITICAL";
+  status: "PENDING_APPROVAL" | "APPROVED" | "DISMISSED";
+  generatedBy: "RULE" | "AI" | "HYBRID";
+  usesAi: boolean;
+  requiresApproval: boolean;
+  turnNumber: number | null;
+  title: string;
+  message: string;
+  reflectionQuestion: string | null;
+  microAction: string | null;
+  createdAt: string;
+  approvedAt: string | null;
+  dismissedAt: string | null;
+  participant: {
+    id: string;
+    user: { name: string | null; email: string };
+  };
+  move: {
+    id: string;
+    turnNumber: number | null;
+    createdAt: string;
+  } | null;
+};
+
 type ParsedTip = {
   text: string;
   turnNumber: number | null;
@@ -1073,6 +1100,18 @@ function getParticipantDisplayName(participant: {
   return participant.user.name || participant.user.email;
 }
 
+function formatInterventionSeverityLabel(severity: string) {
+  if (severity === "CRITICAL") return "Crítica";
+  if (severity === "ATTENTION") return "Atenção";
+  return "Informativa";
+}
+
+function formatInterventionStatusLabel(status: string) {
+  if (status === "PENDING_APPROVAL") return "Pendente de aprovação";
+  if (status === "DISMISSED") return "Dispensada";
+  return "Aprovada";
+}
+
 function randomDiceFace() {
   return Math.floor(Math.random() * 6) + 1;
 }
@@ -1143,6 +1182,11 @@ export function RoomClient({
   const [timelineReports, setTimelineReports] = useState<TimelineAiReport[]>(
     [],
   );
+  const [timelineInterventions, setTimelineInterventions] = useState<
+    TimelineIntervention[]
+  >([]);
+  const [interventionActionLoadingById, setInterventionActionLoadingById] =
+    useState<Record<string, boolean>>({});
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
@@ -1899,6 +1943,8 @@ export function RoomClient({
     setTimelineError(null);
     setTimelineMoves([]);
     setTimelineReports([]);
+    setTimelineInterventions([]);
+    setInterventionActionLoadingById({});
     clearDiceTimers();
     setRollInFlight(false);
     setDiceModalOpen(false);
@@ -2747,6 +2793,33 @@ export function RoomClient({
     viewerDataParticipantId,
   ]);
 
+  const filteredTimelineInterventions = useMemo(() => {
+    const effectiveTargetId =
+      myParticipant?.role === "THERAPIST"
+        ? effectiveTimelineTargetParticipantId
+        : viewerDataParticipantId || "__no-participant__";
+    if (!effectiveTargetId) return timelineInterventions;
+    return timelineInterventions.filter(
+      (intervention) => intervention.participant?.id === effectiveTargetId,
+    );
+  }, [
+    timelineInterventions,
+    effectiveTimelineTargetParticipantId,
+    myParticipant,
+    viewerDataParticipantId,
+  ]);
+
+  const timelineInterventionsByMoveId = useMemo(() => {
+    const byMoveId = new Map<string, TimelineIntervention[]>();
+    filteredTimelineInterventions.forEach((intervention) => {
+      if (!intervention.move?.id) return;
+      const current = byMoveId.get(intervention.move.id) || [];
+      current.push(intervention);
+      byMoveId.set(intervention.move.id, current);
+    });
+    return byMoveId;
+  }, [filteredTimelineInterventions]);
+
   const timelineTipsByMoveKey = useMemo(() => {
     const tipsByKey = new Map<
       string,
@@ -3108,6 +3181,14 @@ export function RoomClient({
         report.participant?.id === effectiveSummaryParticipantId,
     ).length;
   }, [timelineReports, effectiveSummaryParticipantId]);
+
+  const summaryInterventionsCount = useMemo(() => {
+    if (!effectiveSummaryParticipantId) return 0;
+    return timelineInterventions.filter(
+      (intervention) =>
+        intervention.participant?.id === effectiveSummaryParticipantId,
+    ).length;
+  }, [timelineInterventions, effectiveSummaryParticipantId]);
 
   const myAiUsage = useMemo(() => {
     if (!state || !myParticipant) return null;
@@ -3730,8 +3811,12 @@ export function RoomClient({
         const aiReports = Array.isArray(payload.aiReports)
           ? payload.aiReports
           : [];
+        const interventions = Array.isArray(payload.interventions)
+          ? payload.interventions
+          : [];
         setTimelineMoves(moves);
         setTimelineReports(aiReports);
+        setTimelineInterventions(interventions);
         if (showSuccessToast) {
           pushToast("Jornada carregada.", "success");
         }
@@ -3750,6 +3835,55 @@ export function RoomClient({
       }
     },
     [state?.room.id, pushToast],
+  );
+
+  const handleInterventionDecision = useCallback(
+    (interventionId: string, action: "approve" | "dismiss") => {
+      if (!socket || !socket.connected) {
+        pushToast(
+          "Sem conexão com a sala. Aguarde a reconexão para tratar a intervenção.",
+          "warning",
+        );
+        return;
+      }
+
+      if (!interventionId) return;
+
+      setInterventionActionLoadingById((prev) => ({
+        ...prev,
+        [interventionId]: true,
+      }));
+
+      const eventName =
+        action === "approve" ? "intervention:approve" : "intervention:dismiss";
+      socket.emit(eventName, { interventionId }, async (resp: any) => {
+        setInterventionActionLoadingById((prev) => {
+          if (!prev[interventionId]) return prev;
+          const next = { ...prev };
+          delete next[interventionId];
+          return next;
+        });
+
+        if (!resp?.ok) {
+          showSocketError(
+            action === "approve"
+              ? "Erro ao aprovar intervenção"
+              : "Erro ao dispensar intervenção",
+            resp,
+          );
+          return;
+        }
+
+        pushToast(
+          action === "approve"
+            ? "Intervenção aprovada."
+            : "Intervenção dispensada.",
+          "success",
+        );
+        await loadTimelineData();
+      });
+    },
+    [socket, pushToast, showSocketError, loadTimelineData],
   );
 
   const requestAiTip = useCallback(
@@ -3843,6 +3977,41 @@ export function RoomClient({
     },
     [socket, pushToast, hasOwnMoveForAiTip, showSocketError, loadTimelineData],
   );
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleInterventionGenerated = (payload: any) => {
+      const generatedCount = Array.isArray(payload?.interventions)
+        ? payload.interventions.length
+        : 0;
+      if (generatedCount > 0) {
+        const pendingApprovals =
+          typeof payload?.pendingApprovals === "number"
+            ? payload.pendingApprovals
+            : 0;
+        pushToast(
+          pendingApprovals > 0
+            ? `${generatedCount} intervenção(ões) gerada(s), ${pendingApprovals} aguardando aprovação.`
+            : `${generatedCount} intervenção(ões) gerada(s).`,
+          pendingApprovals > 0 ? "warning" : "info",
+        );
+      }
+      void loadTimelineData();
+    };
+
+    const handleInterventionUpdated = () => {
+      void loadTimelineData();
+    };
+
+    socket.on("intervention:generated", handleInterventionGenerated);
+    socket.on("intervention:updated", handleInterventionUpdated);
+
+    return () => {
+      socket.off("intervention:generated", handleInterventionGenerated);
+      socket.off("intervention:updated", handleInterventionUpdated);
+    };
+  }, [socket, loadTimelineData, pushToast]);
 
   const openTherapistSummaryModal = useCallback(
     (participantId: string) => {
@@ -6781,8 +6950,192 @@ export function RoomClient({
                               </button>
                             );
                           })()}
+                          {(() => {
+                            const moveInterventions =
+                              timelineInterventionsByMoveId.get(move.id) || [];
+                            if (moveInterventions.length === 0) return null;
+                            return (
+                              <div style={{ display: "grid", gap: 6 }}>
+                                {moveInterventions.map((intervention) => {
+                                  const isPending =
+                                    intervention.status === "PENDING_APPROVAL";
+                                  const loadingAction = Boolean(
+                                    interventionActionLoadingById[
+                                      intervention.id
+                                    ],
+                                  );
+                                  return (
+                                    <div
+                                      key={intervention.id}
+                                      className="notice"
+                                      style={{ display: "grid", gap: 4 }}
+                                    >
+                                      <span className="small-muted">
+                                        <strong>{intervention.title}</strong> •{" "}
+                                        {formatInterventionSeverityLabel(
+                                          intervention.severity,
+                                        )}{" "}
+                                        •{" "}
+                                        {formatInterventionStatusLabel(
+                                          intervention.status,
+                                        )}
+                                      </span>
+                                      <span className="small-muted">
+                                        {intervention.message}
+                                      </span>
+                                      {intervention.reflectionQuestion && (
+                                        <span className="small-muted">
+                                          <strong>Pergunta:</strong>{" "}
+                                          {intervention.reflectionQuestion}
+                                        </span>
+                                      )}
+                                      {intervention.microAction && (
+                                        <span className="small-muted">
+                                          <strong>Microação:</strong>{" "}
+                                          {intervention.microAction}
+                                        </span>
+                                      )}
+                                      {isPending && isTherapist && (
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: 6,
+                                            flexWrap: "wrap",
+                                          }}
+                                        >
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingAction}
+                                            onClick={() =>
+                                              handleInterventionDecision(
+                                                intervention.id,
+                                                "approve",
+                                              )
+                                            }
+                                          >
+                                            Aprovar
+                                          </button>
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingAction}
+                                            onClick={() =>
+                                              handleInterventionDecision(
+                                                intervention.id,
+                                                "dismiss",
+                                              )
+                                            }
+                                          >
+                                            Dispensar
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))
+                    )}
+                  </div>
+                  <div className="notice" style={{ display: "grid", gap: 8 }}>
+                    <strong>Intervenções assistidas</strong>
+                    {filteredTimelineInterventions.length === 0 ? (
+                      <span className="small-muted">
+                        Nenhuma intervenção registrada para o jogador selecionado.
+                      </span>
+                    ) : (
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: 6,
+                          maxHeight: 220,
+                          overflow: "auto",
+                          paddingRight: 2,
+                        }}
+                      >
+                        {filteredTimelineInterventions
+                          .slice()
+                          .sort(
+                            (a, b) =>
+                              new Date(b.createdAt).getTime() -
+                              new Date(a.createdAt).getTime(),
+                          )
+                          .map((intervention) => {
+                            const loadingAction = Boolean(
+                              interventionActionLoadingById[intervention.id],
+                            );
+                            const isPending =
+                              intervention.status === "PENDING_APPROVAL";
+                            return (
+                              <div
+                                key={`timeline-intervention-${intervention.id}`}
+                                className="notice"
+                                style={{ display: "grid", gap: 4 }}
+                              >
+                                <span className="small-muted">
+                                  <strong>{intervention.title}</strong> •{" "}
+                                  {formatInterventionSeverityLabel(
+                                    intervention.severity,
+                                  )}{" "}
+                                  •{" "}
+                                  {formatInterventionStatusLabel(
+                                    intervention.status,
+                                  )}
+                                </span>
+                                <span className="small-muted">
+                                  {intervention.message}
+                                </span>
+                                <span className="small-muted">
+                                  Trigger: {intervention.triggerId}
+                                  {typeof intervention.turnNumber === "number"
+                                    ? ` • Jogada #${intervention.turnNumber}`
+                                    : ""}
+                                </span>
+                                <span className="small-muted">
+                                  {new Date(intervention.createdAt).toLocaleString(
+                                    "pt-BR",
+                                  )}
+                                </span>
+                                {isPending && isTherapist && (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: 6,
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingAction}
+                                      onClick={() =>
+                                        handleInterventionDecision(
+                                          intervention.id,
+                                          "approve",
+                                        )
+                                      }
+                                    >
+                                      Aprovar
+                                    </button>
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingAction}
+                                      onClick={() =>
+                                        handleInterventionDecision(
+                                          intervention.id,
+                                          "dismiss",
+                                        )
+                                      }
+                                    >
+                                      Dispensar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
                     )}
                   </div>
                 </>
@@ -6857,6 +7210,9 @@ export function RoomClient({
                       </span>
                       <span className="pill">
                         Ajudas da IA: <strong>{summaryAiTipsCount}</strong>
+                      </span>
+                      <span className="pill">
+                        Intervenções: <strong>{summaryInterventionsCount}</strong>
                       </span>
                     </div>
                     <div style={{ display: "grid", gap: 6 }}>
@@ -7906,6 +8262,7 @@ export function RoomClient({
 
               <button
                 className="secondary"
+                style={aiPrimaryActionButtonStyle}
                 disabled={finalReportLoading}
                 onClick={async () => {
                   const ok =
@@ -7939,7 +8296,6 @@ export function RoomClient({
                   : finalReportPrompt.mode === "trialLimit"
                       ? "Gerar resumo e continuar"
                     : "Gerar agora"}
-                style={aiPrimaryActionButtonStyle}
               </button>
             </div>
           </div>

@@ -112,6 +112,8 @@ model User {
   mahaLilahRoomsCreated         MahaLilahRoom[]                @relation("MahaLilahRoomCreator")
   mahaLilahParticipants         MahaLilahParticipant[]
   mahaLilahInvitesSent          MahaLilahInvite[]              @relation("MahaLilahInviteSender")
+  mahaLilahInterventionsApproved MahaLilahIntervention[]       @relation("MahaLilahInterventionApprover")
+  mahaLilahInterventionsDismissed MahaLilahIntervention[]      @relation("MahaLilahInterventionDismisser")
   createdCardDecks              CardDeck[]
   therapeuticProcessesAsPatient TherapeuticProcess[]           @relation("TherapeuticProcessPatient")
   therapeuticProcessesCreated   TherapeuticProcess[]           @relation("TherapeuticProcessCreator")
@@ -3264,6 +3266,7 @@ model MahaLilahPlan {
   tipsPerPlayer      Int                              @default(0)
   summaryLimit       Int                              @default(0)
   progressSummaryEveryMoves Int                       @default(15)
+  interventionLimitPerParticipant Int                 @default(8)
   durationDays       Int                              @default(30)
   allowTherapistSoloPlay Boolean                      @default(true)
   isActive           Boolean                          @default(true)
@@ -3276,6 +3279,47 @@ model MahaLilahPlan {
 
   @@index([isActive])
   @@index([planType, isActive])
+}
+
+model MahaLilahInterventionConfig {
+  id                            String                        @id @default(cuid())
+  triggerId                     String                        @unique
+  title                         String
+  description                   String?
+  enabled                       Boolean                       @default(true)
+  useAi                         Boolean                       @default(false)
+  sensitive                     Boolean                       @default(false)
+  requireTherapistApproval      Boolean                       @default(false)
+  autoApproveWhenTherapistSolo  Boolean                       @default(true)
+  severity                      MahaLilahInterventionSeverity @default(INFO)
+  cooldownMoves                 Int                           @default(2)
+  cooldownMinutes               Int                           @default(10)
+  thresholds                    Json?
+  metadata                      Json?
+  createdAt                     DateTime                      @default(now())
+  updatedAt                     DateTime                      @updatedAt
+
+  prompts       MahaLilahInterventionPrompt[]
+  interventions MahaLilahIntervention[]
+
+  @@index([enabled])
+}
+
+model MahaLilahInterventionPrompt {
+  id                 String   @id @default(cuid())
+  configId           String
+  locale             String   @default("pt-BR")
+  name               String
+  isActive           Boolean  @default(true)
+  systemPrompt       String?
+  userPromptTemplate String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  config        MahaLilahInterventionConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  interventions MahaLilahIntervention[]
+
+  @@index([configId, isActive])
 }
 
 model MahaLilahSingleSessionPriceTier {
@@ -3327,6 +3371,7 @@ model MahaLilahRoom {
   cardDraws      MahaLilahCardDraw[]
   aiUsages       MahaLilahAiUsage[]
   aiReports      MahaLilahAiReport[]
+  interventions  MahaLilahIntervention[]
 
   @@index([createdByUserId])
   @@index([status])
@@ -3373,6 +3418,7 @@ model MahaLilahParticipant {
   cardDraws      MahaLilahCardDraw[]
   aiUsages       MahaLilahAiUsage[]
   aiReports      MahaLilahAiReport[]
+  interventions  MahaLilahIntervention[]
 
   @@unique([roomId, userId])
   @@index([role])
@@ -3420,6 +3466,7 @@ model MahaLilahMove {
   participant    MahaLilahParticipant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
   therapyEntries MahaLilahTherapyEntry[]
   cardDraws      MahaLilahCardDraw[]
+  interventions  MahaLilahIntervention[]
 
   @@index([roomId])
   @@index([participantId])
@@ -3505,6 +3552,46 @@ model MahaLilahAiReport {
   @@index([createdAt])
 }
 
+model MahaLilahIntervention {
+  id               String                     @id @default(cuid())
+  roomId           String
+  participantId    String
+  moveId           String?
+  configId         String?
+  promptId         String?
+  triggerId        String
+  severity         MahaLilahInterventionSeverity @default(INFO)
+  generatedBy      MahaLilahInterventionSource   @default(RULE)
+  usesAi           Boolean                    @default(false)
+  requiresApproval Boolean                    @default(false)
+  status           MahaLilahInterventionStatus @default(APPROVED)
+  turnNumber       Int?
+  title            String
+  message          String
+  reflectionQuestion String?
+  microAction      String?
+  metadata         Json?
+  createdAt        DateTime                   @default(now())
+  approvedAt       DateTime?
+  approvedByUserId String?
+  dismissedAt      DateTime?
+  dismissedByUserId String?
+
+  room            MahaLilahRoom                    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant     MahaLilahParticipant             @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  move            MahaLilahMove?                   @relation(fields: [moveId], references: [id], onDelete: SetNull)
+  config          MahaLilahInterventionConfig?     @relation(fields: [configId], references: [id], onDelete: SetNull)
+  prompt          MahaLilahInterventionPrompt?     @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  approvedByUser  User?                            @relation("MahaLilahInterventionApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  dismissedByUser User?                            @relation("MahaLilahInterventionDismisser", fields: [dismissedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, participantId, createdAt])
+  @@index([roomId, triggerId, createdAt])
+  @@index([roomId, status, createdAt])
+  @@index([participantId, status, createdAt])
+  @@index([moveId])
+}
+
 enum MahaLilahRoomStatus {
   ACTIVE
   CLOSED
@@ -3541,6 +3628,24 @@ enum MahaLilahAiReportKind {
   TIP
   PROGRESS
   FINAL
+}
+
+enum MahaLilahInterventionSeverity {
+  INFO
+  ATTENTION
+  CRITICAL
+}
+
+enum MahaLilahInterventionSource {
+  RULE
+  AI
+  HYBRID
+}
+
+enum MahaLilahInterventionStatus {
+  PENDING_APPROVAL
+  APPROVED
+  DISMISSED
 }
 
 enum EmailStatus {

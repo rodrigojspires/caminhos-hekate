@@ -93,6 +93,7 @@ type MahaMetadata = {
   tipsPerPlayer?: number
   summaryLimit?: number
   progressSummaryEveryMoves?: number
+  interventionLimitPerParticipant?: number
   durationDays?: number
   active?: boolean
   expiresAt?: string | null

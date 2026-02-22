@@ -66,6 +66,22 @@ const roomExportInclude = Prisma.validator<Prisma.MahaLilahRoomInclude>()({
         }
       }
     }
+  },
+  interventions: {
+    orderBy: { createdAt: 'asc' },
+    include: {
+      participant: {
+        include: {
+          user: { select: { id: true, name: true, email: true } }
+        }
+      },
+      move: {
+        select: {
+          id: true,
+          turnNumber: true
+        }
+      }
+    }
   }
 })
 
@@ -242,6 +258,18 @@ function formatReportKind(kind: string) {
   if (kind === 'PROGRESS') return 'O Caminho ate agora'
   if (kind === 'FINAL') return 'Relatorio final'
   return kind
+}
+
+function formatInterventionSeverity(severity: string) {
+  if (severity === 'CRITICAL') return 'Critica'
+  if (severity === 'ATTENTION') return 'Atencao'
+  return 'Informativa'
+}
+
+function formatInterventionStatus(status: string) {
+  if (status === 'PENDING_APPROVAL') return 'Pendente de aprovacao'
+  if (status === 'DISMISSED') return 'Dispensada'
+  return 'Aprovada'
 }
 
 function isSafeSegment(value: string) {
@@ -522,6 +550,9 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const participantReports = focusParticipantId
     ? room.aiReports.filter((report) => report.participantId === focusParticipantId)
     : room.aiReports
+  const participantInterventions = focusParticipantId
+    ? room.interventions.filter((intervention) => intervention.participantId === focusParticipantId)
+    : room.interventions
   const standaloneDraws = focusParticipantId
     ? room.cardDraws.filter((draw) => draw.moveId === null && draw.drawnByParticipantId === focusParticipantId)
     : room.cardDraws.filter((draw) => draw.moveId === null)
@@ -529,6 +560,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   const totalMoves = participantMoves.length
   const totalTherapyEntries = participantMoves.reduce((sum, move) => sum + move.therapyEntries.length, 0)
   const totalCardDraws = participantMoves.reduce((sum, move) => sum + move.cardDraws.length, 0) + standaloneDraws.length
+  const totalInterventions = participantInterventions.length
   const tipReports = participantReports.filter((report) => report.kind === 'TIP')
   const progressReports = participantReports.filter((report) => report.kind === 'PROGRESS')
   const finalReports = participantReports
@@ -601,6 +633,21 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
       createdAt: new Date(report.createdAt)
     })
     progressByIntervalEnd.set(parsed.intervalEnd, current)
+  })
+
+  const interventionsByMoveId = new Map<
+    string,
+    typeof participantInterventions
+  >()
+  const standaloneInterventions: typeof participantInterventions = []
+  participantInterventions.forEach((intervention) => {
+    if (!intervention.moveId) {
+      standaloneInterventions.push(intervention)
+      return
+    }
+    const current = interventionsByMoveId.get(intervention.moveId) || []
+    current.push(intervention)
+    interventionsByMoveId.set(intervention.moveId, current)
   })
 
   const pathHouses: number[] = []
@@ -964,7 +1011,8 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
     },
     { label: 'Registros terapeuticos', value: String(totalTherapyEntries) },
     { label: 'Assistencia de IA', value: String(tipReports.length) },
-    { label: 'Tiragens de cartas', value: String(totalCardDraws) }
+    { label: 'Tiragens de cartas', value: String(totalCardDraws) },
+    { label: 'Intervencoes assistidas', value: String(totalInterventions) }
   ])
 
   addSpacer(12)
@@ -1081,6 +1129,38 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
         })
       }
 
+      const interventionsForMove = interventionsByMoveId.get(move.id) || []
+      if (interventionsForMove.length > 0) {
+        addParagraph('Intervencoes assistidas:', {
+          indent: 14,
+          size: 10,
+          font: 'F2'
+        })
+        interventionsForMove.forEach((intervention, index) => {
+          const label = [
+            `Intervencao ${index + 1}`,
+            `Trigger ${intervention.triggerId}`,
+            formatInterventionSeverity(intervention.severity),
+            formatInterventionStatus(intervention.status)
+          ].join(' - ')
+          addParagraph(label, { indent: 28, size: 10, font: 'F2' })
+          addParagraph(`Titulo: ${intervention.title}`, { indent: 42, size: 10 })
+          addMultilineParagraph(intervention.message, { indent: 42, size: 10 })
+          if (intervention.reflectionQuestion) {
+            addParagraph(
+              `Pergunta de reflexao: ${intervention.reflectionQuestion}`,
+              { indent: 42, size: 10 }
+            )
+          }
+          if (intervention.microAction) {
+            addParagraph(`Microacao: ${intervention.microAction}`, {
+              indent: 42,
+              size: 10
+            })
+          }
+        })
+      }
+
       if (move.cardDraws.length > 0) {
         addParagraph('Cartas tiradas:', { indent: 14, size: 10, font: 'F2' })
         move.cardDraws.forEach((draw) => {
@@ -1157,6 +1237,24 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
         addMultilineParagraph(progressReport.text, { indent: 28, size: 10 })
       })
     }
+
+    if (standaloneInterventions.length > 0) {
+      addParagraph('Intervencoes sem jogada vinculada:', {
+        font: 'F2',
+        size: 11
+      })
+      standaloneInterventions.forEach((intervention, index) => {
+        addParagraph(
+          `Intervencao ${index + 1} - ${formatDate(intervention.createdAt)} - ${formatInterventionStatus(intervention.status)}`,
+          { indent: 14, size: 10, font: 'F2' }
+        )
+        addParagraph(
+          `Trigger: ${intervention.triggerId} - ${formatInterventionSeverity(intervention.severity)}`,
+          { indent: 28, size: 10 }
+        )
+        addMultilineParagraph(intervention.message, { indent: 28, size: 10 })
+      })
+    }
   }
 
   addSpacer(12)
@@ -1177,7 +1275,49 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   }
 
   addSpacer(12)
-  addSectionTitle('5. Sintese Final pela IA')
+  addSectionTitle('5. Intervencoes Assistidas')
+  const orderedInterventions = [...participantInterventions].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
+  if (orderedInterventions.length === 0) {
+    addParagraph('Nenhuma intervencao assistida foi registrada para este jogador.')
+  } else {
+    orderedInterventions.forEach((intervention, index) => {
+      const moveLabel =
+        intervention.move?.turnNumber != null
+          ? `jogada ${intervention.move.turnNumber}`
+          : 'sem jogada vinculada'
+      addParagraph(
+        `Intervencao ${index + 1} - ${formatDate(intervention.createdAt)} - ${moveLabel}`,
+        {
+          font: 'F2',
+          size: 11
+        }
+      )
+      addParagraph(
+        `Trigger: ${intervention.triggerId} - ${formatInterventionSeverity(intervention.severity)} - ${formatInterventionStatus(intervention.status)}`,
+        { indent: 14, size: 10 }
+      )
+      addParagraph(`Titulo: ${intervention.title}`, { indent: 14, size: 10 })
+      addMultilineParagraph(intervention.message, { indent: 14, size: 10 })
+      if (intervention.reflectionQuestion) {
+        addParagraph(`Pergunta de reflexao: ${intervention.reflectionQuestion}`, {
+          indent: 14,
+          size: 10
+        })
+      }
+      if (intervention.microAction) {
+        addParagraph(`Microacao: ${intervention.microAction}`, {
+          indent: 14,
+          size: 10
+        })
+      }
+      addSpacer(6)
+    })
+  }
+
+  addSpacer(12)
+  addSectionTitle('6. Sintese Final pela IA')
   if (finalReports.length === 0) {
     addParagraph('Nenhum relatorio final da IA foi registrado para este jogador.')
   } else {
@@ -1192,7 +1332,7 @@ function buildPdf(room: ExportRoom, options: BuildPdfOptions): BuildPdfResult {
   }
 
   addSpacer(12)
-  addSectionTitle('6. Sintese final pelo Terapeuta')
+  addSectionTitle('7. Sintese final pelo Terapeuta')
   addMultilineParagraph(
     focusParticipant?.therapistSummary || 'Sem sintese final registrada pelo terapeuta para esta sessao.',
     {
@@ -1381,6 +1521,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       (participant) => participant.userId === session.user.id
     )
     const isOwner = room.createdByUserId === session.user.id
+    const canViewPendingInterventions = Boolean(
+      isOwner || requesterParticipant?.role === 'THERAPIST'
+    )
 
     if (!isOwner && !requesterParticipant) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
@@ -1425,6 +1568,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       scopedParticipantId = requesterParticipant?.id || null
     }
 
+    const visibleInterventions = room.interventions.filter((intervention) =>
+      canViewPendingInterventions ? true : intervention.status === 'APPROVED'
+    )
+
     const exportRoom = scopedParticipantId
       ? ({
           ...room,
@@ -1450,9 +1597,15 @@ export async function GET(request: Request, { params }: RouteParams) {
           ),
           aiReports: room.aiReports.filter(
             (report) => report.participantId === scopedParticipantId
+          ),
+          interventions: visibleInterventions.filter(
+            (intervention) => intervention.participantId === scopedParticipantId
           )
         } as ExportRoom)
-      : room
+      : ({
+          ...room,
+          interventions: visibleInterventions
+        } as ExportRoom)
 
     const targetParticipant =
       (scopedParticipantId

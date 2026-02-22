@@ -63,6 +63,11 @@ const menuItems = [
     icon: Layers3,
   },
   {
+    title: "Intervenções Maha Lilah",
+    href: "/admin/mahalilah/intervencoes",
+    icon: Layers3,
+  },
+  {
     title: "Baralhos",
     href: "/admin/mahalilah/baralhos",
     icon: Layers3,

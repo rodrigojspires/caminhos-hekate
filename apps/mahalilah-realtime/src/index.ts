@@ -78,8 +78,26 @@ const TRIAL_POST_START_MOVE_LIMIT = Number(
 );
 const TRIAL_AI_TIPS_LIMIT = 1;
 const TRIAL_AI_SUMMARY_LIMIT = 1;
+const TRIAL_INTERVENTIONS_LIMIT = Number(
+  process.env.MAHALILAH_TRIAL_INTERVENTIONS_LIMIT || 8,
+);
 const TRIAL_PROGRESS_SUMMARY_EVERY_MOVES = Number(
   process.env.MAHALILAH_TRIAL_PROGRESS_SUMMARY_EVERY_MOVES || 15,
+);
+const INTERVENTION_CACHE_TTL_MS = Number(
+  process.env.MAHALILAH_INTERVENTION_CACHE_TTL_MS || 30_000,
+);
+const INTERVENTION_TITLE_MAX_LENGTH = Number(
+  process.env.MAHALILAH_INTERVENTION_TITLE_MAX_LENGTH || 140,
+);
+const INTERVENTION_MESSAGE_MAX_LENGTH = Number(
+  process.env.MAHALILAH_INTERVENTION_MESSAGE_MAX_LENGTH || 1100,
+);
+const INTERVENTION_REFLECTION_MAX_LENGTH = Number(
+  process.env.MAHALILAH_INTERVENTION_REFLECTION_MAX_LENGTH || 320,
+);
+const INTERVENTION_MICRO_ACTION_MAX_LENGTH = Number(
+  process.env.MAHALILAH_INTERVENTION_MICRO_ACTION_MAX_LENGTH || 320,
 );
 const PLAYER_INTENTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
@@ -101,6 +119,224 @@ type SocketData = {
   user?: SocketUser;
   roomId?: string;
 };
+
+type PlanAiLimits = {
+  tipsPerPlayer: number;
+  summaryLimit: number;
+  progressSummaryEveryMoves: number;
+  interventionLimitPerParticipant: number;
+};
+
+type InterventionSeverity = "INFO" | "ATTENTION" | "CRITICAL";
+type InterventionStatus = "PENDING_APPROVAL" | "APPROVED" | "DISMISSED";
+type InterventionSource = "RULE" | "AI" | "HYBRID";
+
+type InterventionThresholds = {
+  houseRepeatCount?: number;
+  repeatedHouseWindowMoves?: number;
+  snakeStreakCount?: number;
+  preStartRollCount?: number;
+  inactivityMinutes?: number;
+};
+
+type InterventionPromptRecord = {
+  id: string;
+  locale: string;
+  name: string;
+  systemPrompt: string | null;
+  userPromptTemplate: string;
+  isActive: boolean;
+};
+
+type InterventionConfigRecord = {
+  id: string;
+  triggerId: string;
+  title: string;
+  description: string | null;
+  enabled: boolean;
+  useAi: boolean;
+  sensitive: boolean;
+  requireTherapistApproval: boolean;
+  autoApproveWhenTherapistSolo: boolean;
+  severity: InterventionSeverity;
+  cooldownMoves: number;
+  cooldownMinutes: number;
+  thresholds: InterventionThresholds;
+  metadata: Record<string, unknown>;
+  prompts: InterventionPromptRecord[];
+};
+
+type InterventionCandidate = {
+  triggerId: string;
+  triggerLabel: string;
+  severity: InterventionSeverity;
+  turnNumber: number;
+  moveId: string;
+  triggerData: Record<string, unknown>;
+  fallbackTitle: string;
+  fallbackMessage: string;
+  fallbackReflectionQuestion?: string | null;
+  fallbackMicroAction?: string | null;
+};
+
+type DefaultInterventionCatalogItem = {
+  triggerId: string;
+  title: string;
+  description: string;
+  enabled: boolean;
+  useAi: boolean;
+  sensitive: boolean;
+  requireTherapistApproval: boolean;
+  autoApproveWhenTherapistSolo: boolean;
+  severity: InterventionSeverity;
+  cooldownMoves: number;
+  cooldownMinutes: number;
+  thresholds: InterventionThresholds;
+  metadata?: Record<string, unknown>;
+  prompts?: Array<{
+    locale: string;
+    name: string;
+    systemPrompt?: string | null;
+    userPromptTemplate: string;
+  }>;
+};
+
+const DEFAULT_INTERVENTION_CATALOG: DefaultInterventionCatalogItem[] = [
+  {
+    triggerId: "HOUSE_REPEAT_PATTERN",
+    title: "Casa recorrente detectada",
+    description:
+      "Dispara quando o participante repete a mesma casa várias vezes em uma janela curta.",
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: "ATTENTION",
+    cooldownMoves: 2,
+    cooldownMinutes: 8,
+    thresholds: {
+      houseRepeatCount: 3,
+      repeatedHouseWindowMoves: 10,
+    },
+    metadata: {
+      titleTemplate: "Tema recorrente na casa {{houseNumber}}",
+      messageTemplate:
+        "A casa {{houseNumber}} reapareceu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas. Isso pode indicar um tema que está pedindo integração consciente nesta etapa da jornada.",
+      reflectionQuestion:
+        "O que esta repetição está tentando me mostrar e que ainda não foi integrado?",
+      microAction:
+        "Registre em uma frase qual aprendizado desta casa você escolhe praticar nas próximas 24 horas.",
+    },
+  },
+  {
+    triggerId: "SNAKE_STREAK_PATTERN",
+    title: "Sequência de descidas detectada",
+    description:
+      "Dispara quando há sequência de descidas (cobras) em poucas jogadas.",
+    enabled: true,
+    useAi: false,
+    sensitive: true,
+    requireTherapistApproval: true,
+    autoApproveWhenTherapistSolo: true,
+    severity: "CRITICAL",
+    cooldownMoves: 3,
+    cooldownMinutes: 12,
+    thresholds: {
+      snakeStreakCount: 2,
+    },
+    metadata: {
+      titleTemplate: "Atenção para padrão de queda",
+      messageTemplate:
+        "Foram identificadas {{snakeCount}} descidas em sequência. Esse padrão pode estar associado a uma trava emocional, autocrítica elevada ou retorno a estratégias antigas de proteção.",
+      reflectionQuestion:
+        "Qual contexto interno ou externo costuma anteceder essas quedas de energia e clareza?",
+      microAction:
+        "Escolha uma ação breve de autorregulação antes da próxima rolagem (respiração, pausa ou anotação do gatilho percebido).",
+    },
+  },
+  {
+    triggerId: "PRE_START_STUCK_PATTERN",
+    title: "Demora para iniciar o caminho",
+    description:
+      "Dispara quando o participante demora para iniciar a jornada (muitos 6 não obtidos).",
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: "INFO",
+    cooldownMoves: 2,
+    cooldownMinutes: 10,
+    thresholds: {
+      preStartRollCount: 4,
+    },
+    metadata: {
+      titleTemplate: "Resistência inicial percebida",
+      messageTemplate:
+        "Foram {{rollsUntilStart}} tentativas sem iniciar a jornada. Esse momento pode sinalizar proteção, hesitação ou necessidade de segurança antes de avançar.",
+      reflectionQuestion:
+        "O que precisa estar presente para eu me sentir seguro(a) para dar o próximo passo?",
+      microAction:
+        "Nomeie uma pequena condição de segurança interna que você pode ativar agora.",
+    },
+  },
+  {
+    triggerId: "INACTIVITY_REENGAGE_AI",
+    title: "Reengajar após pausa longa",
+    description:
+      "Gatilho com IA para retomada quando há intervalo grande sem rolagem.",
+    enabled: true,
+    useAi: true,
+    sensitive: true,
+    requireTherapistApproval: true,
+    autoApproveWhenTherapistSolo: true,
+    severity: "ATTENTION",
+    cooldownMoves: 2,
+    cooldownMinutes: 20,
+    thresholds: {
+      inactivityMinutes: 8,
+    },
+    prompts: [
+      {
+        locale: "pt-BR",
+        name: "Retomada após pausa",
+        systemPrompt:
+          "Você é assistente terapêutico do Maha Lilah. Gere intervenção breve, prática e acolhedora. Evite diagnóstico.",
+        userPromptTemplate:
+          "Contexto do jogador (JSON):\n{{contextJson}}\n\nHouve uma pausa de {{inactivityMinutes}} minutos sem rolagem. Gere uma intervenção para retomada no formato JSON puro:\n{\"title\":\"...\",\"message\":\"...\",\"reflectionQuestion\":\"...\",\"microAction\":\"...\"}\n\nRegras:\n- Português claro.\n- Mensagem curta e objetiva (máximo 90 palavras).\n- Pergunta reflexiva única.\n- Microação prática de 1 passo.",
+      },
+    ],
+  },
+  {
+    triggerId: "HOUSE_REPEAT_AI",
+    title: "Ampliação com IA para repetição de casa",
+    description:
+      "Gatilho com IA para aprofundar significado de repetição de casa.",
+    enabled: true,
+    useAi: true,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: "INFO",
+    cooldownMoves: 3,
+    cooldownMinutes: 15,
+    thresholds: {
+      houseRepeatCount: 4,
+      repeatedHouseWindowMoves: 12,
+    },
+    prompts: [
+      {
+        locale: "pt-BR",
+        name: "Leitura de repetição",
+        systemPrompt:
+          "Você é assistente terapêutico do Maha Lilah. Produza intervenção curta, sem exageros e com linguagem simples.",
+        userPromptTemplate:
+          "Contexto do jogador (JSON):\n{{contextJson}}\n\nA casa {{houseNumber}} repetiu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas.\nCrie uma intervenção terapêutica no formato JSON puro:\n{\"title\":\"...\",\"message\":\"...\",\"reflectionQuestion\":\"...\",\"microAction\":\"...\"}\n\nConecte a resposta ao simbolismo da casa e ao caminho já percorrido.",
+      },
+    ],
+  },
+];
 
 function getMahaLilahOpenSecret() {
   return process.env.MAHALILAH_SOCKET_SECRET || process.env.NEXTAUTH_SECRET;
@@ -185,17 +421,18 @@ const actionCooldowns = new Map<string, number>();
 const roomUserConnections = new Map<string, Map<string, number>>();
 let planAiLimitsCache: {
   expiresAt: number;
-  byPlanType: Map<
-    string,
-    {
-      tipsPerPlayer: number;
-      summaryLimit: number;
-      progressSummaryEveryMoves: number;
-    }
-  >;
+  byPlanType: Map<string, PlanAiLimits>;
 } = {
   expiresAt: 0,
   byPlanType: new Map(),
+};
+let interventionCatalogSeedPromise: Promise<void> | null = null;
+let interventionConfigCache: {
+  expiresAt: number;
+  byTriggerId: Map<string, InterventionConfigRecord>;
+} = {
+  expiresAt: 0,
+  byTriggerId: new Map(),
 };
 
 function enforceCooldown(key: string, cooldownMs: number) {
@@ -276,6 +513,128 @@ function buildSocketError(message: string, code?: string) {
 
 function buildUserActiveSessionKey(userId: string) {
   return `${USER_ACTIVE_SESSION_KEY_PREFIX}:${userId}`;
+}
+
+function asPlainObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function asNonNegativeInt(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.floor(parsed);
+}
+
+function normalizeInterventionThresholds(raw: unknown): InterventionThresholds {
+  const obj = asPlainObject(raw);
+  return {
+    houseRepeatCount: asNonNegativeInt(obj.houseRepeatCount, 0),
+    repeatedHouseWindowMoves: asNonNegativeInt(obj.repeatedHouseWindowMoves, 0),
+    snakeStreakCount: asNonNegativeInt(obj.snakeStreakCount, 0),
+    preStartRollCount: asNonNegativeInt(obj.preStartRollCount, 0),
+    inactivityMinutes: asNonNegativeInt(obj.inactivityMinutes, 0),
+  };
+}
+
+function trimToMax(value: string | null | undefined, maxLength: number) {
+  if (!value) return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function pickBestInterventionPrompt(config: InterventionConfigRecord) {
+  if (!config.prompts.length) return null;
+  const exactPtBr = config.prompts.find(
+    (prompt) => prompt.locale.toLowerCase() === "pt-br",
+  );
+  if (exactPtBr) return exactPtBr;
+  const startsWithPt = config.prompts.find((prompt) =>
+    prompt.locale.toLowerCase().startsWith("pt"),
+  );
+  return startsWithPt || config.prompts[0];
+}
+
+function renderPromptTemplate(
+  template: string,
+  replacements: Record<string, string | number | null | undefined>,
+) {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, rawKey) => {
+    const key = String(rawKey);
+    const value = replacements[key];
+    if (value == null) return "";
+    return String(value);
+  });
+}
+
+function extractLikelyJsonObject(raw: string) {
+  const first = raw.indexOf("{");
+  const last = raw.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  return raw.slice(first, last + 1);
+}
+
+function parseInterventionAiPayload(raw: string): {
+  title: string;
+  message: string;
+  reflectionQuestion: string | null;
+  microAction: string | null;
+} {
+  const trimmed = raw.trim();
+  const maybeJson = extractLikelyJsonObject(trimmed);
+  const tryParse = (candidate: string) => {
+    try {
+      return JSON.parse(candidate) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+
+  const parsed = maybeJson ? tryParse(maybeJson) : tryParse(trimmed);
+  if (parsed && typeof parsed === "object") {
+    const title = trimToMax(
+      typeof parsed.title === "string" ? parsed.title : "Intervenção assistida",
+      INTERVENTION_TITLE_MAX_LENGTH,
+    );
+    const message = trimToMax(
+      typeof parsed.message === "string"
+        ? parsed.message
+        : typeof parsed.text === "string"
+          ? parsed.text
+          : trimmed,
+      INTERVENTION_MESSAGE_MAX_LENGTH,
+    );
+    const reflectionQuestion = trimToMax(
+      typeof parsed.reflectionQuestion === "string"
+        ? parsed.reflectionQuestion
+        : typeof parsed.question === "string"
+          ? parsed.question
+          : "",
+      INTERVENTION_REFLECTION_MAX_LENGTH,
+    );
+    const microAction = trimToMax(
+      typeof parsed.microAction === "string"
+        ? parsed.microAction
+        : typeof parsed.action === "string"
+          ? parsed.action
+          : "",
+      INTERVENTION_MICRO_ACTION_MAX_LENGTH,
+    );
+
+    return {
+      title: title || "Intervenção assistida",
+      message: message || "Sem mensagem disponível.",
+      reflectionQuestion: reflectionQuestion || null,
+      microAction: microAction || null,
+    };
+  }
+
+  return {
+    title: "Intervenção assistida",
+    message: trimToMax(trimmed || "Sem mensagem disponível.", INTERVENTION_MESSAGE_MAX_LENGTH),
+    reflectionQuestion: null,
+    microAction: null,
+  };
 }
 
 async function ensureRedisConnected() {
@@ -499,7 +858,153 @@ async function releaseUserActiveSession(userId: string, socketId: string) {
   );
 }
 
-async function callOpenAI(prompt: string) {
+async function ensureInterventionCatalogSeeded() {
+  if (interventionCatalogSeedPromise) {
+    await interventionCatalogSeedPromise;
+    return;
+  }
+
+  interventionCatalogSeedPromise = (async () => {
+    for (const config of DEFAULT_INTERVENTION_CATALOG) {
+      const persistedConfig = await prisma.mahaLilahInterventionConfig.upsert({
+        where: { triggerId: config.triggerId },
+        update: {},
+        create: {
+          triggerId: config.triggerId,
+          title: config.title,
+          description: config.description,
+          enabled: config.enabled,
+          useAi: config.useAi,
+          sensitive: config.sensitive,
+          requireTherapistApproval: config.requireTherapistApproval,
+          autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
+          severity: config.severity,
+          cooldownMoves: config.cooldownMoves,
+          cooldownMinutes: config.cooldownMinutes,
+          thresholds: config.thresholds as any,
+          metadata: (config.metadata || {}) as any,
+        },
+      });
+
+      if (!config.prompts?.length) continue;
+
+      for (const prompt of config.prompts) {
+        const existingPrompt = await prisma.mahaLilahInterventionPrompt.findFirst({
+          where: {
+            configId: persistedConfig.id,
+            locale: prompt.locale,
+            name: prompt.name,
+          },
+          select: { id: true },
+        });
+        if (existingPrompt) continue;
+
+        await prisma.mahaLilahInterventionPrompt.create({
+          data: {
+            configId: persistedConfig.id,
+            locale: prompt.locale,
+            name: prompt.name,
+            isActive: true,
+            systemPrompt: prompt.systemPrompt || null,
+            userPromptTemplate: prompt.userPromptTemplate,
+          },
+        });
+      }
+    }
+  })()
+    .catch((error) => {
+      console.error(
+        "[mahalilah-realtime] falha ao garantir catálogo padrão de intervenções:",
+        error,
+      );
+      throw error;
+    })
+    .finally(() => {
+      interventionCatalogSeedPromise = null;
+    });
+
+  await interventionCatalogSeedPromise;
+}
+
+function normalizeInterventionConfig(raw: any): InterventionConfigRecord {
+  return {
+    id: raw.id,
+    triggerId: raw.triggerId,
+    title: String(raw.title || raw.triggerId),
+    description: raw.description ? String(raw.description) : null,
+    enabled: Boolean(raw.enabled),
+    useAi: Boolean(raw.useAi),
+    sensitive: Boolean(raw.sensitive),
+    requireTherapistApproval: Boolean(raw.requireTherapistApproval),
+    autoApproveWhenTherapistSolo: Boolean(raw.autoApproveWhenTherapistSolo),
+    severity:
+      raw.severity === "CRITICAL" || raw.severity === "ATTENTION"
+        ? raw.severity
+        : "INFO",
+    cooldownMoves: asNonNegativeInt(raw.cooldownMoves, 0),
+    cooldownMinutes: asNonNegativeInt(raw.cooldownMinutes, 0),
+    thresholds: normalizeInterventionThresholds(raw.thresholds),
+    metadata: asPlainObject(raw.metadata),
+    prompts: Array.isArray(raw.prompts)
+      ? raw.prompts.map((prompt: any) => ({
+          id: prompt.id,
+          locale: String(prompt.locale || "pt-BR"),
+          name: String(prompt.name || "Prompt"),
+          systemPrompt:
+            typeof prompt.systemPrompt === "string"
+              ? prompt.systemPrompt
+              : null,
+          userPromptTemplate: String(prompt.userPromptTemplate || ""),
+          isActive: Boolean(prompt.isActive),
+        }))
+      : [],
+  };
+}
+
+async function loadInterventionConfigsByTriggerId(params?: { force?: boolean }) {
+  const force = Boolean(params?.force);
+  const now = Date.now();
+  if (
+    !force &&
+    interventionConfigCache.byTriggerId.size > 0 &&
+    interventionConfigCache.expiresAt > now
+  ) {
+    return interventionConfigCache.byTriggerId;
+  }
+
+  await ensureInterventionCatalogSeeded();
+
+  const configs = await prisma.mahaLilahInterventionConfig.findMany({
+    where: { enabled: true },
+    include: {
+      prompts: {
+        where: { isActive: true },
+        orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+      },
+    },
+  });
+
+  const byTriggerId = new Map<string, InterventionConfigRecord>();
+  configs.forEach((config) => {
+    const normalized = normalizeInterventionConfig(config);
+    byTriggerId.set(normalized.triggerId, normalized);
+  });
+
+  interventionConfigCache = {
+    byTriggerId,
+    expiresAt: now + INTERVENTION_CACHE_TTL_MS,
+  };
+  return byTriggerId;
+}
+
+const DEFAULT_OPENAI_SYSTEM_PROMPT =
+  "Você é um assistente terapêutico especializado no jogo Maha Lilah. Responda em português, de modo claro e acolhedor. Você só pode responder conteúdos relacionados ao Maha Lilah e à sessão em andamento, usando apenas o contexto fornecido. Se a solicitação estiver fora do escopo da partida/sessão atual, recuse educadamente e responda exatamente com a mensagem de recusa definida no prompt do usuário. Nunca invente contexto que não esteja nos dados fornecidos.";
+
+async function callOpenAIWithMessages(params: {
+  userPrompt: string;
+  systemPrompt?: string | null;
+  temperature?: number;
+}) {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY não configurada");
   }
@@ -512,14 +1017,14 @@ async function callOpenAI(prompt: string) {
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      temperature: 0.4,
+      temperature:
+        typeof params.temperature === "number" ? params.temperature : 0.4,
       messages: [
         {
           role: "system",
-          content:
-            "Você é um assistente terapêutico especializado no jogo Maha Lilah. Responda em português, de modo claro e acolhedor. Você só pode responder conteúdos relacionados ao Maha Lilah e à sessão em andamento, usando apenas o contexto fornecido. Se a solicitação estiver fora do escopo da partida/sessão atual, recuse educadamente e responda exatamente com a mensagem de recusa definida no prompt do usuário. Nunca invente contexto que não esteja nos dados fornecidos.",
+          content: params.systemPrompt || DEFAULT_OPENAI_SYSTEM_PROMPT,
         },
-        { role: "user", content: prompt },
+        { role: "user", content: params.userPrompt },
       ],
     }),
   });
@@ -531,6 +1036,13 @@ async function callOpenAI(prompt: string) {
 
   const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content?.trim() || "Sem resposta.";
+}
+
+async function callOpenAI(prompt: string) {
+  return callOpenAIWithMessages({
+    userPrompt: prompt,
+    systemPrompt: DEFAULT_OPENAI_SYSTEM_PROMPT,
+  });
 }
 
 async function buildAiContext(roomId: string, participantId: string) {
@@ -651,23 +1163,20 @@ async function loadPlanAiLimitsByType() {
       tipsPerPlayer: true,
       summaryLimit: true,
       progressSummaryEveryMoves: true,
+      interventionLimitPerParticipant: true,
     },
   });
 
-  const byPlanType = new Map<
-    string,
-    {
-      tipsPerPlayer: number;
-      summaryLimit: number;
-      progressSummaryEveryMoves: number;
-    }
-  >();
+  const byPlanType = new Map<string, PlanAiLimits>();
 
   plans.forEach((plan) => {
     byPlanType.set(plan.planType, {
       tipsPerPlayer: Number(plan.tipsPerPlayer || 0),
       summaryLimit: Number(plan.summaryLimit || 0),
       progressSummaryEveryMoves: Number(plan.progressSummaryEveryMoves || 0),
+      interventionLimitPerParticipant: Number(
+        (plan as any).interventionLimitPerParticipant ?? 8,
+      ),
     });
   });
 
@@ -706,6 +1215,7 @@ function parseSubscriptionMahaMetadata(raw: unknown) {
     tipsPerPlayer?: number;
     summaryLimit?: number;
     progressSummaryEveryMoves?: number;
+    interventionLimitPerParticipant?: number;
     durationDays?: number;
   };
 }
@@ -728,6 +1238,7 @@ async function getRoomAiLimits(room: {
       tipsLimit: TRIAL_AI_TIPS_LIMIT,
       summaryLimit: TRIAL_AI_SUMMARY_LIMIT,
       progressSummaryEveryMoves: TRIAL_PROGRESS_SUMMARY_EVERY_MOVES,
+      interventionLimitPerParticipant: TRIAL_INTERVENTIONS_LIMIT,
     };
   }
 
@@ -735,6 +1246,8 @@ async function getRoomAiLimits(room: {
   let tipsLimit = defaults.tipsPerPlayer;
   let summaryLimit = defaults.summaryLimit;
   let progressSummaryEveryMoves = defaults.progressSummaryEveryMoves;
+  let interventionLimitPerParticipant =
+    defaults.interventionLimitPerParticipant;
 
   if (room.orderId) {
     const order = await prisma.order.findUnique({
@@ -756,11 +1269,27 @@ async function getRoomAiLimits(room: {
         progressSummaryEveryMoves = parsed;
       }
     }
-    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
+    if (meta?.interventionLimitPerParticipant != null) {
+      const parsed = Number(meta.interventionLimitPerParticipant);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        interventionLimitPerParticipant = parsed;
+      }
+    }
+    return {
+      tipsLimit,
+      summaryLimit,
+      progressSummaryEveryMoves,
+      interventionLimitPerParticipant,
+    };
   }
 
   if (room.planType !== "SUBSCRIPTION" && room.planType !== "SUBSCRIPTION_LIMITED") {
-    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
+    return {
+      tipsLimit,
+      summaryLimit,
+      progressSummaryEveryMoves,
+      interventionLimitPerParticipant,
+    };
   }
 
   const subscriptions = await prisma.userSubscription.findMany({
@@ -784,7 +1313,12 @@ async function getRoomAiLimits(room: {
     .find((meta) => meta?.planType === room.planType);
 
   if (!activeMeta) {
-    return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
+    return {
+      tipsLimit,
+      summaryLimit,
+      progressSummaryEveryMoves,
+      interventionLimitPerParticipant,
+    };
   }
 
   if (activeMeta.tipsPerPlayer != null) {
@@ -803,8 +1337,19 @@ async function getRoomAiLimits(room: {
       progressSummaryEveryMoves = parsed;
     }
   }
+  if (activeMeta.interventionLimitPerParticipant != null) {
+    const parsed = Number(activeMeta.interventionLimitPerParticipant);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      interventionLimitPerParticipant = parsed;
+    }
+  }
 
-  return { tipsLimit, summaryLimit, progressSummaryEveryMoves };
+  return {
+    tipsLimit,
+    summaryLimit,
+    progressSummaryEveryMoves,
+    interventionLimitPerParticipant,
+  };
 }
 
 async function generateFinalReportForParticipant(params: {
@@ -1084,6 +1629,579 @@ async function generateProgressSummaryIfNeeded(params: {
     windowStartMoveIndex,
     windowEndMoveIndex,
   };
+}
+
+function buildFallbackInterventionFromConfig(params: {
+  config: InterventionConfigRecord;
+  candidate: InterventionCandidate;
+}) {
+  const { config, candidate } = params;
+  const metadata = asPlainObject(config.metadata);
+  const replacements: Record<string, string | number | null | undefined> = {
+    ...candidate.triggerData,
+    triggerLabel: candidate.triggerLabel,
+    triggerId: candidate.triggerId,
+    turnNumber: candidate.turnNumber,
+  };
+
+  const titleTemplate =
+    typeof metadata.titleTemplate === "string"
+      ? metadata.titleTemplate
+      : candidate.fallbackTitle;
+  const messageTemplate =
+    typeof metadata.messageTemplate === "string"
+      ? metadata.messageTemplate
+      : candidate.fallbackMessage;
+  const reflectionTemplate =
+    typeof metadata.reflectionQuestion === "string"
+      ? metadata.reflectionQuestion
+      : candidate.fallbackReflectionQuestion || "";
+  const microActionTemplate =
+    typeof metadata.microAction === "string"
+      ? metadata.microAction
+      : candidate.fallbackMicroAction || "";
+
+  const title = trimToMax(
+    renderPromptTemplate(titleTemplate, replacements) || candidate.fallbackTitle,
+    INTERVENTION_TITLE_MAX_LENGTH,
+  );
+  const message = trimToMax(
+    renderPromptTemplate(messageTemplate, replacements) ||
+      candidate.fallbackMessage,
+    INTERVENTION_MESSAGE_MAX_LENGTH,
+  );
+  const reflectionQuestion = trimToMax(
+    renderPromptTemplate(reflectionTemplate, replacements),
+    INTERVENTION_REFLECTION_MAX_LENGTH,
+  );
+  const microAction = trimToMax(
+    renderPromptTemplate(microActionTemplate, replacements),
+    INTERVENTION_MICRO_ACTION_MAX_LENGTH,
+  );
+
+  return {
+    title: title || "Intervenção assistida",
+    message: message || candidate.fallbackMessage || "Sem mensagem disponível.",
+    reflectionQuestion: reflectionQuestion || null,
+    microAction: microAction || null,
+  };
+}
+
+function shouldAutoApproveSensitiveIntervention(params: {
+  room: { therapistSoloPlay: boolean; therapistPlays: boolean };
+  participants: Array<{ role: string }>;
+  config: InterventionConfigRecord;
+}) {
+  if (!params.config.autoApproveWhenTherapistSolo) return false;
+  if (params.room.therapistSoloPlay) return true;
+
+  const therapistCount = params.participants.filter(
+    (participant) => participant.role === "THERAPIST",
+  ).length;
+  const playerCount = params.participants.filter(
+    (participant) => participant.role === "PLAYER",
+  ).length;
+
+  return params.room.therapistPlays && therapistCount > 0 && playerCount <= 1;
+}
+
+async function generateInterventionAiContent(params: {
+  roomId: string;
+  participantId: string;
+  config: InterventionConfigRecord;
+  candidate: InterventionCandidate;
+}) {
+  const prompt = pickBestInterventionPrompt(params.config);
+  if (!prompt || !prompt.userPromptTemplate.trim()) return null;
+
+  const [context, participant] = await Promise.all([
+    buildAiContext(params.roomId, params.participantId),
+    prisma.mahaLilahParticipant.findUnique({
+      where: { id: params.participantId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    }),
+  ]);
+  if (!participant) return null;
+
+  const triggerData = params.candidate.triggerData || {};
+  const userPrompt = renderPromptTemplate(prompt.userPromptTemplate, {
+    contextJson: JSON.stringify(context, null, 2),
+    triggerDataJson: JSON.stringify(triggerData, null, 2),
+    participantName: participant.user.name || participant.user.email,
+    participantIntention: participant.gameIntention || "",
+    triggerLabel: params.candidate.triggerLabel,
+    triggerId: params.candidate.triggerId,
+    houseNumber:
+      typeof triggerData.houseNumber === "number"
+        ? triggerData.houseNumber
+        : "",
+    repeatCount:
+      typeof triggerData.repeatCount === "number"
+        ? triggerData.repeatCount
+        : "",
+    windowMoves:
+      typeof triggerData.windowMoves === "number"
+        ? triggerData.windowMoves
+        : "",
+    snakeCount:
+      typeof triggerData.snakeCount === "number"
+        ? triggerData.snakeCount
+        : "",
+    rollsUntilStart:
+      typeof triggerData.rollsUntilStart === "number"
+        ? triggerData.rollsUntilStart
+        : "",
+    inactivityMinutes:
+      typeof triggerData.inactivityMinutes === "number"
+        ? triggerData.inactivityMinutes
+        : "",
+    turnNumber: params.candidate.turnNumber,
+  });
+
+  const aiRaw = await callOpenAIWithMessages({
+    userPrompt,
+    systemPrompt: prompt.systemPrompt || DEFAULT_OPENAI_SYSTEM_PROMPT,
+    temperature: 0.3,
+  });
+  const parsed = parseInterventionAiPayload(aiRaw);
+  return {
+    promptId: prompt.id,
+    content: parsed,
+    raw: aiRaw,
+  };
+}
+
+async function hasInterventionCooldownActive(params: {
+  roomId: string;
+  participantId: string;
+  triggerId: string;
+  currentTurnNumber: number;
+  cooldownMoves: number;
+  cooldownMinutes: number;
+}) {
+  if (params.cooldownMoves <= 0 && params.cooldownMinutes <= 0) {
+    return false;
+  }
+
+  const last = await prisma.mahaLilahIntervention.findFirst({
+    where: {
+      roomId: params.roomId,
+      participantId: params.participantId,
+      triggerId: params.triggerId,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true, turnNumber: true },
+  });
+  if (!last) return false;
+
+  if (params.cooldownMinutes > 0) {
+    const elapsedMs = Date.now() - new Date(last.createdAt).getTime();
+    if (elapsedMs <= params.cooldownMinutes * 60_000) {
+      return true;
+    }
+  }
+
+  if (
+    params.cooldownMoves > 0 &&
+    typeof last.turnNumber === "number" &&
+    Number.isFinite(last.turnNumber)
+  ) {
+    const movesDiff = params.currentTurnNumber - last.turnNumber;
+    if (movesDiff >= 0 && movesDiff <= params.cooldownMoves) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function createInterventionFromCandidate(params: {
+  room: {
+    id: string;
+    therapistSoloPlay: boolean;
+    therapistPlays: boolean;
+  };
+  roomParticipants: Array<{ role: string }>;
+  participantId: string;
+  candidate: InterventionCandidate;
+  config: InterventionConfigRecord;
+}) {
+  const { room, roomParticipants, participantId, candidate, config } = params;
+
+  const cooldownActive = await hasInterventionCooldownActive({
+    roomId: room.id,
+    participantId,
+    triggerId: candidate.triggerId,
+    currentTurnNumber: candidate.turnNumber,
+    cooldownMoves: config.cooldownMoves,
+    cooldownMinutes: config.cooldownMinutes,
+  });
+  if (cooldownActive) return null;
+
+  const fallbackContent = buildFallbackInterventionFromConfig({
+    config,
+    candidate,
+  });
+
+  let finalContent = fallbackContent;
+  let generatedBy: InterventionSource = "RULE";
+  let promptId: string | null = null;
+  let aiRawContent: string | null = null;
+
+  if (config.useAi) {
+    try {
+      const aiResult = await generateInterventionAiContent({
+        roomId: room.id,
+        participantId,
+        config,
+        candidate,
+      });
+      if (aiResult?.content) {
+        finalContent = aiResult.content;
+        generatedBy = "AI";
+        promptId = aiResult.promptId;
+        aiRawContent = aiResult.raw;
+      } else {
+        generatedBy = "HYBRID";
+      }
+    } catch (error) {
+      generatedBy = "HYBRID";
+      console.error(
+        `[mahalilah-realtime] falha ao gerar intervenção com IA (${candidate.triggerId}):`,
+        error,
+      );
+    }
+  }
+
+  const autoApproveSensitive = shouldAutoApproveSensitiveIntervention({
+    room,
+    participants: roomParticipants,
+    config,
+  });
+  const requiresApproval = Boolean(
+    (config.sensitive || config.requireTherapistApproval) &&
+      !autoApproveSensitive,
+  );
+  const status: InterventionStatus = requiresApproval
+    ? "PENDING_APPROVAL"
+    : "APPROVED";
+
+  const created = await prisma.mahaLilahIntervention.create({
+    data: {
+      roomId: room.id,
+      participantId,
+      moveId: candidate.moveId,
+      configId: config.id,
+      promptId,
+      triggerId: candidate.triggerId,
+      severity: config.severity,
+      generatedBy,
+      usesAi: config.useAi,
+      requiresApproval,
+      status,
+      turnNumber: candidate.turnNumber,
+      title: trimToMax(finalContent.title, INTERVENTION_TITLE_MAX_LENGTH),
+      message: trimToMax(finalContent.message, INTERVENTION_MESSAGE_MAX_LENGTH),
+      reflectionQuestion: finalContent.reflectionQuestion,
+      microAction: finalContent.microAction,
+      approvedAt: status === "APPROVED" ? new Date() : null,
+      metadata: {
+        triggerLabel: candidate.triggerLabel,
+        triggerData: candidate.triggerData,
+        fallbackUsed: generatedBy !== "AI",
+        aiRawContent,
+        autoApproveSensitive,
+      } as any,
+    },
+    include: {
+      participant: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      },
+      move: {
+        select: { id: true, turnNumber: true },
+      },
+    },
+  });
+
+  return created;
+}
+
+async function evaluateInterventionsAfterMove(params: {
+  roomId: string;
+  participantId: string;
+  moveId: string;
+}) {
+  const [room, allMoves, playerState, configsByTrigger] = await Promise.all([
+    prisma.mahaLilahRoom.findUnique({
+      where: { id: params.roomId },
+      select: {
+        id: true,
+        status: true,
+        planType: true,
+        orderId: true,
+        isTrial: true,
+        subscriptionId: true,
+        createdByUserId: true,
+        therapistSoloPlay: true,
+        therapistPlays: true,
+        participants: {
+          select: {
+            id: true,
+            role: true,
+            userId: true,
+          },
+        },
+      },
+    }),
+    prisma.mahaLilahMove.findMany({
+      where: { roomId: params.roomId, participantId: params.participantId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        turnNumber: true,
+        diceValue: true,
+        fromPos: true,
+        toPos: true,
+        appliedJumpFrom: true,
+        appliedJumpTo: true,
+        createdAt: true,
+      },
+    }),
+    prisma.mahaLilahPlayerState.findFirst({
+      where: {
+        roomId: params.roomId,
+        participantId: params.participantId,
+      },
+      select: {
+        hasStarted: true,
+        rollCountUntilStart: true,
+      },
+    }),
+    loadInterventionConfigsByTriggerId(),
+  ]);
+
+  if (!room || room.status !== "ACTIVE") return [];
+
+  const limitConfig = await getRoomAiLimits({
+    id: room.id,
+    planType: room.planType,
+    orderId: room.orderId,
+    isTrial: room.isTrial,
+    subscriptionId: room.subscriptionId,
+    createdByUserId: room.createdByUserId,
+  });
+  const interventionsLimit = Math.max(
+    0,
+    Number(limitConfig.interventionLimitPerParticipant || 0),
+  );
+  if (interventionsLimit <= 0) return [];
+
+  let interventionsUsed = await prisma.mahaLilahIntervention.count({
+    where: {
+      roomId: room.id,
+      participantId: params.participantId,
+    },
+  });
+  if (interventionsUsed >= interventionsLimit) return [];
+
+  const currentMove = allMoves.find((item) => item.id === params.moveId);
+  if (!currentMove) return [];
+
+  const postStartMoves = allMoves.filter(isPostStartMove);
+  const candidates: InterventionCandidate[] = [];
+
+  const registerCandidate = (candidate: InterventionCandidate) => {
+    if (candidates.some((item) => item.triggerId === candidate.triggerId)) return;
+    candidates.push(candidate);
+  };
+
+  const houseRepeatRules = [
+    configsByTrigger.get("HOUSE_REPEAT_PATTERN"),
+    configsByTrigger.get("HOUSE_REPEAT_AI"),
+  ].filter(
+    (config): config is InterventionConfigRecord => Boolean(config && config.enabled),
+  );
+  houseRepeatRules.forEach((config) => {
+    const repeatThreshold = Math.max(2, config.thresholds.houseRepeatCount || 0);
+    const windowMoves = Math.max(
+      repeatThreshold,
+      config.thresholds.repeatedHouseWindowMoves || repeatThreshold,
+    );
+    if (repeatThreshold <= 0 || windowMoves <= 0) return;
+
+    const windowSlice = postStartMoves.slice(-windowMoves);
+    if (windowSlice.length < repeatThreshold) return;
+
+    const houseToTrack =
+      currentMove.appliedJumpTo ??
+      currentMove.appliedJumpFrom ??
+      currentMove.toPos;
+    const repeatCount = windowSlice.filter((item) => {
+      const house = item.appliedJumpTo ?? item.appliedJumpFrom ?? item.toPos;
+      return house === houseToTrack;
+    }).length;
+    if (repeatCount < repeatThreshold) return;
+
+    const houseMeta = getHouseByNumber(houseToTrack);
+    registerCandidate({
+      triggerId: config.triggerId,
+      triggerLabel: config.title,
+      severity: config.severity,
+      turnNumber: currentMove.turnNumber,
+      moveId: currentMove.id,
+      triggerData: {
+        houseNumber: houseToTrack,
+        houseTitle: houseMeta?.title || null,
+        repeatCount,
+        windowMoves,
+      },
+      fallbackTitle: `Repetição na casa ${houseToTrack}`,
+      fallbackMessage: `A casa ${houseToTrack} (${houseMeta?.title || "sem título"}) apareceu ${repeatCount} vezes nas últimas ${windowMoves} jogadas.`,
+      fallbackReflectionQuestion:
+        "Qual aprendizado ainda está pedindo atenção nesta repetição?",
+      fallbackMicroAction:
+        "Anote um comportamento concreto para aplicar antes da próxima rolagem.",
+    });
+  });
+
+  const snakeConfig = configsByTrigger.get("SNAKE_STREAK_PATTERN");
+  if (snakeConfig?.enabled) {
+    const snakeThreshold = Math.max(2, snakeConfig.thresholds.snakeStreakCount || 0);
+    if (snakeThreshold > 0) {
+      const recentWindow = postStartMoves.slice(-snakeThreshold);
+      const snakeCount = recentWindow.filter(
+        (item) =>
+          item.appliedJumpFrom !== null &&
+          item.appliedJumpTo !== null &&
+          item.appliedJumpTo < item.appliedJumpFrom,
+      ).length;
+      if (snakeCount >= snakeThreshold) {
+        registerCandidate({
+          triggerId: snakeConfig.triggerId,
+          triggerLabel: snakeConfig.title,
+          severity: snakeConfig.severity,
+          turnNumber: currentMove.turnNumber,
+          moveId: currentMove.id,
+          triggerData: {
+            snakeCount,
+            windowMoves: recentWindow.length,
+          },
+          fallbackTitle: "Sequência de descidas",
+          fallbackMessage: `Foram detectadas ${snakeCount} descidas em sequência nas últimas jogadas.`,
+          fallbackReflectionQuestion:
+            "O que este padrão repetido de descida está sinalizando sobre seu momento atual?",
+          fallbackMicroAction:
+            "Faça uma pausa de 30 segundos e registre o principal gatilho percebido antes de seguir.",
+        });
+      }
+    }
+  }
+
+  const preStartConfig = configsByTrigger.get("PRE_START_STUCK_PATTERN");
+  if (preStartConfig?.enabled && playerState && !playerState.hasStarted) {
+    const threshold = Math.max(2, preStartConfig.thresholds.preStartRollCount || 0);
+    if (
+      threshold > 0 &&
+      playerState.rollCountUntilStart >= threshold &&
+      currentMove.diceValue !== 6
+    ) {
+      registerCandidate({
+        triggerId: preStartConfig.triggerId,
+        triggerLabel: preStartConfig.title,
+        severity: preStartConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          rollsUntilStart: playerState.rollCountUntilStart,
+        },
+        fallbackTitle: "Demora para iniciar",
+        fallbackMessage: `Já ocorreram ${playerState.rollCountUntilStart} tentativas sem iniciar a jornada.`,
+        fallbackReflectionQuestion:
+          "O que pode tornar o início deste processo mais seguro e possível agora?",
+        fallbackMicroAction:
+          "Escolha uma micro intenção de abertura para a próxima jogada.",
+      });
+    }
+  }
+
+  const inactivityConfig = configsByTrigger.get("INACTIVITY_REENGAGE_AI");
+  if (inactivityConfig?.enabled && allMoves.length >= 2) {
+    const inactivityMinutesThreshold = Math.max(
+      1,
+      inactivityConfig.thresholds.inactivityMinutes || 0,
+    );
+    if (inactivityMinutesThreshold > 0) {
+      const previousMove = allMoves[allMoves.length - 2];
+      const inactivityMs =
+        new Date(currentMove.createdAt).getTime() -
+        new Date(previousMove.createdAt).getTime();
+      const inactivityMinutes = Math.floor(inactivityMs / 60000);
+
+      if (inactivityMinutes >= inactivityMinutesThreshold) {
+        registerCandidate({
+          triggerId: inactivityConfig.triggerId,
+          triggerLabel: inactivityConfig.title,
+          severity: inactivityConfig.severity,
+          turnNumber: currentMove.turnNumber,
+          moveId: currentMove.id,
+          triggerData: {
+            inactivityMinutes,
+          },
+          fallbackTitle: "Retomada após pausa",
+          fallbackMessage: `Houve uma pausa de ${inactivityMinutes} minutos sem rolagem. Pode ser útil retomar com intenção clara e ritmo seguro.`,
+          fallbackReflectionQuestion:
+            "O que estava acontecendo internamente durante a pausa desta jornada?",
+          fallbackMicroAction:
+            "Nomeie em uma frase qual presença você quer cultivar na próxima jogada.",
+        });
+      }
+    }
+  }
+
+  if (candidates.length === 0) return [];
+
+  const createdInterventions: Array<{
+    id: string;
+    participantId: string;
+    status: InterventionStatus;
+    triggerId: string;
+    title: string;
+  }> = [];
+
+  for (const candidate of candidates) {
+    if (interventionsUsed >= interventionsLimit) break;
+
+    const config = configsByTrigger.get(candidate.triggerId);
+    if (!config || !config.enabled) continue;
+
+    const created = await createInterventionFromCandidate({
+      room: {
+        id: room.id,
+        therapistSoloPlay: room.therapistSoloPlay,
+        therapistPlays: room.therapistPlays,
+      },
+      roomParticipants: room.participants,
+      participantId: params.participantId,
+      candidate,
+      config,
+    });
+    if (!created) continue;
+
+    interventionsUsed += 1;
+    createdInterventions.push({
+      id: created.id,
+      participantId: created.participantId,
+      status: created.status as InterventionStatus,
+      triggerId: created.triggerId,
+      title: created.title,
+    });
+  }
+
+  return createdInterventions;
 }
 
 function ensureConsentAccepted(participant: {
@@ -1469,7 +2587,7 @@ async function rollInRoom(roomId: string, userId: string) {
     const nextParticipantTurnNumber =
       (participantTurnStats._max.turnNumber ?? 0) + 1;
 
-    await tx.mahaLilahMove.create({
+    const createdMove = await tx.mahaLilahMove.create({
       data: {
         roomId: room.id,
         turnNumber: nextParticipantTurnNumber,
@@ -1510,6 +2628,8 @@ async function rollInRoom(roomId: string, userId: string) {
         trialClosedByLimit: true,
         diceValue: dice,
         movedParticipantId: currentParticipant.id,
+        moveId: createdMove.id,
+        movedTurnNumber: createdMove.turnNumber,
       };
     }
 
@@ -1540,6 +2660,8 @@ async function rollInRoom(roomId: string, userId: string) {
       trialClosedByLimit: false,
       diceValue: dice,
       movedParticipantId: currentParticipant.id,
+      moveId: createdMove.id,
+      movedTurnNumber: createdMove.turnNumber,
     };
   });
 }
@@ -1823,8 +2945,39 @@ io.on("connection", (socket: AuthedSocket) => {
 
         if (result?.movedParticipantId) {
           void (async () => {
+            const participantId = result.movedParticipantId;
+            if (typeof result?.moveId === "string") {
+              try {
+                const createdInterventions = await evaluateInterventionsAfterMove({
+                  roomId,
+                  participantId,
+                  moveId: result.moveId,
+                });
+                if (createdInterventions.length > 0) {
+                  io.to(roomId).emit("intervention:generated", {
+                    roomId,
+                    participantId,
+                    interventions: createdInterventions.map((item) => ({
+                      id: item.id,
+                      participantId: item.participantId,
+                      status: item.status,
+                      triggerId: item.triggerId,
+                      title: item.title,
+                    })),
+                    pendingApprovals: createdInterventions.filter(
+                      (item) => item.status === "PENDING_APPROVAL",
+                    ).length,
+                  });
+                }
+              } catch (interventionError) {
+                console.error(
+                  "Erro ao processar intervenções automáticas:",
+                  interventionError,
+                );
+              }
+            }
+
             try {
-              const participantId = result.movedParticipantId;
               const generated = await generateProgressSummaryIfNeeded({
                 roomId,
                 participantId,
@@ -1852,7 +3005,7 @@ io.on("connection", (socket: AuthedSocket) => {
             } catch (progressError) {
               io.to(roomId).emit("ai:progressSummaryStatus", {
                 status: "error",
-                participantId: result.movedParticipantId,
+                participantId,
               });
               console.error(
                 "Erro ao gerar síntese 'O Caminho até agora':",
@@ -2542,6 +3695,178 @@ io.on("connection", (socket: AuthedSocket) => {
         callback?.({ ok: true, generatedCount, skippedCount });
       } catch (error: any) {
         callback?.({ ok: false, error: error.message });
+      }
+    },
+  );
+
+  socket.on(
+    "intervention:approve",
+    async (
+      { interventionId }: { interventionId?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId) {
+          throw new Error("Sala não selecionada");
+        }
+        if (!interventionId || !interventionId.trim()) {
+          throw new Error("Intervenção não informada");
+        }
+
+        enforceCooldown(
+          `intervention-approve:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: { participants: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+
+        const requester = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!requester) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requester);
+        if (requester.role !== "THERAPIST") {
+          throw new Error("Apenas o terapeuta pode aprovar intervenções.");
+        }
+
+        const intervention = await prisma.mahaLilahIntervention.findUnique({
+          where: { id: interventionId },
+          select: {
+            id: true,
+            roomId: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+
+        if (!intervention || intervention.roomId !== room.id) {
+          throw new Error("Intervenção não encontrada nesta sala.");
+        }
+        if (intervention.status !== "PENDING_APPROVAL") {
+          throw new Error("Esta intervenção já foi tratada.");
+        }
+
+        const updated = await prisma.mahaLilahIntervention.update({
+          where: { id: intervention.id },
+          data: {
+            status: "APPROVED",
+            approvedAt: new Date(),
+            approvedByUserId: socket.data.user.id,
+            dismissedAt: null,
+            dismissedByUserId: null,
+          },
+          select: {
+            id: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+
+        io.to(room.id).emit("intervention:updated", {
+          roomId: room.id,
+          intervention: updated,
+          action: "APPROVE",
+        });
+        callback?.({ ok: true, intervention: updated });
+      } catch (error: any) {
+        callback?.({
+          ok: false,
+          error: error?.message || "Não foi possível aprovar a intervenção.",
+        });
+      }
+    },
+  );
+
+  socket.on(
+    "intervention:dismiss",
+    async (
+      { interventionId }: { interventionId?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId) {
+          throw new Error("Sala não selecionada");
+        }
+        if (!interventionId || !interventionId.trim()) {
+          throw new Error("Intervenção não informada");
+        }
+
+        enforceCooldown(
+          `intervention-dismiss:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: { participants: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+
+        const requester = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!requester) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requester);
+        if (requester.role !== "THERAPIST") {
+          throw new Error("Apenas o terapeuta pode dispensar intervenções.");
+        }
+
+        const intervention = await prisma.mahaLilahIntervention.findUnique({
+          where: { id: interventionId },
+          select: {
+            id: true,
+            roomId: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+
+        if (!intervention || intervention.roomId !== room.id) {
+          throw new Error("Intervenção não encontrada nesta sala.");
+        }
+        if (intervention.status !== "PENDING_APPROVAL") {
+          throw new Error("Esta intervenção já foi tratada.");
+        }
+
+        const updated = await prisma.mahaLilahIntervention.update({
+          where: { id: intervention.id },
+          data: {
+            status: "DISMISSED",
+            dismissedAt: new Date(),
+            dismissedByUserId: socket.data.user.id,
+            approvedAt: null,
+            approvedByUserId: null,
+          },
+          select: {
+            id: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+
+        io.to(room.id).emit("intervention:updated", {
+          roomId: room.id,
+          intervention: updated,
+          action: "DISMISS",
+        });
+        callback?.({ ok: true, intervention: updated });
+      } catch (error: any) {
+        callback?.({
+          ok: false,
+          error: error?.message || "Não foi possível dispensar a intervenção.",
+        });
       }
     },
   );

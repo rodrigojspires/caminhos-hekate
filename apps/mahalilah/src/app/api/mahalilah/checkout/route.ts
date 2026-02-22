@@ -157,6 +157,8 @@ export async function POST(request: Request) {
               tipsPerPlayer: plan.tipsPerPlayer,
               summaryLimit: plan.summaryLimit,
               progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
+              interventionLimitPerParticipant:
+                plan.interventionLimitPerParticipant,
               durationDays: plan.durationDays,
               roomsUsed: 0,
               active: false,
@@ -314,6 +316,8 @@ export async function POST(request: Request) {
             tipsPerPlayer: plan.tipsPerPlayer,
             summaryLimit: plan.summaryLimit,
             progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
+            interventionLimitPerParticipant:
+              plan.interventionLimitPerParticipant,
             durationDays: plan.durationDays,
             active: false,
             billingInterval: plan.billingInterval,
@@ -366,6 +370,8 @@ export async function POST(request: Request) {
             tipsPerPlayer: plan.tipsPerPlayer,
             summaryLimit: plan.summaryLimit,
             progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
+            interventionLimitPerParticipant:
+              plan.interventionLimitPerParticipant,
             durationDays: plan.durationDays,
             price: plan.price,
             label: plan.label,

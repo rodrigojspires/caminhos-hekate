@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { seedTherapies } from './seed.therapies';
+import { seedMahaLilahInterventions } from './seed.mahalilah-interventions';
 
 // Try to load .env files if dotenv is available; otherwise, continue
 async function tryLoadDotenv() {
@@ -377,6 +378,8 @@ async function main() {
   ])
 
   console.log('✅ Catálogo de planos Maha Lilah criado');
+  await seedMahaLilahInterventions(prisma);
+  console.log('✅ Catálogo de intervenções Maha Lilah criado');
 
   // Criar categorias
   const categories = await Promise.all([

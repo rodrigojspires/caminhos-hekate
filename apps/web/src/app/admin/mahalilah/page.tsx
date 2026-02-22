@@ -258,6 +258,9 @@ export default function AdminMahaLilahRoomsPage() {
               <Button variant="outline" asChild>
                 <Link href="/admin/mahalilah/catalogo">Catálogo Maha Lilah</Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/mahalilah/intervencoes">Intervenções</Link>
+              </Button>
               <Button variant="secondary" asChild>
                 <Link href="/admin/mahalilah/baralhos">Gerenciar baralhos</Link>
               </Button>

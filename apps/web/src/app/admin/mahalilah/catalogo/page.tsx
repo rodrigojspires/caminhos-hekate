@@ -68,6 +68,7 @@ type CatalogPlan = {
   tipsPerPlayer: number;
   summaryLimit: number;
   progressSummaryEveryMoves: number;
+  interventionLimitPerParticipant: number;
   durationDays: number;
   isActive: boolean;
   marketing: PlanMarketing;
@@ -348,6 +349,7 @@ export default function AdminMahaLilahCatalogPage() {
         tipsPerPlayer: plan.tipsPerPlayer,
         summaryLimit: plan.summaryLimit,
         progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
+        interventionLimitPerParticipant: plan.interventionLimitPerParticipant,
         durationDays: plan.durationDays,
         isActive: plan.isActive,
         subscriptionPlanId: plan.subscriptionPlanId,
@@ -413,6 +415,9 @@ export default function AdminMahaLilahCatalogPage() {
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
                 <Link href="/admin/mahalilah">Salas de Maha Lilah</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/mahalilah/intervencoes">Intervenções</Link>
               </Button>
               <Button onClick={saveCatalog} disabled={catalogSaving || catalogLoading || catalogPlans.length === 0}>
                 {catalogSaving ? "Salvando..." : "Publicar alterações"}
@@ -551,6 +556,20 @@ export default function AdminMahaLilahCatalogPage() {
                           updatePlan("SINGLE_SESSION", (plan) => ({
                             ...plan,
                             progressSummaryEveryMoves: Number(event.target.value || 0),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Intervenções / jogador / sessão</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={singleSessionPlan.interventionLimitPerParticipant}
+                        onChange={(event) =>
+                          updatePlan("SINGLE_SESSION", (plan) => ({
+                            ...plan,
+                            interventionLimitPerParticipant: Number(event.target.value || 0),
                           }))
                         }
                       />
@@ -891,6 +910,20 @@ export default function AdminMahaLilahCatalogPage() {
                           }
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Intervenções / jogador / sessão</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={subscriptionPlan.interventionLimitPerParticipant}
+                          onChange={(event) =>
+                            updatePlan("SUBSCRIPTION", (plan) => ({
+                              ...plan,
+                              interventionLimitPerParticipant: Number(event.target.value || 0),
+                            }))
+                          }
+                        />
+                      </div>
                     </div>
 
                     <PlanMarketingEditor
@@ -1074,6 +1107,20 @@ export default function AdminMahaLilahCatalogPage() {
                             updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
                               ...plan,
                               progressSummaryEveryMoves: Number(event.target.value || 0),
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Intervenções / jogador / sessão</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={subscriptionLimitedPlan.interventionLimitPerParticipant}
+                          onChange={(event) =>
+                            updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
+                              ...plan,
+                              interventionLimitPerParticipant: Number(event.target.value || 0),
                             }))
                           }
                         />

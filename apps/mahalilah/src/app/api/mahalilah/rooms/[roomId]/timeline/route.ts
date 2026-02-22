@@ -80,6 +80,9 @@ export async function GET(request: Request, { params }: RouteParams) {
         requesterParticipant?.role === "PLAYER" &&
         therapistParticipant?.id,
     );
+    const canViewPendingInterventions = Boolean(
+      isCreator || requesterParticipant?.role === "THERAPIST",
+    );
 
     const participantScopeId = !isCreator
       ? shouldUseTherapistScopeForRoomView
@@ -87,7 +90,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         : requesterParticipant?.id ?? null
       : null;
 
-    const [moves, aiReports, standaloneDraws] = await prisma.$transaction([
+    const [moves, aiReports, standaloneDraws, interventions] = await prisma.$transaction([
       prisma.mahaLilahMove.findMany({
         where: participantScopeId
           ? { roomId: room.id, participantId: participantScopeId }
@@ -156,6 +159,37 @@ export async function GET(request: Request, { params }: RouteParams) {
           },
         },
       }),
+      prisma.mahaLilahIntervention.findMany({
+        where: participantScopeId
+          ? {
+              roomId: room.id,
+              participantId: participantScopeId,
+              ...(canViewPendingInterventions
+                ? {}
+                : { status: "APPROVED" as const }),
+            }
+          : {
+              roomId: room.id,
+              ...(canViewPendingInterventions
+                ? {}
+                : { status: "APPROVED" as const }),
+            },
+        orderBy: { createdAt: "asc" },
+        include: {
+          participant: {
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
+          move: {
+            select: {
+              id: true,
+              turnNumber: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
     ]);
 
     const mapDrawWithCard = (draw: any) => ({
@@ -190,6 +224,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       })),
       aiReports,
       cardDraws: standaloneDraws.map(mapDrawWithCard),
+      interventions,
     });
   } catch (error) {
     console.error("Erro ao carregar timeline Maha Lilah:", error);

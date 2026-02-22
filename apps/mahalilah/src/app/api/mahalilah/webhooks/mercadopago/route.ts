@@ -30,6 +30,7 @@ type MahaSubscriptionMetadata = {
     tipsPerPlayer?: number
     summaryLimit?: number
     progressSummaryEveryMoves?: number
+    interventionLimitPerParticipant?: number
     durationDays?: number
     price?: number
     label?: string

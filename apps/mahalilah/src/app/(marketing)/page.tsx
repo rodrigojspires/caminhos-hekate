@@ -271,21 +271,21 @@ export default async function HomePage() {
         items={[
           {
             quote:
-              'A experiência ficou mais fluida. O grupo se mantém conectado e eu não perco o fio da condução.',
-            name: 'Marina A.',
-            role: 'Terapeuta integrativa'
+              'Gostei demais, por ser primeiro contato senti real conexão com o jogo.',
+            name: 'Shirlley S.',
+            title: 'Incrível'
           },
           {
             quote:
-              'O deck randômico traz profundidade sem engessar. A plataforma sustenta o processo com leveza.',
-            name: 'Rafael L.',
-            role: 'Facilitador de grupos'
+              'Eu estava angustiada, sem clareza, buscando por respostas.  Entrei no jogo e logo na primeira casa, o Maha Lilah foi certeiro e pontual.  E como se pegasse na minha mão foi me mostrando tudo o que eu precisava  enxergar. No início foi desconfortável olhar para a verdade, mas a medida que eu jogava, a consciência despertava, e a jornada avançava.  No final,  veio o grande insight!!! Uma grande sacada!!!Alívio!! Sensação de liberdade! Simplesmente extraordinário!!',
+            name: 'Izabel M.',
+            title: 'Fascinante!!!'
           },
           {
             quote:
-              'Antes eu me perdia nos registros. Agora eu fecho a sessão com clareza e plano de continuidade.',
-            name: 'Beatriz M.',
-            role: 'Psicoterapeuta corporal'
+              'O jogo me surpreendeu. Trouxe à consciência padrões e repetições de atitudes que acreditava ja estarem bem resolvidas, só que não! É muito revelador, colocando-nos de frente com aquilo que negamos, escondemos, mentimos e manipulamos. É inovador e uma ferramenta que vai ajudar muito nas sessões de terapia e na jornada de autoconhecimento. Amei! ',
+            name: 'Paula H.',
+            title: 'Jumanji: de estudante de si a expert da própria jornada. '
           }
         ]}
       />
