@@ -100,6 +100,21 @@ const INTERVENTION_REFLECTION_MAX_LENGTH = Number(
 const INTERVENTION_MICRO_ACTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_INTERVENTION_MICRO_ACTION_MAX_LENGTH || 320,
 );
+const INTERVENTION_GLOBAL_COOLDOWN_MOVES = Number(
+  process.env.MAHALILAH_INTERVENTION_GLOBAL_COOLDOWN_MOVES || 2,
+);
+const INTERVENTION_MIN_TRIGGER_COOLDOWN_MOVES = Number(
+  process.env.MAHALILAH_INTERVENTION_MIN_TRIGGER_COOLDOWN_MOVES || 5,
+);
+const INTERVENTION_TEMPORAL_SCAN_MS = Number(
+  process.env.MAHALILAH_INTERVENTION_TEMPORAL_SCAN_MS || 10_000,
+);
+const INTERVENTION_SNOOZE_MINUTES = Number(
+  process.env.MAHALILAH_INTERVENTION_SNOOZE_MINUTES || 10,
+);
+const INTERVENTION_SCOPE_GLOBAL_ID = "__global__";
+const INTERVENTION_MUTE_SESSION_NOTE = "MUTE_SESSION";
+const MAX_INTERVENTION_LIMIT_PER_PARTICIPANT = 8;
 const PLAYER_INTENTION_MAX_LENGTH = Number(
   process.env.MAHALILAH_PLAYER_INTENTION_MAX_LENGTH || 280,
 );
@@ -129,8 +144,20 @@ type PlanAiLimits = {
 };
 
 type InterventionSeverity = "INFO" | "ATTENTION" | "CRITICAL";
-type InterventionStatus = "PENDING_APPROVAL" | "APPROVED" | "DISMISSED";
+type InterventionStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "DISMISSED"
+  | "SNOOZED";
 type InterventionSource = "RULE" | "AI" | "HYBRID";
+type InterventionVisibility = "THERAPIST_ONLY" | "ROOM";
+type InterventionScopeType = "GLOBAL" | "PLAN" | "ROOM";
+type InterventionAiPolicy = "NONE" | "OPTIONAL" | "REQUIRED";
+type InterventionFeedbackAction =
+  | "HELPFUL"
+  | "NOT_HELPFUL"
+  | "APPLIED"
+  | "DISMISSED";
 
 type InterventionThresholds = {
   houseRepeatCount?: number;
@@ -166,10 +193,14 @@ type InterventionConfigRecord = {
   description: string | null;
   enabled: boolean;
   useAi: boolean;
+  aiPolicy: InterventionAiPolicy;
   sensitive: boolean;
   requireTherapistApproval: boolean;
   autoApproveWhenTherapistSolo: boolean;
   severity: InterventionSeverity;
+  scopeType: InterventionScopeType;
+  scopeId: string;
+  version: number;
   cooldownMoves: number;
   cooldownMinutes: number;
   thresholds: InterventionThresholds;
@@ -178,16 +209,18 @@ type InterventionConfigRecord = {
 };
 
 type InterventionCandidate = {
+  participantId: string;
   triggerId: string;
   triggerLabel: string;
   severity: InterventionSeverity;
-  turnNumber: number;
-  moveId: string;
+  turnNumber: number | null;
+  moveId: string | null;
   triggerData: Record<string, unknown>;
   fallbackTitle: string;
   fallbackMessage: string;
   fallbackReflectionQuestion?: string | null;
   fallbackMicroAction?: string | null;
+  visibleTo?: InterventionVisibility;
 };
 
 type DefaultInterventionCatalogItem = {
@@ -196,10 +229,14 @@ type DefaultInterventionCatalogItem = {
   description: string;
   enabled: boolean;
   useAi: boolean;
+  aiPolicy: InterventionAiPolicy;
   sensitive: boolean;
   requireTherapistApproval: boolean;
   autoApproveWhenTherapistSolo: boolean;
   severity: InterventionSeverity;
+  scopeType: InterventionScopeType;
+  scopeId: string;
+  version: number;
   cooldownMoves: number;
   cooldownMinutes: number;
   thresholds: InterventionThresholds;
@@ -219,10 +256,14 @@ const DEFAULT_INTERVENTION_CATALOG: DefaultInterventionCatalogItem[] =
     description: item.description,
     enabled: item.enabled,
     useAi: item.useAi,
+    aiPolicy: item.aiPolicy as InterventionAiPolicy,
     sensitive: item.sensitive,
     requireTherapistApproval: item.requireTherapistApproval,
     autoApproveWhenTherapistSolo: item.autoApproveWhenTherapistSolo,
     severity: item.severity as InterventionSeverity,
+    scopeType: item.scopeType as InterventionScopeType,
+    scopeId: item.scopeId,
+    version: item.version,
     cooldownMoves: item.cooldownMoves,
     cooldownMinutes: item.cooldownMinutes,
     thresholds: item.thresholds as InterventionThresholds,
@@ -316,6 +357,7 @@ type AuthedSocket = Socket<any, any, any, SocketData>;
 
 const actionCooldowns = new Map<string, number>();
 const roomUserConnections = new Map<string, Map<string, number>>();
+const temporalScanRoomsInFlight = new Set<string>();
 let planAiLimitsCache: {
   expiresAt: number;
   byPlanType: Map<string, PlanAiLimits>;
@@ -326,11 +368,48 @@ let planAiLimitsCache: {
 let interventionCatalogSeedPromise: Promise<void> | null = null;
 let interventionConfigCache: {
   expiresAt: number;
-  byTriggerId: Map<string, InterventionConfigRecord>;
+  configs: InterventionConfigRecord[];
 } = {
   expiresAt: 0,
-  byTriggerId: new Map(),
+  configs: [],
 };
+
+async function scanTemporalInterventionsForActiveRooms() {
+  const activeRoomIds = Array.from(roomUserConnections.keys());
+  if (activeRoomIds.length === 0) return;
+
+  await Promise.all(
+    activeRoomIds.map(async (roomId) => {
+      if (temporalScanRoomsInFlight.has(roomId)) return;
+      temporalScanRoomsInFlight.add(roomId);
+      try {
+        const generated = await evaluateTemporalInterventionsForRoom({ roomId });
+        if (generated.length === 0) return;
+        io.to(roomId).emit("intervention:generated", {
+          roomId,
+          participantId: null,
+          interventions: generated.map((item) => ({
+            id: item.id,
+            participantId: item.participantId,
+            status: item.status,
+            triggerId: item.triggerId,
+            title: item.title,
+          })),
+          pendingApprovals: generated.filter(
+            (item) => item.status === "PENDING_APPROVAL",
+          ).length,
+        });
+      } catch (error) {
+        console.error(
+          "[mahalilah-realtime] erro ao processar intervenções temporais:",
+          error,
+        );
+      } finally {
+        temporalScanRoomsInFlight.delete(roomId);
+      }
+    }),
+  );
+}
 
 function enforceCooldown(key: string, cooldownMs: number) {
   if (!cooldownMs || cooldownMs <= 0) return;
@@ -774,18 +853,43 @@ async function ensureInterventionCatalogSeeded() {
   interventionCatalogSeedPromise = (async () => {
     for (const config of DEFAULT_INTERVENTION_CATALOG) {
       const persistedConfig = await prisma.mahaLilahInterventionConfig.upsert({
-        where: { triggerId: config.triggerId },
-        update: {},
+        where: {
+          MahaLilahInterventionConfig_trigger_scope_key: {
+            triggerId: config.triggerId,
+            scopeType: config.scopeType,
+            scopeId: config.scopeId,
+          },
+        },
+        update: {
+          title: config.title,
+          description: config.description,
+          enabled: config.enabled,
+          useAi: config.useAi,
+          aiPolicy: config.aiPolicy,
+          sensitive: config.sensitive,
+          requireTherapistApproval: config.requireTherapistApproval,
+          autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
+          severity: config.severity,
+          version: config.version,
+          cooldownMoves: config.cooldownMoves,
+          cooldownMinutes: config.cooldownMinutes,
+          thresholds: config.thresholds as any,
+          metadata: (config.metadata || {}) as any,
+        },
         create: {
           triggerId: config.triggerId,
           title: config.title,
           description: config.description,
           enabled: config.enabled,
           useAi: config.useAi,
+          aiPolicy: config.aiPolicy,
           sensitive: config.sensitive,
           requireTherapistApproval: config.requireTherapistApproval,
           autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
           severity: config.severity,
+          scopeType: config.scopeType,
+          scopeId: config.scopeId,
+          version: config.version,
           cooldownMoves: config.cooldownMoves,
           cooldownMinutes: config.cooldownMinutes,
           thresholds: config.thresholds as any,
@@ -834,6 +938,14 @@ async function ensureInterventionCatalogSeeded() {
 }
 
 function normalizeInterventionConfig(raw: any): InterventionConfigRecord {
+  const aiPolicy: InterventionAiPolicy =
+    raw.aiPolicy === "OPTIONAL" || raw.aiPolicy === "REQUIRED"
+      ? raw.aiPolicy
+      : "NONE";
+  const scopeType: InterventionScopeType =
+    raw.scopeType === "PLAN" || raw.scopeType === "ROOM"
+      ? raw.scopeType
+      : "GLOBAL";
   return {
     id: raw.id,
     triggerId: raw.triggerId,
@@ -841,6 +953,7 @@ function normalizeInterventionConfig(raw: any): InterventionConfigRecord {
     description: raw.description ? String(raw.description) : null,
     enabled: Boolean(raw.enabled),
     useAi: Boolean(raw.useAi),
+    aiPolicy,
     sensitive: Boolean(raw.sensitive),
     requireTherapistApproval: Boolean(raw.requireTherapistApproval),
     autoApproveWhenTherapistSolo: Boolean(raw.autoApproveWhenTherapistSolo),
@@ -848,6 +961,12 @@ function normalizeInterventionConfig(raw: any): InterventionConfigRecord {
       raw.severity === "CRITICAL" || raw.severity === "ATTENTION"
         ? raw.severity
         : "INFO",
+    scopeType,
+    scopeId:
+      typeof raw.scopeId === "string" && raw.scopeId.trim()
+        ? raw.scopeId.trim()
+        : INTERVENTION_SCOPE_GLOBAL_ID,
+    version: asNonNegativeInt(raw.version, 1) || 1,
     cooldownMoves: asNonNegativeInt(raw.cooldownMoves, 0),
     cooldownMinutes: asNonNegativeInt(raw.cooldownMinutes, 0),
     thresholds: normalizeInterventionThresholds(raw.thresholds),
@@ -868,21 +987,20 @@ function normalizeInterventionConfig(raw: any): InterventionConfigRecord {
   };
 }
 
-async function loadInterventionConfigsByTriggerId(params?: { force?: boolean }) {
+async function loadInterventionConfigCatalog(params?: { force?: boolean }) {
   const force = Boolean(params?.force);
   const now = Date.now();
   if (
     !force &&
-    interventionConfigCache.byTriggerId.size > 0 &&
+    interventionConfigCache.configs.length > 0 &&
     interventionConfigCache.expiresAt > now
   ) {
-    return interventionConfigCache.byTriggerId;
+    return interventionConfigCache.configs;
   }
 
   await ensureInterventionCatalogSeeded();
 
   const configs = await prisma.mahaLilahInterventionConfig.findMany({
-    where: { enabled: true },
     include: {
       prompts: {
         where: { isActive: true },
@@ -891,17 +1009,70 @@ async function loadInterventionConfigsByTriggerId(params?: { force?: boolean }) 
     },
   });
 
-  const byTriggerId = new Map<string, InterventionConfigRecord>();
-  configs.forEach((config) => {
-    const normalized = normalizeInterventionConfig(config);
-    byTriggerId.set(normalized.triggerId, normalized);
-  });
+  const normalizedConfigs = configs.map((config) =>
+    normalizeInterventionConfig(config),
+  );
 
   interventionConfigCache = {
-    byTriggerId,
+    configs: normalizedConfigs,
     expiresAt: now + INTERVENTION_CACHE_TTL_MS,
   };
-  return byTriggerId;
+  return normalizedConfigs;
+}
+
+function resolveInterventionConfigsByTriggerId(params: {
+  roomId: string;
+  planType: string;
+  configs: InterventionConfigRecord[];
+}) {
+  const byTrigger = new Map<string, InterventionConfigRecord>();
+  const byScopePriority = (
+    config: InterventionConfigRecord,
+    triggerId: string,
+  ) => {
+    const current = byTrigger.get(triggerId);
+    if (!current) return true;
+    const priority = (scopeType: InterventionScopeType) => {
+      if (scopeType === "ROOM") return 3;
+      if (scopeType === "PLAN") return 2;
+      return 1;
+    };
+    return priority(config.scopeType) >= priority(current.scopeType);
+  };
+
+  params.configs.forEach((config) => {
+    const isGlobal =
+      config.scopeType === "GLOBAL" &&
+      config.scopeId === INTERVENTION_SCOPE_GLOBAL_ID;
+    const isPlan =
+      config.scopeType === "PLAN" && config.scopeId === params.planType;
+    const isRoom =
+      config.scopeType === "ROOM" && config.scopeId === params.roomId;
+    if (!isGlobal && !isPlan && !isRoom) return;
+    if (!byScopePriority(config, config.triggerId)) return;
+    byTrigger.set(config.triggerId, config);
+  });
+
+  Array.from(byTrigger.entries()).forEach(([triggerId, config]) => {
+    if (!config.enabled) {
+      byTrigger.delete(triggerId);
+    }
+  });
+
+  return byTrigger;
+}
+
+async function loadInterventionConfigsByTriggerIdForRoom(params: {
+  roomId: string;
+  planType: string;
+  force?: boolean;
+}) {
+  const configs = await loadInterventionConfigCatalog({ force: params.force });
+  return resolveInterventionConfigsByTriggerId({
+    roomId: params.roomId,
+    planType: params.planType,
+    configs,
+  });
 }
 
 const DEFAULT_OPENAI_SYSTEM_PROMPT =
@@ -1132,6 +1303,11 @@ function isSubscriptionStillActive(currentPeriodEnd: Date | null) {
   return currentPeriodEnd.getTime() >= Date.now();
 }
 
+function clampInterventionLimit(value: number) {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.min(MAX_INTERVENTION_LIMIT_PER_PARTICIPANT, Math.floor(value));
+}
+
 async function getRoomAiLimits(room: {
   id: string;
   planType: string;
@@ -1145,7 +1321,9 @@ async function getRoomAiLimits(room: {
       tipsLimit: TRIAL_AI_TIPS_LIMIT,
       summaryLimit: TRIAL_AI_SUMMARY_LIMIT,
       progressSummaryEveryMoves: TRIAL_PROGRESS_SUMMARY_EVERY_MOVES,
-      interventionLimitPerParticipant: TRIAL_INTERVENTIONS_LIMIT,
+      interventionLimitPerParticipant: clampInterventionLimit(
+        TRIAL_INTERVENTIONS_LIMIT,
+      ),
     };
   }
 
@@ -1153,8 +1331,9 @@ async function getRoomAiLimits(room: {
   let tipsLimit = defaults.tipsPerPlayer;
   let summaryLimit = defaults.summaryLimit;
   let progressSummaryEveryMoves = defaults.progressSummaryEveryMoves;
-  let interventionLimitPerParticipant =
-    defaults.interventionLimitPerParticipant;
+  let interventionLimitPerParticipant = clampInterventionLimit(
+    defaults.interventionLimitPerParticipant,
+  );
 
   if (room.orderId) {
     const order = await prisma.order.findUnique({
@@ -1179,7 +1358,7 @@ async function getRoomAiLimits(room: {
     if (meta?.interventionLimitPerParticipant != null) {
       const parsed = Number(meta.interventionLimitPerParticipant);
       if (Number.isFinite(parsed) && parsed >= 0) {
-        interventionLimitPerParticipant = parsed;
+        interventionLimitPerParticipant = clampInterventionLimit(parsed);
       }
     }
     return {
@@ -1247,7 +1426,7 @@ async function getRoomAiLimits(room: {
   if (activeMeta.interventionLimitPerParticipant != null) {
     const parsed = Number(activeMeta.interventionLimitPerParticipant);
     if (Number.isFinite(parsed) && parsed >= 0) {
-      interventionLimitPerParticipant = parsed;
+      interventionLimitPerParticipant = clampInterventionLimit(parsed);
     }
   }
 
@@ -1255,7 +1434,9 @@ async function getRoomAiLimits(room: {
     tipsLimit,
     summaryLimit,
     progressSummaryEveryMoves,
-    interventionLimitPerParticipant,
+    interventionLimitPerParticipant: clampInterventionLimit(
+      interventionLimitPerParticipant,
+    ),
   };
 }
 
@@ -1720,7 +1901,7 @@ async function hasInterventionCooldownActive(params: {
   roomId: string;
   participantId: string;
   triggerId: string;
-  currentTurnNumber: number;
+  currentTurnNumber: number | null;
   cooldownMoves: number;
   cooldownMinutes: number;
 }) {
@@ -1748,6 +1929,8 @@ async function hasInterventionCooldownActive(params: {
 
   if (
     params.cooldownMoves > 0 &&
+    typeof params.currentTurnNumber === "number" &&
+    Number.isFinite(params.currentTurnNumber) &&
     typeof last.turnNumber === "number" &&
     Number.isFinite(last.turnNumber)
   ) {
@@ -1758,6 +1941,75 @@ async function hasInterventionCooldownActive(params: {
   }
 
   return false;
+}
+
+async function hasGlobalInterventionCooldownActive(params: {
+  roomId: string;
+  participantId: string;
+  currentTurnNumber: number | null;
+}) {
+  if (
+    INTERVENTION_GLOBAL_COOLDOWN_MOVES <= 0 ||
+    params.currentTurnNumber == null ||
+    !Number.isFinite(params.currentTurnNumber)
+  ) {
+    return false;
+  }
+
+  const last = await prisma.mahaLilahIntervention.findFirst({
+    where: {
+      roomId: params.roomId,
+      participantId: params.participantId,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { turnNumber: true },
+  });
+  if (
+    typeof last?.turnNumber !== "number" ||
+    !Number.isFinite(last.turnNumber)
+  ) {
+    return false;
+  }
+
+  const diff = params.currentTurnNumber - last.turnNumber;
+  return diff >= 0 && diff <= INTERVENTION_GLOBAL_COOLDOWN_MOVES;
+}
+
+async function isTriggerSnoozed(params: {
+  roomId: string;
+  participantId: string;
+  triggerId: string;
+}) {
+  const now = new Date();
+  const activeSnooze = await prisma.mahaLilahIntervention.findFirst({
+    where: {
+      roomId: params.roomId,
+      participantId: params.participantId,
+      triggerId: params.triggerId,
+      status: "SNOOZED",
+      snoozedUntil: { gt: now },
+    },
+    select: { id: true },
+  });
+  return Boolean(activeSnooze);
+}
+
+async function isTriggerMutedForSession(params: {
+  roomId: string;
+  participantId: string;
+  triggerId: string;
+}) {
+  const muted = await prisma.mahaLilahInterventionFeedback.findFirst({
+    where: {
+      roomId: params.roomId,
+      participantId: params.participantId,
+      triggerId: params.triggerId,
+      action: "DISMISSED",
+      note: INTERVENTION_MUTE_SESSION_NOTE,
+    },
+    select: { id: true },
+  });
+  return Boolean(muted);
 }
 
 async function createInterventionFromCandidate(params: {
@@ -1773,15 +2025,47 @@ async function createInterventionFromCandidate(params: {
 }) {
   const { room, roomParticipants, participantId, candidate, config } = params;
 
+  if (
+    await isTriggerMutedForSession({
+      roomId: room.id,
+      participantId,
+      triggerId: candidate.triggerId,
+    })
+  ) {
+    return null;
+  }
+
+  if (
+    await isTriggerSnoozed({
+      roomId: room.id,
+      participantId,
+      triggerId: candidate.triggerId,
+    })
+  ) {
+    return null;
+  }
+
+  const effectiveTriggerCooldownMoves = Math.max(
+    INTERVENTION_MIN_TRIGGER_COOLDOWN_MOVES,
+    Math.max(0, config.cooldownMoves || 0),
+  );
+
   const cooldownActive = await hasInterventionCooldownActive({
     roomId: room.id,
     participantId,
     triggerId: candidate.triggerId,
     currentTurnNumber: candidate.turnNumber,
-    cooldownMoves: config.cooldownMoves,
+    cooldownMoves: effectiveTriggerCooldownMoves,
     cooldownMinutes: config.cooldownMinutes,
   });
   if (cooldownActive) return null;
+
+  const globalCooldownActive = await hasGlobalInterventionCooldownActive({
+    roomId: room.id,
+    participantId,
+    currentTurnNumber: candidate.turnNumber,
+  });
+  if (globalCooldownActive) return null;
 
   const fallbackContent = buildFallbackInterventionFromConfig({
     config,
@@ -1792,8 +2076,11 @@ async function createInterventionFromCandidate(params: {
   let generatedBy: InterventionSource = "RULE";
   let promptId: string | null = null;
   let aiRawContent: string | null = null;
+  const useAiRequested =
+    config.aiPolicy === "REQUIRED" ||
+    (config.aiPolicy === "OPTIONAL" && config.useAi);
 
-  if (config.useAi) {
+  if (useAiRequested) {
     try {
       const aiResult = await generateInterventionAiContent({
         roomId: room.id,
@@ -1830,6 +2117,11 @@ async function createInterventionFromCandidate(params: {
   const status: InterventionStatus = requiresApproval
     ? "PENDING_APPROVAL"
     : "APPROVED";
+  const visibleTo: InterventionVisibility = candidate.visibleTo
+    ? candidate.visibleTo
+    : requiresApproval
+      ? "THERAPIST_ONLY"
+      : "ROOM";
 
   const created = await prisma.mahaLilahIntervention.create({
     data: {
@@ -1841,14 +2133,16 @@ async function createInterventionFromCandidate(params: {
       triggerId: candidate.triggerId,
       severity: config.severity,
       generatedBy,
-      usesAi: config.useAi,
+      usesAi: useAiRequested,
       requiresApproval,
       status,
+      visibleTo,
       turnNumber: candidate.turnNumber,
       title: trimToMax(finalContent.title, INTERVENTION_TITLE_MAX_LENGTH),
       message: trimToMax(finalContent.message, INTERVENTION_MESSAGE_MAX_LENGTH),
       reflectionQuestion: finalContent.reflectionQuestion,
       microAction: finalContent.microAction,
+      snoozedUntil: null,
       approvedAt: status === "APPROVED" ? new Date() : null,
       metadata: {
         triggerLabel: candidate.triggerLabel,
@@ -1856,6 +2150,10 @@ async function createInterventionFromCandidate(params: {
         fallbackUsed: generatedBy !== "AI",
         aiRawContent,
         autoApproveSensitive,
+        aiPolicy: config.aiPolicy,
+        configScopeType: config.scopeType,
+        configScopeId: config.scopeId,
+        configVersion: config.version,
       } as any,
     },
     include: {
@@ -1883,8 +2181,6 @@ async function evaluateInterventionsAfterMove(params: {
     allMoves,
     playerState,
     participantTherapyEntries,
-    recentRoomMoves,
-    configsByTrigger,
   ] = await Promise.all([
     prisma.mahaLilahRoom.findUnique({
       where: { id: params.roomId },
@@ -1944,22 +2240,13 @@ async function evaluateInterventionsAfterMove(params: {
         createdAt: true,
       },
     }),
-    prisma.mahaLilahMove.findMany({
-      where: {
-        roomId: params.roomId,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      select: {
-        id: true,
-        participantId: true,
-        turnNumber: true,
-      },
-    }),
-    loadInterventionConfigsByTriggerId(),
   ]);
 
   if (!room || room.status !== "ACTIVE") return [];
+  const configsByTrigger = await loadInterventionConfigsByTriggerIdForRoom({
+    roomId: room.id,
+    planType: room.planType,
+  });
 
   const limitConfig = await getRoomAiLimits({
     id: room.id,
@@ -1975,23 +2262,31 @@ async function evaluateInterventionsAfterMove(params: {
   );
   if (interventionsLimit <= 0) return [];
 
-  let interventionsUsed = await prisma.mahaLilahIntervention.count({
-    where: {
-      roomId: room.id,
-      participantId: params.participantId,
-    },
-  });
-  if (interventionsUsed >= interventionsLimit) return [];
-
   const currentMove = allMoves.find((item) => item.id === params.moveId);
   if (!currentMove) return [];
 
   const postStartMoves = allMoves.filter(isPostStartMove);
   const candidates: InterventionCandidate[] = [];
 
-  const registerCandidate = (candidate: InterventionCandidate) => {
-    if (candidates.some((item) => item.triggerId === candidate.triggerId)) return;
-    candidates.push(candidate);
+  const registerCandidate = (
+    candidate: Omit<InterventionCandidate, "participantId"> & {
+      participantId?: string;
+    },
+  ) => {
+    const normalized = {
+      ...candidate,
+      participantId: candidate.participantId || params.participantId,
+    } as InterventionCandidate;
+    if (
+      candidates.some(
+        (item) =>
+          item.triggerId === normalized.triggerId &&
+          item.participantId === normalized.participantId,
+      )
+    ) {
+      return;
+    }
+    candidates.push(normalized);
   };
 
   const pickEnabledConfig = (...triggerIds: string[]) =>
@@ -2126,104 +2421,6 @@ async function evaluateInterventionsAfterMove(params: {
           "O que pode tornar o início deste processo mais seguro e possível agora?",
         fallbackMicroAction:
           "Escolha uma micro intenção de abertura para a próxima jogada.",
-      });
-    }
-  }
-
-  const inactivitySoftConfig = pickEnabledConfig("turn_idle_soft");
-  const inactivityHardConfig = pickEnabledConfig(
-    "turn_idle_hard",
-    "INACTIVITY_REENGAGE_AI",
-  );
-  if ((inactivitySoftConfig || inactivityHardConfig) && allMoves.length >= 2) {
-    const previousMove = allMoves[allMoves.length - 2];
-    const inactivityMs =
-      new Date(currentMove.createdAt).getTime() -
-      new Date(previousMove.createdAt).getTime();
-    const inactivitySeconds = Math.floor(inactivityMs / 1000);
-    const inactivityMinutes = Math.floor(inactivityMs / 60000);
-
-    const hardThresholdSeconds = inactivityHardConfig
-      ? Math.max(
-          1,
-          inactivityHardConfig.thresholds.inactivitySeconds ||
-            Math.floor(
-              Math.max(1, inactivityHardConfig.thresholds.inactivityMinutes || 0) * 60,
-            ),
-        )
-      : 0;
-    const softThresholdSeconds = inactivitySoftConfig
-      ? Math.max(
-          1,
-          inactivitySoftConfig.thresholds.inactivitySeconds ||
-            Math.floor(
-              Math.max(1, inactivitySoftConfig.thresholds.inactivityMinutes || 0) * 60,
-            ),
-        )
-      : 0;
-
-    if (inactivityHardConfig && inactivitySeconds >= hardThresholdSeconds) {
-      registerCandidate({
-        triggerId: inactivityHardConfig.triggerId,
-        triggerLabel: inactivityHardConfig.title,
-        severity: inactivityHardConfig.severity,
-        turnNumber: currentMove.turnNumber,
-        moveId: currentMove.id,
-        triggerData: {
-          inactivitySeconds,
-          inactivityMinutes,
-        },
-        fallbackTitle: "Retomada após pausa longa",
-        fallbackMessage: `Houve uma pausa de ${inactivityMinutes} minutos sem rolagem. Pode ser útil retomar com intenção clara e ritmo seguro.`,
-        fallbackReflectionQuestion:
-          "O que estava acontecendo internamente durante a pausa desta jornada?",
-        fallbackMicroAction:
-          "Nomeie em uma frase qual presença você quer cultivar na próxima jogada.",
-      });
-    } else if (inactivitySoftConfig && inactivitySeconds >= softThresholdSeconds) {
-      registerCandidate({
-        triggerId: inactivitySoftConfig.triggerId,
-        triggerLabel: inactivitySoftConfig.title,
-        severity: inactivitySoftConfig.severity,
-        turnNumber: currentMove.turnNumber,
-        moveId: currentMove.id,
-        triggerData: {
-          inactivitySeconds,
-          inactivityMinutes,
-        },
-        fallbackTitle: "Pausa no turno",
-        fallbackMessage: `Foram ${inactivitySeconds} segundos sem rolagem neste turno. Retome com presença e clareza.`,
-        fallbackReflectionQuestion:
-          "O que você precisa ajustar para retomar o fluxo da sessão agora?",
-        fallbackMicroAction:
-          "Respire fundo e declare em uma frase sua intenção para a próxima jogada.",
-      });
-    }
-  }
-
-  const sessionFatigueConfig = pickEnabledConfig("session_fatigue");
-  if (sessionFatigueConfig?.enabled) {
-    const fatigueThreshold = Math.max(
-      1,
-      sessionFatigueConfig.thresholds.fatigueMoveCount || 40,
-    );
-    if (postStartMoves.length >= fatigueThreshold) {
-      registerCandidate({
-        triggerId: sessionFatigueConfig.triggerId,
-        triggerLabel: sessionFatigueConfig.title,
-        severity: sessionFatigueConfig.severity,
-        turnNumber: currentMove.turnNumber,
-        moveId: currentMove.id,
-        triggerData: {
-          movesInSession: postStartMoves.length,
-          fatigueThreshold,
-        },
-        fallbackTitle: "Fadiga de sessão",
-        fallbackMessage: `A sessão já chegou a ${postStartMoves.length} jogadas. Pode ser útil fazer uma breve pausa e reorganizar o foco.`,
-        fallbackReflectionQuestion:
-          "O que precisa ser priorizado daqui para frente para manter qualidade de presença?",
-        fallbackMicroAction:
-          "Defina um micro intervalo de regulação antes de seguir com a próxima rodada.",
       });
     }
   }
@@ -2363,50 +2560,45 @@ async function evaluateInterventionsAfterMove(params: {
     }
   }
 
-  const therapistSilenceConfig = pickEnabledConfig("therapist_silence");
-  if (therapistSilenceConfig?.enabled && room.therapistPlays) {
-    const therapistParticipantIds = room.participants
-      .filter((participant) => participant.role === "THERAPIST")
-      .map((participant) => participant.id);
-    const movedParticipant = room.participants.find(
-      (participant) => participant.id === params.participantId,
-    );
-    const silenceThreshold = Math.max(
-      1,
-      therapistSilenceConfig.thresholds.therapistSilenceMoves || 8,
-    );
+  if (candidates.length === 0) return [];
 
-    if (
-      therapistParticipantIds.length > 0 &&
-      movedParticipant?.role === "PLAYER" &&
-      recentRoomMoves.length >= silenceThreshold
-    ) {
-      const recentWindow = recentRoomMoves.slice(0, silenceThreshold);
-      const hasTherapistMoveInWindow = recentWindow.some((move) =>
-        therapistParticipantIds.includes(move.participantId),
-      );
-      if (!hasTherapistMoveInWindow) {
-        registerCandidate({
-          triggerId: therapistSilenceConfig.triggerId,
-          triggerLabel: therapistSilenceConfig.title,
-          severity: therapistSilenceConfig.severity,
-          turnNumber: currentMove.turnNumber,
-          moveId: currentMove.id,
-          triggerData: {
-            therapistSilenceMoves: silenceThreshold,
-          },
-          fallbackTitle: "Silêncio terapêutico prolongado",
-          fallbackMessage: `Já ocorreram ${silenceThreshold} jogadas sem participação do terapeuta. Avalie se uma intervenção de condução é necessária.`,
-          fallbackReflectionQuestion:
-            "Qual intervenção breve do terapeuta ajudaria a manter direção e segurança da sessão?",
-          fallbackMicroAction:
-            "Sinalize um ponto de atenção terapêutica antes da próxima rodada.",
-        });
-      }
-    }
+  const uniqueParticipantIds = Array.from(
+    new Set(candidates.map((candidate) => candidate.participantId)),
+  );
+  const usedByParticipant = new Map<string, number>();
+  await Promise.all(
+    uniqueParticipantIds.map(async (participantId) => {
+      const usedCount = await prisma.mahaLilahIntervention.count({
+        where: {
+          roomId: room.id,
+          participantId,
+        },
+      });
+      usedByParticipant.set(participantId, usedCount);
+    }),
+  );
+  if (
+    uniqueParticipantIds.every(
+      (participantId) =>
+        (usedByParticipant.get(participantId) || 0) >= interventionsLimit,
+    )
+  ) {
+    return [];
   }
 
-  if (candidates.length === 0) return [];
+  const severityPriority: Record<InterventionSeverity, number> = {
+    CRITICAL: 3,
+    ATTENTION: 2,
+    INFO: 1,
+  };
+  candidates.sort((a, b) => {
+    const aPriority = severityPriority[a.severity] || 0;
+    const bPriority = severityPriority[b.severity] || 0;
+    if (aPriority !== bPriority) return bPriority - aPriority;
+    const aTurn = typeof a.turnNumber === "number" ? a.turnNumber : -1;
+    const bTurn = typeof b.turnNumber === "number" ? b.turnNumber : -1;
+    return bTurn - aTurn;
+  });
 
   const createdInterventions: Array<{
     id: string;
@@ -2417,7 +2609,8 @@ async function evaluateInterventionsAfterMove(params: {
   }> = [];
 
   for (const candidate of candidates) {
-    if (interventionsUsed >= interventionsLimit) break;
+    const usedForParticipant = usedByParticipant.get(candidate.participantId) || 0;
+    if (usedForParticipant >= interventionsLimit) continue;
 
     const config = configsByTrigger.get(candidate.triggerId);
     if (!config || !config.enabled) continue;
@@ -2429,13 +2622,403 @@ async function evaluateInterventionsAfterMove(params: {
         therapistPlays: room.therapistPlays,
       },
       roomParticipants: room.participants,
-      participantId: params.participantId,
+      participantId: candidate.participantId,
       candidate,
       config,
     });
     if (!created) continue;
 
-    interventionsUsed += 1;
+    usedByParticipant.set(candidate.participantId, usedForParticipant + 1);
+    createdInterventions.push({
+      id: created.id,
+      participantId: created.participantId,
+      status: created.status as InterventionStatus,
+      triggerId: created.triggerId,
+      title: created.title,
+    });
+  }
+
+  return createdInterventions;
+}
+
+async function evaluateTemporalInterventionsForRoom(params: { roomId: string }) {
+  const room = await prisma.mahaLilahRoom.findUnique({
+    where: { id: params.roomId },
+    select: {
+      id: true,
+      status: true,
+      planType: true,
+      orderId: true,
+      isTrial: true,
+      subscriptionId: true,
+      createdByUserId: true,
+      therapistSoloPlay: true,
+      therapistPlays: true,
+      gameState: {
+        select: {
+          currentTurnIndex: true,
+          turnStartedAt: true,
+        },
+      },
+      participants: {
+        select: {
+          id: true,
+          role: true,
+          userId: true,
+        },
+      },
+      moves: {
+        orderBy: { createdAt: "desc" },
+        take: 250,
+        select: {
+          id: true,
+          participantId: true,
+          turnNumber: true,
+          fromPos: true,
+          toPos: true,
+          diceValue: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  if (!room || room.status !== "ACTIVE") return [];
+
+  const turnParticipants = getTurnParticipants(
+    room.participants,
+    room.therapistPlays,
+    room.therapistSoloPlay,
+  );
+  if (turnParticipants.length === 0) return [];
+
+  const safeTurnIndex =
+    (room.gameState?.currentTurnIndex ?? 0) % turnParticipants.length;
+  const activeTurnParticipant = turnParticipants[safeTurnIndex];
+  if (!activeTurnParticipant) return [];
+
+  const turnStartedAt = room.gameState?.turnStartedAt || new Date();
+  const elapsedMs = Date.now() - new Date(turnStartedAt).getTime();
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+
+  const configsByTrigger = await loadInterventionConfigsByTriggerIdForRoom({
+    roomId: room.id,
+    planType: room.planType,
+  });
+  const pickEnabledConfig = (...triggerIds: string[]) =>
+    triggerIds
+      .map((triggerId) => configsByTrigger.get(triggerId))
+      .find((config): config is InterventionConfigRecord => Boolean(config?.enabled));
+
+  const latestTurnByParticipant = new Map<string, number>();
+  room.moves.forEach((move) => {
+    const current = latestTurnByParticipant.get(move.participantId) || 0;
+    if (move.turnNumber > current) {
+      latestTurnByParticipant.set(move.participantId, move.turnNumber);
+    }
+  });
+  const getLatestTurn = (participantId: string) =>
+    latestTurnByParticipant.get(participantId) ?? null;
+
+  const candidates: InterventionCandidate[] = [];
+  const registerCandidate = (candidate: InterventionCandidate) => {
+    if (
+      candidates.some(
+        (item) =>
+          item.triggerId === candidate.triggerId &&
+          item.participantId === candidate.participantId,
+      )
+    ) {
+      return;
+    }
+    candidates.push(candidate);
+  };
+
+  const hasTemporalTriggerInCurrentTurn = async (
+    triggerId: string,
+    participantId: string,
+  ) => {
+    const existing = await prisma.mahaLilahIntervention.findFirst({
+      where: {
+        roomId: room.id,
+        participantId,
+        triggerId,
+        createdAt: { gte: turnStartedAt },
+      },
+      select: { id: true },
+    });
+    return Boolean(existing);
+  };
+
+  const inactivitySoftConfig = pickEnabledConfig("turn_idle_soft");
+  const inactivityHardConfig = pickEnabledConfig("turn_idle_hard");
+  if (inactivityHardConfig) {
+    const hardThresholdSeconds = Math.max(
+      1,
+      inactivityHardConfig.thresholds.inactivitySeconds ||
+        Math.floor(
+          Math.max(1, inactivityHardConfig.thresholds.inactivityMinutes || 0) * 60,
+        ),
+    );
+    if (
+      elapsedSeconds >= hardThresholdSeconds &&
+      !(await hasTemporalTriggerInCurrentTurn(
+        inactivityHardConfig.triggerId,
+        activeTurnParticipant.id,
+      ))
+    ) {
+      registerCandidate({
+        participantId: activeTurnParticipant.id,
+        triggerId: inactivityHardConfig.triggerId,
+        triggerLabel: inactivityHardConfig.title,
+        severity: inactivityHardConfig.severity,
+        turnNumber: getLatestTurn(activeTurnParticipant.id),
+        moveId: null,
+        triggerData: {
+          inactivitySeconds: elapsedSeconds,
+          inactivityMinutes: elapsedMinutes,
+          turnStartedAt: turnStartedAt.toISOString(),
+        },
+        fallbackTitle: "Pausa longa no turno ativo",
+        fallbackMessage: `O turno ativo está sem rolagem há ${elapsedSeconds} segundos.`,
+        fallbackReflectionQuestion:
+          "Qual resistência ou distração está ocupando o espaço desta jogada?",
+        fallbackMicroAction:
+          "Convide uma respiração consciente e retome o dado com uma intenção curta.",
+      });
+    }
+  }
+
+  if (inactivitySoftConfig) {
+    const softThresholdSeconds = Math.max(
+      1,
+      inactivitySoftConfig.thresholds.inactivitySeconds ||
+        Math.floor(
+          Math.max(1, inactivitySoftConfig.thresholds.inactivityMinutes || 0) * 60,
+        ),
+    );
+    if (
+      elapsedSeconds >= softThresholdSeconds &&
+      !(await hasTemporalTriggerInCurrentTurn(
+        inactivitySoftConfig.triggerId,
+        activeTurnParticipant.id,
+      ))
+    ) {
+      registerCandidate({
+        participantId: activeTurnParticipant.id,
+        triggerId: inactivitySoftConfig.triggerId,
+        triggerLabel: inactivitySoftConfig.title,
+        severity: inactivitySoftConfig.severity,
+        turnNumber: getLatestTurn(activeTurnParticipant.id),
+        moveId: null,
+        triggerData: {
+          inactivitySeconds: elapsedSeconds,
+          inactivityMinutes: elapsedMinutes,
+          turnStartedAt: turnStartedAt.toISOString(),
+        },
+        fallbackTitle: "Inatividade detectada no turno",
+        fallbackMessage: `O turno ativo ficou ${elapsedSeconds} segundos sem rolagem.`,
+        fallbackReflectionQuestion:
+          "O que pode ajudar a retomar o fluxo com presença agora?",
+        fallbackMicroAction:
+          "Faça um check-in breve e avance para a próxima rolagem.",
+      });
+    }
+  }
+
+  const sessionFatigueConfig = pickEnabledConfig("session_fatigue");
+  if (sessionFatigueConfig) {
+    const fatigueThreshold = Math.max(
+      1,
+      sessionFatigueConfig.thresholds.fatigueMoveCount || 40,
+    );
+    const postStartMovesCount = room.moves.filter((move) => isPostStartMove(move)).length;
+    if (postStartMovesCount >= fatigueThreshold) {
+      registerCandidate({
+        participantId: activeTurnParticipant.id,
+        triggerId: sessionFatigueConfig.triggerId,
+        triggerLabel: sessionFatigueConfig.title,
+        severity: sessionFatigueConfig.severity,
+        turnNumber: getLatestTurn(activeTurnParticipant.id),
+        moveId: null,
+        triggerData: {
+          movesInSession: postStartMovesCount,
+          fatigueThreshold,
+        },
+        fallbackTitle: "Fadiga de sessão detectada",
+        fallbackMessage: `A sessão já alcançou ${postStartMovesCount} jogadas.`,
+        fallbackReflectionQuestion:
+          "Vale uma micro pausa para recuperar foco terapêutico antes de continuar?",
+        fallbackMicroAction:
+          "Defina uma pausa curta de regulação e retome em seguida.",
+      });
+    }
+  }
+
+  const therapistSilenceConfig = pickEnabledConfig("therapist_silence");
+  if (therapistSilenceConfig && room.therapistPlays) {
+    const therapistParticipants = room.participants.filter(
+      (participant) => participant.role === "THERAPIST",
+    );
+    const therapistUserIds = therapistParticipants.map(
+      (participant) => participant.userId,
+    );
+    if (therapistParticipants.length > 0 && therapistUserIds.length > 0) {
+      const [lastApproval, lastDismissal, lastFeedback] = await Promise.all([
+        prisma.mahaLilahIntervention.findFirst({
+          where: {
+            roomId: room.id,
+            approvedByUserId: { in: therapistUserIds },
+            approvedAt: { not: null },
+          },
+          orderBy: { approvedAt: "desc" },
+          select: { approvedAt: true },
+        }),
+        prisma.mahaLilahIntervention.findFirst({
+          where: {
+            roomId: room.id,
+            dismissedByUserId: { in: therapistUserIds },
+            dismissedAt: { not: null },
+          },
+          orderBy: { dismissedAt: "desc" },
+          select: { dismissedAt: true },
+        }),
+        prisma.mahaLilahInterventionFeedback.findFirst({
+          where: {
+            roomId: room.id,
+            userId: { in: therapistUserIds },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        }),
+      ]);
+
+      const actionDates = [
+        lastApproval?.approvedAt || null,
+        lastDismissal?.dismissedAt || null,
+        lastFeedback?.createdAt || null,
+      ]
+        .filter((value): value is Date => Boolean(value))
+        .map((value) => new Date(value).getTime());
+      const lastTherapistActionAt =
+        actionDates.length > 0 ? new Date(Math.max(...actionDates)) : null;
+
+      const playerParticipantIds = new Set(
+        room.participants
+          .filter((participant) => participant.role === "PLAYER")
+          .map((participant) => participant.id),
+      );
+      const playerMovesSinceLastAction = room.moves.filter((move) => {
+        if (!playerParticipantIds.has(move.participantId)) return false;
+        if (!lastTherapistActionAt) return true;
+        return new Date(move.createdAt).getTime() > lastTherapistActionAt.getTime();
+      }).length;
+      const silenceThreshold = Math.max(
+        1,
+        therapistSilenceConfig.thresholds.therapistSilenceMoves || 8,
+      );
+
+      if (playerMovesSinceLastAction >= silenceThreshold) {
+        const therapistTarget = therapistParticipants[0];
+        registerCandidate({
+          participantId: therapistTarget.id,
+          triggerId: therapistSilenceConfig.triggerId,
+          triggerLabel: therapistSilenceConfig.title,
+          severity: therapistSilenceConfig.severity,
+          turnNumber: getLatestTurn(therapistTarget.id),
+          moveId: null,
+          visibleTo: "THERAPIST_ONLY",
+          triggerData: {
+            therapistSilenceMoves: silenceThreshold,
+            playerMovesSinceLastAction,
+            lastTherapistActionAt: lastTherapistActionAt
+              ? lastTherapistActionAt.toISOString()
+              : null,
+          },
+          fallbackTitle: "Silêncio terapêutico prolongado",
+          fallbackMessage: `Foram ${playerMovesSinceLastAction} jogadas de jogadores sem intervenção registrada do terapeuta.`,
+          fallbackReflectionQuestion:
+            "Qual intervenção breve pode recolocar direção e segurança clínica neste momento?",
+          fallbackMicroAction:
+            "Escolha um foco terapêutico objetivo para a próxima rodada.",
+        });
+      }
+    }
+  }
+
+  if (candidates.length === 0) return [];
+
+  const severityPriority: Record<InterventionSeverity, number> = {
+    CRITICAL: 3,
+    ATTENTION: 2,
+    INFO: 1,
+  };
+  candidates.sort((a, b) => {
+    const aPriority = severityPriority[a.severity] || 0;
+    const bPriority = severityPriority[b.severity] || 0;
+    if (aPriority !== bPriority) return bPriority - aPriority;
+    return (b.turnNumber || 0) - (a.turnNumber || 0);
+  });
+
+  const limitConfig = await getRoomAiLimits({
+    id: room.id,
+    planType: room.planType,
+    orderId: room.orderId,
+    isTrial: room.isTrial,
+    subscriptionId: room.subscriptionId,
+    createdByUserId: room.createdByUserId,
+  });
+  const interventionsLimit = Math.max(
+    0,
+    Number(limitConfig.interventionLimitPerParticipant || 0),
+  );
+  if (interventionsLimit <= 0) return [];
+
+  const uniqueParticipantIds = Array.from(
+    new Set(candidates.map((candidate) => candidate.participantId)),
+  );
+  const usedByParticipant = new Map<string, number>();
+  await Promise.all(
+    uniqueParticipantIds.map(async (participantId) => {
+      const usedCount = await prisma.mahaLilahIntervention.count({
+        where: {
+          roomId: room.id,
+          participantId,
+        },
+      });
+      usedByParticipant.set(participantId, usedCount);
+    }),
+  );
+
+  const createdInterventions: Array<{
+    id: string;
+    participantId: string;
+    status: InterventionStatus;
+    triggerId: string;
+    title: string;
+  }> = [];
+
+  for (const candidate of candidates) {
+    const usedForParticipant = usedByParticipant.get(candidate.participantId) || 0;
+    if (usedForParticipant >= interventionsLimit) continue;
+
+    const config = configsByTrigger.get(candidate.triggerId);
+    if (!config || !config.enabled) continue;
+
+    const created = await createInterventionFromCandidate({
+      room: {
+        id: room.id,
+        therapistSoloPlay: room.therapistSoloPlay,
+        therapistPlays: room.therapistPlays,
+      },
+      roomParticipants: room.participants,
+      participantId: candidate.participantId,
+      candidate,
+      config,
+    });
+    if (!created) continue;
+
+    usedByParticipant.set(candidate.participantId, usedForParticipant + 1);
     createdInterventions.push({
       id: created.id,
       participantId: created.participantId,
@@ -2888,8 +3471,15 @@ async function rollInRoom(roomId: string, userId: string) {
 
     await tx.mahaLilahGameState.upsert({
       where: { roomId: room.id },
-      update: { currentTurnIndex: nextTurnIndex },
-      create: { roomId: room.id, currentTurnIndex: nextTurnIndex },
+      update: {
+        currentTurnIndex: nextTurnIndex,
+        turnStartedAt: new Date(),
+      },
+      create: {
+        roomId: room.id,
+        currentTurnIndex: nextTurnIndex,
+        turnStartedAt: new Date(),
+      },
     });
 
     if (allCompleted) {
@@ -2966,8 +3556,15 @@ async function advanceTurnInRoom(roomId: string, userId: string) {
 
     await tx.mahaLilahGameState.upsert({
       where: { roomId: room.id },
-      update: { currentTurnIndex: nextTurnIndex },
-      create: { roomId: room.id, currentTurnIndex: nextTurnIndex },
+      update: {
+        currentTurnIndex: nextTurnIndex,
+        turnStartedAt: new Date(),
+      },
+      create: {
+        roomId: room.id,
+        currentTurnIndex: nextTurnIndex,
+        turnStartedAt: new Date(),
+      },
     });
 
     return { roomId: room.id };
@@ -3016,6 +3613,13 @@ io.use((socket, next) => {
     return next(new Error("Token inválido"));
   }
 });
+
+const temporalScanTimer = setInterval(() => {
+  void scanTemporalInterventionsForActiveRooms();
+}, INTERVENTION_TEMPORAL_SCAN_MS);
+if (typeof temporalScanTimer.unref === "function") {
+  temporalScanTimer.unref();
+}
 
 io.on("connection", (socket: AuthedSocket) => {
   const sessionHeartbeat = setInterval(() => {
@@ -3197,18 +3801,26 @@ io.on("connection", (socket: AuthedSocket) => {
                   participantId,
                   moveId: result.moveId,
                 });
-                if (createdInterventions.length > 0) {
+                const temporalInterventions =
+                  await evaluateTemporalInterventionsForRoom({
+                    roomId,
+                  });
+                const combinedInterventions = [
+                  ...createdInterventions,
+                  ...temporalInterventions,
+                ];
+                if (combinedInterventions.length > 0) {
                   io.to(roomId).emit("intervention:generated", {
                     roomId,
                     participantId,
-                    interventions: createdInterventions.map((item) => ({
+                    interventions: combinedInterventions.map((item) => ({
                       id: item.id,
                       participantId: item.participantId,
                       status: item.status,
                       triggerId: item.triggerId,
                       title: item.title,
                     })),
-                    pendingApprovals: createdInterventions.filter(
+                    pendingApprovals: combinedInterventions.filter(
                       (item) => item.status === "PENDING_APPROVAL",
                     ).length,
                   });
@@ -3490,6 +4102,46 @@ io.on("connection", (socket: AuthedSocket) => {
             microAction: microAction || null,
           },
         });
+
+        const [moveInterventions, temporalInterventions] = await Promise.all([
+          evaluateInterventionsAfterMove({
+            roomId: socket.data.roomId,
+            participantId: participant.id,
+            moveId: move.id,
+          }).catch((error) => {
+            console.error(
+              "Erro ao avaliar intervenções após registro terapêutico:",
+              error,
+            );
+            return [];
+          }),
+          evaluateTemporalInterventionsForRoom({
+            roomId: socket.data.roomId,
+          }).catch((error) => {
+            console.error(
+              "Erro ao avaliar intervenções temporais após registro terapêutico:",
+              error,
+            );
+            return [];
+          }),
+        ]);
+        const combinedInterventions = [...moveInterventions, ...temporalInterventions];
+        if (combinedInterventions.length > 0) {
+          io.to(socket.data.roomId).emit("intervention:generated", {
+            roomId: socket.data.roomId,
+            participantId: participant.id,
+            interventions: combinedInterventions.map((item) => ({
+              id: item.id,
+              participantId: item.participantId,
+              status: item.status,
+              triggerId: item.triggerId,
+              title: item.title,
+            })),
+            pendingApprovals: combinedInterventions.filter(
+              (item) => item.status === "PENDING_APPROVAL",
+            ).length,
+          });
+        }
 
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
@@ -4000,6 +4652,8 @@ io.on("connection", (socket: AuthedSocket) => {
           where: { id: intervention.id },
           data: {
             status: "APPROVED",
+            visibleTo: "ROOM",
+            snoozedUntil: null,
             approvedAt: new Date(),
             approvedByUserId: socket.data.user.id,
             dismissedAt: null,
@@ -4032,7 +4686,10 @@ io.on("connection", (socket: AuthedSocket) => {
   socket.on(
     "intervention:dismiss",
     async (
-      { interventionId }: { interventionId?: string } = {},
+      {
+        interventionId,
+        muteSession,
+      }: { interventionId?: string; muteSession?: boolean } = {},
       callback?: (payload: any) => void,
     ) => {
       try {
@@ -4086,6 +4743,8 @@ io.on("connection", (socket: AuthedSocket) => {
           where: { id: intervention.id },
           data: {
             status: "DISMISSED",
+            visibleTo: "THERAPIST_ONLY",
+            snoozedUntil: null,
             dismissedAt: new Date(),
             dismissedByUserId: socket.data.user.id,
             approvedAt: null,
@@ -4099,6 +4758,23 @@ io.on("connection", (socket: AuthedSocket) => {
             title: true,
           },
         });
+
+        if (muteSession) {
+          await prisma.mahaLilahInterventionFeedback.create({
+            data: {
+              interventionId: intervention.id,
+              roomId: room.id,
+              participantId: intervention.participantId,
+              triggerId: intervention.triggerId,
+              userId: socket.data.user.id,
+              action: "DISMISSED",
+              note: INTERVENTION_MUTE_SESSION_NOTE,
+              metadata: {
+                source: "therapist-dismiss",
+              } as any,
+            },
+          });
+        }
 
         io.to(room.id).emit("intervention:updated", {
           roomId: room.id,
@@ -4116,6 +4792,189 @@ io.on("connection", (socket: AuthedSocket) => {
   );
 
   socket.on(
+    "intervention:snooze",
+    async (
+      { interventionId }: { interventionId?: string } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId) {
+          throw new Error("Sala não selecionada");
+        }
+        if (!interventionId || !interventionId.trim()) {
+          throw new Error("Intervenção não informada");
+        }
+
+        enforceCooldown(
+          `intervention-snooze:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: { participants: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+
+        const requester = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!requester) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requester);
+        if (requester.role !== "THERAPIST") {
+          throw new Error("Apenas o terapeuta pode adiar intervenções.");
+        }
+
+        const intervention = await prisma.mahaLilahIntervention.findUnique({
+          where: { id: interventionId },
+          select: {
+            id: true,
+            roomId: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+        if (!intervention || intervention.roomId !== room.id) {
+          throw new Error("Intervenção não encontrada nesta sala.");
+        }
+
+        const snoozedUntil = new Date(
+          Date.now() + INTERVENTION_SNOOZE_MINUTES * 60_000,
+        );
+        const updated = await prisma.mahaLilahIntervention.update({
+          where: { id: intervention.id },
+          data: {
+            status: "SNOOZED",
+            visibleTo: "THERAPIST_ONLY",
+            snoozedUntil,
+          },
+          select: {
+            id: true,
+            participantId: true,
+            status: true,
+            triggerId: true,
+            title: true,
+          },
+        });
+
+        io.to(room.id).emit("intervention:updated", {
+          roomId: room.id,
+          intervention: updated,
+          action: "SNOOZE",
+        });
+        callback?.({
+          ok: true,
+          intervention: updated,
+          snoozedUntil: snoozedUntil.toISOString(),
+        });
+      } catch (error: any) {
+        callback?.({
+          ok: false,
+          error: error?.message || "Não foi possível adiar a intervenção.",
+        });
+      }
+    },
+  );
+
+  socket.on(
+    "intervention:feedback",
+    async (
+      {
+        interventionId,
+        action,
+        note,
+      }: {
+        interventionId?: string;
+        action?: InterventionFeedbackAction;
+        note?: string;
+      } = {},
+      callback?: (payload: any) => void,
+    ) => {
+      try {
+        if (!socket.data.user || !socket.data.roomId) {
+          throw new Error("Sala não selecionada");
+        }
+        if (!interventionId || !interventionId.trim()) {
+          throw new Error("Intervenção não informada");
+        }
+        if (
+          action !== "HELPFUL" &&
+          action !== "NOT_HELPFUL" &&
+          action !== "APPLIED" &&
+          action !== "DISMISSED"
+        ) {
+          throw new Error("Ação de feedback inválida");
+        }
+
+        enforceCooldown(
+          `intervention-feedback:${socket.data.user.id}:${socket.data.roomId}`,
+          THERAPY_COOLDOWN_MS,
+        );
+
+        const room = await prisma.mahaLilahRoom.findUnique({
+          where: { id: socket.data.roomId },
+          include: { participants: true },
+        });
+        if (!room) throw new Error("Sala não encontrada");
+
+        const requester = room.participants.find(
+          (participant) => participant.userId === socket.data.user?.id,
+        );
+        if (!requester) throw new Error("Participante não encontrado");
+        ensureConsentAccepted(requester);
+
+        const intervention = await prisma.mahaLilahIntervention.findUnique({
+          where: { id: interventionId },
+          select: {
+            id: true,
+            roomId: true,
+            participantId: true,
+            triggerId: true,
+            visibleTo: true,
+          },
+        });
+        if (!intervention || intervention.roomId !== room.id) {
+          throw new Error("Intervenção não encontrada nesta sala.");
+        }
+        if (
+          intervention.visibleTo === "THERAPIST_ONLY" &&
+          requester.role !== "THERAPIST"
+        ) {
+          throw new Error("Somente o terapeuta pode avaliar esta intervenção.");
+        }
+
+        const feedback = await prisma.mahaLilahInterventionFeedback.create({
+          data: {
+            interventionId: intervention.id,
+            roomId: room.id,
+            participantId: intervention.participantId,
+            triggerId: intervention.triggerId,
+            userId: socket.data.user.id,
+            action,
+            note: note?.trim() || null,
+          },
+          select: {
+            id: true,
+            action: true,
+            note: true,
+            createdAt: true,
+            interventionId: true,
+          },
+        });
+
+        callback?.({ ok: true, feedback });
+      } catch (error: any) {
+        callback?.({
+          ok: false,
+          error: error?.message || "Não foi possível registrar o feedback.",
+        });
+      }
+    },
+  );
+
+  socket.on(
     "game:nextTurn",
     async (_payload: any, callback?: (payload: any) => void) => {
       try {
@@ -4127,6 +4986,25 @@ io.on("connection", (socket: AuthedSocket) => {
         if (!participant) throw new Error("Participante não encontrado");
         ensureConsentAccepted(participant);
         await advanceTurnInRoom(socket.data.roomId, socket.data.user.id);
+        const temporalInterventions = await evaluateTemporalInterventionsForRoom({
+          roomId: socket.data.roomId,
+        });
+        if (temporalInterventions.length > 0) {
+          io.to(socket.data.roomId).emit("intervention:generated", {
+            roomId: socket.data.roomId,
+            participantId: null,
+            interventions: temporalInterventions.map((item) => ({
+              id: item.id,
+              participantId: item.participantId,
+              status: item.status,
+              triggerId: item.triggerId,
+              title: item.title,
+            })),
+            pendingApprovals: temporalInterventions.filter(
+              (item) => item.status === "PENDING_APPROVAL",
+            ).length,
+          });
+        }
         const state = await buildRoomState(socket.data.roomId);
         if (state) io.to(socket.data.roomId).emit("room:state", state);
         callback?.({ ok: true });

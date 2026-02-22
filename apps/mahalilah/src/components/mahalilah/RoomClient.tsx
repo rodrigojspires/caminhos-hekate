@@ -165,7 +165,8 @@ type TimelineIntervention = {
   id: string;
   triggerId: string;
   severity: "INFO" | "ATTENTION" | "CRITICAL";
-  status: "PENDING_APPROVAL" | "APPROVED" | "DISMISSED";
+  status: "PENDING_APPROVAL" | "APPROVED" | "DISMISSED" | "SNOOZED";
+  visibleTo: "THERAPIST_ONLY" | "ROOM";
   generatedBy: "RULE" | "AI" | "HYBRID";
   usesAi: boolean;
   requiresApproval: boolean;
@@ -177,6 +178,7 @@ type TimelineIntervention = {
   createdAt: string;
   approvedAt: string | null;
   dismissedAt: string | null;
+  snoozedUntil: string | null;
   participant: {
     id: string;
     user: { name: string | null; email: string };
@@ -1108,8 +1110,25 @@ function formatInterventionSeverityLabel(severity: string) {
 
 function formatInterventionStatusLabel(status: string) {
   if (status === "PENDING_APPROVAL") return "Pendente de aprovação";
+  if (status === "SNOOZED") return "Adiada";
   if (status === "DISMISSED") return "Dispensada";
   return "Aprovada";
+}
+
+type InterventionUiAction =
+  | "approve"
+  | "dismiss"
+  | "dismissMuteSession"
+  | "snooze"
+  | "feedbackHelpful"
+  | "feedbackApplied"
+  | "feedbackNotHelpful";
+
+function getInterventionActionKey(
+  interventionId: string,
+  action: InterventionUiAction,
+) {
+  return `${interventionId}:${action}`;
 }
 
 function randomDiceFace() {
@@ -1185,7 +1204,7 @@ export function RoomClient({
   const [timelineInterventions, setTimelineInterventions] = useState<
     TimelineIntervention[]
   >([]);
-  const [interventionActionLoadingById, setInterventionActionLoadingById] =
+  const [interventionActionLoadingByKey, setInterventionActionLoadingByKey] =
     useState<Record<string, boolean>>({});
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
@@ -1944,7 +1963,7 @@ export function RoomClient({
     setTimelineMoves([]);
     setTimelineReports([]);
     setTimelineInterventions([]);
-    setInterventionActionLoadingById({});
+    setInterventionActionLoadingByKey({});
     clearDiceTimers();
     setRollInFlight(false);
     setDiceModalOpen(false);
@@ -3838,7 +3857,11 @@ export function RoomClient({
   );
 
   const handleInterventionDecision = useCallback(
-    (interventionId: string, action: "approve" | "dismiss") => {
+    (
+      interventionId: string,
+      action: "approve" | "dismiss" | "snooze",
+      options?: { muteSession?: boolean },
+    ) => {
       if (!socket || !socket.connected) {
         pushToast(
           "Sem conexão com a sala. Aguarde a reconexão para tratar a intervenção.",
@@ -3849,18 +3872,36 @@ export function RoomClient({
 
       if (!interventionId) return;
 
-      setInterventionActionLoadingById((prev) => ({
+      const actionKey: InterventionUiAction =
+        action === "approve"
+          ? "approve"
+          : action === "snooze"
+            ? "snooze"
+            : options?.muteSession
+              ? "dismissMuteSession"
+              : "dismiss";
+      const loadingKey = getInterventionActionKey(interventionId, actionKey);
+      setInterventionActionLoadingByKey((prev) => ({
         ...prev,
-        [interventionId]: true,
+        [loadingKey]: true,
       }));
 
       const eventName =
-        action === "approve" ? "intervention:approve" : "intervention:dismiss";
-      socket.emit(eventName, { interventionId }, async (resp: any) => {
-        setInterventionActionLoadingById((prev) => {
-          if (!prev[interventionId]) return prev;
+        action === "approve"
+          ? "intervention:approve"
+          : action === "snooze"
+            ? "intervention:snooze"
+            : "intervention:dismiss";
+      const payload =
+        action === "dismiss" && options?.muteSession
+          ? { interventionId, muteSession: true }
+          : { interventionId };
+
+      socket.emit(eventName, payload, async (resp: any) => {
+        setInterventionActionLoadingByKey((prev) => {
+          if (!prev[loadingKey]) return prev;
           const next = { ...prev };
-          delete next[interventionId];
+          delete next[loadingKey];
           return next;
         });
 
@@ -3868,7 +3909,9 @@ export function RoomClient({
           showSocketError(
             action === "approve"
               ? "Erro ao aprovar intervenção"
-              : "Erro ao dispensar intervenção",
+              : action === "snooze"
+                ? "Erro ao adiar intervenção"
+                : "Erro ao dispensar intervenção",
             resp,
           );
           return;
@@ -3877,13 +3920,73 @@ export function RoomClient({
         pushToast(
           action === "approve"
             ? "Intervenção aprovada."
-            : "Intervenção dispensada.",
+            : action === "snooze"
+              ? "Intervenção adiada por 10 minutos."
+              : options?.muteSession
+                ? "Intervenção dispensada e silenciada nesta sessão."
+                : "Intervenção dispensada.",
           "success",
         );
         await loadTimelineData();
       });
     },
     [socket, pushToast, showSocketError, loadTimelineData],
+  );
+
+  const handleInterventionFeedback = useCallback(
+    (
+      interventionId: string,
+      action: "HELPFUL" | "APPLIED" | "NOT_HELPFUL",
+    ) => {
+      if (!socket || !socket.connected) {
+        pushToast(
+          "Sem conexão com a sala. Aguarde a reconexão para avaliar a intervenção.",
+          "warning",
+        );
+        return;
+      }
+      if (!interventionId) return;
+
+      const actionKey: InterventionUiAction =
+        action === "HELPFUL"
+          ? "feedbackHelpful"
+          : action === "APPLIED"
+            ? "feedbackApplied"
+            : "feedbackNotHelpful";
+      const loadingKey = getInterventionActionKey(interventionId, actionKey);
+      setInterventionActionLoadingByKey((prev) => ({
+        ...prev,
+        [loadingKey]: true,
+      }));
+
+      socket.emit(
+        "intervention:feedback",
+        { interventionId, action },
+        (resp: any) => {
+          setInterventionActionLoadingByKey((prev) => {
+            if (!prev[loadingKey]) return prev;
+            const next = { ...prev };
+            delete next[loadingKey];
+            return next;
+          });
+
+          if (!resp?.ok) {
+            showSocketError("Erro ao registrar feedback da intervenção", resp);
+            return;
+          }
+
+          pushToast(
+            action === "HELPFUL"
+              ? "Feedback registrado: intervenção útil."
+              : action === "APPLIED"
+                ? "Feedback registrado: intervenção aplicada."
+                : "Feedback registrado: pouco útil.",
+            "success",
+          );
+        },
+      );
+    },
+    [socket, pushToast, showSocketError],
   );
 
   const requestAiTip = useCallback(
@@ -6959,9 +7062,62 @@ export function RoomClient({
                                 {moveInterventions.map((intervention) => {
                                   const isPending =
                                     intervention.status === "PENDING_APPROVAL";
-                                  const loadingAction = Boolean(
-                                    interventionActionLoadingById[
-                                      intervention.id
+                                  const canSendFeedback =
+                                    intervention.status === "APPROVED";
+                                  const loadingApprove = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "approve",
+                                      )
+                                    ],
+                                  );
+                                  const loadingSnooze = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "snooze",
+                                      )
+                                    ],
+                                  );
+                                  const loadingDismiss = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "dismiss",
+                                      )
+                                    ],
+                                  );
+                                  const loadingDismissMuteSession = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "dismissMuteSession",
+                                      )
+                                    ],
+                                  );
+                                  const loadingFeedbackHelpful = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "feedbackHelpful",
+                                      )
+                                    ],
+                                  );
+                                  const loadingFeedbackApplied = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "feedbackApplied",
+                                      )
+                                    ],
+                                  );
+                                  const loadingFeedbackNotHelpful = Boolean(
+                                    interventionActionLoadingByKey[
+                                      getInterventionActionKey(
+                                        intervention.id,
+                                        "feedbackNotHelpful",
+                                      )
                                     ],
                                   );
                                   return (
@@ -6983,6 +7139,15 @@ export function RoomClient({
                                       <span className="small-muted">
                                         {intervention.message}
                                       </span>
+                                      {intervention.status === "SNOOZED" &&
+                                        intervention.snoozedUntil && (
+                                          <span className="small-muted">
+                                            Retorno previsto:{" "}
+                                            {new Date(
+                                              intervention.snoozedUntil,
+                                            ).toLocaleString("pt-BR")}
+                                          </span>
+                                        )}
                                       {intervention.reflectionQuestion && (
                                         <span className="small-muted">
                                           <strong>Pergunta:</strong>{" "}
@@ -7005,7 +7170,7 @@ export function RoomClient({
                                         >
                                           <button
                                             className="btn-secondary"
-                                            disabled={loadingAction}
+                                            disabled={loadingApprove}
                                             onClick={() =>
                                               handleInterventionDecision(
                                                 intervention.id,
@@ -7017,7 +7182,19 @@ export function RoomClient({
                                           </button>
                                           <button
                                             className="btn-secondary"
-                                            disabled={loadingAction}
+                                            disabled={loadingSnooze}
+                                            onClick={() =>
+                                              handleInterventionDecision(
+                                                intervention.id,
+                                                "snooze",
+                                              )
+                                            }
+                                          >
+                                            Adiar 10 min
+                                          </button>
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingDismiss}
                                             onClick={() =>
                                               handleInterventionDecision(
                                                 intervention.id,
@@ -7026,6 +7203,65 @@ export function RoomClient({
                                             }
                                           >
                                             Dispensar
+                                          </button>
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingDismissMuteSession}
+                                            onClick={() =>
+                                              handleInterventionDecision(
+                                                intervention.id,
+                                                "dismiss",
+                                                { muteSession: true },
+                                              )
+                                            }
+                                          >
+                                            Não repetir nesta sessão
+                                          </button>
+                                        </div>
+                                      )}
+                                      {canSendFeedback && (
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            gap: 6,
+                                            flexWrap: "wrap",
+                                          }}
+                                        >
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingFeedbackHelpful}
+                                            onClick={() =>
+                                              handleInterventionFeedback(
+                                                intervention.id,
+                                                "HELPFUL",
+                                              )
+                                            }
+                                          >
+                                            Útil
+                                          </button>
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingFeedbackApplied}
+                                            onClick={() =>
+                                              handleInterventionFeedback(
+                                                intervention.id,
+                                                "APPLIED",
+                                              )
+                                            }
+                                          >
+                                            Aplicada
+                                          </button>
+                                          <button
+                                            className="btn-secondary"
+                                            disabled={loadingFeedbackNotHelpful}
+                                            onClick={() =>
+                                              handleInterventionFeedback(
+                                                intervention.id,
+                                                "NOT_HELPFUL",
+                                              )
+                                            }
+                                          >
+                                            Pouco útil
                                           </button>
                                         </div>
                                       )}
@@ -7063,11 +7299,66 @@ export function RoomClient({
                               new Date(a.createdAt).getTime(),
                           )
                           .map((intervention) => {
-                            const loadingAction = Boolean(
-                              interventionActionLoadingById[intervention.id],
-                            );
                             const isPending =
                               intervention.status === "PENDING_APPROVAL";
+                            const canSendFeedback =
+                              intervention.status === "APPROVED";
+                            const loadingApprove = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "approve",
+                                )
+                              ],
+                            );
+                            const loadingSnooze = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "snooze",
+                                )
+                              ],
+                            );
+                            const loadingDismiss = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "dismiss",
+                                )
+                              ],
+                            );
+                            const loadingDismissMuteSession = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "dismissMuteSession",
+                                )
+                              ],
+                            );
+                            const loadingFeedbackHelpful = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "feedbackHelpful",
+                                )
+                              ],
+                            );
+                            const loadingFeedbackApplied = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "feedbackApplied",
+                                )
+                              ],
+                            );
+                            const loadingFeedbackNotHelpful = Boolean(
+                              interventionActionLoadingByKey[
+                                getInterventionActionKey(
+                                  intervention.id,
+                                  "feedbackNotHelpful",
+                                )
+                              ],
+                            );
                             return (
                               <div
                                 key={`timeline-intervention-${intervention.id}`}
@@ -7087,6 +7378,15 @@ export function RoomClient({
                                 <span className="small-muted">
                                   {intervention.message}
                                 </span>
+                                {intervention.status === "SNOOZED" &&
+                                  intervention.snoozedUntil && (
+                                    <span className="small-muted">
+                                      Retorno previsto:{" "}
+                                      {new Date(
+                                        intervention.snoozedUntil,
+                                      ).toLocaleString("pt-BR")}
+                                    </span>
+                                  )}
                                 <span className="small-muted">
                                   Trigger: {intervention.triggerId}
                                   {typeof intervention.turnNumber === "number"
@@ -7108,7 +7408,7 @@ export function RoomClient({
                                   >
                                     <button
                                       className="btn-secondary"
-                                      disabled={loadingAction}
+                                      disabled={loadingApprove}
                                       onClick={() =>
                                         handleInterventionDecision(
                                           intervention.id,
@@ -7120,7 +7420,19 @@ export function RoomClient({
                                     </button>
                                     <button
                                       className="btn-secondary"
-                                      disabled={loadingAction}
+                                      disabled={loadingSnooze}
+                                      onClick={() =>
+                                        handleInterventionDecision(
+                                          intervention.id,
+                                          "snooze",
+                                        )
+                                      }
+                                    >
+                                      Adiar 10 min
+                                    </button>
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingDismiss}
                                       onClick={() =>
                                         handleInterventionDecision(
                                           intervention.id,
@@ -7129,6 +7441,65 @@ export function RoomClient({
                                       }
                                     >
                                       Dispensar
+                                    </button>
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingDismissMuteSession}
+                                      onClick={() =>
+                                        handleInterventionDecision(
+                                          intervention.id,
+                                          "dismiss",
+                                          { muteSession: true },
+                                        )
+                                      }
+                                    >
+                                      Não repetir nesta sessão
+                                    </button>
+                                  </div>
+                                )}
+                                {canSendFeedback && (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: 6,
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingFeedbackHelpful}
+                                      onClick={() =>
+                                        handleInterventionFeedback(
+                                          intervention.id,
+                                          "HELPFUL",
+                                        )
+                                      }
+                                    >
+                                      Útil
+                                    </button>
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingFeedbackApplied}
+                                      onClick={() =>
+                                        handleInterventionFeedback(
+                                          intervention.id,
+                                          "APPLIED",
+                                        )
+                                      }
+                                    >
+                                      Aplicada
+                                    </button>
+                                    <button
+                                      className="btn-secondary"
+                                      disabled={loadingFeedbackNotHelpful}
+                                      onClick={() =>
+                                        handleInterventionFeedback(
+                                          intervention.id,
+                                          "NOT_HELPFUL",
+                                        )
+                                      }
+                                    >
+                                      Pouco útil
                                     </button>
                                   </div>
                                 )}

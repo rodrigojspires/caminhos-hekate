@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 type Severity = "INFO" | "ATTENTION" | "CRITICAL";
+type AiPolicy = "NONE" | "OPTIONAL" | "REQUIRED";
+type ScopeType = "GLOBAL" | "PLAN" | "ROOM";
 
 type InterventionPrompt = {
   id?: string;
@@ -53,10 +55,14 @@ type InterventionConfig = {
   description: string | null;
   enabled: boolean;
   useAi: boolean;
+  aiPolicy: AiPolicy;
   sensitive: boolean;
   requireTherapistApproval: boolean;
   autoApproveWhenTherapistSolo: boolean;
   severity: Severity;
+  scopeType: ScopeType;
+  scopeId: string;
+  version: number;
   cooldownMoves: number;
   cooldownMinutes: number;
   thresholds: InterventionThresholds;
@@ -110,10 +116,14 @@ function createEmptyConfig(configs: InterventionConfig[]): InterventionConfig {
     description: "",
     enabled: true,
     useAi: false,
+    aiPolicy: "NONE",
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: "INFO",
+    scopeType: "GLOBAL",
+    scopeId: "__global__",
+    version: 1,
     cooldownMoves: 2,
     cooldownMinutes: 10,
     thresholds: {},
@@ -132,6 +142,39 @@ function toNullableInt(value: unknown) {
 function metadataString(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
   return typeof value === "string" ? value : "";
+}
+
+function normalizeConfig(input: Partial<InterventionConfig>): InterventionConfig {
+  return {
+    id: input.id,
+    triggerId: input.triggerId || "",
+    title: input.title || "",
+    description: input.description ?? "",
+    enabled: Boolean(input.enabled),
+    useAi: Boolean(input.useAi),
+    aiPolicy:
+      input.aiPolicy === "OPTIONAL" || input.aiPolicy === "REQUIRED"
+        ? input.aiPolicy
+        : "NONE",
+    sensitive: Boolean(input.sensitive),
+    requireTherapistApproval: Boolean(input.requireTherapistApproval),
+    autoApproveWhenTherapistSolo: input.autoApproveWhenTherapistSolo ?? true,
+    severity:
+      input.severity === "ATTENTION" || input.severity === "CRITICAL"
+        ? input.severity
+        : "INFO",
+    scopeType:
+      input.scopeType === "PLAN" || input.scopeType === "ROOM"
+        ? input.scopeType
+        : "GLOBAL",
+    scopeId: input.scopeId || "__global__",
+    version: Number(input.version || 1),
+    cooldownMoves: Number(input.cooldownMoves || 0),
+    cooldownMinutes: Number(input.cooldownMinutes || 0),
+    thresholds: input.thresholds || {},
+    metadata: input.metadata || {},
+    prompts: Array.isArray(input.prompts) ? input.prompts : [],
+  };
 }
 
 export default function AdminMahaLilahInterventionsPage() {
@@ -159,7 +202,13 @@ export default function AdminMahaLilahInterventionsPage() {
         return;
       }
 
-      setConfigs(payload.configs || []);
+      setConfigs(
+        Array.isArray(payload.configs)
+          ? payload.configs.map((config: InterventionConfig) =>
+              normalizeConfig(config),
+            )
+          : [],
+      );
     } catch (error) {
       console.error("Erro ao carregar catálogo de intervenções:", error);
       toast.error("Não foi possível carregar o catálogo de intervenções.");
@@ -182,10 +231,17 @@ export default function AdminMahaLilahInterventionsPage() {
         description: (config.description || "").trim() || null,
         enabled: config.enabled,
         useAi: config.useAi,
+        aiPolicy: config.aiPolicy,
         sensitive: config.sensitive,
         requireTherapistApproval: config.requireTherapistApproval,
         autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
         severity: config.severity,
+        scopeType: config.scopeType,
+        scopeId:
+          config.scopeType === "GLOBAL"
+            ? "__global__"
+            : (config.scopeId || "").trim() || "__unset__",
+        version: toNullableInt(config.version) ?? 1,
         cooldownMoves: toNullableInt(config.cooldownMoves) ?? 0,
         cooldownMinutes: toNullableInt(config.cooldownMinutes) ?? 0,
         thresholds: {
@@ -238,7 +294,11 @@ export default function AdminMahaLilahInterventionsPage() {
         return;
       }
 
-      setConfigs(data.configs || []);
+      setConfigs(
+        Array.isArray(data.configs)
+          ? data.configs.map((config: InterventionConfig) => normalizeConfig(config))
+          : [],
+      );
       toast.success("Catálogo de intervenções salvo com sucesso.");
     } catch (error) {
       console.error("Erro ao salvar catálogo de intervenções:", error);
@@ -393,6 +453,88 @@ export default function AdminMahaLilahInterventionsPage() {
                           <SelectItem value="CRITICAL">CRITICAL</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Política de IA</label>
+                      <Select
+                        value={config.aiPolicy}
+                        onValueChange={(value: AiPolicy) =>
+                          updateConfig(index, (prev) => ({
+                            ...prev,
+                            aiPolicy: value,
+                            useAi:
+                              value === "REQUIRED"
+                                ? true
+                                : value === "NONE"
+                                  ? false
+                                  : prev.useAi,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NONE">Sem IA</SelectItem>
+                          <SelectItem value="OPTIONAL">IA opcional</SelectItem>
+                          <SelectItem value="REQUIRED">IA obrigatória</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Escopo</label>
+                      <Select
+                        value={config.scopeType}
+                        onValueChange={(value: ScopeType) =>
+                          updateConfig(index, (prev) => ({
+                            ...prev,
+                            scopeType: value,
+                            scopeId:
+                              value === "GLOBAL"
+                                ? "__global__"
+                                : prev.scopeId === "__global__"
+                                  ? ""
+                                  : prev.scopeId,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GLOBAL">GLOBAL</SelectItem>
+                          <SelectItem value="PLAN">PLAN</SelectItem>
+                          <SelectItem value="ROOM">ROOM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Scope ID</label>
+                      <Input
+                        value={config.scopeId}
+                        disabled={config.scopeType === "GLOBAL"}
+                        onChange={(event) =>
+                          updateConfig(index, (prev) => ({
+                            ...prev,
+                            scopeId: event.target.value.trim(),
+                          }))
+                        }
+                        placeholder={config.scopeType === "PLAN" ? "SINGLE_SESSION | SUBSCRIPTION | SUBSCRIPTION_LIMITED" : "ID da sala"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Versão da regra</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={config.version}
+                        onChange={(event) =>
+                          updateConfig(index, (prev) => ({
+                            ...prev,
+                            version: toNullableInt(event.target.value) ?? 1,
+                          }))
+                        }
+                      />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <label className="text-sm font-medium">Descrição</label>

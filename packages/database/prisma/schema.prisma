@@ -114,6 +114,7 @@ model User {
   mahaLilahInvitesSent          MahaLilahInvite[]              @relation("MahaLilahInviteSender")
   mahaLilahInterventionsApproved MahaLilahIntervention[]       @relation("MahaLilahInterventionApprover")
   mahaLilahInterventionsDismissed MahaLilahIntervention[]      @relation("MahaLilahInterventionDismisser")
+  mahaLilahInterventionFeedbacks MahaLilahInterventionFeedback[] @relation("MahaLilahInterventionFeedbackUser")
   createdCardDecks              CardDeck[]
   therapeuticProcessesAsPatient TherapeuticProcess[]           @relation("TherapeuticProcessPatient")
   therapeuticProcessesCreated   TherapeuticProcess[]           @relation("TherapeuticProcessCreator")
@@ -3283,15 +3284,19 @@ model MahaLilahPlan {
 
 model MahaLilahInterventionConfig {
   id                            String                        @id @default(cuid())
-  triggerId                     String                        @unique
+  triggerId                     String
   title                         String
   description                   String?
   enabled                       Boolean                       @default(true)
   useAi                         Boolean                       @default(false)
+  aiPolicy                      MahaLilahInterventionAiPolicy @default(NONE)
   sensitive                     Boolean                       @default(false)
   requireTherapistApproval      Boolean                       @default(false)
   autoApproveWhenTherapistSolo  Boolean                       @default(true)
   severity                      MahaLilahInterventionSeverity @default(INFO)
+  scopeType                     MahaLilahInterventionScopeType @default(GLOBAL)
+  scopeId                       String                        @default("__global__")
+  version                       Int                           @default(1)
   cooldownMoves                 Int                           @default(2)
   cooldownMinutes               Int                           @default(10)
   thresholds                    Json?
@@ -3302,7 +3307,9 @@ model MahaLilahInterventionConfig {
   prompts       MahaLilahInterventionPrompt[]
   interventions MahaLilahIntervention[]
 
-  @@index([enabled])
+  @@index([triggerId])
+  @@index([enabled, scopeType, scopeId])
+  @@unique([triggerId, scopeType, scopeId], name: "MahaLilahInterventionConfig_trigger_scope_key")
 }
 
 model MahaLilahInterventionPrompt {
@@ -3372,6 +3379,7 @@ model MahaLilahRoom {
   aiUsages       MahaLilahAiUsage[]
   aiReports      MahaLilahAiReport[]
   interventions  MahaLilahIntervention[]
+  interventionFeedbacks MahaLilahInterventionFeedback[]
 
   @@index([createdByUserId])
   @@index([status])
@@ -3419,6 +3427,7 @@ model MahaLilahParticipant {
   aiUsages       MahaLilahAiUsage[]
   aiReports      MahaLilahAiReport[]
   interventions  MahaLilahIntervention[]
+  interventionFeedbacks MahaLilahInterventionFeedback[]
 
   @@unique([roomId, userId])
   @@index([role])
@@ -3428,6 +3437,7 @@ model MahaLilahParticipant {
 model MahaLilahGameState {
   roomId           String   @id
   currentTurnIndex Int      @default(0)
+  turnStartedAt    DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   room MahaLilahRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -3565,12 +3575,14 @@ model MahaLilahIntervention {
   usesAi           Boolean                    @default(false)
   requiresApproval Boolean                    @default(false)
   status           MahaLilahInterventionStatus @default(APPROVED)
+  visibleTo        MahaLilahInterventionVisibility @default(ROOM)
   turnNumber       Int?
   title            String
   message          String
   reflectionQuestion String?
   microAction      String?
   metadata         Json?
+  snoozedUntil     DateTime?
   createdAt        DateTime                   @default(now())
   approvedAt       DateTime?
   approvedByUserId String?
@@ -3584,12 +3596,37 @@ model MahaLilahIntervention {
   prompt          MahaLilahInterventionPrompt?     @relation(fields: [promptId], references: [id], onDelete: SetNull)
   approvedByUser  User?                            @relation("MahaLilahInterventionApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   dismissedByUser User?                            @relation("MahaLilahInterventionDismisser", fields: [dismissedByUserId], references: [id], onDelete: SetNull)
+  feedbacks       MahaLilahInterventionFeedback[]
 
   @@index([roomId, participantId, createdAt])
   @@index([roomId, triggerId, createdAt])
   @@index([roomId, status, createdAt])
   @@index([participantId, status, createdAt])
   @@index([moveId])
+  @@index([roomId, participantId, triggerId, status])
+  @@index([snoozedUntil])
+}
+
+model MahaLilahInterventionFeedback {
+  id             String                            @id @default(cuid())
+  interventionId String
+  roomId         String
+  participantId  String?
+  triggerId      String
+  userId         String?
+  action         MahaLilahInterventionFeedbackAction
+  note           String?
+  metadata       Json?
+  createdAt      DateTime                          @default(now())
+
+  intervention MahaLilahIntervention @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+  room         MahaLilahRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  participant  MahaLilahParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  user         User?                 @relation("MahaLilahInterventionFeedbackUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([interventionId, createdAt])
+  @@index([roomId, participantId, triggerId, createdAt])
+  @@index([userId, createdAt])
 }
 
 enum MahaLilahRoomStatus {
@@ -3645,6 +3682,31 @@ enum MahaLilahInterventionSource {
 enum MahaLilahInterventionStatus {
   PENDING_APPROVAL
   APPROVED
+  DISMISSED
+  SNOOZED
+}
+
+enum MahaLilahInterventionVisibility {
+  THERAPIST_ONLY
+  ROOM
+}
+
+enum MahaLilahInterventionScopeType {
+  GLOBAL
+  PLAN
+  ROOM
+}
+
+enum MahaLilahInterventionAiPolicy {
+  NONE
+  OPTIONAL
+  REQUIRED
+}
+
+enum MahaLilahInterventionFeedbackAction {
+  HELPFUL
+  NOT_HELPFUL
+  APPLIED
   DISMISSED
 }
 

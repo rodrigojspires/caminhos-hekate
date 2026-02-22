@@ -268,6 +268,7 @@ function formatInterventionSeverity(severity: string) {
 
 function formatInterventionStatus(status: string) {
   if (status === 'PENDING_APPROVAL') return 'Pendente de aprovacao'
+  if (status === 'SNOOZED') return 'Adiada'
   if (status === 'DISMISSED') return 'Dispensada'
   return 'Aprovada'
 }
@@ -1524,6 +1525,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     const canViewPendingInterventions = Boolean(
       isOwner || requesterParticipant?.role === 'THERAPIST'
     )
+    const canViewTherapistOnlyInterventions = Boolean(
+      isOwner || requesterParticipant?.role === 'THERAPIST'
+    )
 
     if (!isOwner && !requesterParticipant) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
@@ -1532,6 +1536,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     const url = new URL(request.url)
     const format = (url.searchParams.get('format') || 'pdf').toLowerCase()
     const requestedParticipantId = url.searchParams.get('participantId')
+    const includeTherapistOnlyParam =
+      url.searchParams.get('includeTherapistOnly') || ''
+    const includeTherapistOnlyRequested =
+      includeTherapistOnlyParam.toLowerCase() === '1' ||
+      includeTherapistOnlyParam.toLowerCase() === 'true'
+    const includeTherapistOnly =
+      canViewTherapistOnlyInterventions && includeTherapistOnlyRequested
 
     if (format !== 'pdf') {
       return NextResponse.json({ error: 'Formato nao suportado. Use format=pdf.' }, { status: 400 })
@@ -1568,9 +1579,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       scopedParticipantId = requesterParticipant?.id || null
     }
 
-    const visibleInterventions = room.interventions.filter((intervention) =>
-      canViewPendingInterventions ? true : intervention.status === 'APPROVED'
-    )
+    const visibleInterventions = room.interventions.filter((intervention) => {
+      const canSeeStatus =
+        canViewPendingInterventions || intervention.status === 'APPROVED'
+      const canSeeVisibility =
+        includeTherapistOnly || intervention.visibleTo === 'ROOM'
+      return canSeeStatus && canSeeVisibility
+    })
 
     const exportRoom = scopedParticipantId
       ? ({

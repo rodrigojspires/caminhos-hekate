@@ -40,7 +40,7 @@ const PlanSchema = z.object({
   tipsPerPlayer: z.coerce.number().int().min(0),
   summaryLimit: z.coerce.number().int().min(0),
   progressSummaryEveryMoves: z.coerce.number().int().min(0).max(200),
-  interventionLimitPerParticipant: z.coerce.number().int().min(0).max(200),
+  interventionLimitPerParticipant: z.coerce.number().int().min(0).max(8),
   durationDays: z.coerce.number().int().min(1).max(3650),
   isActive: z.boolean(),
   subscriptionPlanId: z.string().nullable().optional(),

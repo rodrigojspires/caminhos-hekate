@@ -13,10 +13,14 @@ export type SeedInterventionConfigInput = {
   description: string
   enabled: boolean
   useAi: boolean
+  aiPolicy: 'NONE' | 'OPTIONAL' | 'REQUIRED'
   sensitive: boolean
   requireTherapistApproval: boolean
   autoApproveWhenTherapistSolo: boolean
   severity: 'INFO' | 'ATTENTION' | 'CRITICAL'
+  scopeType: 'GLOBAL' | 'PLAN' | 'ROOM'
+  scopeId: string
+  version: number
   cooldownMoves: number
   cooldownMinutes: number
   thresholds: Record<string, number>
@@ -32,10 +36,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '90 segundos sem rolar o dado com turno ativo.',
     enabled: true,
     useAi: false,
+    aiPolicy: 'NONE',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'INFO',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 0,
     cooldownMinutes: 2,
     thresholds: {
@@ -59,10 +67,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '180 segundos sem rolar o dado com turno ativo.',
     enabled: true,
     useAi: false,
+    aiPolicy: 'NONE',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'ATTENTION',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 0,
     cooldownMinutes: 4,
     thresholds: {
@@ -86,10 +98,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '4 tentativas sem sair da casa inicial.',
     enabled: true,
     useAi: false,
+    aiPolicy: 'OPTIONAL',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'ATTENTION',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 2,
     cooldownMinutes: 10,
     thresholds: {
@@ -113,10 +129,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       'Mesma casa 2x em até 6 jogadas.',
     enabled: true,
     useAi: true,
+    aiPolicy: 'REQUIRED',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'INFO',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 2,
     cooldownMinutes: 12,
     thresholds: {
@@ -141,10 +161,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '3 casas sombra seguidas.',
     enabled: true,
     useAi: true,
+    aiPolicy: 'REQUIRED',
     sensitive: true,
     requireTherapistApproval: true,
     autoApproveWhenTherapistSolo: true,
     severity: 'CRITICAL',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 2,
     cooldownMinutes: 15,
     thresholds: {
@@ -171,10 +195,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '2 descidas por cobra em até 4 jogadas.',
     enabled: true,
     useAi: true,
+    aiPolicy: 'REQUIRED',
     sensitive: true,
     requireTherapistApproval: true,
     autoApproveWhenTherapistSolo: true,
     severity: 'CRITICAL',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 3,
     cooldownMinutes: 15,
     thresholds: {
@@ -202,10 +230,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       'Jogada intensa e sem registro terapêutico após 2 jogadas.',
     enabled: true,
     useAi: false,
+    aiPolicy: 'NONE',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'ATTENTION',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 2,
     cooldownMinutes: 10,
     thresholds: {
@@ -220,10 +252,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       'Intensidade >= 8 repetida em 3 registros próximos.',
     enabled: true,
     useAi: true,
+    aiPolicy: 'REQUIRED',
     sensitive: true,
     requireTherapistApproval: true,
     autoApproveWhenTherapistSolo: true,
     severity: 'CRITICAL',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 3,
     cooldownMinutes: 20,
     thresholds: {
@@ -252,10 +288,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '40+ jogadas na sessão.',
     enabled: true,
     useAi: false,
+    aiPolicy: 'NONE',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'ATTENTION',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 5,
     cooldownMinutes: 30,
     thresholds: {
@@ -269,10 +309,14 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
       '8+ jogadas sem intervenção do terapeuta (quando aplicável).',
     enabled: true,
     useAi: false,
+    aiPolicy: 'NONE',
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'INFO',
+    scopeType: 'GLOBAL',
+    scopeId: '__global__',
+    version: 1,
     cooldownMoves: 4,
     cooldownMinutes: 20,
     thresholds: {
@@ -291,18 +335,43 @@ export async function seedMahaLilahInterventions(prisma: PrismaClient) {
 
   for (const config of MAHALILAH_INTERVENTION_SEED_DATA) {
     const persistedConfig = await db.mahaLilahInterventionConfig.upsert({
-      where: { triggerId: config.triggerId },
-      update: {},
+      where: {
+        MahaLilahInterventionConfig_trigger_scope_key: {
+          triggerId: config.triggerId,
+          scopeType: config.scopeType,
+          scopeId: config.scopeId,
+        },
+      },
+      update: {
+        title: config.title,
+        description: config.description,
+        enabled: config.enabled,
+        useAi: config.useAi,
+        aiPolicy: config.aiPolicy,
+        sensitive: config.sensitive,
+        requireTherapistApproval: config.requireTherapistApproval,
+        autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
+        severity: config.severity,
+        version: config.version,
+        cooldownMoves: config.cooldownMoves,
+        cooldownMinutes: config.cooldownMinutes,
+        thresholds: config.thresholds as any,
+        metadata: (config.metadata || {}) as any,
+      },
       create: {
         triggerId: config.triggerId,
         title: config.title,
         description: config.description,
         enabled: config.enabled,
         useAi: config.useAi,
+        aiPolicy: config.aiPolicy,
         sensitive: config.sensitive,
         requireTherapistApproval: config.requireTherapistApproval,
         autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
         severity: config.severity,
+        scopeType: config.scopeType,
+        scopeId: config.scopeId,
+        version: config.version,
         cooldownMoves: config.cooldownMoves,
         cooldownMinutes: config.cooldownMinutes,
         thresholds: config.thresholds as any,
@@ -322,7 +391,17 @@ export async function seedMahaLilahInterventions(prisma: PrismaClient) {
         },
         select: { id: true },
       })
-      if (existingPrompt) continue
+      if (existingPrompt) {
+        await db.mahaLilahInterventionPrompt.update({
+          where: { id: existingPrompt.id },
+          data: {
+            isActive: true,
+            systemPrompt: prompt.systemPrompt || null,
+            userPromptTemplate: prompt.userPromptTemplate,
+          },
+        })
+        continue
+      }
 
       await db.mahaLilahInterventionPrompt.create({
         data: {

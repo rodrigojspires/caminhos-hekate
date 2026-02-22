@@ -7,6 +7,8 @@ import { authOptions } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 const SeveritySchema = z.enum(['INFO', 'ATTENTION', 'CRITICAL'])
+const AiPolicySchema = z.enum(['NONE', 'OPTIONAL', 'REQUIRED'])
+const ScopeTypeSchema = z.enum(['GLOBAL', 'PLAN', 'ROOM'])
 
 const ThresholdsSchema = z.object({
   houseRepeatCount: z.number().int().min(0).max(999).nullable().optional(),
@@ -47,10 +49,14 @@ const InterventionConfigSchema = z.object({
   description: z.string().trim().max(700).nullable().optional(),
   enabled: z.boolean(),
   useAi: z.boolean(),
+  aiPolicy: AiPolicySchema,
   sensitive: z.boolean(),
   requireTherapistApproval: z.boolean(),
   autoApproveWhenTherapistSolo: z.boolean(),
   severity: SeveritySchema,
+  scopeType: ScopeTypeSchema,
+  scopeId: z.string().trim().min(1).max(160),
+  version: z.number().int().min(1).max(9999),
   cooldownMoves: z.number().int().min(0).max(999),
   cooldownMinutes: z.number().int().min(0).max(9999),
   thresholds: ThresholdsSchema.optional().default({}),
@@ -114,14 +120,20 @@ function normalizeMetadata(value: unknown) {
 }
 
 function validateConfigs(configs: z.infer<typeof InterventionConfigSchema>[]) {
-  const triggerIds = new Set<string>()
+  const triggerScopeKeys = new Set<string>()
   for (const config of configs) {
-    if (triggerIds.has(config.triggerId)) {
-      throw new Error(`Trigger duplicado no payload: ${config.triggerId}`)
+    const scopeId =
+      config.scopeType === 'GLOBAL'
+        ? '__global__'
+        : config.scopeId.trim()
+    const scopeKey = `${config.triggerId}::${config.scopeType}::${scopeId}`
+    if (triggerScopeKeys.has(scopeKey)) {
+      throw new Error(`Trigger duplicado no payload para o escopo ${scopeKey}`)
     }
-    triggerIds.add(config.triggerId)
+    triggerScopeKeys.add(scopeKey)
 
-    if (config.useAi) {
+    const usesAi = config.aiPolicy === 'REQUIRED' || (config.aiPolicy === 'OPTIONAL' && config.useAi)
+    if (usesAi) {
       const activePrompts = config.prompts.filter((prompt) => prompt.isActive)
       if (activePrompts.length === 0) {
         throw new Error(
@@ -150,10 +162,14 @@ async function fetchInterventionCatalog() {
       description: config.description,
       enabled: config.enabled,
       useAi: config.useAi,
+      aiPolicy: config.aiPolicy,
       sensitive: config.sensitive,
       requireTherapistApproval: config.requireTherapistApproval,
       autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
       severity: config.severity,
+      scopeType: config.scopeType,
+      scopeId: config.scopeId,
+      version: Number(config.version || 1),
       cooldownMoves: Number(config.cooldownMoves),
       cooldownMinutes: Number(config.cooldownMinutes),
       thresholds: normalizeThresholds(config.thresholds),
@@ -204,6 +220,11 @@ export async function PUT(request: NextRequest) {
 
       for (const config of parsed.configs) {
         let persistedConfigId: string | null = null
+        const normalizedScopeId =
+          config.scopeType === 'GLOBAL'
+            ? '__global__'
+            : config.scopeId.trim()
+        const usesAi = config.aiPolicy === 'REQUIRED' || (config.aiPolicy === 'OPTIONAL' && config.useAi)
 
         if (config.id) {
           const existingById = await tx.mahaLilahInterventionConfig.findUnique({
@@ -219,11 +240,15 @@ export async function PUT(request: NextRequest) {
                 title: config.title,
                 description: config.description || null,
                 enabled: config.enabled,
-                useAi: config.useAi,
+                useAi: usesAi,
+                aiPolicy: config.aiPolicy as any,
                 sensitive: config.sensitive,
                 requireTherapistApproval: config.requireTherapistApproval,
                 autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
                 severity: config.severity as any,
+                scopeType: config.scopeType as any,
+                scopeId: normalizedScopeId,
+                version: config.version,
                 cooldownMoves: config.cooldownMoves,
                 cooldownMinutes: config.cooldownMinutes,
                 thresholds: normalizeThresholds(config.thresholds) as any,
@@ -237,17 +262,27 @@ export async function PUT(request: NextRequest) {
 
         if (!persistedConfigId) {
           const upserted = await tx.mahaLilahInterventionConfig.upsert({
-            where: { triggerId: config.triggerId },
+            where: {
+              MahaLilahInterventionConfig_trigger_scope_key: {
+                triggerId: config.triggerId,
+                scopeType: config.scopeType as any,
+                scopeId: normalizedScopeId,
+              },
+            },
             create: {
               triggerId: config.triggerId,
               title: config.title,
               description: config.description || null,
               enabled: config.enabled,
-              useAi: config.useAi,
+              useAi: usesAi,
+              aiPolicy: config.aiPolicy as any,
               sensitive: config.sensitive,
               requireTherapistApproval: config.requireTherapistApproval,
               autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
               severity: config.severity as any,
+              scopeType: config.scopeType as any,
+              scopeId: normalizedScopeId,
+              version: config.version,
               cooldownMoves: config.cooldownMoves,
               cooldownMinutes: config.cooldownMinutes,
               thresholds: normalizeThresholds(config.thresholds) as any,
@@ -257,11 +292,15 @@ export async function PUT(request: NextRequest) {
               title: config.title,
               description: config.description || null,
               enabled: config.enabled,
-              useAi: config.useAi,
+              useAi: usesAi,
+              aiPolicy: config.aiPolicy as any,
               sensitive: config.sensitive,
               requireTherapistApproval: config.requireTherapistApproval,
               autoApproveWhenTherapistSolo: config.autoApproveWhenTherapistSolo,
               severity: config.severity as any,
+              scopeType: config.scopeType as any,
+              scopeId: normalizedScopeId,
+              version: config.version,
               cooldownMoves: config.cooldownMoves,
               cooldownMinutes: config.cooldownMinutes,
               thresholds: normalizeThresholds(config.thresholds) as any,

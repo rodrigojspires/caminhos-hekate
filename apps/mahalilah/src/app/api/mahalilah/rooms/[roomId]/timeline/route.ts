@@ -83,6 +83,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     const canViewPendingInterventions = Boolean(
       isCreator || requesterParticipant?.role === "THERAPIST",
     );
+    const canViewTherapistOnlyInterventions = Boolean(
+      isCreator || requesterParticipant?.role === "THERAPIST",
+    );
 
     const participantScopeId = !isCreator
       ? shouldUseTherapistScopeForRoomView
@@ -167,12 +170,18 @@ export async function GET(request: Request, { params }: RouteParams) {
               ...(canViewPendingInterventions
                 ? {}
                 : { status: "APPROVED" as const }),
+              ...(canViewTherapistOnlyInterventions
+                ? {}
+                : { visibleTo: "ROOM" as const }),
             }
           : {
               roomId: room.id,
               ...(canViewPendingInterventions
                 ? {}
                 : { status: "APPROVED" as const }),
+              ...(canViewTherapistOnlyInterventions
+                ? {}
+                : { visibleTo: "ROOM" as const }),
             },
         orderBy: { createdAt: "asc" },
         include: {

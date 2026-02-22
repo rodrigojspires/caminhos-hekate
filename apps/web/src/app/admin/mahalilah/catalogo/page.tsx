@@ -113,6 +113,11 @@ function stringifyLineItems(items: string[]) {
   return items.join("\n");
 }
 
+function clampInterventionLimit(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(8, Math.max(0, Math.floor(value)));
+}
+
 function PlanMarketingEditor({
   marketing,
   onChange,
@@ -256,7 +261,16 @@ export default function AdminMahaLilahCatalogPage() {
       return;
     }
 
-    setCatalogPlans(payload.plans || []);
+    setCatalogPlans(
+      Array.isArray(payload.plans)
+        ? payload.plans.map((plan: CatalogPlan) => ({
+            ...plan,
+            interventionLimitPerParticipant: clampInterventionLimit(
+              Number(plan.interventionLimitPerParticipant ?? 0),
+            ),
+          }))
+        : [],
+    );
     setSubscriptionPlanOptions(payload.availableSubscriptionPlans || []);
     setCatalogLoading(false);
   }, []);
@@ -271,7 +285,17 @@ export default function AdminMahaLilahCatalogPage() {
   ) => {
     setCatalogPlans((prev) =>
       prev.map((plan) =>
-        plan.planType === planTypeToUpdate ? updater(plan) : plan,
+        plan.planType === planTypeToUpdate
+          ? (() => {
+              const nextPlan = updater(plan);
+              return {
+                ...nextPlan,
+                interventionLimitPerParticipant: clampInterventionLimit(
+                  Number(nextPlan.interventionLimitPerParticipant ?? 0),
+                ),
+              };
+            })()
+          : plan,
       ),
     );
   };
@@ -349,7 +373,9 @@ export default function AdminMahaLilahCatalogPage() {
         tipsPerPlayer: plan.tipsPerPlayer,
         summaryLimit: plan.summaryLimit,
         progressSummaryEveryMoves: plan.progressSummaryEveryMoves,
-        interventionLimitPerParticipant: plan.interventionLimitPerParticipant,
+        interventionLimitPerParticipant: clampInterventionLimit(
+          Number(plan.interventionLimitPerParticipant ?? 0),
+        ),
         durationDays: plan.durationDays,
         isActive: plan.isActive,
         subscriptionPlanId: plan.subscriptionPlanId,
@@ -388,7 +414,16 @@ export default function AdminMahaLilahCatalogPage() {
       return;
     }
 
-    setCatalogPlans(response.plans || []);
+    setCatalogPlans(
+      Array.isArray(response.plans)
+        ? response.plans.map((plan: CatalogPlan) => ({
+            ...plan,
+            interventionLimitPerParticipant: clampInterventionLimit(
+              Number(plan.interventionLimitPerParticipant ?? 0),
+            ),
+          }))
+        : [],
+    );
     setSubscriptionPlanOptions(response.availableSubscriptionPlans || []);
     toast.success("Catálogo Maha Lilah atualizado com sucesso.");
     setCatalogSaving(false);
@@ -565,11 +600,14 @@ export default function AdminMahaLilahCatalogPage() {
                       <Input
                         type="number"
                         min={0}
+                        max={8}
                         value={singleSessionPlan.interventionLimitPerParticipant}
                         onChange={(event) =>
                           updatePlan("SINGLE_SESSION", (plan) => ({
                             ...plan,
-                            interventionLimitPerParticipant: Number(event.target.value || 0),
+                            interventionLimitPerParticipant: clampInterventionLimit(
+                              Number(event.target.value || 0),
+                            ),
                           }))
                         }
                       />
@@ -915,11 +953,14 @@ export default function AdminMahaLilahCatalogPage() {
                         <Input
                           type="number"
                           min={0}
+                          max={8}
                           value={subscriptionPlan.interventionLimitPerParticipant}
                           onChange={(event) =>
                             updatePlan("SUBSCRIPTION", (plan) => ({
                               ...plan,
-                              interventionLimitPerParticipant: Number(event.target.value || 0),
+                              interventionLimitPerParticipant: clampInterventionLimit(
+                                Number(event.target.value || 0),
+                              ),
                             }))
                           }
                         />
@@ -1116,11 +1157,14 @@ export default function AdminMahaLilahCatalogPage() {
                         <Input
                           type="number"
                           min={0}
+                          max={8}
                           value={subscriptionLimitedPlan.interventionLimitPerParticipant}
                           onChange={(event) =>
                             updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
                               ...plan,
-                              interventionLimitPerParticipant: Number(event.target.value || 0),
+                              interventionLimitPerParticipant: clampInterventionLimit(
+                                Number(event.target.value || 0),
+                              ),
                             }))
                           }
                         />
