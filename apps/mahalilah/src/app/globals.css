@@ -949,6 +949,12 @@ button:disabled {
   border-color: var(--maha-danger-border);
 }
 
+.room-intervention-center-badge-overview {
+  color: var(--ink);
+  background: rgba(154, 208, 255, 0.14);
+  border-color: rgba(154, 208, 255, 0.34);
+}
+
 .room-intervention-center-panel {
   pointer-events: auto;
   display: grid;
@@ -980,6 +986,12 @@ button:disabled {
 
 .mahalilah-ui[data-ui-theme="light"] .room-intervention-center-trigger-subtitle {
   color: hsl(var(--temple-text-secondary));
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-intervention-center-badge-overview {
+  color: hsl(var(--temple-text-primary));
+  background: rgba(88, 124, 166, 0.12);
+  border-color: rgba(88, 124, 166, 0.34);
 }
 
 .room-side-panel::-webkit-scrollbar {

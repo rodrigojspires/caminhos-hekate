@@ -1263,6 +1263,8 @@ export function RoomClient({
   const [interventionCenterPulse, setInterventionCenterPulse] = useState(false);
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
+  const [timelineTargetManualMode, setTimelineTargetManualMode] =
+    useState(false);
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
   const [summaryParticipantId, setSummaryParticipantId] = useState("");
   const [deckParticipantId, setDeckParticipantId] = useState("");
@@ -2486,6 +2488,11 @@ export function RoomClient({
       ? [singlePlayerParticipant]
       : timelineParticipants;
 
+  useEffect(() => {
+    if (timelineAndSummaryParticipants.length > 1 && isTherapist) return;
+    setTimelineTargetManualMode(false);
+  }, [timelineAndSummaryParticipants.length, isTherapist]);
+
   const boardParticipants = useMemo(() => {
     if (!state?.participants) return [];
     if (!isTherapistSoloPlay) return state.participants;
@@ -2837,9 +2844,11 @@ export function RoomClient({
     setAiHistoryParticipantId((prev) =>
       prev === nextParticipantId ? prev : nextParticipantId,
     );
-    setTimelineTargetParticipantId((prev) =>
-      prev === nextParticipantId ? prev : nextParticipantId,
-    );
+    if (!timelineTargetManualMode) {
+      setTimelineTargetParticipantId((prev) =>
+        prev === nextParticipantId ? prev : nextParticipantId,
+      );
+    }
     setSummaryParticipantId((prev) =>
       prev === nextParticipantId ? prev : nextParticipantId,
     );
@@ -2850,7 +2859,32 @@ export function RoomClient({
     shouldAutoSyncTherapistDropdownsByTurn,
     currentTurnParticipantId,
     currentTurnParticipantRole,
+    timelineTargetManualMode,
   ]);
+
+  useEffect(() => {
+    if (!isTherapist) return;
+    if (shouldLockPlayerDropdownForTherapist) return;
+    if (!currentTurnParticipantId) return;
+    if (timelineAndSummaryParticipants.length <= 1) return;
+    if (timelineTargetManualMode) return;
+
+    const hasTurnParticipantInFilter = timelineAndSummaryParticipants.some(
+      (participant) => participant.id === currentTurnParticipantId,
+    );
+    if (!hasTurnParticipantInFilter) return;
+
+    setTimelineTargetParticipantId((prev) =>
+      prev === currentTurnParticipantId ? prev : currentTurnParticipantId,
+    );
+  }, [
+    isTherapist,
+    shouldLockPlayerDropdownForTherapist,
+    currentTurnParticipantId,
+    timelineAndSummaryParticipants,
+    timelineTargetManualMode,
+  ]);
+
   const effectiveTimelineTargetParticipantId =
     shouldLockPlayerDropdownForTherapist && lockedPlayerParticipantId
       ? lockedPlayerParticipantId
@@ -4814,10 +4848,47 @@ export function RoomClient({
   const interventionCenterActiveCount = activeInterventionCenterItems.length;
   const interventionCenterPendingCount = pendingApprovalInterventions.length;
   const interventionCenterCriticalCount = criticalInterventions.length;
+  const interventionCenterRoomTotalCount = timelineInterventions.length;
   const interventionCenterHasMoreItems =
     (activeInterventionCenterItems.length > 0
       ? activeInterventionCenterItems.length
       : interventionCenterItems.length) > interventionCenterVisibleItems.length;
+
+  const handleTimelineTargetParticipantChange = useCallback(
+    (nextParticipantId: string) => {
+      setTimelineTargetParticipantId(nextParticipantId);
+
+      if (!isTherapist || shouldLockPlayerDropdownForTherapist) {
+        setTimelineTargetManualMode(false);
+        return;
+      }
+
+      if (timelineAndSummaryParticipants.length <= 1) {
+        setTimelineTargetManualMode(false);
+        return;
+      }
+
+      if (!currentTurnParticipantId) {
+        setTimelineTargetManualMode(Boolean(nextParticipantId));
+        return;
+      }
+
+      setTimelineTargetManualMode(nextParticipantId !== currentTurnParticipantId);
+    },
+    [
+      isTherapist,
+      shouldLockPlayerDropdownForTherapist,
+      timelineAndSummaryParticipants.length,
+      currentTurnParticipantId,
+    ],
+  );
+
+  const handleEnableTimelineTargetAutoMode = useCallback(() => {
+    setTimelineTargetManualMode(false);
+    if (currentTurnParticipantId) {
+      setTimelineTargetParticipantId(currentTurnParticipantId);
+    }
+  }, [currentTurnParticipantId]);
 
   const openTimelinePanel = (participantId?: string) => {
     if (participantId) {
@@ -5120,6 +5191,25 @@ export function RoomClient({
               </span>
             )}
           </span>
+          {isTherapist && (
+            <span className="room-intervention-center-badges">
+              <span className="room-intervention-center-badge room-intervention-center-badge-overview">
+                Total da sala: <strong>{interventionCenterRoomTotalCount}</strong>
+              </span>
+              {timelineAndSummaryParticipants.length > 1 &&
+                interventionCenterCountsByParticipant.map((entry) => (
+                  <span
+                    key={`intervention-count-${entry.id}`}
+                    className="room-intervention-center-badge room-intervention-center-badge-overview"
+                  >
+                    {entry.label}:{" "}
+                    <strong>
+                      {entry.active}/{entry.total}
+                    </strong>
+                  </span>
+                ))}
+            </span>
+          )}
         </button>
 
         {interventionCenterOpen && (
@@ -5160,7 +5250,7 @@ export function RoomClient({
                     value={effectiveTimelineTargetParticipantId}
                     disabled={shouldLockPlayerDropdownForTherapist}
                     onChange={(event) =>
-                      setTimelineTargetParticipantId(event.target.value)
+                      handleTimelineTargetParticipantChange(event.target.value)
                     }
                   >
                     {!shouldLockPlayerDropdownForTherapist && (
@@ -5173,19 +5263,34 @@ export function RoomClient({
                     ))}
                   </select>
                 </label>
-                <div style={{ display: "grid", gap: 4 }}>
-                  <span className="small-muted">Intervenções por jogador</span>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {interventionCenterCountsByParticipant.map((entry) => (
-                      <span key={entry.id} className="pill">
-                        {entry.label}:{" "}
-                        <strong>
-                          {entry.active}/{entry.total}
-                        </strong>
-                      </span>
-                    ))}
+                {timelineTargetManualMode && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span className="small-muted">
+                      Modo manual ativo. O jogador da vez não vai sobrescrever o filtro.
+                    </span>
+                    <button
+                      className="btn-secondary"
+                      style={{ padding: "4px 10px", height: "auto" }}
+                      onClick={handleEnableTimelineTargetAutoMode}
+                      disabled={!currentTurnParticipantId}
+                      title={
+                        currentTurnParticipantId && currentParticipant
+                          ? `Voltar a seguir o jogador da vez (${getParticipantDisplayName(currentParticipant)}).`
+                          : "Voltar a seguir o jogador da vez."
+                      }
+                    >
+                      Seguir jogador da vez
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
             )}
             {timelineLoading && !timelineLoaded ? (
@@ -7483,7 +7588,7 @@ export function RoomClient({
                   value={effectiveTimelineTargetParticipantId}
                   disabled={shouldLockPlayerDropdownForTherapist}
                   onChange={(event) =>
-                    setTimelineTargetParticipantId(event.target.value)
+                    handleTimelineTargetParticipantChange(event.target.value)
                   }
                 >
                   {!shouldLockPlayerDropdownForTherapist && (
