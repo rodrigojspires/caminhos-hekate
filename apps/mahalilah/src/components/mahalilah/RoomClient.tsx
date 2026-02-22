@@ -1494,9 +1494,10 @@ export function RoomClient({
     const lastMoveId = state?.lastMove?.id;
     if (!lastMoveId) return;
     if (highlightedMoveIdRef.current === lastMoveId) return;
+    if (diceModalOpen) return;
     highlightedMoveIdRef.current = lastMoveId;
     triggerHouseMeaningHighlight();
-  }, [state?.lastMove?.id, triggerHouseMeaningHighlight]);
+  }, [diceModalOpen, state?.lastMove?.id, triggerHouseMeaningHighlight]);
 
   useEffect(() => {
     syncDesktopMainAreaMaxHeight();
