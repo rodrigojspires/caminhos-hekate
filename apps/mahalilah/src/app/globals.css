@@ -52,8 +52,8 @@
   --temple-surface-1: 42 46% 99%;
   --temple-surface-2: 43 40% 96%;
   --temple-surface-3: 39 50% 90%;
-  --temple-text-primary: 219 30% 18%;
-  --temple-text-secondary: 219 17% 37%;
+  --temple-text-primary: 220 42% 11%;
+  --temple-text-secondary: 220 23% 24%;
   --temple-border-subtle: 220 22% 77%;
   --temple-accent-gold: 38 78% 48%;
   --temple-accent-violet: 257 42% 54%;
@@ -68,6 +68,10 @@
     rgba(239, 241, 247, 0.96)
   );
   --maha-toast-bg: rgba(249, 251, 255, 0.96);
+}
+
+.mahalilah-ui {
+  color: var(--ink);
 }
 
 .mahalilah-ui[data-ui-theme="light"] .card {
@@ -103,12 +107,15 @@
   background: rgba(255, 255, 255, 0.84);
 }
 
+.mahalilah-ui[data-ui-theme="light"] .small-muted {
+  color: hsl(var(--temple-text-secondary));
+}
+
 .mahalilah-ui[data-reading-mode="true"] {
   --temple-border-subtle: 216 21% 40%;
 }
 
 .mahalilah-ui[data-reading-mode="true"] .small-muted {
-  font-size: 14px;
   line-height: 1.62;
 }
 
