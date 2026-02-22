@@ -684,16 +684,18 @@ button:disabled {
 @keyframes mahalilah-house-meaning-blink-light {
   0%,
   100% {
-    border-color: rgba(126, 86, 28, 0.74);
+    border-color: rgba(121, 73, 9, 0.84);
     box-shadow:
-      0 0 0 1px rgba(126, 86, 28, 0.24) inset,
-      0 0 16px rgba(126, 86, 28, 0.14);
+      0 0 0 1px rgba(121, 73, 9, 0.36) inset,
+      0 0 24px rgba(224, 143, 26, 0.34),
+      0 0 40px rgba(224, 143, 26, 0.16);
   }
   50% {
-    border-color: rgba(95, 63, 18, 0.96);
+    border-color: rgba(78, 44, 6, 0.98);
     box-shadow:
-      0 0 0 1px rgba(95, 63, 18, 0.42) inset,
-      0 0 24px rgba(95, 63, 18, 0.22);
+      0 0 0 2px rgba(78, 44, 6, 0.55) inset,
+      0 0 38px rgba(231, 146, 28, 0.58),
+      0 0 58px rgba(231, 146, 28, 0.34);
   }
 }
 
@@ -746,7 +748,7 @@ button:disabled {
 }
 
 .mahalilah-ui[data-ui-theme="light"] .room-house-meaning-highlight {
-  border-color: rgba(126, 86, 28, 0.74);
+  border-color: rgba(121, 73, 9, 0.84);
   background: linear-gradient(
       155deg,
       rgba(214, 162, 62, 0.28) 0%,
@@ -755,8 +757,8 @@ button:disabled {
     ),
     hsl(var(--temple-surface-2));
   box-shadow:
-    0 0 0 1px rgba(126, 86, 28, 0.24) inset,
-    0 0 16px rgba(126, 86, 28, 0.14);
+    0 0 0 1px rgba(121, 73, 9, 0.32) inset,
+    0 0 22px rgba(224, 143, 26, 0.22);
 }
 
 .mahalilah-ui[data-ui-theme="light"] .room-house-meaning-highlight[data-blink="true"] {
@@ -846,6 +848,22 @@ button:disabled {
 
 .room-side-panel::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-side-panel {
+  scrollbar-color: rgba(70, 86, 112, 0.74) rgba(229, 236, 248, 0.52);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-side-panel::-webkit-scrollbar-thumb {
+  background: rgba(70, 86, 112, 0.74);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-side-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(54, 67, 91, 0.86);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-side-panel::-webkit-scrollbar-track {
+  background: rgba(229, 236, 248, 0.52);
 }
 
 .room-mobile-panel-header,

@@ -4329,6 +4329,14 @@ export function RoomClient({
     ? "rgba(9, 20, 34, 0.92)"
     : "rgba(10, 22, 34, 0.9)";
   const boardChakraBlendMode = isLightTheme ? "multiply" : "screen";
+  const aiPrimaryActionButtonStyle = {
+    background:
+      "linear-gradient(135deg, rgba(224, 186, 95, 0.96), rgba(182, 131, 45, 0.96))",
+    borderColor: "rgba(255, 229, 160, 0.72)",
+    color: "#231302",
+    fontWeight: 700,
+    boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
+  } as const;
 
   return (
     <div
@@ -6059,14 +6067,7 @@ export function RoomClient({
                     className="secondary"
                     disabled={!canUseAiTipActions || aiTipLoading}
                     onClick={() => requestAiTip({ mode: "currentHouse" })}
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(224, 186, 95, 0.96), rgba(182, 131, 45, 0.96))",
-                      borderColor: "rgba(255, 229, 160, 0.72)",
-                      color: "#231302",
-                      fontWeight: 700,
-                      boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
-                    }}
+                    style={aiPrimaryActionButtonStyle}
                   >
                     {aiTipLoading
                       ? "Processando ajuda..."
@@ -6117,14 +6118,7 @@ export function RoomClient({
                         question: aiPathHelpInput,
                       })
                     }
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(224, 186, 95, 0.96), rgba(182, 131, 45, 0.96))",
-                      borderColor: "rgba(255, 229, 160, 0.72)",
-                      color: "#231302",
-                      fontWeight: 700,
-                      boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
-                    }}
+                    style={aiPrimaryActionButtonStyle}
                   >
                     {aiTipLoading
                       ? "Processando ajuda..."
@@ -6342,6 +6336,7 @@ export function RoomClient({
                   });
                 }}
                 disabled={!canUseAiActions || finalReportLoading}
+                style={aiPrimaryActionButtonStyle}
               >
                 {finalReportLoading
                   ? "Gerando resumo final..."
@@ -7894,6 +7889,7 @@ export function RoomClient({
               )}
 
               <button
+                className="secondary"
                 disabled={finalReportLoading}
                 onClick={async () => {
                   const ok =
@@ -7924,9 +7920,10 @@ export function RoomClient({
                   ? "Gerando..."
                   : finalReportPrompt.mode === "close"
                     ? "Gerar e encerrar"
-                    : finalReportPrompt.mode === "trialLimit"
+                  : finalReportPrompt.mode === "trialLimit"
                       ? "Gerar resumo e continuar"
                     : "Gerar agora"}
+                style={aiPrimaryActionButtonStyle}
               </button>
             </div>
           </div>
