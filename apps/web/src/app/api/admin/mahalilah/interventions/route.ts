@@ -14,6 +14,16 @@ const ThresholdsSchema = z.object({
   snakeStreakCount: z.number().int().min(0).max(999).nullable().optional(),
   preStartRollCount: z.number().int().min(0).max(999).nullable().optional(),
   inactivityMinutes: z.number().int().min(0).max(999).nullable().optional(),
+  inactivitySeconds: z.number().int().min(0).max(9999).nullable().optional(),
+  shadowStreakCount: z.number().int().min(0).max(999).nullable().optional(),
+  snakeWindowMoves: z.number().int().min(0).max(999).nullable().optional(),
+  noTherapyWindowMoves: z.number().int().min(0).max(999).nullable().optional(),
+  strongMoveMinDelta: z.number().int().min(0).max(999).nullable().optional(),
+  intensityMin: z.number().int().min(0).max(999).nullable().optional(),
+  intensityRepeatCount: z.number().int().min(0).max(999).nullable().optional(),
+  intensityWindowEntries: z.number().int().min(0).max(999).nullable().optional(),
+  fatigueMoveCount: z.number().int().min(0).max(9999).nullable().optional(),
+  therapistSilenceMoves: z.number().int().min(0).max(9999).nullable().optional(),
 })
 
 const PromptSchema = z.object({
@@ -32,7 +42,7 @@ const InterventionConfigSchema = z.object({
     .trim()
     .min(3)
     .max(120)
-    .regex(/^[A-Z0-9_]+$/, 'Use apenas letras maiúsculas, números e underscore'),
+    .regex(/^[A-Za-z0-9_]+$/, 'Use apenas letras, números e underscore'),
   title: z.string().trim().min(2).max(140),
   description: z.string().trim().max(700).nullable().optional(),
   enabled: z.boolean(),
@@ -79,6 +89,16 @@ function normalizeThresholds(value: unknown) {
     'snakeStreakCount',
     'preStartRollCount',
     'inactivityMinutes',
+    'inactivitySeconds',
+    'shadowStreakCount',
+    'snakeWindowMoves',
+    'noTherapyWindowMoves',
+    'strongMoveMinDelta',
+    'intensityMin',
+    'intensityRepeatCount',
+    'intensityWindowEntries',
+    'fatigueMoveCount',
+    'therapistSilenceMoves',
   ] as const
 
   keys.forEach((key) => {

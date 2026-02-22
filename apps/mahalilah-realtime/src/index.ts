@@ -12,6 +12,7 @@ import {
   START_INDEX,
   getHouseByNumber,
 } from "@hekate/mahalilah-core";
+import { MAHALILAH_INTERVENTION_SEED_DATA } from "../../../packages/database/prisma/seed.mahalilah-interventions";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
@@ -137,6 +138,16 @@ type InterventionThresholds = {
   snakeStreakCount?: number;
   preStartRollCount?: number;
   inactivityMinutes?: number;
+  inactivitySeconds?: number;
+  shadowStreakCount?: number;
+  snakeWindowMoves?: number;
+  noTherapyWindowMoves?: number;
+  strongMoveMinDelta?: number;
+  intensityMin?: number;
+  intensityRepeatCount?: number;
+  intensityWindowEntries?: number;
+  fatigueMoveCount?: number;
+  therapistSilenceMoves?: number;
 };
 
 type InterventionPromptRecord = {
@@ -201,142 +212,28 @@ type DefaultInterventionCatalogItem = {
   }>;
 };
 
-const DEFAULT_INTERVENTION_CATALOG: DefaultInterventionCatalogItem[] = [
-  {
-    triggerId: "HOUSE_REPEAT_PATTERN",
-    title: "Casa recorrente detectada",
-    description:
-      "Dispara quando o participante repete a mesma casa várias vezes em uma janela curta.",
-    enabled: true,
-    useAi: false,
-    sensitive: false,
-    requireTherapistApproval: false,
-    autoApproveWhenTherapistSolo: true,
-    severity: "ATTENTION",
-    cooldownMoves: 2,
-    cooldownMinutes: 8,
-    thresholds: {
-      houseRepeatCount: 3,
-      repeatedHouseWindowMoves: 10,
-    },
-    metadata: {
-      titleTemplate: "Tema recorrente na casa {{houseNumber}}",
-      messageTemplate:
-        "A casa {{houseNumber}} reapareceu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas. Isso pode indicar um tema que está pedindo integração consciente nesta etapa da jornada.",
-      reflectionQuestion:
-        "O que esta repetição está tentando me mostrar e que ainda não foi integrado?",
-      microAction:
-        "Registre em uma frase qual aprendizado desta casa você escolhe praticar nas próximas 24 horas.",
-    },
-  },
-  {
-    triggerId: "SNAKE_STREAK_PATTERN",
-    title: "Sequência de descidas detectada",
-    description:
-      "Dispara quando há sequência de descidas (cobras) em poucas jogadas.",
-    enabled: true,
-    useAi: false,
-    sensitive: true,
-    requireTherapistApproval: true,
-    autoApproveWhenTherapistSolo: true,
-    severity: "CRITICAL",
-    cooldownMoves: 3,
-    cooldownMinutes: 12,
-    thresholds: {
-      snakeStreakCount: 2,
-    },
-    metadata: {
-      titleTemplate: "Atenção para padrão de queda",
-      messageTemplate:
-        "Foram identificadas {{snakeCount}} descidas em sequência. Esse padrão pode estar associado a uma trava emocional, autocrítica elevada ou retorno a estratégias antigas de proteção.",
-      reflectionQuestion:
-        "Qual contexto interno ou externo costuma anteceder essas quedas de energia e clareza?",
-      microAction:
-        "Escolha uma ação breve de autorregulação antes da próxima rolagem (respiração, pausa ou anotação do gatilho percebido).",
-    },
-  },
-  {
-    triggerId: "PRE_START_STUCK_PATTERN",
-    title: "Demora para iniciar o caminho",
-    description:
-      "Dispara quando o participante demora para iniciar a jornada (muitos 6 não obtidos).",
-    enabled: true,
-    useAi: false,
-    sensitive: false,
-    requireTherapistApproval: false,
-    autoApproveWhenTherapistSolo: true,
-    severity: "INFO",
-    cooldownMoves: 2,
-    cooldownMinutes: 10,
-    thresholds: {
-      preStartRollCount: 4,
-    },
-    metadata: {
-      titleTemplate: "Resistência inicial percebida",
-      messageTemplate:
-        "Foram {{rollsUntilStart}} tentativas sem iniciar a jornada. Esse momento pode sinalizar proteção, hesitação ou necessidade de segurança antes de avançar.",
-      reflectionQuestion:
-        "O que precisa estar presente para eu me sentir seguro(a) para dar o próximo passo?",
-      microAction:
-        "Nomeie uma pequena condição de segurança interna que você pode ativar agora.",
-    },
-  },
-  {
-    triggerId: "INACTIVITY_REENGAGE_AI",
-    title: "Reengajar após pausa longa",
-    description:
-      "Gatilho com IA para retomada quando há intervalo grande sem rolagem.",
-    enabled: true,
-    useAi: true,
-    sensitive: true,
-    requireTherapistApproval: true,
-    autoApproveWhenTherapistSolo: true,
-    severity: "ATTENTION",
-    cooldownMoves: 2,
-    cooldownMinutes: 20,
-    thresholds: {
-      inactivityMinutes: 8,
-    },
-    prompts: [
-      {
-        locale: "pt-BR",
-        name: "Retomada após pausa",
-        systemPrompt:
-          "Você é assistente terapêutico do Maha Lilah. Gere intervenção breve, prática e acolhedora. Evite diagnóstico.",
-        userPromptTemplate:
-          "Contexto do jogador (JSON):\n{{contextJson}}\n\nHouve uma pausa de {{inactivityMinutes}} minutos sem rolagem. Gere uma intervenção para retomada no formato JSON puro:\n{\"title\":\"...\",\"message\":\"...\",\"reflectionQuestion\":\"...\",\"microAction\":\"...\"}\n\nRegras:\n- Português claro.\n- Mensagem curta e objetiva (máximo 90 palavras).\n- Pergunta reflexiva única.\n- Microação prática de 1 passo.",
-      },
-    ],
-  },
-  {
-    triggerId: "HOUSE_REPEAT_AI",
-    title: "Ampliação com IA para repetição de casa",
-    description:
-      "Gatilho com IA para aprofundar significado de repetição de casa.",
-    enabled: true,
-    useAi: true,
-    sensitive: false,
-    requireTherapistApproval: false,
-    autoApproveWhenTherapistSolo: true,
-    severity: "INFO",
-    cooldownMoves: 3,
-    cooldownMinutes: 15,
-    thresholds: {
-      houseRepeatCount: 4,
-      repeatedHouseWindowMoves: 12,
-    },
-    prompts: [
-      {
-        locale: "pt-BR",
-        name: "Leitura de repetição",
-        systemPrompt:
-          "Você é assistente terapêutico do Maha Lilah. Produza intervenção curta, sem exageros e com linguagem simples.",
-        userPromptTemplate:
-          "Contexto do jogador (JSON):\n{{contextJson}}\n\nA casa {{houseNumber}} repetiu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas.\nCrie uma intervenção terapêutica no formato JSON puro:\n{\"title\":\"...\",\"message\":\"...\",\"reflectionQuestion\":\"...\",\"microAction\":\"...\"}\n\nConecte a resposta ao simbolismo da casa e ao caminho já percorrido.",
-      },
-    ],
-  },
-];
+const DEFAULT_INTERVENTION_CATALOG: DefaultInterventionCatalogItem[] =
+  MAHALILAH_INTERVENTION_SEED_DATA.map((item) => ({
+    triggerId: item.triggerId,
+    title: item.title,
+    description: item.description,
+    enabled: item.enabled,
+    useAi: item.useAi,
+    sensitive: item.sensitive,
+    requireTherapistApproval: item.requireTherapistApproval,
+    autoApproveWhenTherapistSolo: item.autoApproveWhenTherapistSolo,
+    severity: item.severity as InterventionSeverity,
+    cooldownMoves: item.cooldownMoves,
+    cooldownMinutes: item.cooldownMinutes,
+    thresholds: item.thresholds as InterventionThresholds,
+    metadata: item.metadata,
+    prompts: item.prompts?.map((prompt) => ({
+      locale: prompt.locale,
+      name: prompt.name,
+      systemPrompt: prompt.systemPrompt,
+      userPromptTemplate: prompt.userPromptTemplate,
+    })),
+  }));
 
 function getMahaLilahOpenSecret() {
   return process.env.MAHALILAH_SOCKET_SECRET || process.env.NEXTAUTH_SECRET;
@@ -535,6 +432,16 @@ function normalizeInterventionThresholds(raw: unknown): InterventionThresholds {
     snakeStreakCount: asNonNegativeInt(obj.snakeStreakCount, 0),
     preStartRollCount: asNonNegativeInt(obj.preStartRollCount, 0),
     inactivityMinutes: asNonNegativeInt(obj.inactivityMinutes, 0),
+    inactivitySeconds: asNonNegativeInt(obj.inactivitySeconds, 0),
+    shadowStreakCount: asNonNegativeInt(obj.shadowStreakCount, 0),
+    snakeWindowMoves: asNonNegativeInt(obj.snakeWindowMoves, 0),
+    noTherapyWindowMoves: asNonNegativeInt(obj.noTherapyWindowMoves, 0),
+    strongMoveMinDelta: asNonNegativeInt(obj.strongMoveMinDelta, 0),
+    intensityMin: asNonNegativeInt(obj.intensityMin, 0),
+    intensityRepeatCount: asNonNegativeInt(obj.intensityRepeatCount, 0),
+    intensityWindowEntries: asNonNegativeInt(obj.intensityWindowEntries, 0),
+    fatigueMoveCount: asNonNegativeInt(obj.fatigueMoveCount, 0),
+    therapistSilenceMoves: asNonNegativeInt(obj.therapistSilenceMoves, 0),
   };
 }
 
@@ -1749,6 +1656,10 @@ async function generateInterventionAiContent(params: {
       typeof triggerData.snakeCount === "number"
         ? triggerData.snakeCount
         : "",
+    shadowCount:
+      typeof triggerData.shadowCount === "number"
+        ? triggerData.shadowCount
+        : "",
     rollsUntilStart:
       typeof triggerData.rollsUntilStart === "number"
         ? triggerData.rollsUntilStart
@@ -1756,6 +1667,38 @@ async function generateInterventionAiContent(params: {
     inactivityMinutes:
       typeof triggerData.inactivityMinutes === "number"
         ? triggerData.inactivityMinutes
+        : "",
+    inactivitySeconds:
+      typeof triggerData.inactivitySeconds === "number"
+        ? triggerData.inactivitySeconds
+        : "",
+    movesInSession:
+      typeof triggerData.movesInSession === "number"
+        ? triggerData.movesInSession
+        : "",
+    fatigueThreshold:
+      typeof triggerData.fatigueThreshold === "number"
+        ? triggerData.fatigueThreshold
+        : "",
+    intensityMin:
+      typeof triggerData.intensityMin === "number"
+        ? triggerData.intensityMin
+        : "",
+    highIntensityCount:
+      typeof triggerData.highIntensityCount === "number"
+        ? triggerData.highIntensityCount
+        : "",
+    intensityWindowEntries:
+      typeof triggerData.intensityWindowEntries === "number"
+        ? triggerData.intensityWindowEntries
+        : "",
+    noTherapyWindowMoves:
+      typeof triggerData.noTherapyWindowMoves === "number"
+        ? triggerData.noTherapyWindowMoves
+        : "",
+    therapistSilenceMoves:
+      typeof triggerData.therapistSilenceMoves === "number"
+        ? triggerData.therapistSilenceMoves
         : "",
     turnNumber: params.candidate.turnNumber,
   });
@@ -1935,7 +1878,14 @@ async function evaluateInterventionsAfterMove(params: {
   participantId: string;
   moveId: string;
 }) {
-  const [room, allMoves, playerState, configsByTrigger] = await Promise.all([
+  const [
+    room,
+    allMoves,
+    playerState,
+    participantTherapyEntries,
+    recentRoomMoves,
+    configsByTrigger,
+  ] = await Promise.all([
     prisma.mahaLilahRoom.findUnique({
       where: { id: params.roomId },
       select: {
@@ -1981,6 +1931,31 @@ async function evaluateInterventionsAfterMove(params: {
         rollCountUntilStart: true,
       },
     }),
+    prisma.mahaLilahTherapyEntry.findMany({
+      where: {
+        roomId: params.roomId,
+        participantId: params.participantId,
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        moveId: true,
+        intensity: true,
+        createdAt: true,
+      },
+    }),
+    prisma.mahaLilahMove.findMany({
+      where: {
+        roomId: params.roomId,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        participantId: true,
+        turnNumber: true,
+      },
+    }),
     loadInterventionConfigsByTriggerId(),
   ]);
 
@@ -2019,60 +1994,87 @@ async function evaluateInterventionsAfterMove(params: {
     candidates.push(candidate);
   };
 
-  const houseRepeatRules = [
-    configsByTrigger.get("HOUSE_REPEAT_PATTERN"),
-    configsByTrigger.get("HOUSE_REPEAT_AI"),
-  ].filter(
-    (config): config is InterventionConfigRecord => Boolean(config && config.enabled),
+  const pickEnabledConfig = (...triggerIds: string[]) =>
+    triggerIds
+      .map((triggerId) => configsByTrigger.get(triggerId))
+      .find((config): config is InterventionConfigRecord => Boolean(config?.enabled));
+
+  const isShadowHouse = (houseNumber: number) => {
+    const house = getHouseByNumber(houseNumber);
+    const text = `${house?.title || ""} ${house?.description || ""}`.toLowerCase();
+    const shadowKeywords = [
+      "ilusão",
+      "raiva",
+      "ganância",
+      "aversão",
+      "nulidade",
+      "ciúme",
+      "tristeza",
+      "desalinhamento",
+      "ignorância",
+      "violência",
+      "inveja",
+    ];
+    return shadowKeywords.some((keyword) => text.includes(keyword));
+  };
+
+  const repeatConfig = pickEnabledConfig(
+    "repeat_house_short",
+    "HOUSE_REPEAT_AI",
+    "HOUSE_REPEAT_PATTERN",
   );
-  houseRepeatRules.forEach((config) => {
-    const repeatThreshold = Math.max(2, config.thresholds.houseRepeatCount || 0);
+  if (repeatConfig) {
+    const repeatThreshold = Math.max(2, repeatConfig.thresholds.houseRepeatCount || 0);
     const windowMoves = Math.max(
       repeatThreshold,
-      config.thresholds.repeatedHouseWindowMoves || repeatThreshold,
+      repeatConfig.thresholds.repeatedHouseWindowMoves || repeatThreshold,
     );
-    if (repeatThreshold <= 0 || windowMoves <= 0) return;
+    if (repeatThreshold > 0 && windowMoves > 0) {
+      const windowSlice = postStartMoves.slice(-windowMoves);
+      if (windowSlice.length >= repeatThreshold) {
+        const houseToTrack =
+          currentMove.appliedJumpTo ??
+          currentMove.appliedJumpFrom ??
+          currentMove.toPos;
+        const repeatCount = windowSlice.filter((item) => {
+          const house = item.appliedJumpTo ?? item.appliedJumpFrom ?? item.toPos;
+          return house === houseToTrack;
+        }).length;
+        if (repeatCount >= repeatThreshold) {
+          const houseMeta = getHouseByNumber(houseToTrack);
+          registerCandidate({
+            triggerId: repeatConfig.triggerId,
+            triggerLabel: repeatConfig.title,
+            severity: repeatConfig.severity,
+            turnNumber: currentMove.turnNumber,
+            moveId: currentMove.id,
+            triggerData: {
+              houseNumber: houseToTrack,
+              houseTitle: houseMeta?.title || null,
+              repeatCount,
+              windowMoves,
+            },
+            fallbackTitle: `Repetição na casa ${houseToTrack}`,
+            fallbackMessage: `A casa ${houseToTrack} (${houseMeta?.title || "sem título"}) apareceu ${repeatCount} vezes nas últimas ${windowMoves} jogadas.`,
+            fallbackReflectionQuestion:
+              "Qual aprendizado ainda está pedindo atenção nesta repetição?",
+            fallbackMicroAction:
+              "Anote um comportamento concreto para aplicar antes da próxima rolagem.",
+          });
+        }
+      }
+    }
+  }
 
-    const windowSlice = postStartMoves.slice(-windowMoves);
-    if (windowSlice.length < repeatThreshold) return;
-
-    const houseToTrack =
-      currentMove.appliedJumpTo ??
-      currentMove.appliedJumpFrom ??
-      currentMove.toPos;
-    const repeatCount = windowSlice.filter((item) => {
-      const house = item.appliedJumpTo ?? item.appliedJumpFrom ?? item.toPos;
-      return house === houseToTrack;
-    }).length;
-    if (repeatCount < repeatThreshold) return;
-
-    const houseMeta = getHouseByNumber(houseToTrack);
-    registerCandidate({
-      triggerId: config.triggerId,
-      triggerLabel: config.title,
-      severity: config.severity,
-      turnNumber: currentMove.turnNumber,
-      moveId: currentMove.id,
-      triggerData: {
-        houseNumber: houseToTrack,
-        houseTitle: houseMeta?.title || null,
-        repeatCount,
-        windowMoves,
-      },
-      fallbackTitle: `Repetição na casa ${houseToTrack}`,
-      fallbackMessage: `A casa ${houseToTrack} (${houseMeta?.title || "sem título"}) apareceu ${repeatCount} vezes nas últimas ${windowMoves} jogadas.`,
-      fallbackReflectionQuestion:
-        "Qual aprendizado ainda está pedindo atenção nesta repetição?",
-      fallbackMicroAction:
-        "Anote um comportamento concreto para aplicar antes da próxima rolagem.",
-    });
-  });
-
-  const snakeConfig = configsByTrigger.get("SNAKE_STREAK_PATTERN");
+  const snakeConfig = pickEnabledConfig("double_snake", "SNAKE_STREAK_PATTERN");
   if (snakeConfig?.enabled) {
     const snakeThreshold = Math.max(2, snakeConfig.thresholds.snakeStreakCount || 0);
+    const snakeWindow = Math.max(
+      snakeThreshold,
+      snakeConfig.thresholds.snakeWindowMoves || snakeThreshold,
+    );
     if (snakeThreshold > 0) {
-      const recentWindow = postStartMoves.slice(-snakeThreshold);
+      const recentWindow = postStartMoves.slice(-snakeWindow);
       const snakeCount = recentWindow.filter(
         (item) =>
           item.appliedJumpFrom !== null &&
@@ -2101,7 +2103,7 @@ async function evaluateInterventionsAfterMove(params: {
     }
   }
 
-  const preStartConfig = configsByTrigger.get("PRE_START_STUCK_PATTERN");
+  const preStartConfig = pickEnabledConfig("start_lock", "PRE_START_STUCK_PATTERN");
   if (preStartConfig?.enabled && playerState && !playerState.hasStarted) {
     const threshold = Math.max(2, preStartConfig.thresholds.preStartRollCount || 0);
     if (
@@ -2128,35 +2130,277 @@ async function evaluateInterventionsAfterMove(params: {
     }
   }
 
-  const inactivityConfig = configsByTrigger.get("INACTIVITY_REENGAGE_AI");
-  if (inactivityConfig?.enabled && allMoves.length >= 2) {
-    const inactivityMinutesThreshold = Math.max(
-      1,
-      inactivityConfig.thresholds.inactivityMinutes || 0,
-    );
-    if (inactivityMinutesThreshold > 0) {
-      const previousMove = allMoves[allMoves.length - 2];
-      const inactivityMs =
-        new Date(currentMove.createdAt).getTime() -
-        new Date(previousMove.createdAt).getTime();
-      const inactivityMinutes = Math.floor(inactivityMs / 60000);
+  const inactivitySoftConfig = pickEnabledConfig("turn_idle_soft");
+  const inactivityHardConfig = pickEnabledConfig(
+    "turn_idle_hard",
+    "INACTIVITY_REENGAGE_AI",
+  );
+  if ((inactivitySoftConfig || inactivityHardConfig) && allMoves.length >= 2) {
+    const previousMove = allMoves[allMoves.length - 2];
+    const inactivityMs =
+      new Date(currentMove.createdAt).getTime() -
+      new Date(previousMove.createdAt).getTime();
+    const inactivitySeconds = Math.floor(inactivityMs / 1000);
+    const inactivityMinutes = Math.floor(inactivityMs / 60000);
 
-      if (inactivityMinutes >= inactivityMinutesThreshold) {
+    const hardThresholdSeconds = inactivityHardConfig
+      ? Math.max(
+          1,
+          inactivityHardConfig.thresholds.inactivitySeconds ||
+            Math.floor(
+              Math.max(1, inactivityHardConfig.thresholds.inactivityMinutes || 0) * 60,
+            ),
+        )
+      : 0;
+    const softThresholdSeconds = inactivitySoftConfig
+      ? Math.max(
+          1,
+          inactivitySoftConfig.thresholds.inactivitySeconds ||
+            Math.floor(
+              Math.max(1, inactivitySoftConfig.thresholds.inactivityMinutes || 0) * 60,
+            ),
+        )
+      : 0;
+
+    if (inactivityHardConfig && inactivitySeconds >= hardThresholdSeconds) {
+      registerCandidate({
+        triggerId: inactivityHardConfig.triggerId,
+        triggerLabel: inactivityHardConfig.title,
+        severity: inactivityHardConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          inactivitySeconds,
+          inactivityMinutes,
+        },
+        fallbackTitle: "Retomada após pausa longa",
+        fallbackMessage: `Houve uma pausa de ${inactivityMinutes} minutos sem rolagem. Pode ser útil retomar com intenção clara e ritmo seguro.`,
+        fallbackReflectionQuestion:
+          "O que estava acontecendo internamente durante a pausa desta jornada?",
+        fallbackMicroAction:
+          "Nomeie em uma frase qual presença você quer cultivar na próxima jogada.",
+      });
+    } else if (inactivitySoftConfig && inactivitySeconds >= softThresholdSeconds) {
+      registerCandidate({
+        triggerId: inactivitySoftConfig.triggerId,
+        triggerLabel: inactivitySoftConfig.title,
+        severity: inactivitySoftConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          inactivitySeconds,
+          inactivityMinutes,
+        },
+        fallbackTitle: "Pausa no turno",
+        fallbackMessage: `Foram ${inactivitySeconds} segundos sem rolagem neste turno. Retome com presença e clareza.`,
+        fallbackReflectionQuestion:
+          "O que você precisa ajustar para retomar o fluxo da sessão agora?",
+        fallbackMicroAction:
+          "Respire fundo e declare em uma frase sua intenção para a próxima jogada.",
+      });
+    }
+  }
+
+  const sessionFatigueConfig = pickEnabledConfig("session_fatigue");
+  if (sessionFatigueConfig?.enabled) {
+    const fatigueThreshold = Math.max(
+      1,
+      sessionFatigueConfig.thresholds.fatigueMoveCount || 40,
+    );
+    if (postStartMoves.length >= fatigueThreshold) {
+      registerCandidate({
+        triggerId: sessionFatigueConfig.triggerId,
+        triggerLabel: sessionFatigueConfig.title,
+        severity: sessionFatigueConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          movesInSession: postStartMoves.length,
+          fatigueThreshold,
+        },
+        fallbackTitle: "Fadiga de sessão",
+        fallbackMessage: `A sessão já chegou a ${postStartMoves.length} jogadas. Pode ser útil fazer uma breve pausa e reorganizar o foco.`,
+        fallbackReflectionQuestion:
+          "O que precisa ser priorizado daqui para frente para manter qualidade de presença?",
+        fallbackMicroAction:
+          "Defina um micro intervalo de regulação antes de seguir com a próxima rodada.",
+      });
+    }
+  }
+
+  const shadowStreakConfig = pickEnabledConfig("shadow_streak");
+  if (shadowStreakConfig?.enabled) {
+    const shadowThreshold = Math.max(
+      2,
+      shadowStreakConfig.thresholds.shadowStreakCount || 3,
+    );
+    if (postStartMoves.length >= shadowThreshold) {
+      const recentHouses = postStartMoves
+        .slice(-shadowThreshold)
+        .map((move) => move.appliedJumpTo ?? move.appliedJumpFrom ?? move.toPos);
+      const shadowCount = recentHouses.filter((houseNumber) =>
+        isShadowHouse(houseNumber),
+      ).length;
+      if (shadowCount >= shadowThreshold) {
         registerCandidate({
-          triggerId: inactivityConfig.triggerId,
-          triggerLabel: inactivityConfig.title,
-          severity: inactivityConfig.severity,
+          triggerId: shadowStreakConfig.triggerId,
+          triggerLabel: shadowStreakConfig.title,
+          severity: shadowStreakConfig.severity,
           turnNumber: currentMove.turnNumber,
           moveId: currentMove.id,
           triggerData: {
-            inactivityMinutes,
+            shadowCount,
+            shadowThreshold,
+            recentShadowHouses: recentHouses,
           },
-          fallbackTitle: "Retomada após pausa",
-          fallbackMessage: `Houve uma pausa de ${inactivityMinutes} minutos sem rolagem. Pode ser útil retomar com intenção clara e ritmo seguro.`,
+          fallbackTitle: "Sequência de casas sombra",
+          fallbackMessage: `Foram detectadas ${shadowCount} casas sombra seguidas. Esse padrão pede atenção terapêutica cuidadosa.`,
           fallbackReflectionQuestion:
-            "O que estava acontecendo internamente durante a pausa desta jornada?",
+            "Que tema emocional recorrente está pedindo acolhimento e integração agora?",
           fallbackMicroAction:
-            "Nomeie em uma frase qual presença você quer cultivar na próxima jogada.",
+            "Pausa breve: nomeie o tema dominante em uma frase antes de seguir.",
+        });
+      }
+    }
+  }
+
+  const noTherapyAfterStrongMoveConfig = pickEnabledConfig(
+    "no_therapy_after_strong_move",
+  );
+  if (noTherapyAfterStrongMoveConfig?.enabled && postStartMoves.length >= 3) {
+    const noTherapyWindowMoves = Math.max(
+      1,
+      noTherapyAfterStrongMoveConfig.thresholds.noTherapyWindowMoves || 2,
+    );
+    const strongMoveMinDelta = Math.max(
+      1,
+      noTherapyAfterStrongMoveConfig.thresholds.strongMoveMinDelta || 8,
+    );
+
+    let strongMoveIndex = -1;
+    for (let index = postStartMoves.length - 1; index >= 0; index -= 1) {
+      const move = postStartMoves[index];
+      const jumpDelta =
+        move.appliedJumpFrom != null && move.appliedJumpTo != null
+          ? Math.abs(move.appliedJumpFrom - move.appliedJumpTo)
+          : 0;
+      if (jumpDelta >= strongMoveMinDelta) {
+        strongMoveIndex = index;
+        break;
+      }
+    }
+
+    if (strongMoveIndex >= 0) {
+      const movesSinceStrong = postStartMoves.length - 1 - strongMoveIndex;
+      if (movesSinceStrong >= noTherapyWindowMoves) {
+        const windowMoveIds = postStartMoves
+          .slice(strongMoveIndex + 1, strongMoveIndex + 1 + noTherapyWindowMoves)
+          .map((move) => move.id);
+        const hasTherapyInWindow = participantTherapyEntries.some(
+          (entry) => entry.moveId && windowMoveIds.includes(entry.moveId),
+        );
+
+        if (!hasTherapyInWindow) {
+          registerCandidate({
+            triggerId: noTherapyAfterStrongMoveConfig.triggerId,
+            triggerLabel: noTherapyAfterStrongMoveConfig.title,
+            severity: noTherapyAfterStrongMoveConfig.severity,
+            turnNumber: currentMove.turnNumber,
+            moveId: currentMove.id,
+            triggerData: {
+              noTherapyWindowMoves,
+              strongMoveMinDelta,
+              strongMoveTurnNumber: postStartMoves[strongMoveIndex]?.turnNumber,
+            },
+            fallbackTitle: "Sem registro terapêutico após jogada intensa",
+            fallbackMessage: `Após uma jogada intensa, não houve registro terapêutico nas ${noTherapyWindowMoves} jogadas seguintes.`,
+            fallbackReflectionQuestion:
+              "O que ficou sem nome ou sem elaboração depois dessa virada?",
+            fallbackMicroAction:
+              "Registre em uma frase o principal impacto emocional dessa sequência.",
+          });
+        }
+      }
+    }
+  }
+
+  const highIntensityConfig = pickEnabledConfig("high_intensity_recurrence");
+  if (highIntensityConfig?.enabled) {
+    const intensityMin = Math.max(1, highIntensityConfig.thresholds.intensityMin || 8);
+    const intensityRepeatCount = Math.max(
+      2,
+      highIntensityConfig.thresholds.intensityRepeatCount || 3,
+    );
+    const intensityWindowEntries = Math.max(
+      intensityRepeatCount,
+      highIntensityConfig.thresholds.intensityWindowEntries || 5,
+    );
+    const recentEntries = participantTherapyEntries.slice(-intensityWindowEntries);
+    const highIntensityCount = recentEntries.filter(
+      (entry) =>
+        typeof entry.intensity === "number" && entry.intensity >= intensityMin,
+    ).length;
+
+    if (highIntensityCount >= intensityRepeatCount) {
+      registerCandidate({
+        triggerId: highIntensityConfig.triggerId,
+        triggerLabel: highIntensityConfig.title,
+        severity: highIntensityConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          intensityMin,
+          highIntensityCount,
+          intensityWindowEntries,
+        },
+        fallbackTitle: "Recorrência de alta intensidade",
+        fallbackMessage: `A intensidade emocional alta (>= ${intensityMin}) apareceu ${highIntensityCount} vezes em registros recentes.`,
+        fallbackReflectionQuestion:
+          "Que padrão emocional recorrente está pedindo suporte terapêutico neste momento?",
+        fallbackMicroAction:
+          "Antes da próxima jogada, faça uma micro regulação e registre o estado atual.",
+      });
+    }
+  }
+
+  const therapistSilenceConfig = pickEnabledConfig("therapist_silence");
+  if (therapistSilenceConfig?.enabled && room.therapistPlays) {
+    const therapistParticipantIds = room.participants
+      .filter((participant) => participant.role === "THERAPIST")
+      .map((participant) => participant.id);
+    const movedParticipant = room.participants.find(
+      (participant) => participant.id === params.participantId,
+    );
+    const silenceThreshold = Math.max(
+      1,
+      therapistSilenceConfig.thresholds.therapistSilenceMoves || 8,
+    );
+
+    if (
+      therapistParticipantIds.length > 0 &&
+      movedParticipant?.role === "PLAYER" &&
+      recentRoomMoves.length >= silenceThreshold
+    ) {
+      const recentWindow = recentRoomMoves.slice(0, silenceThreshold);
+      const hasTherapistMoveInWindow = recentWindow.some((move) =>
+        therapistParticipantIds.includes(move.participantId),
+      );
+      if (!hasTherapistMoveInWindow) {
+        registerCandidate({
+          triggerId: therapistSilenceConfig.triggerId,
+          triggerLabel: therapistSilenceConfig.title,
+          severity: therapistSilenceConfig.severity,
+          turnNumber: currentMove.turnNumber,
+          moveId: currentMove.id,
+          triggerData: {
+            therapistSilenceMoves: silenceThreshold,
+          },
+          fallbackTitle: "Silêncio terapêutico prolongado",
+          fallbackMessage: `Já ocorreram ${silenceThreshold} jogadas sem participação do terapeuta. Avalie se uma intervenção de condução é necessária.`,
+          fallbackReflectionQuestion:
+            "Qual intervenção breve do terapeuta ajudaria a manter direção e segurança da sessão?",
+          fallbackMicroAction:
+            "Sinalize um ponto de atenção terapêutica antes da próxima rodada.",
         });
       }
     }

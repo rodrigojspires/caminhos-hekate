@@ -19,151 +19,265 @@ export type SeedInterventionConfigInput = {
   severity: 'INFO' | 'ATTENTION' | 'CRITICAL'
   cooldownMoves: number
   cooldownMinutes: number
-  thresholds: {
-    houseRepeatCount?: number
-    repeatedHouseWindowMoves?: number
-    snakeStreakCount?: number
-    preStartRollCount?: number
-    inactivityMinutes?: number
-  }
+  thresholds: Record<string, number>
   metadata?: Record<string, unknown>
   prompts?: SeedInterventionPromptInput[]
 }
 
 export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
   {
-    triggerId: 'HOUSE_REPEAT_PATTERN',
-    title: 'Casa recorrente detectada',
+    triggerId: 'turn_idle_soft',
+    title: 'Inatividade leve no turno',
     description:
-      'Dispara quando o participante repete a mesma casa várias vezes em uma janela curta.',
-    enabled: true,
-    useAi: false,
-    sensitive: false,
-    requireTherapistApproval: false,
-    autoApproveWhenTherapistSolo: true,
-    severity: 'ATTENTION',
-    cooldownMoves: 2,
-    cooldownMinutes: 8,
-    thresholds: {
-      houseRepeatCount: 3,
-      repeatedHouseWindowMoves: 10,
-    },
-    metadata: {
-      titleTemplate: 'Tema recorrente na casa {{houseNumber}}',
-      messageTemplate:
-        'A casa {{houseNumber}} reapareceu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas. Isso pode indicar um tema que está pedindo integração consciente nesta etapa da jornada.',
-      reflectionQuestion:
-        'O que esta repetição está tentando me mostrar e que ainda não foi integrado?',
-      microAction:
-        'Registre em uma frase qual aprendizado desta casa você escolhe praticar nas próximas 24 horas.',
-    },
-  },
-  {
-    triggerId: 'SNAKE_STREAK_PATTERN',
-    title: 'Sequência de descidas detectada',
-    description:
-      'Dispara quando há sequência de descidas (cobras) em poucas jogadas.',
-    enabled: true,
-    useAi: false,
-    sensitive: true,
-    requireTherapistApproval: true,
-    autoApproveWhenTherapistSolo: true,
-    severity: 'CRITICAL',
-    cooldownMoves: 3,
-    cooldownMinutes: 12,
-    thresholds: {
-      snakeStreakCount: 2,
-    },
-    metadata: {
-      titleTemplate: 'Atenção para padrão de queda',
-      messageTemplate:
-        'Foram identificadas {{snakeCount}} descidas em sequência. Esse padrão pode estar associado a uma trava emocional, autocrítica elevada ou retorno a estratégias antigas de proteção.',
-      reflectionQuestion:
-        'Qual contexto interno ou externo costuma anteceder essas quedas de energia e clareza?',
-      microAction:
-        'Escolha uma ação breve de autorregulação antes da próxima rolagem (respiração, pausa ou anotação do gatilho percebido).',
-    },
-  },
-  {
-    triggerId: 'PRE_START_STUCK_PATTERN',
-    title: 'Demora para iniciar o caminho',
-    description:
-      'Dispara quando o participante demora para iniciar a jornada (muitos 6 não obtidos).',
+      '90 segundos sem rolar o dado com turno ativo.',
     enabled: true,
     useAi: false,
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'INFO',
+    cooldownMoves: 0,
+    cooldownMinutes: 2,
+    thresholds: {
+      inactivitySeconds: 90,
+      inactivityMinutes: 2,
+    },
+    metadata: {
+      titleTemplate: 'Retome o ritmo da jogada',
+      messageTemplate:
+        'Já são {{inactivitySeconds}} segundos sem rolagem. Faça uma retomada consciente e siga no seu próprio ritmo.',
+      reflectionQuestion:
+        'O que precisa ser reorganizado internamente para você retomar agora?',
+      microAction:
+        'Respire fundo uma vez e defina uma intenção curta para a próxima jogada.',
+    },
+  },
+  {
+    triggerId: 'turn_idle_hard',
+    title: 'Inatividade crítica no turno',
+    description:
+      '180 segundos sem rolar o dado com turno ativo.',
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'ATTENTION',
+    cooldownMoves: 0,
+    cooldownMinutes: 4,
+    thresholds: {
+      inactivitySeconds: 180,
+      inactivityMinutes: 3,
+    },
+    metadata: {
+      titleTemplate: 'Pausa longa detectada',
+      messageTemplate:
+        'A jogada ficou em pausa por {{inactivitySeconds}} segundos. Reengaje com acolhimento e clareza.',
+      reflectionQuestion:
+        'Qual foi a principal distração ou resistência neste intervalo?',
+      microAction:
+        'Faça uma pausa breve de presença e volte para a próxima rolagem com foco.',
+    },
+  },
+  {
+    triggerId: 'start_lock',
+    title: 'Travamento no início',
+    description:
+      '4 tentativas sem sair da casa inicial.',
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'ATTENTION',
     cooldownMoves: 2,
     cooldownMinutes: 10,
     thresholds: {
       preStartRollCount: 4,
     },
     metadata: {
-      titleTemplate: 'Resistência inicial percebida',
+      aiOptional: true,
+      titleTemplate: 'Travamento inicial percebido',
       messageTemplate:
-        'Foram {{rollsUntilStart}} tentativas sem iniciar a jornada. Esse momento pode sinalizar proteção, hesitação ou necessidade de segurança antes de avançar.',
+        'Foram {{rollsUntilStart}} tentativas sem sair da casa inicial. Pode haver proteção interna antes do próximo passo.',
       reflectionQuestion:
-        'O que precisa estar presente para eu me sentir seguro(a) para dar o próximo passo?',
+        'O que você precisa reconhecer agora para avançar com mais segurança?',
       microAction:
-        'Nomeie uma pequena condição de segurança interna que você pode ativar agora.',
+        'Nomeie em voz baixa uma condição de segurança interna para seguir.',
     },
   },
   {
-    triggerId: 'INACTIVITY_REENGAGE_AI',
-    title: 'Reengajar após pausa longa',
+    triggerId: 'repeat_house_short',
+    title: 'Repetição curta de casa',
     description:
-      'Gatilho com IA para retomada quando há intervalo grande sem rolagem.',
-    enabled: true,
-    useAi: true,
-    sensitive: true,
-    requireTherapistApproval: true,
-    autoApproveWhenTherapistSolo: true,
-    severity: 'ATTENTION',
-    cooldownMoves: 2,
-    cooldownMinutes: 20,
-    thresholds: {
-      inactivityMinutes: 8,
-    },
-    prompts: [
-      {
-        locale: 'pt-BR',
-        name: 'Retomada após pausa',
-        systemPrompt:
-          'Você é assistente terapêutico do Maha Lilah. Gere intervenção breve, prática e acolhedora. Evite diagnóstico.',
-        userPromptTemplate:
-          'Contexto do jogador (JSON):\n{{contextJson}}\n\nHouve uma pausa de {{inactivityMinutes}} minutos sem rolagem. Gere uma intervenção para retomada no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}\n\nRegras:\n- Português claro.\n- Mensagem curta e objetiva (máximo 90 palavras).\n- Pergunta reflexiva única.\n- Microação prática de 1 passo.',
-      },
-    ],
-  },
-  {
-    triggerId: 'HOUSE_REPEAT_AI',
-    title: 'Ampliação com IA para repetição de casa',
-    description:
-      'Gatilho com IA para aprofundar significado de repetição de casa.',
+      'Mesma casa 2x em até 6 jogadas.',
     enabled: true,
     useAi: true,
     sensitive: false,
     requireTherapistApproval: false,
     autoApproveWhenTherapistSolo: true,
     severity: 'INFO',
-    cooldownMoves: 3,
-    cooldownMinutes: 15,
+    cooldownMoves: 2,
+    cooldownMinutes: 12,
     thresholds: {
-      houseRepeatCount: 4,
-      repeatedHouseWindowMoves: 12,
+      houseRepeatCount: 2,
+      repeatedHouseWindowMoves: 6,
     },
     prompts: [
       {
         locale: 'pt-BR',
-        name: 'Leitura de repetição',
+        name: 'Leitura de repetição curta',
         systemPrompt:
-          'Você é assistente terapêutico do Maha Lilah. Produza intervenção curta, sem exageros e com linguagem simples.',
+          'Você é assistente terapêutico do Maha Lilah. Responda de forma objetiva, acolhedora e sem diagnóstico.',
         userPromptTemplate:
-          'Contexto do jogador (JSON):\n{{contextJson}}\n\nA casa {{houseNumber}} repetiu {{repeatCount}} vezes nas últimas {{windowMoves}} jogadas.\nCrie uma intervenção terapêutica no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}\n\nConecte a resposta ao simbolismo da casa e ao caminho já percorrido.',
+          'Contexto do jogador (JSON):\n{{contextJson}}\n\nA casa {{houseNumber}} repetiu {{repeatCount}} vezes em até {{windowMoves}} jogadas.\nGere intervenção no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}\n\nRegras:\n- português claro\n- mensagem curta\n- 1 pergunta reflexiva\n- 1 microação prática',
       },
     ],
+  },
+  {
+    triggerId: 'shadow_streak',
+    title: 'Sequência de casas sombra',
+    description:
+      '3 casas sombra seguidas.',
+    enabled: true,
+    useAi: true,
+    sensitive: true,
+    requireTherapistApproval: true,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'CRITICAL',
+    cooldownMoves: 2,
+    cooldownMinutes: 15,
+    thresholds: {
+      shadowStreakCount: 3,
+    },
+    metadata: {
+      approvalPolicy: 'recommended',
+    },
+    prompts: [
+      {
+        locale: 'pt-BR',
+        name: 'Leitura de sequência sombra',
+        systemPrompt:
+          'Você é assistente terapêutico do Maha Lilah. Produza intervenção acolhedora, objetiva e sem diagnóstico.',
+        userPromptTemplate:
+          'Contexto do jogador (JSON):\n{{contextJson}}\n\nForam detectadas {{shadowCount}} casas sombra seguidas.\nCrie uma intervenção no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}',
+      },
+    ],
+  },
+  {
+    triggerId: 'double_snake',
+    title: 'Duas descidas por cobra',
+    description:
+      '2 descidas por cobra em até 4 jogadas.',
+    enabled: true,
+    useAi: true,
+    sensitive: true,
+    requireTherapistApproval: true,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'CRITICAL',
+    cooldownMoves: 3,
+    cooldownMinutes: 15,
+    thresholds: {
+      snakeStreakCount: 2,
+      snakeWindowMoves: 4,
+    },
+    metadata: {
+      approvalPolicy: 'recommended',
+    },
+    prompts: [
+      {
+        locale: 'pt-BR',
+        name: 'Leitura de dupla cobra',
+        systemPrompt:
+          'Você é assistente terapêutico do Maha Lilah. Evite diagnóstico e mantenha uma linguagem prática.',
+        userPromptTemplate:
+          'Contexto do jogador (JSON):\n{{contextJson}}\n\nForam detectadas {{snakeCount}} descidas por cobra em até {{windowMoves}} jogadas.\nCrie uma intervenção no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}',
+      },
+    ],
+  },
+  {
+    triggerId: 'no_therapy_after_strong_move',
+    title: 'Sem registro terapêutico após jogada intensa',
+    description:
+      'Jogada intensa e sem registro terapêutico após 2 jogadas.',
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'ATTENTION',
+    cooldownMoves: 2,
+    cooldownMinutes: 10,
+    thresholds: {
+      noTherapyWindowMoves: 2,
+      strongMoveMinDelta: 8,
+    },
+  },
+  {
+    triggerId: 'high_intensity_recurrence',
+    title: 'Recorrência de alta intensidade emocional',
+    description:
+      'Intensidade >= 8 repetida em 3 registros próximos.',
+    enabled: true,
+    useAi: true,
+    sensitive: true,
+    requireTherapistApproval: true,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'CRITICAL',
+    cooldownMoves: 3,
+    cooldownMinutes: 20,
+    thresholds: {
+      intensityMin: 8,
+      intensityRepeatCount: 3,
+      intensityWindowEntries: 5,
+    },
+    metadata: {
+      approvalPolicy: 'mandatory',
+    },
+    prompts: [
+      {
+        locale: 'pt-BR',
+        name: 'Leitura de intensidade recorrente',
+        systemPrompt:
+          'Você é assistente terapêutico do Maha Lilah. Seja acolhedor, responsável e sem diagnóstico clínico.',
+        userPromptTemplate:
+          'Contexto do jogador (JSON):\n{{contextJson}}\n\nA intensidade emocional alta se repetiu {{highIntensityCount}} vezes em registros próximos.\nCrie uma intervenção no formato JSON puro:\n{"title":"...","message":"...","reflectionQuestion":"...","microAction":"..."}',
+      },
+    ],
+  },
+  {
+    triggerId: 'session_fatigue',
+    title: 'Fadiga de sessão',
+    description:
+      '40+ jogadas na sessão.',
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'ATTENTION',
+    cooldownMoves: 5,
+    cooldownMinutes: 30,
+    thresholds: {
+      fatigueMoveCount: 40,
+    },
+  },
+  {
+    triggerId: 'therapist_silence',
+    title: 'Silêncio terapêutico prolongado',
+    description:
+      '8+ jogadas sem intervenção do terapeuta (quando aplicável).',
+    enabled: true,
+    useAi: false,
+    sensitive: false,
+    requireTherapistApproval: false,
+    autoApproveWhenTherapistSolo: true,
+    severity: 'INFO',
+    cooldownMoves: 4,
+    cooldownMinutes: 20,
+    thresholds: {
+      therapistSilenceMoves: 8,
+    },
   },
 ]
 

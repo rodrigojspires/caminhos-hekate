@@ -34,6 +34,16 @@ type InterventionThresholds = {
   snakeStreakCount?: number | null;
   preStartRollCount?: number | null;
   inactivityMinutes?: number | null;
+  inactivitySeconds?: number | null;
+  shadowStreakCount?: number | null;
+  snakeWindowMoves?: number | null;
+  noTherapyWindowMoves?: number | null;
+  strongMoveMinDelta?: number | null;
+  intensityMin?: number | null;
+  intensityRepeatCount?: number | null;
+  intensityWindowEntries?: number | null;
+  fatigueMoveCount?: number | null;
+  therapistSilenceMoves?: number | null;
 };
 
 type InterventionConfig = {
@@ -61,8 +71,18 @@ const THRESHOLD_FIELDS: Array<{
   { key: "houseRepeatCount", label: "Repetições de casa" },
   { key: "repeatedHouseWindowMoves", label: "Janela de jogadas (repetição)" },
   { key: "snakeStreakCount", label: "Sequência de cobras" },
+  { key: "snakeWindowMoves", label: "Janela de jogadas (cobras)" },
   { key: "preStartRollCount", label: "Tentativas antes de iniciar" },
   { key: "inactivityMinutes", label: "Inatividade (min)" },
+  { key: "inactivitySeconds", label: "Inatividade (seg)" },
+  { key: "shadowStreakCount", label: "Sequência de sombra" },
+  { key: "noTherapyWindowMoves", label: "Janela sem terapia (jogadas)" },
+  { key: "strongMoveMinDelta", label: "Delta mínimo jogada intensa" },
+  { key: "intensityMin", label: "Intensidade mínima" },
+  { key: "intensityRepeatCount", label: "Repetições de intensidade" },
+  { key: "intensityWindowEntries", label: "Janela de registros (intensidade)" },
+  { key: "fatigueMoveCount", label: "Fadiga (jogadas)" },
+  { key: "therapistSilenceMoves", label: "Silêncio terapeuta (jogadas)" },
 ];
 
 function buildNextTriggerId(configs: InterventionConfig[]) {
@@ -157,7 +177,7 @@ export default function AdminMahaLilahInterventionsPage() {
     const payload = {
       configs: configs.map((config) => ({
         id: config.id,
-        triggerId: config.triggerId.trim().toUpperCase(),
+        triggerId: config.triggerId.trim().toLowerCase(),
         title: config.title.trim(),
         description: (config.description || "").trim() || null,
         enabled: config.enabled,
@@ -172,8 +192,18 @@ export default function AdminMahaLilahInterventionsPage() {
           houseRepeatCount: toNullableInt(config.thresholds.houseRepeatCount),
           repeatedHouseWindowMoves: toNullableInt(config.thresholds.repeatedHouseWindowMoves),
           snakeStreakCount: toNullableInt(config.thresholds.snakeStreakCount),
+          snakeWindowMoves: toNullableInt(config.thresholds.snakeWindowMoves),
           preStartRollCount: toNullableInt(config.thresholds.preStartRollCount),
           inactivityMinutes: toNullableInt(config.thresholds.inactivityMinutes),
+          inactivitySeconds: toNullableInt(config.thresholds.inactivitySeconds),
+          shadowStreakCount: toNullableInt(config.thresholds.shadowStreakCount),
+          noTherapyWindowMoves: toNullableInt(config.thresholds.noTherapyWindowMoves),
+          strongMoveMinDelta: toNullableInt(config.thresholds.strongMoveMinDelta),
+          intensityMin: toNullableInt(config.thresholds.intensityMin),
+          intensityRepeatCount: toNullableInt(config.thresholds.intensityRepeatCount),
+          intensityWindowEntries: toNullableInt(config.thresholds.intensityWindowEntries),
+          fatigueMoveCount: toNullableInt(config.thresholds.fatigueMoveCount),
+          therapistSilenceMoves: toNullableInt(config.thresholds.therapistSilenceMoves),
         },
         metadata: config.metadata || {},
         prompts: config.prompts.map((prompt) => ({
@@ -295,10 +325,10 @@ export default function AdminMahaLilahInterventionsPage() {
                         onChange={(event) =>
                           updateConfig(index, (prev) => ({
                             ...prev,
-                            triggerId: event.target.value.toUpperCase().replace(/\s+/g, "_"),
+                            triggerId: event.target.value.toLowerCase().replace(/\s+/g, "_"),
                           }))
                         }
-                        placeholder="EX: HOUSE_REPEAT_PATTERN"
+                        placeholder="EX: repeat_house_short"
                       />
                     </div>
 
