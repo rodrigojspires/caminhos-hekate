@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/require-admin'
+import { roundCurrency } from '@/lib/therapeutic-care'
 
 const baixaProcessSchema = z.object({
   paidAt: z.string().optional(),
@@ -18,10 +19,47 @@ function parseDate(value?: string): Date {
   return parsed
 }
 
-function computeOrderStatus(statuses: Array<'OPEN' | 'PAID' | 'CANCELED'>) {
-  const paidCount = statuses.filter((status) => status === 'PAID').length
-  if (paidCount === statuses.length) return 'PAID' as const
-  if (paidCount > 0) return 'PARTIALLY_PAID' as const
+type InstallmentSummary = {
+  status: 'OPEN' | 'PAID' | 'CANCELED'
+  amount: number
+  paidAmount: unknown
+}
+
+function getSafePaidAmount(paidAmount: unknown, amount: number) {
+  return roundCurrency(Math.min(Math.max(Number(paidAmount || 0), 0), Number(amount)))
+}
+
+function getEffectivePaidAmount(installment: InstallmentSummary) {
+  if (installment.status === 'PAID' && (installment.paidAmount === null || installment.paidAmount === undefined)) {
+    return roundCurrency(Number(installment.amount))
+  }
+
+  return getSafePaidAmount(installment.paidAmount, installment.amount)
+}
+
+function getRemainingAmount(amount: number, paidAmount: unknown) {
+  const safeAmount = roundCurrency(Number(amount))
+  const safePaid = getSafePaidAmount(paidAmount, safeAmount)
+  return roundCurrency(Math.max(0, safeAmount - safePaid))
+}
+
+function computeOrderStatus(installments: InstallmentSummary[]) {
+  if (!installments.length) return 'OPEN' as const
+
+  const activeInstallments = installments.filter((item) => item.status !== 'CANCELED')
+  if (!activeInstallments.length) return 'CANCELED' as const
+
+  const allPaid = activeInstallments.every(
+    (item) => roundCurrency(Math.max(0, roundCurrency(Number(item.amount)) - getEffectivePaidAmount(item))) <= 0,
+  )
+  if (allPaid) return 'PAID' as const
+
+  const totalPaid = activeInstallments.reduce(
+    (sum, item) => sum + getEffectivePaidAmount(item),
+    0,
+  )
+  if (totalPaid > 0) return 'PARTIALLY_PAID' as const
+
   return 'OPEN' as const
 }
 
@@ -56,25 +94,54 @@ export async function POST(
         return NextResponse.json({ error: 'Parcela já está quitada' }, { status: 400 })
       }
 
-      const paidAmount = data.paidAmount ?? Number(processInstallment.amount)
+      const installmentAmount = roundCurrency(Number(processInstallment.amount))
+      const currentPaidAmount = getSafePaidAmount(processInstallment.paidAmount, installmentAmount)
+      const remainingAmount = getRemainingAmount(installmentAmount, currentPaidAmount)
+
+      if (remainingAmount <= 0) {
+        return NextResponse.json({ error: 'Parcela já está quitada' }, { status: 400 })
+      }
+
+      const paidAmount = roundCurrency(data.paidAmount ?? remainingAmount)
+      if (paidAmount <= 0) {
+        return NextResponse.json({ error: 'Valor de baixa inválido' }, { status: 400 })
+      }
+
+      if (paidAmount > remainingAmount) {
+        return NextResponse.json(
+          {
+            error: `Valor de baixa maior que o saldo da parcela (${remainingAmount.toFixed(2)})`,
+          },
+          { status: 400 },
+        )
+      }
+
+      const nextPaidAmount = roundCurrency(currentPaidAmount + paidAmount)
+      const fullyPaid = getRemainingAmount(installmentAmount, nextPaidAmount) <= 0
 
       await prisma.$transaction(async (tx) => {
         await tx.therapeuticOrderInstallment.update({
           where: { id: processInstallment.id },
           data: {
-            status: 'PAID',
-            paidAt,
-            paidAmount,
+            status: fullyPaid ? 'PAID' : 'OPEN',
+            paidAt: fullyPaid ? paidAt : null,
+            paidAmount: nextPaidAmount,
             paymentNote: data.paymentNote ?? processInstallment.paymentNote,
           },
         })
 
         const refreshedInstallments = await tx.therapeuticOrderInstallment.findMany({
           where: { orderId: processInstallment.orderId },
-          select: { status: true },
+          select: { status: true, amount: true, paidAmount: true },
         })
 
-        const orderStatus = computeOrderStatus(refreshedInstallments.map((item) => item.status as any))
+        const orderStatus = computeOrderStatus(
+          refreshedInstallments.map((item) => ({
+            status: item.status as 'OPEN' | 'PAID' | 'CANCELED',
+            amount: Number(item.amount),
+            paidAmount: item.paidAmount ? Number(item.paidAmount) : null,
+          })),
+        )
 
         await tx.therapeuticOrder.update({
           where: { id: processInstallment.orderId },
@@ -95,7 +162,16 @@ export async function POST(
         },
       })
 
-      return NextResponse.json({ source: 'PROCESS', installment: updated })
+      return NextResponse.json({
+        source: 'PROCESS',
+        installment: updated,
+        payment: {
+          appliedAmount: paidAmount,
+          paidAmount: nextPaidAmount,
+          remainingAmount: getRemainingAmount(installmentAmount, nextPaidAmount),
+          fullyPaid,
+        },
+      })
     }
 
     const singleInstallment = await prisma.therapeuticSingleSessionInstallment.findUnique({
@@ -119,25 +195,54 @@ export async function POST(
       return NextResponse.json({ error: 'Parcela já está quitada' }, { status: 400 })
     }
 
-    const paidAmount = data.paidAmount ?? Number(singleInstallment.amount)
+    const installmentAmount = roundCurrency(Number(singleInstallment.amount))
+    const currentPaidAmount = getSafePaidAmount(singleInstallment.paidAmount, installmentAmount)
+    const remainingAmount = getRemainingAmount(installmentAmount, currentPaidAmount)
+
+    if (remainingAmount <= 0) {
+      return NextResponse.json({ error: 'Parcela já está quitada' }, { status: 400 })
+    }
+
+    const paidAmount = roundCurrency(data.paidAmount ?? remainingAmount)
+    if (paidAmount <= 0) {
+      return NextResponse.json({ error: 'Valor de baixa inválido' }, { status: 400 })
+    }
+
+    if (paidAmount > remainingAmount) {
+      return NextResponse.json(
+        {
+          error: `Valor de baixa maior que o saldo da parcela (${remainingAmount.toFixed(2)})`,
+        },
+        { status: 400 },
+      )
+    }
+
+    const nextPaidAmount = roundCurrency(currentPaidAmount + paidAmount)
+    const fullyPaid = getRemainingAmount(installmentAmount, nextPaidAmount) <= 0
 
     await prisma.$transaction(async (tx) => {
       await tx.therapeuticSingleSessionInstallment.update({
         where: { id: singleInstallment.id },
         data: {
-          status: 'PAID',
-          paidAt,
-          paidAmount,
+          status: fullyPaid ? 'PAID' : 'OPEN',
+          paidAt: fullyPaid ? paidAt : null,
+          paidAmount: nextPaidAmount,
           paymentNote: data.paymentNote ?? singleInstallment.paymentNote,
         },
       })
 
       const refreshedInstallments = await tx.therapeuticSingleSessionInstallment.findMany({
         where: { orderId: singleInstallment.orderId },
-        select: { status: true },
+        select: { status: true, amount: true, paidAmount: true },
       })
 
-      const orderStatus = computeOrderStatus(refreshedInstallments.map((item) => item.status as any))
+      const orderStatus = computeOrderStatus(
+        refreshedInstallments.map((item) => ({
+          status: item.status as 'OPEN' | 'PAID' | 'CANCELED',
+          amount: Number(item.amount),
+          paidAmount: item.paidAmount ? Number(item.paidAmount) : null,
+        })),
+      )
 
       await tx.therapeuticSingleSessionOrder.update({
         where: { id: singleInstallment.orderId },
@@ -158,7 +263,16 @@ export async function POST(
       },
     })
 
-    return NextResponse.json({ source: 'SINGLE', installment: updated })
+    return NextResponse.json({
+      source: 'SINGLE',
+      installment: updated,
+      payment: {
+        appliedAmount: paidAmount,
+        paidAmount: nextPaidAmount,
+        remainingAmount: getRemainingAmount(installmentAmount, nextPaidAmount),
+        fullyPaid,
+      },
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Dados inválidos', details: error.errors }, { status: 400 })

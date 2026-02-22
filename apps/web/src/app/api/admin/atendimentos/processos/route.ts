@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/require-admin'
+import { roundCurrency } from '@/lib/therapeutic-care'
 
 const createProcessSchema = z.object({
   patientUserId: z.string().min(1, 'Usuário é obrigatório'),
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
                 id: true,
                 status: true,
                 amount: true,
+                paidAmount: true,
                 dueDate: true,
               },
               orderBy: { installmentNumber: 'asc' },
@@ -67,6 +69,15 @@ export async function GET(request: NextRequest) {
       const budgetTotal = process.budgetItems.reduce((sum, item) => sum + Number(item.netTotal), 0)
       const openInstallments = process.order?.installments.filter((item) => item.status === 'OPEN') ?? []
       const paidInstallments = process.order?.installments.filter((item) => item.status === 'PAID') ?? []
+      const openInstallmentsAmount = roundCurrency(
+        openInstallments.reduce((sum, item) => {
+          const amount = roundCurrency(Number(item.amount))
+          const paidAmount = roundCurrency(
+            Math.min(Math.max(Number(item.paidAmount || 0), 0), amount),
+          )
+          return sum + roundCurrency(Math.max(0, amount - paidAmount))
+        }, 0),
+      )
 
       return {
         ...process,
@@ -74,7 +85,7 @@ export async function GET(request: NextRequest) {
         sessionsCount: process.sessions.length,
         openInstallmentsCount: openInstallments.length,
         paidInstallmentsCount: paidInstallments.length,
-        openInstallmentsAmount: openInstallments.reduce((sum, item) => sum + Number(item.amount), 0),
+        openInstallmentsAmount,
       }
     })
 

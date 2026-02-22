@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@hekate/database'
 import { requireAdmin } from '@/lib/require-admin'
+import { roundCurrency } from '@/lib/therapeutic-care'
 
 export async function GET(request: NextRequest) {
   const { error } = await requireAdmin()
@@ -89,14 +90,38 @@ export async function GET(request: NextRequest) {
       return a.installmentNumber - b.installmentNumber
     })
 
+    const normalizedInstallments = installments.map((item) => {
+      const amount = roundCurrency(Number(item.amount))
+      const paidAmountRaw =
+        item.status === 'PAID' && (item.paidAmount === null || item.paidAmount === undefined)
+          ? amount
+          : Number(item.paidAmount || 0)
+      const paidAmount = roundCurrency(
+        Math.min(Math.max(paidAmountRaw, 0), amount),
+      )
+      const remainingAmount = roundCurrency(Math.max(0, amount - paidAmount))
+
+      return {
+        ...item,
+        paidAmount,
+        remainingAmount,
+      }
+    })
+
     const summary = {
-      totalOpen: installments.filter((item) => item.status === 'OPEN').reduce((sum, item) => sum + Number(item.amount), 0),
-      totalPaid: installments.filter((item) => item.status === 'PAID').reduce((sum, item) => sum + Number(item.amount), 0),
-      countOpen: installments.filter((item) => item.status === 'OPEN').length,
-      countPaid: installments.filter((item) => item.status === 'PAID').length,
+      totalOpen: roundCurrency(
+        normalizedInstallments
+          .filter((item) => item.status === 'OPEN')
+          .reduce((sum, item) => sum + Number(item.remainingAmount), 0),
+      ),
+      totalPaid: roundCurrency(
+        normalizedInstallments.reduce((sum, item) => sum + Number(item.paidAmount || 0), 0),
+      ),
+      countOpen: normalizedInstallments.filter((item) => item.status === 'OPEN').length,
+      countPaid: normalizedInstallments.filter((item) => item.status === 'PAID').length,
     }
 
-    return NextResponse.json({ installments, summary })
+    return NextResponse.json({ installments: normalizedInstallments, summary })
   } catch (error) {
     console.error('Erro ao carregar financeiro terapêutico:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

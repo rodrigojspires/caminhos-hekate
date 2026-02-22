@@ -168,6 +168,47 @@ function addMonths(baseDate: Date, offset: number) {
   return date
 }
 
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function normalizeCurrencyInput(input: string): number | null {
+  const value = input.trim()
+  if (!value) return null
+
+  const hasComma = value.includes(',')
+  const hasDot = value.includes('.')
+  let normalized = value
+
+  if (hasComma && hasDot) {
+    normalized = value.replace(/\./g, '').replace(',', '.')
+  } else if (hasComma) {
+    normalized = value.replace(',', '.')
+  }
+
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return roundCurrency(parsed)
+}
+
+function getPaidAmount(installment: Installment) {
+  const paidAmountRaw =
+    installment.status === 'PAID' && installment.paidAmount == null
+      ? Number(installment.amount || 0)
+      : Number(installment.paidAmount || 0)
+
+  return roundCurrency(
+    Math.min(
+      Math.max(paidAmountRaw, 0),
+      Number(installment.amount || 0),
+    ),
+  )
+}
+
+function getRemainingAmount(installment: Installment) {
+  return roundCurrency(Math.max(0, Number(installment.amount || 0) - getPaidAmount(installment)))
+}
+
 export default function ProcessDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -545,6 +586,33 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
   }
 
   const markInstallmentAsPaid = async (installment: Installment) => {
+    const remainingAmount = getRemainingAmount(installment)
+    if (remainingAmount <= 0) {
+      toast.error('Parcela já está quitada')
+      return
+    }
+
+    const input = window.prompt(
+      `Saldo em aberto: ${formatCurrency(remainingAmount)}.\nInforme o valor pago agora (deixe vazio para quitar tudo):`,
+      String(remainingAmount.toFixed(2)).replace('.', ','),
+    )
+
+    if (input === null) return
+
+    const normalizedInput = input.trim()
+    const paidAmount =
+      normalizedInput === '' ? remainingAmount : normalizeCurrencyInput(normalizedInput)
+
+    if (!paidAmount || paidAmount <= 0) {
+      toast.error('Informe um valor de baixa válido')
+      return
+    }
+
+    if (paidAmount > remainingAmount) {
+      toast.error(`O valor informado excede o saldo da parcela (${formatCurrency(remainingAmount)})`)
+      return
+    }
+
     try {
       setPayingInstallmentId(installment.id)
       const response = await fetch(`/api/admin/atendimentos/parcelas/${installment.id}/baixa`, {
@@ -552,13 +620,15 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paidAt: new Date().toISOString(),
+          paidAmount,
         }),
       })
 
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || 'Erro ao dar baixa')
 
-      toast.success('Parcela baixada com sucesso')
+      const fullyPaid = Boolean(data?.payment?.fullyPaid)
+      toast.success(fullyPaid ? 'Parcela quitada com sucesso' : 'Baixa parcial registrada')
       await loadData()
     } catch (error) {
       console.error(error)
@@ -1129,34 +1199,47 @@ export default function ProcessDetailsPage({ params }: { params: { id: string } 
                     <th className="px-3 py-2">Parcela</th>
                     <th className="px-3 py-2">Vencimento</th>
                     <th className="px-3 py-2">Valor</th>
+                    <th className="px-3 py-2">Pago</th>
+                    <th className="px-3 py-2">Saldo</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Baixa</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {process.order.installments.map((installment) => (
-                    <tr key={installment.id} className="border-b">
-                      <td className="px-3 py-2">{installment.installmentNumber}/{process.order?.installmentsCount}</td>
-                      <td className="px-3 py-2">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</td>
-                      <td className="px-3 py-2">{formatCurrency(Number(installment.amount))}</td>
-                      <td className="px-3 py-2">{installmentStatusLabel[installment.status]}</td>
-                      <td className="px-3 py-2">
-                        {installment.status === 'OPEN' ? (
-                          <button
-                            className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
-                            onClick={() => markInstallmentAsPaid(installment)}
-                            disabled={payingInstallmentId === installment.id}
-                          >
-                            {payingInstallmentId === installment.id ? 'Baixando...' : 'Dar baixa'}
-                          </button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {installment.paidAt ? `Pago em ${new Date(installment.paidAt).toLocaleDateString('pt-BR')}` : '—'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {process.order.installments.map((installment) => {
+                    const paidAmount = getPaidAmount(installment)
+                    const remainingAmount = getRemainingAmount(installment)
+                    const statusText =
+                      installment.status === 'OPEN' && paidAmount > 0
+                        ? `${installmentStatusLabel[installment.status]} (parcial)`
+                        : installmentStatusLabel[installment.status]
+
+                    return (
+                      <tr key={installment.id} className="border-b">
+                        <td className="px-3 py-2">{installment.installmentNumber}/{process.order?.installmentsCount}</td>
+                        <td className="px-3 py-2">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</td>
+                        <td className="px-3 py-2">{formatCurrency(Number(installment.amount))}</td>
+                        <td className="px-3 py-2">{formatCurrency(paidAmount)}</td>
+                        <td className="px-3 py-2">{formatCurrency(remainingAmount)}</td>
+                        <td className="px-3 py-2">{statusText}</td>
+                        <td className="px-3 py-2">
+                          {installment.status === 'OPEN' ? (
+                            <button
+                              className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
+                              onClick={() => markInstallmentAsPaid(installment)}
+                              disabled={payingInstallmentId === installment.id}
+                            >
+                              {payingInstallmentId === installment.id ? 'Baixando...' : 'Dar baixa'}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {installment.paidAt ? `Pago em ${new Date(installment.paidAt).toLocaleDateString('pt-BR')}` : '—'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

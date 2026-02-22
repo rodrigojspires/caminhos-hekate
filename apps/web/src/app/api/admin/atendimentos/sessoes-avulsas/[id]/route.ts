@@ -141,8 +141,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const hasChargedAmountChange = nextChargedAmount !== Number(singleSession.chargedAmount)
     if (hasChargedAmountChange && singleSession.order) {
-      const hasPaidInstallments = singleSession.order.installments.some((item) => item.status === 'PAID')
-      if (hasPaidInstallments) {
+      const hasAnyPayment = singleSession.order.installments.some(
+        (item) => Number(item.paidAmount || 0) > 0 || item.status === 'PAID',
+      )
+      if (hasAnyPayment) {
         return NextResponse.json(
           { error: 'Não é possível alterar o valor após baixa financeira' },
           { status: 400 },

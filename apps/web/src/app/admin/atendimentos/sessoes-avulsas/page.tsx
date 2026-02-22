@@ -58,6 +58,7 @@ type SingleSession = {
       installmentNumber: number
       dueDate: string
       amount: number
+      paidAmount: number | null
       status: 'OPEN' | 'PAID' | 'CANCELED'
       paidAt?: string | null
     }>
@@ -112,6 +113,55 @@ function getTodayDateInputValue() {
 function toDateInput(value?: string | null): string {
   if (!value) return ''
   return String(value).slice(0, 10)
+}
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function normalizeCurrencyInput(input: string): number | null {
+  const value = input.trim()
+  if (!value) return null
+
+  const hasComma = value.includes(',')
+  const hasDot = value.includes('.')
+  let normalized = value
+
+  if (hasComma && hasDot) {
+    normalized = value.replace(/\./g, '').replace(',', '.')
+  } else if (hasComma) {
+    normalized = value.replace(',', '.')
+  }
+
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return roundCurrency(parsed)
+}
+
+function getPaidAmount(installment: {
+  amount: number
+  paidAmount?: number | null
+  status?: 'OPEN' | 'PAID' | 'CANCELED'
+}) {
+  const paidAmountRaw =
+    installment.status === 'PAID' && installment.paidAmount == null
+      ? Number(installment.amount || 0)
+      : Number(installment.paidAmount || 0)
+
+  return roundCurrency(
+    Math.min(
+      Math.max(paidAmountRaw, 0),
+      Number(installment.amount || 0),
+    ),
+  )
+}
+
+function getRemainingAmount(installment: {
+  amount: number
+  paidAmount?: number | null
+  status?: 'OPEN' | 'PAID' | 'CANCELED'
+}) {
+  return roundCurrency(Math.max(0, Number(installment.amount || 0) - getPaidAmount(installment)))
 }
 
 export default function SessoesAvulsasPage() {
@@ -478,19 +528,54 @@ export default function SessoesAvulsasPage() {
     }
   }
 
-  const markInstallmentAsPaid = async (installmentId: string) => {
+  const markInstallmentAsPaid = async (installment: {
+    id: string
+    amount: number
+    paidAmount?: number | null
+  }) => {
+    const remainingAmount = getRemainingAmount(installment)
+    if (remainingAmount <= 0) {
+      toast.error('Parcela já está quitada')
+      return
+    }
+
+    const input = window.prompt(
+      `Saldo em aberto: ${formatCurrency(remainingAmount)}.\nInforme o valor pago agora (deixe vazio para quitar tudo):`,
+      String(remainingAmount.toFixed(2)).replace('.', ','),
+    )
+
+    if (input === null) return
+
+    const normalizedInput = input.trim()
+    const paidAmount =
+      normalizedInput === '' ? remainingAmount : normalizeCurrencyInput(normalizedInput)
+
+    if (!paidAmount || paidAmount <= 0) {
+      toast.error('Informe um valor de baixa válido')
+      return
+    }
+
+    if (paidAmount > remainingAmount) {
+      toast.error(`O valor informado excede o saldo da parcela (${formatCurrency(remainingAmount)})`)
+      return
+    }
+
     try {
-      setPayingInstallmentId(installmentId)
-      const response = await fetch(`/api/admin/atendimentos/parcelas/${installmentId}/baixa`, {
+      setPayingInstallmentId(installment.id)
+      const response = await fetch(`/api/admin/atendimentos/parcelas/${installment.id}/baixa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paidAt: new Date().toISOString() }),
+        body: JSON.stringify({
+          paidAt: new Date().toISOString(),
+          paidAmount,
+        }),
       })
 
       const data = await response.json()
       if (!response.ok) throw new Error(data?.error || 'Erro ao dar baixa na parcela')
 
-      toast.success('Parcela baixada com sucesso')
+      const fullyPaid = Boolean(data?.payment?.fullyPaid)
+      toast.success(fullyPaid ? 'Parcela quitada com sucesso' : 'Baixa parcial registrada')
       await refreshAfterMutation()
     } catch (error) {
       console.error(error)
@@ -794,6 +879,12 @@ export default function SessoesAvulsasPage() {
                 const paidInstallmentsCount = sessionItem.order
                   ? sessionItem.order.installments.filter((item) => item.status === 'PAID').length
                   : 0
+                const paidAmountTotal = sessionItem.order
+                  ? roundCurrency(sessionItem.order.installments.reduce((sum, item) => sum + getPaidAmount(item), 0))
+                  : 0
+                const remainingAmountTotal = sessionItem.order
+                  ? roundCurrency(sessionItem.order.installments.reduce((sum, item) => sum + getRemainingAmount(item), 0))
+                  : 0
 
                 return (
                   <tr key={sessionItem.id} className="border-b">
@@ -816,6 +907,11 @@ export default function SessoesAvulsasPage() {
                       {sessionItem.order
                         ? `${openInstallments.length} em aberto / ${paidInstallmentsCount} pagas`
                         : '-'}
+                      {sessionItem.order && (
+                        <div className="text-xs text-muted-foreground">
+                          Pago: {formatCurrency(paidAmountTotal)} • Saldo: {formatCurrency(remainingAmountTotal)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {!sessionItem.order && <span className="text-muted-foreground">-</span>}
@@ -823,7 +919,7 @@ export default function SessoesAvulsasPage() {
                       {sessionItem.order && nextOpenInstallment && (
                         <button
                           className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
-                          onClick={() => markInstallmentAsPaid(nextOpenInstallment.id)}
+                          onClick={() => markInstallmentAsPaid(nextOpenInstallment)}
                           disabled={payingInstallmentId === nextOpenInstallment.id}
                         >
                           {payingInstallmentId === nextOpenInstallment.id
@@ -945,34 +1041,47 @@ export default function SessoesAvulsasPage() {
                             <th className="px-2 py-1">Parcela</th>
                             <th className="px-2 py-1">Vencimento</th>
                             <th className="px-2 py-1">Valor</th>
+                            <th className="px-2 py-1">Pago</th>
+                            <th className="px-2 py-1">Saldo</th>
                             <th className="px-2 py-1">Status</th>
                             <th className="px-2 py-1">Baixa</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {viewSession.order.installments.map((installment) => (
-                            <tr key={installment.id} className="border-b">
-                              <td className="px-2 py-1">
-                                {installment.installmentNumber}/{viewSession.order?.installmentsCount}
-                              </td>
-                              <td className="px-2 py-1">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</td>
-                              <td className="px-2 py-1">{formatCurrency(Number(installment.amount))}</td>
-                              <td className="px-2 py-1">{installmentStatusLabel[installment.status]}</td>
-                              <td className="px-2 py-1">
-                                {installment.status === 'OPEN' ? (
-                                  <button
-                                    className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
-                                    onClick={() => markInstallmentAsPaid(installment.id)}
-                                    disabled={payingInstallmentId === installment.id}
-                                  >
-                                    {payingInstallmentId === installment.id ? 'Baixando...' : 'Dar baixa'}
-                                  </button>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {viewSession.order.installments.map((installment) => {
+                            const paidAmount = getPaidAmount(installment)
+                            const remainingAmount = getRemainingAmount(installment)
+                            const statusText =
+                              installment.status === 'OPEN' && paidAmount > 0
+                                ? `${installmentStatusLabel[installment.status]} (parcial)`
+                                : installmentStatusLabel[installment.status]
+
+                            return (
+                              <tr key={installment.id} className="border-b">
+                                <td className="px-2 py-1">
+                                  {installment.installmentNumber}/{viewSession.order?.installmentsCount}
+                                </td>
+                                <td className="px-2 py-1">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-2 py-1">{formatCurrency(Number(installment.amount))}</td>
+                                <td className="px-2 py-1">{formatCurrency(paidAmount)}</td>
+                                <td className="px-2 py-1">{formatCurrency(remainingAmount)}</td>
+                                <td className="px-2 py-1">{statusText}</td>
+                                <td className="px-2 py-1">
+                                  {installment.status === 'OPEN' ? (
+                                    <button
+                                      className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-60"
+                                      onClick={() => markInstallmentAsPaid(installment)}
+                                      disabled={payingInstallmentId === installment.id}
+                                    >
+                                      {payingInstallmentId === installment.id ? 'Baixando...' : 'Dar baixa'}
+                                    </button>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>

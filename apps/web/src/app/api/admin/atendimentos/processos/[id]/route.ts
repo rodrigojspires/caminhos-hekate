@@ -71,8 +71,31 @@ function serializeProcess(process: any) {
 
   const sessionsCount = process.sessions.length
   const completedSessions = process.sessions.filter((session: any) => session.status === 'COMPLETED').length
-  const openInstallments = process.order?.installments?.filter((item: any) => item.status === 'OPEN') ?? []
-  const paidInstallments = process.order?.installments?.filter((item: any) => item.status === 'PAID') ?? []
+  const allInstallments = process.order?.installments ?? []
+  const openInstallments = allInstallments.filter((item: any) => item.status === 'OPEN')
+  const paidInstallments = allInstallments.filter((item: any) => item.status === 'PAID')
+  const openInstallmentsAmount = roundCurrency(
+    openInstallments.reduce((sum: number, item: any) => {
+      const amount = roundCurrency(Number(item.amount))
+      const paidAmount = roundCurrency(
+        Math.min(Math.max(Number(item.paidAmount || 0), 0), amount),
+      )
+      return sum + roundCurrency(Math.max(0, amount - paidAmount))
+    }, 0),
+  )
+  const paidInstallmentsAmount = roundCurrency(
+    allInstallments.reduce((sum: number, item: any) => {
+      const amount = roundCurrency(Number(item.amount))
+      const paidAmountRaw =
+        item.status === 'PAID' && (item.paidAmount === null || item.paidAmount === undefined)
+          ? amount
+          : Number(item.paidAmount || 0)
+      const paidAmount = roundCurrency(
+        Math.min(Math.max(paidAmountRaw, 0), amount),
+      )
+      return sum + paidAmount
+    }, 0),
+  )
 
   return {
     ...process,
@@ -86,8 +109,8 @@ function serializeProcess(process: any) {
       completedSessions,
       openInstallmentsCount: openInstallments.length,
       paidInstallmentsCount: paidInstallments.length,
-      openInstallmentsAmount: roundCurrency(openInstallments.reduce((sum: number, item: any) => sum + Number(item.amount), 0)),
-      paidInstallmentsAmount: roundCurrency(paidInstallments.reduce((sum: number, item: any) => sum + Number(item.amount), 0)),
+      openInstallmentsAmount,
+      paidInstallmentsAmount,
     },
   }
 }
