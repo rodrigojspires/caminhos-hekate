@@ -1311,6 +1311,7 @@ export function RoomClient({
   const [pendingTrialPlansAfterAiModal, setPendingTrialPlansAfterAiModal] =
     useState(false);
   const [finalReportLoading, setFinalReportLoading] = useState(false);
+  const [postConsentGuideOpen, setPostConsentGuideOpen] = useState(false);
   const [pendingCompletedParticipantPrompts, setPendingCompletedParticipantPrompts] =
     useState<string[]>([]);
   const [replicateIntentionLoading, setReplicateIntentionLoading] =
@@ -3344,6 +3345,7 @@ export function RoomClient({
   useEffect(() => {
     if (!myParticipant || !roomOnboardingLoaded) return;
     if (actionsBlockedByConsent) return;
+    if (postConsentGuideOpen) return;
 
     const role = myParticipant.role === "THERAPIST" ? "THERAPIST" : "PLAYER";
     if (roomTutorialInitializedRole === role) return;
@@ -3361,6 +3363,7 @@ export function RoomClient({
   }, [
     actionsBlockedByConsent,
     myParticipant,
+    postConsentGuideOpen,
     roomOnboardingLoaded,
     roomOnboardingSeen.player,
     roomOnboardingSeen.therapist,
@@ -5150,10 +5153,101 @@ export function RoomClient({
               }
               setConsentAccepted(true);
               pushToast("Consentimento registrado com sucesso.", "success");
+              setPostConsentGuideOpen(true);
             }}
           >
             Aceito o termo
           </button>
+        </div>
+      )}
+
+      {postConsentGuideOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPostConsentGuideOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
+            zIndex: 10004,
+            display: "grid",
+            placeItems: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(560px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <strong>Primeiros passos na sala</strong>
+            <span className="small-muted">
+              Guia rápido para iniciar com presença e boa leitura do jogo.
+            </span>
+            <div className="notice" style={{ display: "grid", gap: 8 }}>
+              <span className="small-muted">
+                <strong>1.</strong> Defina sua <strong>intenção de jogo</strong>{" "}
+                antes da primeira sequência de jogadas.
+              </span>
+              <span className="small-muted">
+                <strong>2.</strong> Clique em <strong>Rolar dado</strong> quando
+                for sua vez.
+              </span>
+              <span className="small-muted">
+                <strong>3.</strong> Se precisar de orientação, use o botão{" "}
+                <strong>Ajuda (?)</strong>.
+              </span>
+              <span className="small-muted">
+                <strong>4.</strong> Em sessão longa, faça pausas curtas:{" "}
+                <strong>respire</strong> e <strong>tome água</strong>.
+              </span>
+              <span className="small-muted">
+                <strong>5.</strong> Para leitura mais confortável, experimente{" "}
+                <strong>tema claro</strong> e <strong>modo leitura</strong>.
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setPostConsentGuideOpen(false);
+                  setRulesHelpTab("howToPlay");
+                  setRulesModalOpen(true);
+                }}
+              >
+                Abrir ajuda
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setPostConsentGuideOpen(false);
+                  setActivePanel("players");
+                  if (isMobileViewport) {
+                    setMobileActionPanelOpen(true);
+                  }
+                }}
+              >
+                Definir intenção
+              </button>
+              <button onClick={() => setPostConsentGuideOpen(false)}>
+                Entendi, começar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
