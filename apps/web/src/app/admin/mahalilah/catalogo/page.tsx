@@ -115,7 +115,7 @@ function stringifyLineItems(items: string[]) {
 
 function clampInterventionLimit(value: number) {
   if (!Number.isFinite(value)) return 0;
-  return Math.min(8, Math.max(0, Math.floor(value)));
+  return Math.min(99, Math.max(0, Math.floor(value)));
 }
 
 function PlanMarketingEditor({

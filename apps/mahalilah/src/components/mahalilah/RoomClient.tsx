@@ -428,6 +428,8 @@ const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
 const UI_THEME_STORAGE_KEY = "mahalilah:ui-theme";
 const READING_MODE_STORAGE_KEY = "mahalilah:reading-mode";
 const ROOM_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
+const INTERVENTION_CENTER_AUTO_HIDE_MS = 8000;
+const INTERVENTION_CENTER_MAX_VISIBLE_ITEMS = 4;
 const ROOM_ONBOARDING_THERAPIST_VERSION_KEY =
   "mahalilah:onboarding:room:therapist:version";
 const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
@@ -1115,6 +1117,17 @@ function formatInterventionStatusLabel(status: string) {
   return "Aprovada";
 }
 
+function isInterventionActive(intervention: TimelineIntervention) {
+  return (
+    intervention.status === "PENDING_APPROVAL" ||
+    intervention.status === "APPROVED"
+  );
+}
+
+function isCriticalIntervention(intervention: TimelineIntervention) {
+  return intervention.severity === "CRITICAL";
+}
+
 type InterventionUiAction =
   | "approve"
   | "dismiss"
@@ -1206,6 +1219,10 @@ export function RoomClient({
   >([]);
   const [interventionActionLoadingByKey, setInterventionActionLoadingByKey] =
     useState<Record<string, boolean>>({});
+  const [interventionCenterOpen, setInterventionCenterOpen] = useState(false);
+  const [interventionCenterPulse, setInterventionCenterPulse] = useState(false);
+  const [criticalInterventionModalId, setCriticalInterventionModalId] =
+    useState<string | null>(null);
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
@@ -1304,6 +1321,9 @@ export function RoomClient({
   const jumpPinAnimationTimeoutRef = useRef<number | null>(null);
   const jumpPinAnimationFrameRef = useRef<number | null>(null);
   const handledPinMoveIdRef = useRef<string | null>(null);
+  const interventionCenterAutoHideTimeoutRef = useRef<number | null>(null);
+  const interventionCenterPulseTimeoutRef = useRef<number | null>(null);
+  const seenCriticalInterventionIdsRef = useRef<Set<string>>(new Set());
   const roomShellRef = useRef<HTMLDivElement | null>(null);
   const roomHeaderCardRef = useRef<HTMLDivElement | null>(null);
   const boardGridRef = useRef<HTMLDivElement | null>(null);
@@ -1319,6 +1339,31 @@ export function RoomClient({
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  const clearInterventionCenterTimers = useCallback(() => {
+    if (interventionCenterAutoHideTimeoutRef.current !== null) {
+      window.clearTimeout(interventionCenterAutoHideTimeoutRef.current);
+      interventionCenterAutoHideTimeoutRef.current = null;
+    }
+    if (interventionCenterPulseTimeoutRef.current !== null) {
+      window.clearTimeout(interventionCenterPulseTimeoutRef.current);
+      interventionCenterPulseTimeoutRef.current = null;
+    }
+  }, []);
+
+  const triggerInterventionCenterAttention = useCallback(() => {
+    clearInterventionCenterTimers();
+    setInterventionCenterOpen(true);
+    setInterventionCenterPulse(true);
+    interventionCenterPulseTimeoutRef.current = window.setTimeout(() => {
+      setInterventionCenterPulse(false);
+      interventionCenterPulseTimeoutRef.current = null;
+    }, 2400);
+    interventionCenterAutoHideTimeoutRef.current = window.setTimeout(() => {
+      setInterventionCenterOpen(false);
+      interventionCenterAutoHideTimeoutRef.current = null;
+    }, INTERVENTION_CENTER_AUTO_HIDE_MS);
+  }, [clearInterventionCenterTimers]);
 
   const stopDiceRollSound = useCallback(() => {
     if (diceSoundIntervalRef.current !== null) {
@@ -1964,6 +2009,11 @@ export function RoomClient({
     setTimelineReports([]);
     setTimelineInterventions([]);
     setInterventionActionLoadingByKey({});
+    setInterventionCenterOpen(false);
+    setInterventionCenterPulse(false);
+    setCriticalInterventionModalId(null);
+    seenCriticalInterventionIdsRef.current = new Set();
+    clearInterventionCenterTimers();
     clearDiceTimers();
     setRollInFlight(false);
     setDiceModalOpen(false);
@@ -1983,7 +2033,18 @@ export function RoomClient({
     completionStateByParticipantRef.current = new Map();
     completionPromptedParticipantsRef.current = new Set();
     completionPromptQueueProcessingRef.current = false;
-  }, [state?.room.id, clearDiceTimers, clearJumpPinAnimationTimers]);
+  }, [
+    state?.room.id,
+    clearDiceTimers,
+    clearJumpPinAnimationTimers,
+    clearInterventionCenterTimers,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearInterventionCenterTimers();
+    };
+  }, [clearInterventionCenterTimers]);
 
   const boardCells = useMemo(() => {
     const cells: Array<{ houseNumber: number; row: number; col: number }> = [];
@@ -2838,6 +2899,39 @@ export function RoomClient({
     });
     return byMoveId;
   }, [filteredTimelineInterventions]);
+
+  const interventionCenterItems = useMemo(() => {
+    return [...timelineInterventions].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [timelineInterventions]);
+
+  const activeInterventionCenterItems = useMemo(() => {
+    return interventionCenterItems.filter((intervention) =>
+      isInterventionActive(intervention),
+    );
+  }, [interventionCenterItems]);
+
+  const pendingApprovalInterventions = useMemo(() => {
+    return activeInterventionCenterItems.filter(
+      (intervention) => intervention.status === "PENDING_APPROVAL",
+    );
+  }, [activeInterventionCenterItems]);
+
+  const criticalInterventions = useMemo(() => {
+    return activeInterventionCenterItems.filter((intervention) =>
+      isCriticalIntervention(intervention),
+    );
+  }, [activeInterventionCenterItems]);
+
+  const interventionCenterVisibleItems = useMemo(() => {
+    const source =
+      activeInterventionCenterItems.length > 0
+        ? activeInterventionCenterItems
+        : interventionCenterItems;
+    return source.slice(0, INTERVENTION_CENTER_MAX_VISIBLE_ITEMS);
+  }, [activeInterventionCenterItems, interventionCenterItems]);
 
   const timelineTipsByMoveKey = useMemo(() => {
     const tipsByKey = new Map<
@@ -4089,6 +4183,7 @@ export function RoomClient({
         ? payload.interventions.length
         : 0;
       if (generatedCount > 0) {
+        triggerInterventionCenterAttention();
         const pendingApprovals =
           typeof payload?.pendingApprovals === "number"
             ? payload.pendingApprovals
@@ -4114,7 +4209,7 @@ export function RoomClient({
       socket.off("intervention:generated", handleInterventionGenerated);
       socket.off("intervention:updated", handleInterventionUpdated);
     };
-  }, [socket, loadTimelineData, pushToast]);
+  }, [socket, loadTimelineData, pushToast, triggerInterventionCenterAttention]);
 
   const openTherapistSummaryModal = useCallback(
     (participantId: string) => {
@@ -4472,16 +4567,40 @@ export function RoomClient({
   ]);
 
   useEffect(() => {
-    if (!["summary", "timeline", "ai"].includes(activePanel)) return;
+    if (!state?.room.id) return;
     if (timelineLoading) return;
     if (timelineLoaded) return;
     void loadTimelineData();
+  }, [state?.room.id, timelineLoading, timelineLoaded, loadTimelineData]);
+
+  useEffect(() => {
+    if (criticalInterventionModalId) return;
+    const unseenCriticalIntervention = criticalInterventions.find(
+      (intervention) => !seenCriticalInterventionIdsRef.current.has(intervention.id),
+    );
+    if (!unseenCriticalIntervention) return;
+    seenCriticalInterventionIdsRef.current.add(unseenCriticalIntervention.id);
+    setCriticalInterventionModalId(unseenCriticalIntervention.id);
+    triggerInterventionCenterAttention();
   }, [
-    activePanel,
-    timelineLoading,
-    timelineLoaded,
-    loadTimelineData,
+    criticalInterventions,
+    triggerInterventionCenterAttention,
+    criticalInterventionModalId,
   ]);
+
+  useEffect(() => {
+    if (!criticalInterventionModalId) return;
+    const intervention = timelineInterventions.find(
+      (item) => item.id === criticalInterventionModalId,
+    );
+    if (
+      !intervention ||
+      !isInterventionActive(intervention) ||
+      !isCriticalIntervention(intervention)
+    ) {
+      setCriticalInterventionModalId(null);
+    }
+  }, [criticalInterventionModalId, timelineInterventions]);
 
   useEffect(() => {
     if (!timelineLoaded) return;
@@ -4623,6 +4742,216 @@ export function RoomClient({
     fontWeight: 700,
     boxShadow: "0 7px 18px rgba(94, 63, 17, 0.28)",
   } as const;
+  const shouldShowInterventionParticipantLabel =
+    isTherapist && timelineParticipants.length > 1;
+  const interventionCenterActiveCount = activeInterventionCenterItems.length;
+  const interventionCenterPendingCount = pendingApprovalInterventions.length;
+  const interventionCenterCriticalCount = criticalInterventions.length;
+  const interventionCenterHasMoreItems =
+    (activeInterventionCenterItems.length > 0
+      ? activeInterventionCenterItems.length
+      : interventionCenterItems.length) > interventionCenterVisibleItems.length;
+  const criticalInterventionModal = criticalInterventionModalId
+    ? timelineInterventions.find(
+        (intervention) => intervention.id === criticalInterventionModalId,
+      ) || null
+    : null;
+
+  const openTimelinePanel = (participantId?: string) => {
+    if (participantId) {
+      setTimelineTargetParticipantId(participantId);
+    }
+    setActivePanel("timeline");
+    if (isMobileViewport) {
+      setMobileActionPanelOpen(true);
+    }
+  };
+
+  const renderInterventionCard = (
+    intervention: TimelineIntervention,
+    options?: {
+      key?: string;
+      showParticipant?: boolean;
+      showOpenTimelineButton?: boolean;
+    },
+  ) => {
+    const isPending = intervention.status === "PENDING_APPROVAL";
+    const canSendFeedback = intervention.status === "APPROVED";
+    const loadingApprove = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "approve")
+      ],
+    );
+    const loadingSnooze = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "snooze")
+      ],
+    );
+    const loadingDismiss = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "dismiss")
+      ],
+    );
+    const loadingDismissMuteSession = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "dismissMuteSession")
+      ],
+    );
+    const loadingFeedbackHelpful = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "feedbackHelpful")
+      ],
+    );
+    const loadingFeedbackApplied = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "feedbackApplied")
+      ],
+    );
+    const loadingFeedbackNotHelpful = Boolean(
+      interventionActionLoadingByKey[
+        getInterventionActionKey(intervention.id, "feedbackNotHelpful")
+      ],
+    );
+    const isCritical = intervention.severity === "CRITICAL";
+    const isAttention = intervention.severity === "ATTENTION";
+    const accentColor = isCritical
+      ? "var(--maha-danger-text, #ff9f9f)"
+      : isAttention
+        ? "var(--maha-warning-text, #f1d59a)"
+        : "var(--maha-success-text, #9fe6cc)";
+    const accentBorder = isCritical
+      ? "var(--maha-danger-border, rgba(255, 107, 107, 0.35))"
+      : isAttention
+        ? "var(--maha-warning-border, rgba(217, 164, 65, 0.45))"
+        : "var(--maha-success-border, rgba(106, 211, 176, 0.4))";
+
+    return (
+      <div
+        key={options?.key || intervention.id}
+        className="notice"
+        style={{
+          display: "grid",
+          gap: 4,
+          borderColor: accentBorder,
+          boxShadow: `0 0 0 1px ${accentBorder} inset`,
+        }}
+      >
+        <span className="small-muted">
+          <strong style={{ color: accentColor }}>{intervention.title}</strong> •{" "}
+          {formatInterventionSeverityLabel(intervention.severity)} •{" "}
+          {formatInterventionStatusLabel(intervention.status)}
+        </span>
+        {options?.showParticipant && (
+          <span className="small-muted">
+            Jogador: <strong>{getParticipantDisplayName(intervention.participant)}</strong>
+          </span>
+        )}
+        <span className="small-muted">{intervention.message}</span>
+        {intervention.status === "SNOOZED" && intervention.snoozedUntil && (
+          <span className="small-muted">
+            Retorno previsto:{" "}
+            {new Date(intervention.snoozedUntil).toLocaleString("pt-BR")}
+          </span>
+        )}
+        {intervention.reflectionQuestion && (
+          <span className="small-muted">
+            <strong>Pergunta:</strong> {intervention.reflectionQuestion}
+          </span>
+        )}
+        {intervention.microAction && (
+          <span className="small-muted">
+            <strong>Microação:</strong> {intervention.microAction}
+          </span>
+        )}
+        <span className="small-muted">
+          Trigger: {intervention.triggerId}
+          {typeof intervention.turnNumber === "number"
+            ? ` • Jogada #${intervention.turnNumber}`
+            : ""}
+        </span>
+        <span className="small-muted">
+          {new Date(intervention.createdAt).toLocaleString("pt-BR")}
+        </span>
+        {options?.showOpenTimelineButton && intervention.move?.id && (
+          <button
+            className="btn-secondary"
+            style={{ width: "fit-content", justifySelf: "start" }}
+            onClick={() => openTimelinePanel(intervention.participant.id)}
+          >
+            Ver na jornada
+          </button>
+        )}
+        {isPending && isTherapist && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              className="btn-secondary"
+              disabled={loadingApprove}
+              onClick={() => handleInterventionDecision(intervention.id, "approve")}
+            >
+              Aprovar
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={loadingSnooze}
+              onClick={() => handleInterventionDecision(intervention.id, "snooze")}
+            >
+              Adiar 10 min
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={loadingDismiss}
+              onClick={() => handleInterventionDecision(intervention.id, "dismiss")}
+            >
+              Dispensar
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={loadingDismissMuteSession}
+              onClick={() =>
+                handleInterventionDecision(intervention.id, "dismiss", {
+                  muteSession: true,
+                })
+              }
+            >
+              Não repetir nesta sessão
+            </button>
+          </div>
+        )}
+        {isPending && !isTherapist && (
+          <span className="small-muted">
+            Aguardando aprovação do terapeuta.
+          </span>
+        )}
+        {canSendFeedback && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              className="btn-secondary"
+              disabled={loadingFeedbackHelpful}
+              onClick={() => handleInterventionFeedback(intervention.id, "HELPFUL")}
+            >
+              Útil
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={loadingFeedbackApplied}
+              onClick={() => handleInterventionFeedback(intervention.id, "APPLIED")}
+            >
+              Aplicada
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={loadingFeedbackNotHelpful}
+              onClick={() =>
+                handleInterventionFeedback(intervention.id, "NOT_HELPFUL")
+              }
+            >
+              Pouco útil
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -4693,6 +5022,115 @@ export function RoomClient({
             </div>
           );
         })}
+      </div>
+
+      <div
+        className="room-intervention-center"
+        data-open={interventionCenterOpen ? "true" : "false"}
+      >
+        <button
+          className="room-intervention-center-trigger"
+          data-pulse={interventionCenterPulse ? "true" : "false"}
+          data-critical={interventionCenterCriticalCount > 0 ? "true" : "false"}
+          onClick={() => {
+            clearInterventionCenterTimers();
+            setInterventionCenterPulse(false);
+            setInterventionCenterOpen((previous) => !previous);
+          }}
+        >
+          <span className="room-intervention-center-trigger-title">
+            Assistente terapêutico
+          </span>
+          <span className="room-intervention-center-trigger-subtitle">
+            {timelineLoading && !timelineLoaded
+              ? "Carregando intervenções..."
+              : interventionCenterActiveCount > 0
+                ? `${interventionCenterActiveCount} intervenção(ões) ativa(s)`
+                : "Sem pendências ativas"}
+          </span>
+          <span className="room-intervention-center-badges">
+            {interventionCenterPendingCount > 0 && (
+              <span className="room-intervention-center-badge room-intervention-center-badge-pending">
+                {interventionCenterPendingCount} aprovação(ões)
+              </span>
+            )}
+            {interventionCenterCriticalCount > 0 && (
+              <span className="room-intervention-center-badge room-intervention-center-badge-critical">
+                {interventionCenterCriticalCount} crítica(s)
+              </span>
+            )}
+          </span>
+        </button>
+
+        {interventionCenterOpen && (
+          <div
+            className="card room-intervention-center-panel"
+            onMouseEnter={clearInterventionCenterTimers}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <strong>Intervenções ativas</strong>
+              <button
+                className="btn-ghost"
+                style={{ padding: "4px 10px" }}
+                onClick={() => {
+                  clearInterventionCenterTimers();
+                  setInterventionCenterOpen(false);
+                  setInterventionCenterPulse(false);
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+            {timelineLoading && !timelineLoaded ? (
+              <span className="small-muted">Carregando intervenções...</span>
+            ) : interventionCenterVisibleItems.length === 0 ? (
+              <span className="small-muted">
+                Nenhuma intervenção registrada nesta sessão.
+              </span>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  maxHeight: isMobileViewport ? "58vh" : "52vh",
+                  overflow: "auto",
+                  paddingRight: 2,
+                }}
+              >
+                {interventionCenterVisibleItems.map((intervention) =>
+                  renderInterventionCard(intervention, {
+                    key: `intervention-center-${intervention.id}`,
+                    showParticipant: shouldShowInterventionParticipantLabel,
+                    showOpenTimelineButton: true,
+                  }),
+                )}
+              </div>
+            )}
+            {(interventionCenterHasMoreItems ||
+              interventionCenterVisibleItems.length > 0) && (
+              <button
+                className="btn-secondary"
+                style={{ width: "100%" }}
+                onClick={() => {
+                  clearInterventionCenterTimers();
+                  setInterventionCenterOpen(false);
+                  setInterventionCenterPulse(false);
+                  openTimelinePanel();
+                }}
+              >
+                Ver jornada completa
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {needsConsent && !consentAccepted && (
@@ -7059,454 +7497,16 @@ export function RoomClient({
                             if (moveInterventions.length === 0) return null;
                             return (
                               <div style={{ display: "grid", gap: 6 }}>
-                                {moveInterventions.map((intervention) => {
-                                  const isPending =
-                                    intervention.status === "PENDING_APPROVAL";
-                                  const canSendFeedback =
-                                    intervention.status === "APPROVED";
-                                  const loadingApprove = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "approve",
-                                      )
-                                    ],
-                                  );
-                                  const loadingSnooze = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "snooze",
-                                      )
-                                    ],
-                                  );
-                                  const loadingDismiss = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "dismiss",
-                                      )
-                                    ],
-                                  );
-                                  const loadingDismissMuteSession = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "dismissMuteSession",
-                                      )
-                                    ],
-                                  );
-                                  const loadingFeedbackHelpful = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "feedbackHelpful",
-                                      )
-                                    ],
-                                  );
-                                  const loadingFeedbackApplied = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "feedbackApplied",
-                                      )
-                                    ],
-                                  );
-                                  const loadingFeedbackNotHelpful = Boolean(
-                                    interventionActionLoadingByKey[
-                                      getInterventionActionKey(
-                                        intervention.id,
-                                        "feedbackNotHelpful",
-                                      )
-                                    ],
-                                  );
-                                  return (
-                                    <div
-                                      key={intervention.id}
-                                      className="notice"
-                                      style={{ display: "grid", gap: 4 }}
-                                    >
-                                      <span className="small-muted">
-                                        <strong>{intervention.title}</strong> •{" "}
-                                        {formatInterventionSeverityLabel(
-                                          intervention.severity,
-                                        )}{" "}
-                                        •{" "}
-                                        {formatInterventionStatusLabel(
-                                          intervention.status,
-                                        )}
-                                      </span>
-                                      <span className="small-muted">
-                                        {intervention.message}
-                                      </span>
-                                      {intervention.status === "SNOOZED" &&
-                                        intervention.snoozedUntil && (
-                                          <span className="small-muted">
-                                            Retorno previsto:{" "}
-                                            {new Date(
-                                              intervention.snoozedUntil,
-                                            ).toLocaleString("pt-BR")}
-                                          </span>
-                                        )}
-                                      {intervention.reflectionQuestion && (
-                                        <span className="small-muted">
-                                          <strong>Pergunta:</strong>{" "}
-                                          {intervention.reflectionQuestion}
-                                        </span>
-                                      )}
-                                      {intervention.microAction && (
-                                        <span className="small-muted">
-                                          <strong>Microação:</strong>{" "}
-                                          {intervention.microAction}
-                                        </span>
-                                      )}
-                                      {isPending && isTherapist && (
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            gap: 6,
-                                            flexWrap: "wrap",
-                                          }}
-                                        >
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingApprove}
-                                            onClick={() =>
-                                              handleInterventionDecision(
-                                                intervention.id,
-                                                "approve",
-                                              )
-                                            }
-                                          >
-                                            Aprovar
-                                          </button>
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingSnooze}
-                                            onClick={() =>
-                                              handleInterventionDecision(
-                                                intervention.id,
-                                                "snooze",
-                                              )
-                                            }
-                                          >
-                                            Adiar 10 min
-                                          </button>
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingDismiss}
-                                            onClick={() =>
-                                              handleInterventionDecision(
-                                                intervention.id,
-                                                "dismiss",
-                                              )
-                                            }
-                                          >
-                                            Dispensar
-                                          </button>
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingDismissMuteSession}
-                                            onClick={() =>
-                                              handleInterventionDecision(
-                                                intervention.id,
-                                                "dismiss",
-                                                { muteSession: true },
-                                              )
-                                            }
-                                          >
-                                            Não repetir nesta sessão
-                                          </button>
-                                        </div>
-                                      )}
-                                      {canSendFeedback && (
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            gap: 6,
-                                            flexWrap: "wrap",
-                                          }}
-                                        >
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingFeedbackHelpful}
-                                            onClick={() =>
-                                              handleInterventionFeedback(
-                                                intervention.id,
-                                                "HELPFUL",
-                                              )
-                                            }
-                                          >
-                                            Útil
-                                          </button>
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingFeedbackApplied}
-                                            onClick={() =>
-                                              handleInterventionFeedback(
-                                                intervention.id,
-                                                "APPLIED",
-                                              )
-                                            }
-                                          >
-                                            Aplicada
-                                          </button>
-                                          <button
-                                            className="btn-secondary"
-                                            disabled={loadingFeedbackNotHelpful}
-                                            onClick={() =>
-                                              handleInterventionFeedback(
-                                                intervention.id,
-                                                "NOT_HELPFUL",
-                                              )
-                                            }
-                                          >
-                                            Pouco útil
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                {moveInterventions.map((intervention) =>
+                                  renderInterventionCard(intervention, {
+                                    key: intervention.id,
+                                  }),
+                                )}
                               </div>
                             );
                           })()}
                         </div>
                       ))
-                    )}
-                  </div>
-                  <div className="notice" style={{ display: "grid", gap: 8 }}>
-                    <strong>Intervenções assistidas</strong>
-                    {filteredTimelineInterventions.length === 0 ? (
-                      <span className="small-muted">
-                        Nenhuma intervenção registrada para o jogador selecionado.
-                      </span>
-                    ) : (
-                      <div
-                        style={{
-                          display: "grid",
-                          gap: 6,
-                          maxHeight: 220,
-                          overflow: "auto",
-                          paddingRight: 2,
-                        }}
-                      >
-                        {filteredTimelineInterventions
-                          .slice()
-                          .sort(
-                            (a, b) =>
-                              new Date(b.createdAt).getTime() -
-                              new Date(a.createdAt).getTime(),
-                          )
-                          .map((intervention) => {
-                            const isPending =
-                              intervention.status === "PENDING_APPROVAL";
-                            const canSendFeedback =
-                              intervention.status === "APPROVED";
-                            const loadingApprove = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "approve",
-                                )
-                              ],
-                            );
-                            const loadingSnooze = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "snooze",
-                                )
-                              ],
-                            );
-                            const loadingDismiss = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "dismiss",
-                                )
-                              ],
-                            );
-                            const loadingDismissMuteSession = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "dismissMuteSession",
-                                )
-                              ],
-                            );
-                            const loadingFeedbackHelpful = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "feedbackHelpful",
-                                )
-                              ],
-                            );
-                            const loadingFeedbackApplied = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "feedbackApplied",
-                                )
-                              ],
-                            );
-                            const loadingFeedbackNotHelpful = Boolean(
-                              interventionActionLoadingByKey[
-                                getInterventionActionKey(
-                                  intervention.id,
-                                  "feedbackNotHelpful",
-                                )
-                              ],
-                            );
-                            return (
-                              <div
-                                key={`timeline-intervention-${intervention.id}`}
-                                className="notice"
-                                style={{ display: "grid", gap: 4 }}
-                              >
-                                <span className="small-muted">
-                                  <strong>{intervention.title}</strong> •{" "}
-                                  {formatInterventionSeverityLabel(
-                                    intervention.severity,
-                                  )}{" "}
-                                  •{" "}
-                                  {formatInterventionStatusLabel(
-                                    intervention.status,
-                                  )}
-                                </span>
-                                <span className="small-muted">
-                                  {intervention.message}
-                                </span>
-                                {intervention.status === "SNOOZED" &&
-                                  intervention.snoozedUntil && (
-                                    <span className="small-muted">
-                                      Retorno previsto:{" "}
-                                      {new Date(
-                                        intervention.snoozedUntil,
-                                      ).toLocaleString("pt-BR")}
-                                    </span>
-                                  )}
-                                <span className="small-muted">
-                                  Trigger: {intervention.triggerId}
-                                  {typeof intervention.turnNumber === "number"
-                                    ? ` • Jogada #${intervention.turnNumber}`
-                                    : ""}
-                                </span>
-                                <span className="small-muted">
-                                  {new Date(intervention.createdAt).toLocaleString(
-                                    "pt-BR",
-                                  )}
-                                </span>
-                                {isPending && isTherapist && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: 6,
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingApprove}
-                                      onClick={() =>
-                                        handleInterventionDecision(
-                                          intervention.id,
-                                          "approve",
-                                        )
-                                      }
-                                    >
-                                      Aprovar
-                                    </button>
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingSnooze}
-                                      onClick={() =>
-                                        handleInterventionDecision(
-                                          intervention.id,
-                                          "snooze",
-                                        )
-                                      }
-                                    >
-                                      Adiar 10 min
-                                    </button>
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingDismiss}
-                                      onClick={() =>
-                                        handleInterventionDecision(
-                                          intervention.id,
-                                          "dismiss",
-                                        )
-                                      }
-                                    >
-                                      Dispensar
-                                    </button>
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingDismissMuteSession}
-                                      onClick={() =>
-                                        handleInterventionDecision(
-                                          intervention.id,
-                                          "dismiss",
-                                          { muteSession: true },
-                                        )
-                                      }
-                                    >
-                                      Não repetir nesta sessão
-                                    </button>
-                                  </div>
-                                )}
-                                {canSendFeedback && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: 6,
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingFeedbackHelpful}
-                                      onClick={() =>
-                                        handleInterventionFeedback(
-                                          intervention.id,
-                                          "HELPFUL",
-                                        )
-                                      }
-                                    >
-                                      Útil
-                                    </button>
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingFeedbackApplied}
-                                      onClick={() =>
-                                        handleInterventionFeedback(
-                                          intervention.id,
-                                          "APPLIED",
-                                        )
-                                      }
-                                    >
-                                      Aplicada
-                                    </button>
-                                    <button
-                                      className="btn-secondary"
-                                      disabled={loadingFeedbackNotHelpful}
-                                      onClick={() =>
-                                        handleInterventionFeedback(
-                                          intervention.id,
-                                          "NOT_HELPFUL",
-                                        )
-                                      }
-                                    >
-                                      Pouco útil
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
                     )}
                   </div>
                 </>
@@ -8726,6 +8726,70 @@ export function RoomClient({
               <a href="/planos" className="btn-primary">
                 Assinar plano
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {criticalInterventionModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72))",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 10950,
+            padding: 12,
+          }}
+          onClick={() => setCriticalInterventionModalId(null)}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(680px, 96vw)",
+              maxHeight: "84vh",
+              overflow: "auto",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <strong>Intervenção crítica do assistente</strong>
+            <span className="small-muted">
+              Esse aviso exige atenção imediata antes da próxima jogada.
+            </span>
+            {renderInterventionCard(criticalInterventionModal, {
+              showParticipant: shouldShowInterventionParticipantLabel,
+              showOpenTimelineButton: true,
+            })}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn-secondary"
+                onClick={() => setCriticalInterventionModalId(null)}
+              >
+                Fechar
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  setCriticalInterventionModalId(null);
+                  clearInterventionCenterTimers();
+                  setInterventionCenterPulse(false);
+                  setInterventionCenterOpen(true);
+                }}
+              >
+                Abrir central de intervenções
+              </button>
             </div>
           </div>
         </div>

@@ -490,17 +490,6 @@ export default function AdminMahaLilahRoomsPage() {
                         <div className="flex justify-end gap-2">
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenRoom(room)}
-                            disabled={openingRoomId === room.id}
-                          >
-                            {openingRoomId === room.id
-                              ? "Abrindo..."
-                              : "Abrir sala"}
-                          </Button>
-                          <Button
-                            type="button"
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteRoom(room)}
