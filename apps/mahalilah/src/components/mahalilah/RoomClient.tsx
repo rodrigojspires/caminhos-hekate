@@ -4663,10 +4663,19 @@ export function RoomClient({
               }
               style={{
                 flex: "0 0 auto",
-                color: "rgba(255, 188, 188, 0.98)",
-                borderColor: "rgba(214, 89, 89, 0.72)",
+                color: isLightTheme
+                  ? "rgba(123, 22, 22, 0.98)"
+                  : "rgba(255, 188, 188, 0.98)",
+                borderColor: isLightTheme
+                  ? "rgba(170, 58, 58, 0.76)"
+                  : "rgba(214, 89, 89, 0.72)",
                 background:
-                  "linear-gradient(180deg, rgba(118, 44, 44, 0.34), rgba(82, 28, 28, 0.26))",
+                  isLightTheme
+                    ? "linear-gradient(180deg, rgba(255, 226, 226, 0.98), rgba(247, 192, 192, 0.92))"
+                    : "linear-gradient(180deg, rgba(118, 44, 44, 0.34), rgba(82, 28, 28, 0.26))",
+                boxShadow: isLightTheme
+                  ? "0 0 0 1px rgba(170, 58, 58, 0.2) inset, 0 8px 18px rgba(170, 58, 58, 0.22)"
+                  : undefined,
               }}
             >
               Encerrar sala
@@ -4761,14 +4770,26 @@ export function RoomClient({
               alignItems: "center",
               justifyContent: "center",
               color: showBoardShortcuts
-                ? "rgba(235, 218, 172, 0.98)"
-                : undefined,
+                ? isLightTheme
+                  ? "rgba(112, 73, 12, 0.98)"
+                  : "rgba(235, 218, 172, 0.98)"
+                : isLightTheme
+                  ? "rgba(97, 73, 33, 0.88)"
+                  : undefined,
               borderColor: showBoardShortcuts
-                ? "rgba(224, 191, 127, 0.72)"
-                : undefined,
+                ? isLightTheme
+                  ? "rgba(176, 129, 35, 0.74)"
+                  : "rgba(224, 191, 127, 0.72)"
+                : isLightTheme
+                  ? "rgba(181, 144, 84, 0.56)"
+                  : undefined,
               background: showBoardShortcuts
-                ? "linear-gradient(180deg, rgba(136, 104, 49, 0.34), rgba(92, 68, 28, 0.26))"
-                : undefined,
+                ? isLightTheme
+                  ? "linear-gradient(180deg, rgba(252, 220, 152, 0.95), rgba(236, 189, 97, 0.88))"
+                  : "linear-gradient(180deg, rgba(136, 104, 49, 0.34), rgba(92, 68, 28, 0.26))"
+                : isLightTheme
+                  ? "linear-gradient(180deg, rgba(255, 247, 229, 0.97), rgba(245, 232, 203, 0.92))"
+                  : undefined,
             }}
           >
             <span

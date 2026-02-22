@@ -147,8 +147,9 @@
 }
 
 .mahalilah-ui[data-ui-theme="light"] .notice {
-  background: hsl(var(--temple-surface-2));
-  border-color: rgba(191, 142, 35, 0.36);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(102, 120, 148, 0.5);
+  box-shadow: 0 0 0 1px rgba(102, 120, 148, 0.12) inset;
 }
 
 .mahalilah-ui[data-ui-theme="light"] .pill {
@@ -220,6 +221,12 @@
 
 .mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] {
   --temple-border-subtle: 220 22% 71%;
+}
+
+.mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] .notice {
+  box-shadow:
+    0 0 0 1px rgba(102, 120, 148, 0.22) inset,
+    0 6px 18px rgba(34, 48, 78, 0.12);
 }
 
 * {
@@ -634,6 +641,22 @@ button:disabled {
   }
 }
 
+@keyframes mahalilah-house-meaning-blink-light {
+  0%,
+  100% {
+    border-color: rgba(126, 86, 28, 0.74);
+    box-shadow:
+      0 0 0 1px rgba(126, 86, 28, 0.24) inset,
+      0 0 16px rgba(126, 86, 28, 0.14);
+  }
+  50% {
+    border-color: rgba(95, 63, 18, 0.96);
+    box-shadow:
+      0 0 0 1px rgba(95, 63, 18, 0.42) inset,
+      0 0 24px rgba(95, 63, 18, 0.22);
+  }
+}
+
 .mahalilah-dice-modal {
   width: min(360px, 92vw);
   display: grid;
@@ -680,6 +703,24 @@ button:disabled {
 
 .room-house-meaning-highlight[data-blink="true"] {
   animation: mahalilah-house-meaning-blink 0.52s ease-in-out 4;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-house-meaning-highlight {
+  border-color: rgba(126, 86, 28, 0.74);
+  background: linear-gradient(
+      155deg,
+      rgba(214, 162, 62, 0.28) 0%,
+      rgba(255, 255, 255, 0.88) 54%,
+      rgba(245, 236, 218, 0.94) 100%
+    ),
+    hsl(var(--temple-surface-2));
+  box-shadow:
+    0 0 0 1px rgba(126, 86, 28, 0.24) inset,
+    0 0 16px rgba(126, 86, 28, 0.14);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .room-house-meaning-highlight[data-blink="true"] {
+  animation: mahalilah-house-meaning-blink-light 0.52s ease-in-out 4;
 }
 
 @media (prefers-reduced-motion: reduce) {
