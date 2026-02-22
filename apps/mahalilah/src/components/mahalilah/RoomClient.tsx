@@ -395,6 +395,9 @@ const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
 const DICE_SOUND_BURST_INTERVAL_MS = 95;
 const DICE_SOUND_BURST_DURATION_S = 0.08;
+const DICE_SOUND_NOISE_DECAY_FACTOR = 4.1;
+const DICE_SOUND_ATTACK_S = 0.008;
+const DICE_SOUND_PEAK_GAIN = 0.18;
 const HOUSE_MEANING_HIGHLIGHT_MS = 2200;
 const PIN_MOVE_ANIMATION_MS = 820;
 const PIN_JUMP_SEGMENT_ANIMATION_MS = 920;
@@ -1259,7 +1262,9 @@ export function RoomClient({
     const buffer = audioContext.createBuffer(1, frameCount, audioContext.sampleRate);
     const channelData = buffer.getChannelData(0);
     for (let index = 0; index < frameCount; index += 1) {
-      const decay = Math.exp((-index / frameCount) * 5.2);
+      const decay = Math.exp(
+        (-index / frameCount) * DICE_SOUND_NOISE_DECAY_FACTOR,
+      );
       channelData[index] = (Math.random() * 2 - 1) * decay;
     }
 
@@ -1274,7 +1279,10 @@ export function RoomClient({
     const gain = audioContext.createGain();
     const now = audioContext.currentTime;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(
+      DICE_SOUND_PEAK_GAIN,
+      now + DICE_SOUND_ATTACK_S,
+    );
     gain.gain.exponentialRampToValueAtTime(0.0001, now + burstDuration);
 
     source.connect(filter);
