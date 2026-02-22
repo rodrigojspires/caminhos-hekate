@@ -436,6 +436,22 @@ button:disabled {
   }
 }
 
+@keyframes mahalilah-house-meaning-blink {
+  0%,
+  100% {
+    border-color: rgba(255, 214, 132, 0.78);
+    box-shadow:
+      0 0 0 1px rgba(255, 214, 132, 0.34) inset,
+      0 0 20px rgba(255, 188, 96, 0.18);
+  }
+  50% {
+    border-color: rgba(255, 236, 184, 0.98);
+    box-shadow:
+      0 0 0 1px rgba(255, 236, 184, 0.52) inset,
+      0 0 34px rgba(255, 210, 128, 0.42);
+  }
+}
+
 .mahalilah-dice-modal {
   width: min(360px, 92vw);
   display: grid;
@@ -466,8 +482,30 @@ button:disabled {
   animation: mahalilah-dice-spin 0.42s linear infinite;
 }
 
+.room-house-meaning-highlight {
+  border-color: rgba(255, 214, 132, 0.78);
+  background: linear-gradient(
+      155deg,
+      rgba(217, 164, 65, 0.2) 0%,
+      rgba(15, 24, 38, 0.88) 52%,
+      rgba(12, 20, 32, 0.95) 100%
+    ),
+    hsl(var(--temple-surface-2));
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 132, 0.34) inset,
+    0 0 20px rgba(255, 188, 96, 0.18);
+}
+
+.room-house-meaning-highlight[data-blink="true"] {
+  animation: mahalilah-house-meaning-blink 0.52s ease-in-out 4;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mahalilah-dice-face.is-rolling {
+    animation: none;
+  }
+
+  .room-house-meaning-highlight[data-blink="true"] {
     animation: none;
   }
 }
@@ -528,6 +566,23 @@ button:disabled {
 .room-shell {
   position: relative;
   overflow-x: clip;
+}
+
+.room-side-panel {
+  scrollbar-gutter: stable;
+}
+
+.room-side-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.room-side-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 211, 130, 0.32);
+  border-radius: 999px;
+}
+
+.room-side-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .room-mobile-panel-header,

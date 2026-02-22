@@ -9,10 +9,10 @@ import { withSeoDefaults } from "@/lib/marketing/seo";
 
 export const metadata: Metadata = withSeoDefaults(
   {
-    title: "Dashboard",
+    title: "Painel",
     description: "Painel interno do Maha Lilah Online para gestão de sessões e participantes.",
     openGraph: {
-      title: "Dashboard Maha Lilah Online",
+      title: "Painel Maha Lilah Online",
       description: "Painel interno do Maha Lilah Online para gestão de sessões e participantes.",
       url: "/dashboard",
     },

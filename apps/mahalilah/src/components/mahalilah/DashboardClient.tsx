@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { io, Socket } from "socket.io-client";
 import { getHouseByNumber, getHousePrompt } from "@hekate/mahalilah-core";
 import { HOUSE_MEANINGS } from "@/lib/mahalilah/house-meanings";
 import { HOUSE_POLARITIES } from "@/lib/mahalilah/house-polarities";
@@ -676,7 +677,7 @@ function getDashboardTutorialSteps({
   steps.push({
     title: "Cabeçalho da sala",
     description:
-      "Na primeira linha você encontra código, trial, status, abrir sala e exclusão; abaixo, data, ocupação, modo da sala e disponibilidade para jogadores.",
+      "Na primeira linha você encontra código, teste, status, abrir sala e exclusão; abaixo, data, ocupação, modo da sala e disponibilidade para jogadores.",
     target: "room-actions",
   });
 
@@ -710,7 +711,7 @@ function getDashboardTutorialSteps({
       target: "room-tab-timeline",
     },
     {
-      title: "Aba Deck randômico",
+      title: "Aba Baralho randômico",
       description:
         "Visualize cartas tiradas na sessão, incluindo tiragens fora de jogada, com filtro por participante.",
       target: "room-tab-deck",
@@ -948,6 +949,8 @@ export function DashboardClient() {
   const [deletingRoomIds, setDeletingRoomIds] = useState<Record<string, boolean>>({});
   const [deletingInviteIds, setDeletingInviteIds] = useState<Record<string, boolean>>({});
   const [savingTherapistSummaryByParticipantId, setSavingTherapistSummaryByParticipantId] =
+    useState<Record<string, boolean>>({});
+  const [generatingFinalSummaryByParticipantId, setGeneratingFinalSummaryByParticipantId] =
     useState<Record<string, boolean>>({});
   const [therapistSummaries, setTherapistSummaries] = useState<
     Record<string, string>
@@ -1404,7 +1407,7 @@ export function DashboardClient() {
 
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
-      pushToast(payload.error || "Erro ao criar sala trial.", "error");
+      pushToast(payload.error || "Erro ao criar sala de teste.", "error");
       setCreatingTrial(false);
       return;
     }
@@ -1413,8 +1416,8 @@ export function DashboardClient() {
     const roomCode = payload?.room?.code;
     pushToast(
       roomCode
-        ? `Sala trial ${roomCode} criada com sucesso.`
-        : "Sala trial criada com sucesso.",
+        ? `Sala de teste ${roomCode} criada com sucesso.`
+        : "Sala de teste criada com sucesso.",
       "success",
     );
     if (roomCode) {
@@ -1658,6 +1661,160 @@ export function DashboardClient() {
     URL.revokeObjectURL(url);
     pushToast("Relatório em PDF exportado com sucesso.", "success");
   };
+
+  const connectRealtimeForRoom = useCallback(async (roomCode: string) => {
+    const authRes = await fetch("/api/mahalilah/realtime/token", {
+      cache: "no-store",
+    });
+    if (!authRes.ok) {
+      throw new Error("Não foi possível autenticar no tempo real.");
+    }
+    const authPayload = await authRes.json().catch(() => ({}));
+    const token =
+      typeof authPayload?.token === "string" ? authPayload.token : "";
+    const wsUrl = typeof authPayload?.wsUrl === "string" ? authPayload.wsUrl : "";
+
+    if (!token || !wsUrl) {
+      throw new Error("Serviço em tempo real indisponível.");
+    }
+
+    const realtimeSocket = io(wsUrl, {
+      transports: ["websocket"],
+      auth: { token },
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        realtimeSocket.off("connect", handleConnect);
+        realtimeSocket.off("connect_error", handleConnectError);
+      };
+
+      const timeoutId = window.setTimeout(() => {
+        cleanup();
+        realtimeSocket.disconnect();
+        reject(new Error("Não foi possível conectar ao tempo real da sala."));
+      }, 12_000);
+
+      function handleConnectError(error: Error) {
+        window.clearTimeout(timeoutId);
+        cleanup();
+        realtimeSocket.disconnect();
+        reject(
+          new Error(
+            error?.message || "Falha ao conectar no tempo real da sala.",
+          ),
+        );
+      }
+
+      function handleConnect() {
+        realtimeSocket.emit("room:join", { code: roomCode }, (joinResp: any) => {
+          window.clearTimeout(timeoutId);
+          cleanup();
+
+          if (!joinResp?.ok) {
+            realtimeSocket.disconnect();
+            reject(
+              new Error(
+                joinResp?.error ||
+                  "Não foi possível entrar na sala para gerar a síntese.",
+              ),
+            );
+            return;
+          }
+
+          resolve();
+        });
+      }
+
+      realtimeSocket.on("connect", handleConnect);
+      realtimeSocket.on("connect_error", handleConnectError);
+    });
+
+    return realtimeSocket;
+  }, []);
+
+  const handleGenerateParticipantFinalSummary = useCallback(
+    async (room: Room, participant: RoomParticipant) => {
+      if (room.viewerRole !== "THERAPIST") return;
+      if (generatingFinalSummaryByParticipantId[participant.id]) return;
+      if (!participant.consentAcceptedAt) {
+        pushToast(
+          "Não é possível gerar síntese final sem consentimento do participante.",
+          "warning",
+        );
+        return;
+      }
+
+      const participantLabel = getParticipantDisplayName(participant);
+      setGeneratingFinalSummaryByParticipantId((prev) => ({
+        ...prev,
+        [participant.id]: true,
+      }));
+
+      let realtimeSocket: Socket | null = null;
+      try {
+        realtimeSocket = await connectRealtimeForRoom(room.code);
+        const connectedSocket = realtimeSocket;
+        if (!connectedSocket) {
+          throw new Error("Conexão em tempo real indisponível.");
+        }
+        const response = await new Promise<any>((resolve) => {
+          connectedSocket.emit(
+            "ai:finalReport",
+            { participantId: participant.id },
+            resolve,
+          );
+        });
+
+        if (!response?.ok) {
+          throw new Error(response?.error || "Erro ao gerar síntese final.");
+        }
+
+        const content =
+          typeof response?.content === "string" ? response.content : "";
+        setAiContentModal({
+          title: `Relatório final • ${participantLabel}`,
+          subtitle: `Gerado em ${new Date().toLocaleString("pt-BR")}`,
+          content: content
+            ? normalizeAiModalText(content)
+            : "Sem conteúdo disponível.",
+        });
+        pushToast(`Síntese final gerada para ${participantLabel}.`, "success");
+        const timelineRes = await fetch(`/api/mahalilah/rooms/${room.id}/timeline`);
+        if (timelineRes.ok) {
+          const timelineData = await timelineRes.json().catch(() => ({}));
+          setDetails((prev) => ({
+            ...prev,
+            [room.id]: {
+              loading: false,
+              moves: timelineData.moves || [],
+              aiReports: timelineData.aiReports || [],
+              cardDraws: timelineData.cardDraws || [],
+            },
+          }));
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Erro ao gerar síntese final do participante.";
+        pushToast(message, "error");
+      } finally {
+        if (realtimeSocket) {
+          realtimeSocket.disconnect();
+        }
+        setGeneratingFinalSummaryByParticipantId((prev) => ({
+          ...prev,
+          [participant.id]: false,
+        }));
+      }
+    },
+    [
+      connectRealtimeForRoom,
+      generatingFinalSummaryByParticipantId,
+      pushToast,
+    ],
+  );
 
   const loadTimeline = useCallback(async (roomId: string) => {
     setDetails((prev) => ({
@@ -1996,7 +2153,7 @@ export function DashboardClient() {
               }}
             >
               <div className="badge">Sala {room.code}</div>
-              {room.isTrial && <span className="pill">Trial</span>}
+              {room.isTrial && <span className="pill">Teste</span>}
               {shouldShowNewChip && <span className="pill pill-new-room">Novo</span>}
               <span className={`pill ${statusClass(room.status)}`}>
                 {room.status}
@@ -2165,7 +2322,7 @@ export function DashboardClient() {
                   isTutorialPrimaryRoom ? "room-tab-deck" : undefined
                 }
               >
-                Deck randômico
+                Baralho randômico
               </button>
               <button
                 className={
@@ -2345,6 +2502,8 @@ export function DashboardClient() {
                     const canExportParticipant = exportableParticipantIds.has(
                       participant.id,
                     );
+                    const canGenerateParticipantFinalSummary =
+                      room.viewerRole === "THERAPIST" && canExportParticipant;
                     const participantStats =
                       indicatorStatsByParticipantId.get(participant.id) || null;
                     const participantSummaryValue =
@@ -2353,6 +2512,9 @@ export function DashboardClient() {
                       "";
                     const isSavingParticipantSummary = Boolean(
                       savingTherapistSummaryByParticipantId[participant.id],
+                    );
+                    const isGeneratingParticipantFinalSummary = Boolean(
+                      generatingFinalSummaryByParticipantId[participant.id],
                     );
 
                     return (
@@ -2463,6 +2625,25 @@ export function DashboardClient() {
                               >
                                 Exportar PDF
                               </button>
+                              {canGenerateParticipantFinalSummary && (
+                                <button
+                                  className="btn-secondary"
+                                  disabled={
+                                    isGeneratingParticipantFinalSummary ||
+                                    !participant.consentAcceptedAt
+                                  }
+                                  onClick={() =>
+                                    void handleGenerateParticipantFinalSummary(
+                                      room,
+                                      participant,
+                                    )
+                                  }
+                                >
+                                  {isGeneratingParticipantFinalSummary
+                                    ? "Gerando síntese final..."
+                                    : "Gerar síntese final"}
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <span className="small-muted">
@@ -2471,6 +2652,12 @@ export function DashboardClient() {
                                 : "Este participante não está disponível para exportação."}
                             </span>
                           )}
+                          {canGenerateParticipantFinalSummary &&
+                            !participant.consentAcceptedAt && (
+                              <span className="small-muted">
+                                É necessário consentimento para gerar síntese final.
+                              </span>
+                            )}
                         </div>
 
                         {canEditParticipantSummary && (
@@ -2761,7 +2948,7 @@ export function DashboardClient() {
                     gap: 8,
                   }}
                 >
-                  <strong>Deck randômico</strong>
+                  <strong>Baralho randômico</strong>
                   <div
                     style={{
                       display: "flex",
@@ -3375,7 +3562,7 @@ export function DashboardClient() {
               className="card dashboard-create-card"
               style={{ display: "grid", gap: 12 }}
             >
-              <strong>Sala trial</strong>
+              <strong>Sala de teste</strong>
               <p className="small-muted" style={{ margin: 0 }}>
                 Experimente agora com 1 jogador, 1 ajuda de IA e resumo final, com
                 limite de 5 jogadas após sair da casa 68.
@@ -3386,7 +3573,7 @@ export function DashboardClient() {
                   onClick={handleCreateTrialRoom}
                   disabled={creatingTrial}
                 >
-                  {creatingTrial ? "Criando trial..." : "Experimente já"}
+                  {creatingTrial ? "Criando teste..." : "Experimente já"}
                 </button>
                 <a href="/planos" className="btn-secondary">
                   Ver planos
@@ -3396,9 +3583,9 @@ export function DashboardClient() {
           )}
           {showTrialUpgradeCard && (
             <div className="card dashboard-create-card" style={{ display: "grid", gap: 12 }}>
-              <strong>Sala trial encerrada</strong>
+              <strong>Sala de teste encerrada</strong>
               <p className="small-muted" style={{ margin: 0 }}>
-                Sua sala trial foi encerrada. Para criar novas salas, escolha entre sessão
+                Sua sala de teste foi encerrada. Para criar novas salas, escolha entre sessão
                 avulsa ou assinatura.
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -5271,7 +5458,7 @@ export function DashboardClient() {
           >
             <div style={{ display: "grid", gap: 4 }}>
               <strong>
-                Tutorial do dashboard ({dashboardTutorialStep + 1}/
+                Tutorial do painel ({dashboardTutorialStep + 1}/
                 {dashboardTutorialSteps.length})
               </strong>
               <span className="small-muted">

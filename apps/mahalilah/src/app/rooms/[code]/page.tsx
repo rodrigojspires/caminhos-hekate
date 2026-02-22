@@ -82,7 +82,7 @@ export default async function RoomPage({ params, searchParams }: RoomPageProps) 
             </span>
             <div>
               <Link href="/dashboard" className="btn-secondary">
-                Voltar ao dashboard
+                Voltar ao painel
               </Link>
             </div>
           </div>

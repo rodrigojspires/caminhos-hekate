@@ -393,6 +393,9 @@ const ROOM_ONBOARDING_PLAYER_VERSION_KEY =
 const DICE_SPIN_INTERVAL_MS = 90;
 const DICE_MIN_SPIN_MS = 900;
 const DICE_RESULT_PREVIEW_MS = 950;
+const DICE_SOUND_BURST_INTERVAL_MS = 95;
+const DICE_SOUND_BURST_DURATION_S = 0.08;
+const HOUSE_MEANING_HIGHLIGHT_MS = 2200;
 const PIN_MOVE_ANIMATION_MS = 820;
 const PIN_JUMP_SEGMENT_ANIMATION_MS = 920;
 const PIN_MOVE_SEGMENT_DELAY_MS = 120;
@@ -719,7 +722,7 @@ function getRoomTutorialSteps({
     {
       title: "Indicadores da sala",
       description:
-        "No topo você acompanha vez atual, rolagens, status da sala, status do terapeuta e sinalizações de trial/modo de jogo em tempo real.",
+        "No topo você acompanha vez atual, rolagens, status da sala, status do terapeuta e sinalizações de teste/modo de jogo em tempo real.",
       target: "room-header",
     },
     {
@@ -742,7 +745,7 @@ function getRoomTutorialSteps({
     {
       title: "Menu Carta",
       description:
-        "No ícone Carta o jogador da vez tira cartas do deck (até 3 por jogada), com pré-visualização, texto terapêutico e registro na jornada.",
+        "No ícone Carta o jogador da vez tira cartas do baralho (até 3 por jogada), com pré-visualização, texto terapêutico e registro na jornada.",
       target: "room-menu-deck",
     },
     {
@@ -1133,6 +1136,8 @@ export function RoomClient({
   const [diceRolling, setDiceRolling] = useState(false);
   const [diceFace, setDiceFace] = useState(1);
   const [diceResult, setDiceResult] = useState<number | null>(null);
+  const [houseMeaningHighlightActive, setHouseMeaningHighlightActive] =
+    useState(false);
   const [showRoomTutorial, setShowRoomTutorial] = useState(false);
   const [roomTutorialStep, setRoomTutorialStep] = useState(0);
   const [roomTutorialRole, setRoomTutorialRole] =
@@ -1186,6 +1191,9 @@ export function RoomClient({
     width: 0,
     height: 0,
   });
+  const [desktopMainAreaMaxHeight, setDesktopMainAreaMaxHeight] = useState<
+    number | null
+  >(null);
   const syncedIntentionRef = useRef("");
   const completionStateByParticipantRef = useRef<Map<string, boolean>>(
     new Map(),
@@ -1196,9 +1204,15 @@ export function RoomClient({
   const diceSpinIntervalRef = useRef<number | null>(null);
   const diceRevealTimeoutRef = useRef<number | null>(null);
   const diceCloseTimeoutRef = useRef<number | null>(null);
+  const diceSoundIntervalRef = useRef<number | null>(null);
+  const diceAudioContextRef = useRef<AudioContext | null>(null);
+  const houseMeaningHighlightTimeoutRef = useRef<number | null>(null);
+  const highlightedMoveIdRef = useRef<string | null>(null);
   const jumpPinAnimationTimeoutRef = useRef<number | null>(null);
   const jumpPinAnimationFrameRef = useRef<number | null>(null);
   const handledPinMoveIdRef = useRef<string | null>(null);
+  const roomShellRef = useRef<HTMLDivElement | null>(null);
+  const roomHeaderCardRef = useRef<HTMLDivElement | null>(null);
   const boardGridRef = useRef<HTMLDivElement | null>(null);
 
   const pushToast = useCallback((message: string, kind: ToastKind = "info") => {
@@ -1212,6 +1226,101 @@ export function RoomClient({
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  const stopDiceRollSound = useCallback(() => {
+    if (diceSoundIntervalRef.current !== null) {
+      window.clearInterval(diceSoundIntervalRef.current);
+      diceSoundIntervalRef.current = null;
+    }
+  }, []);
+
+  const getDiceAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const ContextCtor =
+      window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!ContextCtor) return null;
+    if (!diceAudioContextRef.current) {
+      diceAudioContextRef.current = new ContextCtor();
+    }
+    return diceAudioContextRef.current;
+  }, []);
+
+  const playDiceRollSoundBurst = useCallback(() => {
+    const audioContext = getDiceAudioContext();
+    if (!audioContext || audioContext.state !== "running") return;
+
+    const burstDuration = DICE_SOUND_BURST_DURATION_S;
+    const frameCount = Math.max(
+      1,
+      Math.floor(audioContext.sampleRate * burstDuration),
+    );
+    const buffer = audioContext.createBuffer(1, frameCount, audioContext.sampleRate);
+    const channelData = buffer.getChannelData(0);
+    for (let index = 0; index < frameCount; index += 1) {
+      const decay = Math.exp((-index / frameCount) * 5.2);
+      channelData[index] = (Math.random() * 2 - 1) * decay;
+    }
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = audioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1200 + Math.random() * 1100;
+    filter.Q.value = 0.85;
+
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + burstDuration);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioContext.destination);
+    source.start(now);
+    source.stop(now + burstDuration);
+  }, [getDiceAudioContext]);
+
+  const startDiceRollSound = useCallback(() => {
+    if (!diceAnimationEnabled) return;
+    stopDiceRollSound();
+
+    const audioContext = getDiceAudioContext();
+    if (!audioContext) return;
+    void audioContext.resume().catch(() => null);
+
+    playDiceRollSoundBurst();
+    diceSoundIntervalRef.current = window.setInterval(
+      () => playDiceRollSoundBurst(),
+      DICE_SOUND_BURST_INTERVAL_MS,
+    );
+  }, [
+    diceAnimationEnabled,
+    getDiceAudioContext,
+    playDiceRollSoundBurst,
+    stopDiceRollSound,
+  ]);
+
+  const primeDiceRollAudio = useCallback(() => {
+    const audioContext = getDiceAudioContext();
+    if (!audioContext) return;
+    void audioContext.resume().catch(() => null);
+  }, [getDiceAudioContext]);
+
+  const triggerHouseMeaningHighlight = useCallback(() => {
+    if (houseMeaningHighlightTimeoutRef.current !== null) {
+      window.clearTimeout(houseMeaningHighlightTimeoutRef.current);
+      houseMeaningHighlightTimeoutRef.current = null;
+    }
+    setHouseMeaningHighlightActive(true);
+    houseMeaningHighlightTimeoutRef.current = window.setTimeout(() => {
+      setHouseMeaningHighlightActive(false);
+      houseMeaningHighlightTimeoutRef.current = null;
+    }, HOUSE_MEANING_HIGHLIGHT_MS);
+  }, []);
 
   const joinRoom = useCallback(
     (
@@ -1293,6 +1402,28 @@ export function RoomClient({
     }
   }, []);
 
+  const syncDesktopMainAreaMaxHeight = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth < 1024) {
+      setDesktopMainAreaMaxHeight(null);
+      return;
+    }
+
+    const shellTop = roomShellRef.current?.getBoundingClientRect().top ?? 0;
+    const headerHeight =
+      roomHeaderCardRef.current?.getBoundingClientRect().height ?? 0;
+    const bottomOffset = 26;
+    const gapAfterHeader = 14;
+    const availableHeight = Math.floor(
+      window.innerHeight -
+        Math.max(shellTop, 0) -
+        headerHeight -
+        gapAfterHeader -
+        bottomOffset,
+    );
+    setDesktopMainAreaMaxHeight(availableHeight > 280 ? availableHeight : 280);
+  }, []);
+
   const syncBoardOverlayViewport = useCallback(() => {
     const boardElement = boardGridRef.current;
     if (!boardElement) return;
@@ -1334,12 +1465,69 @@ export function RoomClient({
     }
   }, [diceAnimationEnabled]);
 
+  useEffect(() => {
+    if (diceRolling && diceAnimationEnabled) {
+      startDiceRollSound();
+      return () => {
+        stopDiceRollSound();
+      };
+    }
+
+    stopDiceRollSound();
+    return undefined;
+  }, [
+    diceRolling,
+    diceAnimationEnabled,
+    startDiceRollSound,
+    stopDiceRollSound,
+  ]);
+
+  useEffect(() => {
+    const lastMoveId = state?.lastMove?.id;
+    if (!lastMoveId) return;
+    if (highlightedMoveIdRef.current === lastMoveId) return;
+    highlightedMoveIdRef.current = lastMoveId;
+    triggerHouseMeaningHighlight();
+  }, [state?.lastMove?.id, triggerHouseMeaningHighlight]);
+
+  useEffect(() => {
+    syncDesktopMainAreaMaxHeight();
+    const handleViewportChange = () => {
+      syncDesktopMainAreaMaxHeight();
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    if (typeof ResizeObserver !== "function") {
+      return () => {
+        window.removeEventListener("resize", handleViewportChange);
+        window.removeEventListener("scroll", handleViewportChange, true);
+      };
+    }
+
+    const observer = new ResizeObserver(handleViewportChange);
+    if (roomShellRef.current) observer.observe(roomShellRef.current);
+    if (roomHeaderCardRef.current) observer.observe(roomHeaderCardRef.current);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [syncDesktopMainAreaMaxHeight, state?.room.id]);
+
   useEffect(
     () => () => {
       clearDiceTimers();
       clearJumpPinAnimationTimers();
+      stopDiceRollSound();
+      if (houseMeaningHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(houseMeaningHighlightTimeoutRef.current);
+        houseMeaningHighlightTimeoutRef.current = null;
+      }
     },
-    [clearDiceTimers, clearJumpPinAnimationTimers],
+    [clearDiceTimers, clearJumpPinAnimationTimers, stopDiceRollSound],
   );
 
   useEffect(() => {
@@ -1496,6 +1684,7 @@ export function RoomClient({
         setRollInFlight(false);
         clearDiceTimers();
         clearJumpPinAnimationTimers();
+        stopDiceRollSound();
         setJumpPinAnimation(null);
         setPendingPinAnimation(null);
         setDiceRolling(false);
@@ -1605,6 +1794,7 @@ export function RoomClient({
     joinRoom,
     clearDiceTimers,
     clearJumpPinAnimationTimers,
+    stopDiceRollSound,
   ]);
 
   useEffect(() => {
@@ -3110,6 +3300,7 @@ export function RoomClient({
     }
 
     handleSelectActionPanel("house");
+    primeDiceRollAudio();
     setRollInFlight(true);
     openDiceRollModal();
 
@@ -4033,9 +4224,15 @@ export function RoomClient({
     activeAiModalEntry?.subtitle || aiContentModal?.subtitle;
   const animatedParticipantId =
     jumpPinAnimation?.participantId || pendingPinAnimation?.participantId || null;
+  const desktopLayoutMaxHeight = !isMobileViewport
+    ? desktopMainAreaMaxHeight
+    : null;
+  const desktopBoardMaxWidth = desktopLayoutMaxHeight
+    ? Math.floor(desktopLayoutMaxHeight * 0.9)
+    : null;
 
   return (
-    <div className="grid room-shell" style={{ gap: 14 }}>
+    <div className="grid room-shell" style={{ gap: 14 }} ref={roomShellRef}>
       <div
         style={{
           position: "fixed",
@@ -4131,6 +4328,7 @@ export function RoomClient({
 
       <div
         className="card room-header-card"
+        ref={roomHeaderCardRef}
         style={{
           display: "grid",
           gap: 8,
@@ -4259,7 +4457,7 @@ export function RoomClient({
                   background: "rgba(241, 213, 154, 0.14)",
                 }}
               >
-                <strong>Trial:</strong>{" "}
+                <strong>Teste:</strong>{" "}
                 {myPlayerState?.hasStarted
                   ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
                   : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
@@ -4336,7 +4534,7 @@ export function RoomClient({
                 ? "Reconectando..."
                 : "Sem conexão"
               : trialLimitReached
-              ? "Trial bloqueada"
+              ? "Teste bloqueado"
               : !state.room.therapistOnline
               ? "Aguardando terapeuta"
               : isViewerInTherapistSoloPlay
@@ -4590,7 +4788,7 @@ export function RoomClient({
               className="btn-secondary"
               style={{ flex: "0 0 auto" }}
             >
-              Voltar ao dashboard
+              Voltar ao painel
             </Link>
           
         </div>
@@ -4626,7 +4824,7 @@ export function RoomClient({
         {isTrialRoom && trialLimitReached && (
           <div className="notice" style={{ display: "grid", gap: 6 }}>
             <span className="small-muted">
-              Você atingiu o limite da sala trial ({TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da casa 68).
+              Você atingiu o limite da sala de teste ({TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da casa 68).
             </span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
@@ -4684,8 +4882,12 @@ export function RoomClient({
               gridTemplateRows: `repeat(${BOARD_ROWS}, minmax(0, 1fr))`,
               gap: BOARD_GRID_GAP,
               aspectRatio: "9 / 10",
-              width: "100%",
+              width: desktopBoardMaxWidth
+                ? `min(100%, ${desktopBoardMaxWidth}px)`
+                : "100%",
+              maxHeight: desktopLayoutMaxHeight || undefined,
               maxWidth: "100%",
+              marginInline: desktopBoardMaxWidth ? "auto" : undefined,
               borderRadius: 16,
               padding: BOARD_GRID_PADDING,
               border: "1px solid rgba(217, 164, 65, 0.25)",
@@ -5028,7 +5230,21 @@ export function RoomClient({
         <div
           className="card room-side-panel"
           data-open={mobileActionPanelOpen}
-          style={{ display: "grid", gap: 10, alignSelf: "start", minWidth: 0 }}
+          style={{
+            display: "grid",
+            gap: 10,
+            alignSelf: "start",
+            minWidth: 0,
+            ...(desktopLayoutMaxHeight
+              ? {
+                position: "sticky",
+                top: 8,
+                maxHeight: desktopLayoutMaxHeight,
+                overflowY: "auto",
+                paddingRight: 2,
+              }
+            : {}),
+          }}
         >
           <div className="room-mobile-panel-header">
             <strong>Ações da sala</strong>
@@ -5165,7 +5381,11 @@ export function RoomClient({
                       {selectedHouseInfo?.portuguese || selectedHouse.title}
                     </strong>
                   </div>
-                  <div className="notice" style={{ display: "grid", gap: 4 }}>
+                  <div
+                    className="notice room-house-meaning-highlight"
+                    data-blink={houseMeaningHighlightActive}
+                    style={{ display: "grid", gap: 4 }}
+                  >
                     <strong>Significado</strong>
                     <span className="small-muted">
                       {selectedHouseInfo?.meaning || selectedHouse.title}
@@ -5555,7 +5775,7 @@ export function RoomClient({
               )}
               {isTrialRoom && (
                 <span className="small-muted">
-                  No modo trial você pode usar 1 ajuda da IA e gerar 1 resumo
+                  No modo de teste você pode usar 1 ajuda da IA e gerar 1 resumo
                   final.
                 </span>
               )}
@@ -6796,7 +7016,7 @@ export function RoomClient({
             </div>
 
             <span className="small-muted">
-              Essas observações ficam vinculadas a este jogador e também aparecem na síntese do dashboard e do PDF da sessão.
+              Essas observações ficam vinculadas a este jogador e também aparecem na síntese do painel e do PDF da sessão.
             </span>
 
             <textarea
@@ -7274,7 +7494,7 @@ export function RoomClient({
                     visual da rolagem.
                   </span>
                   <span className="small-muted">
-                    <strong>Voltar ao dashboard</strong> retorna para o painel de
+                    <strong>Voltar ao painel</strong> retorna para o painel de
                     salas sem perder os dados da sessão.
                   </span>
                 </div>
@@ -7376,7 +7596,7 @@ export function RoomClient({
               {finalReportPrompt.mode === "close"
                 ? "Gerar resumo final da IA para todos os jogadores antes de encerrar?"
                 : finalReportPrompt.mode === "trialLimit"
-                  ? "Você atingiu o limite da sala trial. Deseja gerar o resumo final agora?"
+                  ? "Você atingiu o limite da sala de teste. Deseja gerar o resumo final agora?"
                 : `${finalReportPrompt.participantName || "Jogador"} concluiu (casa 68). Deseja gerar o resumo final agora?`}
             </strong>
             <span className="small-muted">
@@ -7489,11 +7709,11 @@ export function RoomClient({
               gap: 10,
             }}
           >
-            <strong>Sua experiência trial terminou</strong>
+            <strong>Sua experiência de teste terminou</strong>
             <span className="small-muted">
-              Você usou as {TRIAL_POST_START_MOVE_LIMIT} jogadas da sala trial após sair da casa 68.
+              Você usou as {TRIAL_POST_START_MOVE_LIMIT} jogadas da sala de teste após sair da casa 68.
               Para continuar com mais uso de IA, histórico completo e sessões
-              sem limite de trial, escolha uma opção:
+              sem limite de teste, escolha uma opção:
             </span>
 
             <div
