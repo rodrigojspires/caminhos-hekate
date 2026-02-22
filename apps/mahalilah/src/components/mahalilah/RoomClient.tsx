@@ -233,6 +233,8 @@ type AiContentModalState = {
 type RoomTutorialTarget =
   | "room-header"
   | "room-controls"
+  | "room-theme-toggle"
+  | "room-reading-toggle"
   | "room-board"
   | "room-menu-house"
   | "room-menu-deck"
@@ -743,6 +745,18 @@ function getRoomTutorialSteps({
       title: "Controles da partida",
       description: controlDescription,
       target: "room-controls",
+    },
+    {
+      title: "Tema claro e escuro",
+      description:
+        "Use este botão para alternar entre tema escuro e claro conforme o ambiente de atendimento, sem interromper a sessão.",
+      target: "room-theme-toggle",
+    },
+    {
+      title: "Modo leitura",
+      description:
+        "Ative o modo leitura para deixar os conteúdos textuais mais confortáveis em sessões longas e na revisão de registros.",
+      target: "room-reading-toggle",
     },
     {
       title: "Leitura do tabuleiro",
@@ -4908,6 +4922,7 @@ export function RoomClient({
             onClick={() =>
               setUiTheme((prev) => (prev === "dark" ? "light" : "dark"))
             }
+            data-tour-room="room-theme-toggle"
             title={
               uiTheme === "light"
                 ? "Tema claro ativo. Alternar para escuro."
@@ -4976,6 +4991,7 @@ export function RoomClient({
             type="button"
             className="secondary"
             onClick={() => setReadingModeEnabled((prev) => !prev)}
+            data-tour-room="room-reading-toggle"
             title={
               readingModeEnabled
                 ? "Modo leitura ativo. Alternar para padrão."

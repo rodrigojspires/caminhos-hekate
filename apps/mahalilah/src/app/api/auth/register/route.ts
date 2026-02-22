@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { prisma } from '@hekate/database'
+import {
+  prisma,
+  MahaLilahInviteRole,
+  MahaLilahParticipantRole
+} from '@hekate/database'
 import { generateEmailVerificationToken } from '@/lib/tokens'
 import { sendEmailVerificationEmail } from '@/lib/email'
 import { applyRateLimit } from '@/lib/security/rate-limit'
@@ -15,6 +19,82 @@ const RegisterSchema = z.object({
 
 const GENERIC_REGISTER_MESSAGE =
   'Se o e-mail puder ser utilizado, você receberá as instruções para ativar a conta.'
+
+async function assignPendingTherapistInvitesToUser(params: {
+  userId: string
+  email: string
+  userName?: string | null
+}) {
+  const now = new Date()
+
+  return prisma.$transaction(async (tx) => {
+    const pendingInvites = await tx.mahaLilahInvite.findMany({
+      where: {
+        email: params.email,
+        role: MahaLilahInviteRole.THERAPIST,
+        acceptedAt: null
+      },
+      select: {
+        id: true,
+        roomId: true,
+        participant: {
+          select: {
+            userId: true
+          }
+        }
+      }
+    })
+
+    if (pendingInvites.length === 0) {
+      return 0
+    }
+
+    let claimedInvites = 0
+
+    for (const invite of pendingInvites) {
+      if (invite.participant && invite.participant.userId !== params.userId) {
+        continue
+      }
+
+      await tx.mahaLilahParticipant.upsert({
+        where: {
+          roomId_userId: {
+            roomId: invite.roomId,
+            userId: params.userId
+          }
+        },
+        update: {
+          inviteId: invite.id,
+          role: MahaLilahParticipantRole.THERAPIST,
+          displayName: params.userName || null,
+          joinedAt: now
+        },
+        create: {
+          roomId: invite.roomId,
+          userId: params.userId,
+          role: MahaLilahParticipantRole.THERAPIST,
+          displayName: params.userName || null,
+          inviteId: invite.id,
+          joinedAt: now
+        }
+      })
+
+      await tx.mahaLilahInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: now }
+      })
+
+      await tx.mahaLilahRoom.update({
+        where: { id: invite.roomId },
+        data: { createdByUserId: params.userId }
+      })
+
+      claimedInvites += 1
+    }
+
+    return claimedInvites
+  })
+}
 
 function normalizeCallbackPath(value: string | undefined): string | undefined {
   if (!value) return undefined
@@ -56,6 +136,19 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingUser) {
+      try {
+        await assignPendingTherapistInvitesToUser({
+          userId: existingUser.id,
+          email: normalizedEmail,
+          userName: existingUser.name
+        })
+      } catch (inviteError) {
+        console.error(
+          'Erro ao vincular convites de terapeuta no cadastro existente (Maha Lilah):',
+          inviteError
+        )
+      }
+
       if (!existingUser.emailVerified) {
         try {
           const verificationToken = await generateEmailVerificationToken(existingUser.email)
@@ -92,6 +185,19 @@ export async function POST(request: NextRequest) {
         email: true
       }
     })
+
+    try {
+      await assignPendingTherapistInvitesToUser({
+        userId: user.id,
+        email: user.email,
+        userName: user.name
+      })
+    } catch (inviteError) {
+      console.error(
+        'Erro ao vincular convites de terapeuta no novo cadastro (Maha Lilah):',
+        inviteError
+      )
+    }
 
     try {
       const verificationToken = await generateEmailVerificationToken(user.email)
