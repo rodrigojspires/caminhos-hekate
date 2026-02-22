@@ -168,8 +168,15 @@ export const MAHALILAH_INTERVENTION_SEED_DATA: SeedInterventionConfigInput[] = [
 ]
 
 export async function seedMahaLilahInterventions(prisma: PrismaClient) {
+  const db = prisma as any
+  if (!db.mahaLilahInterventionConfig || !db.mahaLilahInterventionPrompt) {
+    throw new Error(
+      'Prisma Client sem os modelos de intervenção. Rode `pnpm --filter @hekate/database db:generate` e aplique as migrations (`db:migrate:deploy`).',
+    )
+  }
+
   for (const config of MAHALILAH_INTERVENTION_SEED_DATA) {
-    const persistedConfig = await prisma.mahaLilahInterventionConfig.upsert({
+    const persistedConfig = await db.mahaLilahInterventionConfig.upsert({
       where: { triggerId: config.triggerId },
       update: {},
       create: {
@@ -193,7 +200,7 @@ export async function seedMahaLilahInterventions(prisma: PrismaClient) {
     if (!config.prompts?.length) continue
 
     for (const prompt of config.prompts) {
-      const existingPrompt = await prisma.mahaLilahInterventionPrompt.findFirst({
+      const existingPrompt = await db.mahaLilahInterventionPrompt.findFirst({
         where: {
           configId: persistedConfig.id,
           locale: prompt.locale,
@@ -203,7 +210,7 @@ export async function seedMahaLilahInterventions(prisma: PrismaClient) {
       })
       if (existingPrompt) continue
 
-      await prisma.mahaLilahInterventionPrompt.create({
+      await db.mahaLilahInterventionPrompt.create({
         data: {
           configId: persistedConfig.id,
           locale: prompt.locale,
