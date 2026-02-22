@@ -600,7 +600,7 @@ export default function AdminMahaLilahCatalogPage() {
                       <Input
                         type="number"
                         min={0}
-                        max={8}
+                        max={99}
                         value={singleSessionPlan.interventionLimitPerParticipant}
                         onChange={(event) =>
                           updatePlan("SINGLE_SESSION", (plan) => ({
@@ -953,7 +953,7 @@ export default function AdminMahaLilahCatalogPage() {
                         <Input
                           type="number"
                           min={0}
-                          max={8}
+                          max={99}
                           value={subscriptionPlan.interventionLimitPerParticipant}
                           onChange={(event) =>
                             updatePlan("SUBSCRIPTION", (plan) => ({
@@ -1157,7 +1157,7 @@ export default function AdminMahaLilahCatalogPage() {
                         <Input
                           type="number"
                           min={0}
-                          max={8}
+                          max={99}
                           value={subscriptionLimitedPlan.interventionLimitPerParticipant}
                           onChange={(event) =>
                             updatePlan("SUBSCRIPTION_LIMITED", (plan) => ({
