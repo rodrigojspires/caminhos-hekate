@@ -11,8 +11,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:dev": "tsx prisma/seed.dev.ts",
     "db:seed:prod": "tsx prisma/seed.prod.ts",
-    "db:seed:mahalilah-interventions": "pnpm run db:generate && tsx prisma/seed.mahalilah-interventions.ts",
-    "db:seed:mahalilah-interventions:prod": "NODE_ENV=production pnpm run db:generate && NODE_ENV=production tsx prisma/seed.mahalilah-interventions.ts",
+    "db:seed:mahalilah-interventions": "prisma generate && tsx prisma/seed.mahalilah-interventions.ts",
+    "db:seed:mahalilah-interventions:prod": "NODE_ENV=production prisma generate && NODE_ENV=production tsx prisma/seed.mahalilah-interventions.ts",
     "db:seed:therapies": "tsx prisma/seed.therapies.ts",
     "db:studio": "prisma studio"
   },
