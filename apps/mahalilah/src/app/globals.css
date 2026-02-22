@@ -37,7 +37,94 @@
   --accent: var(--gold);
   --accent-2: var(--teal);
   --panel: var(--surface);
+  --room-board-bg: radial-gradient(
+    circle at 50% 40%,
+    rgba(43, 65, 94, 0.35),
+    rgba(10, 16, 26, 0.94)
+  );
+  --maha-toast-bg: rgba(15, 22, 33, 0.95);
   font-synthesis-weight: none;
+}
+
+.mahalilah-ui[data-ui-theme="light"] {
+  color-scheme: light;
+  --temple-bg: 46 48% 97%;
+  --temple-surface-1: 42 46% 99%;
+  --temple-surface-2: 43 40% 96%;
+  --temple-surface-3: 39 50% 90%;
+  --temple-text-primary: 219 30% 18%;
+  --temple-text-secondary: 219 17% 37%;
+  --temple-border-subtle: 220 22% 77%;
+  --temple-accent-gold: 38 78% 48%;
+  --temple-accent-violet: 257 42% 54%;
+  --temple-accent-state: 168 44% 39%;
+  --temple-shadow-soft: 0 16px 34px -24px rgba(34, 48, 78, 0.34);
+  --temple-shadow-lift: 0 24px 48px -28px rgba(34, 48, 78, 0.3);
+  --temple-glow-candle: 0 0 1rem rgba(215, 157, 38, 0.18);
+  --temple-noise-opacity: 0.025;
+  --room-board-bg: radial-gradient(
+    circle at 48% 32%,
+    rgba(247, 220, 165, 0.42),
+    rgba(239, 241, 247, 0.96)
+  );
+  --maha-toast-bg: rgba(249, 251, 255, 0.96);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .card {
+  background: linear-gradient(
+    162deg,
+    hsl(var(--temple-surface-1)) 0%,
+    hsl(var(--temple-surface-2)) 100%
+  );
+}
+
+.mahalilah-ui[data-ui-theme="light"] .btn-secondary {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.94),
+    rgba(245, 248, 255, 0.98)
+  );
+  border-color: rgba(194, 145, 42, 0.34);
+  box-shadow: 0 0 0 1px rgba(194, 145, 42, 0.12) inset;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .btn-ghost {
+  background: rgba(250, 252, 255, 0.72);
+  color: hsl(var(--temple-text-secondary));
+  border-color: rgba(135, 155, 190, 0.34);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .notice {
+  background: hsl(var(--temple-surface-2));
+  border-color: rgba(191, 142, 35, 0.36);
+}
+
+.mahalilah-ui[data-ui-theme="light"] .pill {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.mahalilah-ui[data-reading-mode="true"] {
+  --temple-border-subtle: 216 21% 40%;
+}
+
+.mahalilah-ui[data-reading-mode="true"] .small-muted {
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.mahalilah-ui[data-reading-mode="true"] .notice {
+  line-height: 1.64;
+  box-shadow:
+    0 0 0 1px rgba(255, 211, 130, 0.2) inset,
+    0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.mahalilah-ui[data-reading-mode="true"] .card {
+  box-shadow: 0 14px 28px -24px rgba(0, 0, 0, 0.58);
+}
+
+.mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] {
+  --temple-border-subtle: 220 22% 71%;
 }
 
 * {

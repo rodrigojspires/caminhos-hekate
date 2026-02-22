@@ -385,6 +385,8 @@ const BOARD_TOKEN_SIZE = 14;
 const TRIAL_POST_START_MOVE_LIMIT = 5;
 const AI_PATH_HELP_MAX_LENGTH = 600;
 const DICE_ANIMATION_STORAGE_KEY = "mahalilah:dice-animation-enabled";
+const UI_THEME_STORAGE_KEY = "mahalilah:ui-theme";
+const READING_MODE_STORAGE_KEY = "mahalilah:reading-mode";
 const ROOM_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const ROOM_ONBOARDING_THERAPIST_VERSION_KEY =
   "mahalilah:onboarding:room:therapist:version";
@@ -1133,6 +1135,8 @@ export function RoomClient({
   const [showBoardShortcuts, setShowBoardShortcuts] = useState(true);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [rulesHelpTab, setRulesHelpTab] = useState<RulesHelpTab>("about");
+  const [uiTheme, setUiTheme] = useState<"dark" | "light">("dark");
+  const [readingModeEnabled, setReadingModeEnabled] = useState(false);
   const [diceAnimationEnabled, setDiceAnimationEnabled] = useState(true);
   const [rollInFlight, setRollInFlight] = useState(false);
   const [diceModalOpen, setDiceModalOpen] = useState(false);
@@ -1450,6 +1454,43 @@ export function RoomClient({
         : { width: nextWidth, height: nextHeight },
     );
   }, []);
+
+  useEffect(() => {
+    try {
+      const storedTheme = window.localStorage.getItem(UI_THEME_STORAGE_KEY);
+      if (storedTheme === "dark" || storedTheme === "light") {
+        setUiTheme(storedTheme);
+      }
+
+      const storedReadingMode = window.localStorage.getItem(
+        READING_MODE_STORAGE_KEY,
+      );
+      if (storedReadingMode === "true") {
+        setReadingModeEnabled(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(UI_THEME_STORAGE_KEY, uiTheme);
+    } catch {
+      // no-op
+    }
+  }, [uiTheme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        READING_MODE_STORAGE_KEY,
+        readingModeEnabled ? "true" : "false",
+      );
+    } catch {
+      // no-op
+    }
+  }, [readingModeEnabled]);
 
   useEffect(() => {
     try {
@@ -4241,7 +4282,13 @@ export function RoomClient({
     : null;
 
   return (
-    <div className="grid room-shell" style={{ gap: 14 }} ref={roomShellRef}>
+    <div
+      className="grid room-shell mahalilah-ui"
+      data-ui-theme={uiTheme}
+      data-reading-mode={readingModeEnabled ? "true" : "false"}
+      style={{ gap: 14 }}
+      ref={roomShellRef}
+    >
       <div
         style={{
           position: "fixed",
@@ -4276,7 +4323,7 @@ export function RoomClient({
                 padding: "10px 12px",
                 borderRadius: 14,
                 border: `1px solid ${palette.border}`,
-                background: "rgba(15, 22, 33, 0.95)",
+                background: "var(--maha-toast-bg, rgba(15, 22, 33, 0.95))",
                 boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
               }}
             >
@@ -4792,14 +4839,135 @@ export function RoomClient({
               <circle cx="15" cy="15" r="1" fill="currentColor" />
             </svg>
           </button>
-            <Link
-              href="/dashboard"
-              className="btn-secondary"
-              style={{ flex: "0 0 auto" }}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() =>
+              setUiTheme((prev) => (prev === "dark" ? "light" : "dark"))
+            }
+            title={
+              uiTheme === "light"
+                ? "Tema claro ativo. Alternar para escuro."
+                : "Tema escuro ativo. Alternar para claro."
+            }
+            aria-label="Alternar tema claro e escuro"
+            aria-pressed={uiTheme === "light"}
+            style={{
+              flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color:
+                uiTheme === "light"
+                  ? "rgba(190, 136, 21, 0.98)"
+                  : "rgba(204, 219, 255, 0.98)",
+              borderColor:
+                uiTheme === "light"
+                  ? "rgba(226, 184, 92, 0.72)"
+                  : "rgba(154, 178, 232, 0.62)",
+              background:
+                uiTheme === "light"
+                  ? "linear-gradient(180deg, rgba(255, 233, 178, 0.9), rgba(246, 205, 117, 0.82))"
+                  : "linear-gradient(180deg, rgba(52, 73, 118, 0.36), rgba(32, 47, 81, 0.3))",
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              aria-hidden
             >
-              Voltar ao painel
-            </Link>
-          
+              {uiTheme === "light" ? (
+                <>
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="4"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6M18.2 18.2l-1.6-1.6M7.4 7.4 5.8 5.8"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                </>
+              ) : (
+                <path
+                  d="M15.4 3.5a8.7 8.7 0 1 0 5.1 15.6 7.9 7.9 0 1 1-5.1-15.6Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setReadingModeEnabled((prev) => !prev)}
+            title={
+              readingModeEnabled
+                ? "Modo leitura ativo. Alternar para padrão."
+                : "Modo leitura desativado. Alternar para leitura."
+            }
+            aria-label="Alternar modo leitura"
+            aria-pressed={readingModeEnabled}
+            style={{
+              flex: "0 0 auto",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: readingModeEnabled
+                ? "rgba(90, 178, 203, 0.98)"
+                : undefined,
+              borderColor: readingModeEnabled
+                ? "rgba(100, 187, 214, 0.72)"
+                : undefined,
+              background: readingModeEnabled
+                ? "linear-gradient(180deg, rgba(58, 124, 156, 0.34), rgba(37, 86, 111, 0.26))"
+                : undefined,
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d="M4.5 6.8c0-1 .8-1.8 1.8-1.8H19.5v13.2H6.3c-1 0-1.8.8-1.8 1.8V6.8Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M8 9h8M8 12h8M8 15h5.2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+          <Link
+            href="/dashboard"
+            className="btn-secondary"
+            style={{ flex: "0 0 auto" }}
+          >
+            Voltar ao painel
+          </Link>
         </div>
 
         {!socketReady && (
@@ -4901,7 +5069,7 @@ export function RoomClient({
               padding: BOARD_GRID_PADDING,
               border: "1px solid rgba(217, 164, 65, 0.25)",
               background:
-                "radial-gradient(circle at 50% 40%, rgba(43, 65, 94, 0.35), rgba(10, 16, 26, 0.94))",
+                "var(--room-board-bg, radial-gradient(circle at 50% 40%, rgba(43, 65, 94, 0.35), rgba(10, 16, 26, 0.94)))",
             }}
           >
             {boardCells.map((cell) => {

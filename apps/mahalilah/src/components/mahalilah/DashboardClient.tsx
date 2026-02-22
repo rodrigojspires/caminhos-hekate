@@ -504,6 +504,8 @@ const DASHBOARD_ONBOARDING_VERSION = "2026-02-tutorial-refresh";
 const DASHBOARD_ONBOARDING_VERSION_KEY =
   "mahalilah:onboarding:dashboard:version";
 const DASHBOARD_ROOMS_POLL_MS = 15_000;
+const UI_THEME_STORAGE_KEY = "mahalilah:ui-theme";
+const READING_MODE_STORAGE_KEY = "mahalilah:reading-mode";
 
 const DETAIL_TAB_BY_TUTORIAL_TARGET: Partial<
   Record<DashboardTutorialTarget, RoomDetailsTab>
@@ -960,6 +962,8 @@ export function DashboardClient() {
   const [therapistPlays, setTherapistPlays] = useState(true);
   const [therapistSoloPlay, setTherapistSoloPlay] = useState(false);
   const [canUseTherapistSoloPlay, setCanUseTherapistSoloPlay] = useState(true);
+  const [uiTheme, setUiTheme] = useState<"dark" | "light">("dark");
+  const [readingModeEnabled, setReadingModeEnabled] = useState(false);
   const [toasts, setToasts] = useState<DashboardToast[]>([]);
   const [canCreateRoom, setCanCreateRoom] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<Record<string, string>>({});
@@ -1085,6 +1089,43 @@ export function DashboardClient() {
   const removeToast = (toastId: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
+
+  useEffect(() => {
+    try {
+      const storedTheme = window.localStorage.getItem(UI_THEME_STORAGE_KEY);
+      if (storedTheme === "dark" || storedTheme === "light") {
+        setUiTheme(storedTheme);
+      }
+
+      const storedReadingMode = window.localStorage.getItem(
+        READING_MODE_STORAGE_KEY,
+      );
+      if (storedReadingMode === "true") {
+        setReadingModeEnabled(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(UI_THEME_STORAGE_KEY, uiTheme);
+    } catch {
+      // no-op
+    }
+  }, [uiTheme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        READING_MODE_STORAGE_KEY,
+        readingModeEnabled ? "true" : "false",
+      );
+    } catch {
+      // no-op
+    }
+  }, [readingModeEnabled]);
 
   const loadRooms = useCallback(
     async (override?: Partial<Filters>, options?: { silent?: boolean }) => {
@@ -3348,7 +3389,12 @@ export function DashboardClient() {
     activeAiModalEntry?.subtitle || aiContentModal?.subtitle;
 
   return (
-    <div className="grid dashboard-root" style={{ gap: 24 }}>
+    <div
+      className="grid dashboard-root mahalilah-ui"
+      data-ui-theme={uiTheme}
+      data-reading-mode={readingModeEnabled ? "true" : "false"}
+      style={{ gap: 24 }}
+    >
       <div
         style={{
           position: "fixed",
@@ -3383,7 +3429,7 @@ export function DashboardClient() {
                 padding: "10px 12px",
                 borderRadius: 14,
                 border: `1px solid ${palette.border}`,
-                background: "rgba(15, 22, 33, 0.95)",
+                background: "var(--maha-toast-bg, rgba(15, 22, 33, 0.95))",
                 boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
               }}
             >
@@ -3469,6 +3515,126 @@ export function DashboardClient() {
               }}
             >
               <NewRoomIcon />
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() =>
+                setUiTheme((prev) => (prev === "dark" ? "light" : "dark"))
+              }
+              aria-pressed={uiTheme === "light"}
+              aria-label="Alternar tema claro e escuro"
+              title={
+                uiTheme === "light"
+                  ? "Tema claro ativo. Alternar para escuro."
+                  : "Tema escuro ativo. Alternar para claro."
+              }
+              style={{
+                width: 36,
+                minWidth: 36,
+                height: 36,
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color:
+                  uiTheme === "light"
+                    ? "rgba(190, 136, 21, 0.98)"
+                    : "rgba(204, 219, 255, 0.98)",
+                borderColor:
+                  uiTheme === "light"
+                    ? "rgba(226, 184, 92, 0.72)"
+                    : "rgba(154, 178, 232, 0.62)",
+                background:
+                  uiTheme === "light"
+                    ? "linear-gradient(180deg, rgba(255, 233, 178, 0.9), rgba(246, 205, 117, 0.82))"
+                    : "linear-gradient(180deg, rgba(52, 73, 118, 0.36), rgba(32, 47, 81, 0.3))",
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                aria-hidden
+              >
+                {uiTheme === "light" ? (
+                  <>
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="4"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
+                    <path
+                      d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6M18.2 18.2l-1.6-1.6M7.4 7.4 5.8 5.8"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </>
+                ) : (
+                  <path
+                    d="M15.4 3.5a8.7 8.7 0 1 0 5.1 15.6 7.9 7.9 0 1 1-5.1-15.6Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+              </svg>
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setReadingModeEnabled((prev) => !prev)}
+              aria-pressed={readingModeEnabled}
+              aria-label="Alternar modo leitura"
+              title={
+                readingModeEnabled
+                  ? "Modo leitura ativo. Alternar para padrão."
+                  : "Modo leitura desativado. Alternar para leitura."
+              }
+              style={{
+                width: 36,
+                minWidth: 36,
+                height: 36,
+                padding: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: readingModeEnabled
+                  ? "rgba(90, 178, 203, 0.98)"
+                  : undefined,
+                borderColor: readingModeEnabled
+                  ? "rgba(100, 187, 214, 0.72)"
+                  : undefined,
+                background: readingModeEnabled
+                  ? "linear-gradient(180deg, rgba(58, 124, 156, 0.34), rgba(37, 86, 111, 0.26))"
+                  : undefined,
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M4.5 6.8c0-1 .8-1.8 1.8-1.8H19.5v13.2H6.3c-1 0-1.8.8-1.8 1.8V6.8Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8 9h8M8 12h8M8 15h5.2"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
             </button>
           </div>
 
