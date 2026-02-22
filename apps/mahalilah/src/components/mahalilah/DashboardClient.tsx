@@ -2216,8 +2216,8 @@ export function DashboardClient() {
                   aria-label="Excluir sala"
                   title="Excluir sala"
                   style={{
-                    borderColor: "rgba(255, 107, 107, 0.45)",
-                    color: "#ff9f9f",
+                    borderColor: "var(--maha-danger-border, rgba(255, 107, 107, 0.45))",
+                    color: "var(--maha-danger-text, #ff9f9f)",
                   }}
                 >
                   <TrashIcon />
@@ -2434,14 +2434,14 @@ export function DashboardClient() {
                               style={
                                 invite.acceptedAt
                                   ? {
-                                      background: "rgba(106, 211, 176, 0.18)",
-                                      borderColor: "rgba(106, 211, 176, 0.4)",
-                                      color: "#9fe6cc",
+                                      background: "var(--maha-success-bg, rgba(106, 211, 176, 0.18))",
+                                      borderColor: "var(--maha-success-border, rgba(106, 211, 176, 0.4))",
+                                      color: "var(--maha-success-text, #9fe6cc)",
                                     }
                                   : {
-                                      background: "rgba(241, 213, 154, 0.2)",
-                                      borderColor: "rgba(217, 164, 65, 0.45)",
-                                      color: "#f1d59a",
+                                      background: "var(--maha-warning-bg, rgba(241, 213, 154, 0.2))",
+                                      borderColor: "var(--maha-warning-border, rgba(217, 164, 65, 0.45))",
+                                      color: "var(--maha-warning-text, #f1d59a)",
                                     }
                               }
                             >
@@ -2464,8 +2464,8 @@ export function DashboardClient() {
                                 disabled={isDeletingInvite}
                                 onClick={() => handleDeleteInvite(room.id, invite)}
                                 style={{
-                                  borderColor: "rgba(255, 107, 107, 0.45)",
-                                  color: "#ff9f9f",
+                                  borderColor: "var(--maha-danger-border, rgba(255, 107, 107, 0.45))",
+                                  color: "var(--maha-danger-text, #ff9f9f)",
                                 }}
                               >
                                 {isDeletingInvite ? "Excluindo..." : "Excluir"}
@@ -2601,7 +2601,7 @@ export function DashboardClient() {
                                   style={{
                                     background: "rgba(217, 164, 65, 0.2)",
                                     borderColor: "rgba(217, 164, 65, 0.5)",
-                                    color: "#f1d59a",
+                                    color: "var(--maha-warning-text, #f1d59a)",
                                   }}
                                 >
                                   Terapeuta
@@ -2886,8 +2886,8 @@ export function DashboardClient() {
                                             width: 66,
                                             minWidth: 66,
                                             height: 92,
-                                            borderColor: "rgba(217, 164, 65, 0.3)",
-                                            background: "rgba(9, 15, 24, 0.7)",
+                                            borderColor: "var(--maha-card-thumb-border, rgba(217, 164, 65, 0.3))",
+                                            background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                                           }}
                                           onClick={() =>
                                             openCardPreview({
@@ -3067,8 +3067,8 @@ export function DashboardClient() {
                                     width: 66,
                                     minWidth: 66,
                                     height: 92,
-                                    borderColor: "rgba(217, 164, 65, 0.3)",
-                                    background: "rgba(9, 15, 24, 0.7)",
+                                    borderColor: "var(--maha-card-thumb-border, rgba(217, 164, 65, 0.3))",
+                                    background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                                   }}
                                   onClick={() =>
                                     openCardPreview({
@@ -3415,7 +3415,7 @@ export function DashboardClient() {
               : toast.kind === "warning"
                 ? { border: "rgba(255, 207, 90, 0.35)", dot: "#ffcf5a" }
                 : toast.kind === "error"
-                  ? { border: "rgba(255, 107, 107, 0.35)", dot: "#ff6b6b" }
+                  ? { border: "var(--maha-danger-border, rgba(255, 107, 107, 0.35))", dot: "#ff6b6b" }
                   : { border: "rgba(154, 208, 255, 0.35)", dot: "#9ad0ff" };
 
           return (
@@ -3830,7 +3830,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -3986,7 +3986,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -4383,11 +4383,11 @@ export function DashboardClient() {
                           Convites pendentes / aceitos
                         </span>
                         <strong>
-                          <span style={{ color: "#ff6b6b" }}>
+                          <span style={{ color: "var(--maha-danger-text, #ff6b6b)" }}>
                             {formatMetricNumber(indicatorsData.invites.pending)}
                           </span>{" "}
                           /{" "}
-                          <span style={{ color: "rgba(255, 255, 255, 0.92)" }}>
+                          <span style={{ color: "var(--ink)" }}>
                             {formatMetricNumber(indicatorsData.invites.accepted)}
                           </span>
                         </strong>
@@ -4409,11 +4409,11 @@ export function DashboardClient() {
                           Consentimentos pendentes / aceitos
                         </span>
                         <strong>
-                          <span style={{ color: "#ff6b6b" }}>
+                          <span style={{ color: "var(--maha-danger-text, #ff6b6b)" }}>
                             {formatMetricNumber(indicatorsData.consents.pending)}
                           </span>{" "}
                           /{" "}
-                          <span style={{ color: "rgba(255, 255, 255, 0.92)" }}>
+                          <span style={{ color: "var(--ink)" }}>
                             {formatMetricNumber(indicatorsData.consents.accepted)}
                           </span>
                         </strong>
@@ -5007,7 +5007,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.62)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.62))",
             zIndex: 10001,
             display: "grid",
             placeItems: "center",
@@ -5089,7 +5089,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -5165,7 +5165,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -5191,7 +5191,7 @@ export function DashboardClient() {
                 alignItems: "flex-start",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
@@ -5218,7 +5218,7 @@ export function DashboardClient() {
                               : "rgba(217, 164, 65, 0.35)",
                             background: isActive
                               ? "rgba(217, 164, 65, 0.24)"
-                              : "rgba(9, 15, 24, 0.7)",
+                              : "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                           }}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -5262,7 +5262,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -5288,7 +5288,7 @@ export function DashboardClient() {
                 alignItems: "center",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -5323,7 +5323,7 @@ export function DashboardClient() {
                     objectFit: "contain",
                     borderRadius: 12,
                     border: "1px solid rgba(217, 164, 65, 0.35)",
-                    background: "rgba(9, 15, 24, 0.7)",
+                    background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                   }}
                 />
               </div>
@@ -5360,7 +5360,7 @@ export function DashboardClient() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -5386,7 +5386,7 @@ export function DashboardClient() {
                 alignItems: "center",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -5515,7 +5515,7 @@ export function DashboardClient() {
             inset: 0,
             background: isDockedCreateRoomTutorial || dashboardTutorialTargetRect
               ? "transparent"
-              : "rgba(3, 6, 10, 0.72)",
+              : "var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72))",
             zIndex: 10000,
             pointerEvents: isTutorialCreateRoomConfigStep ? "none" : "auto",
           }}
@@ -5532,7 +5532,7 @@ export function DashboardClient() {
                 border: "2px solid rgba(217, 164, 65, 0.92)",
                 boxShadow: isDockedCreateRoomTutorial
                   ? "0 0 0 5px rgba(217, 164, 65, 0.22)"
-                  : "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
+                  : "0 0 0 9999px var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72)), 0 0 0 5px rgba(217, 164, 65, 0.22)",
                 pointerEvents: "none",
                 zIndex: 10001,
               }}

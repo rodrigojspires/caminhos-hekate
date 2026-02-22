@@ -255,6 +255,7 @@ type ChakraMarker = {
   label: string;
   imageFile: string;
   rowTint: string;
+  rowTintLight: string;
 };
 type JumpPinAnimationState = {
   id: string;
@@ -325,48 +326,56 @@ const CHAKRA_MARKERS: ChakraMarker[] = [
     label: "Chakra Básico",
     imageFile: "1.svg",
     rowTint: "rgba(207, 74, 67, 0.14)",
+    rowTintLight: "rgba(207, 74, 67, 0.32)",
   },
   {
     houseNumber: 14,
     label: "Chakra Umbilical",
     imageFile: "2.svg",
     rowTint: "rgba(224, 140, 63, 0.13)",
+    rowTintLight: "rgba(224, 140, 63, 0.3)",
   },
   {
     houseNumber: 23,
     label: "Chakra Plexo Solar",
     imageFile: "3.svg",
     rowTint: "rgba(212, 181, 77, 0.12)",
+    rowTintLight: "rgba(212, 181, 77, 0.3)",
   },
   {
     houseNumber: 32,
     label: "Chakra Cardíaco",
     imageFile: "4.svg",
     rowTint: "rgba(84, 171, 111, 0.12)",
+    rowTintLight: "rgba(84, 171, 111, 0.3)",
   },
   {
     houseNumber: 41,
     label: "Chakra Laríngeo",
     imageFile: "5.svg",
     rowTint: "rgba(76, 166, 214, 0.11)",
+    rowTintLight: "rgba(76, 166, 214, 0.28)",
   },
   {
     houseNumber: 50,
     label: "Chakra Frontal",
     imageFile: "6.svg",
     rowTint: "rgba(91, 109, 209, 0.12)",
+    rowTintLight: "rgba(91, 109, 209, 0.3)",
   },
   {
     houseNumber: 59,
     label: "Chakra Coronário",
     imageFile: "7.svg",
     rowTint: "rgba(142, 102, 201, 0.12)",
+    rowTintLight: "rgba(142, 102, 201, 0.3)",
   },
   {
     houseNumber: 68,
     label: "Iluminação",
     imageFile: "8.svg",
     rowTint: "rgba(245, 248, 255, 0.12)",
+    rowTintLight: "rgba(186, 198, 235, 0.3)",
   },
 ];
 const CHAKRA_BY_HOUSE = new Map(
@@ -4280,6 +4289,46 @@ export function RoomClient({
   const desktopBoardMaxWidth = desktopLayoutMaxHeight
     ? Math.floor(desktopLayoutMaxHeight * 0.9)
     : null;
+  const isLightTheme = uiTheme === "light";
+  const boardDefaultRowBackground = isLightTheme
+    ? "linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(236, 241, 250, 0.78))"
+    : "linear-gradient(180deg, rgba(12, 19, 30, 0.54), rgba(10, 16, 26, 0.62))";
+  const boardSelectedOverlay = isLightTheme
+    ? "linear-gradient(180deg, rgba(217, 164, 65, 0.34), rgba(217, 164, 65, 0.16))"
+    : "linear-gradient(180deg, rgba(217, 164, 65, 0.16), rgba(217, 164, 65, 0.05))";
+  const boardCellBorderDefault = isLightTheme
+    ? "1px solid rgba(74, 96, 136, 0.26)"
+    : "1px solid rgba(255, 255, 255, 0.12)";
+  const boardJumpHintUpColor = isLightTheme ? "#1b735c" : "#9fe6cc";
+  const boardJumpHintDownColor = isLightTheme ? "#8b3f29" : "#ffc0a8";
+  const boardShortcutLayerOpacity = isLightTheme ? 0.98 : 0.92;
+  const boardArrowGroupOpacity = isLightTheme ? 0.88 : 0.3;
+  const boardArrowStroke = isLightTheme
+    ? "rgba(152, 98, 21, 0.94)"
+    : "rgba(233, 198, 124, 0.8)";
+  const boardArrowHeadStroke = isLightTheme
+    ? "rgba(188, 124, 29, 0.98)"
+    : "rgba(245, 220, 162, 0.84)";
+  const boardArrowOriginFill = isLightTheme
+    ? "rgba(188, 124, 29, 0.92)"
+    : "rgba(245, 220, 162, 0.72)";
+  const boardSnakeGroupOpacity = isLightTheme ? 0.9 : 0.26;
+  const boardSnakeStrokeOuter = isLightTheme
+    ? "rgba(31, 104, 158, 0.95)"
+    : "rgba(74, 149, 203, 0.78)";
+  const boardSnakeStrokeInner = isLightTheme
+    ? "rgba(111, 186, 233, 0.92)"
+    : "rgba(146, 211, 250, 0.62)";
+  const boardSnakeHeadFill = isLightTheme
+    ? "rgba(82, 163, 214, 0.96)"
+    : "rgba(152, 214, 250, 0.76)";
+  const boardSnakeTailFill = isLightTheme
+    ? "rgba(34, 103, 153, 0.82)"
+    : "rgba(74, 149, 203, 0.58)";
+  const boardSnakeEyeFill = isLightTheme
+    ? "rgba(9, 20, 34, 0.92)"
+    : "rgba(10, 22, 34, 0.9)";
+  const boardChakraBlendMode = isLightTheme ? "multiply" : "screen";
 
   return (
     <div
@@ -4309,7 +4358,7 @@ export function RoomClient({
               : toast.kind === "warning"
                 ? { border: "rgba(255, 207, 90, 0.35)", dot: "#ffcf5a" }
                 : toast.kind === "error"
-                  ? { border: "rgba(255, 107, 107, 0.35)", dot: "#ff6b6b" }
+                  ? { border: "var(--maha-danger-border, rgba(255, 107, 107, 0.35))", dot: "#ff6b6b" }
                   : { border: "rgba(154, 208, 255, 0.35)", dot: "#9ad0ff" };
 
           return (
@@ -4504,21 +4553,6 @@ export function RoomClient({
               />
               <strong>Status:</strong> {roomStatusLabel}
             </span>
-            {isTrialRoom && (
-              <span
-                className="pill"
-                style={{
-                  flex: "0 0 auto",
-                  borderColor: "rgba(241, 213, 154, 0.55)",
-                  background: "rgba(241, 213, 154, 0.14)",
-                }}
-              >
-                <strong>Teste:</strong>{" "}
-                {myPlayerState?.hasStarted
-                  ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
-                  : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
-              </span>
-            )}
             {isTherapistSoloPlay && (
               <span
                 className="pill"
@@ -5082,8 +5116,10 @@ export function RoomClient({
                   Math.floor((cell.houseNumber - 1) / BOARD_COLS),
                 ) || null;
               const rowBackground = chakraRow
-                ? `linear-gradient(180deg, ${chakraRow.rowTint}, rgba(10, 16, 26, 0.62))`
-                : "linear-gradient(180deg, rgba(12, 19, 30, 0.54), rgba(10, 16, 26, 0.62))";
+                ? isLightTheme
+                  ? `linear-gradient(180deg, ${chakraRow.rowTintLight}, rgba(236, 241, 250, 0.78))`
+                  : `linear-gradient(180deg, ${chakraRow.rowTint}, rgba(10, 16, 26, 0.62))`
+                : boardDefaultRowBackground;
               const sanskritName =
                 HOUSE_SANSKRIT_NAMES[cell.houseNumber - 1] || "";
               const portugueseName = house?.title || `Casa ${cell.houseNumber}`;
@@ -5115,9 +5151,9 @@ export function RoomClient({
                     borderRadius: 10,
                     border: isSelected
                       ? "1px solid rgba(217, 164, 65, 0.75)"
-                      : "1px solid rgba(255, 255, 255, 0.12)",
+                      : boardCellBorderDefault,
                     background: isSelected
-                      ? `linear-gradient(180deg, rgba(217, 164, 65, 0.16), rgba(217, 164, 65, 0.05)), ${rowBackground}`
+                      ? `${boardSelectedOverlay}, ${rowBackground}`
                       : rowBackground,
                     padding: 6,
                     display: "grid",
@@ -5143,7 +5179,7 @@ export function RoomClient({
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "center 56%",
                         backgroundSize: "78% 78%",
-                        mixBlendMode: "screen",
+                        mixBlendMode: boardChakraBlendMode,
                         filter: "saturate(1.08)",
                       }}
                     />
@@ -5167,8 +5203,8 @@ export function RoomClient({
                           fontSize: 10,
                           color:
                             jumpTarget > cell.houseNumber
-                              ? "#9fe6cc"
-                              : "#ffc0a8",
+                              ? boardJumpHintUpColor
+                              : boardJumpHintDownColor,
                         }}
                         title={`Atalho ${cell.houseNumber} para ${jumpTarget}`}
                       >
@@ -5183,7 +5219,7 @@ export function RoomClient({
                         fontSize: 9,
                         lineHeight: 1.05,
                         fontWeight: 600,
-                        color: "rgba(223, 233, 247, 0.92)",
+                        color: "var(--maha-board-name-strong, rgba(223, 233, 247, 0.92))",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -5256,7 +5292,7 @@ export function RoomClient({
                       style={{
                         fontSize: 9,
                         lineHeight: 1.05,
-                        color: "rgba(192, 205, 225, 0.95)",
+                        color: "var(--maha-board-name-muted, rgba(192, 205, 225, 0.95))",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -5283,26 +5319,26 @@ export function RoomClient({
                     inset: BOARD_GRID_PADDING,
                     pointerEvents: "none",
                     zIndex: 2,
-                    opacity: 0.92,
+                    opacity: boardShortcutLayerOpacity,
                   }}
                 >
                   {boardJumpOverlays.map((overlay) => {
                     if (overlay.jumpType === "flecha") {
                       return (
-                        <g key={overlay.key} opacity={0.3}>
+                        <g key={overlay.key} opacity={boardArrowGroupOpacity}>
                           <line
                             x1={overlay.arrow.shaft.x1}
                             y1={overlay.arrow.shaft.y1}
                             x2={overlay.arrow.shaft.x2}
                             y2={overlay.arrow.shaft.y2}
-                            stroke="rgba(233, 198, 124, 0.8)"
+                            stroke={boardArrowStroke}
                             strokeWidth={2.6}
                             strokeLinecap="round"
                           />
                           <path
                             d={`M ${overlay.arrow.headLeft.x} ${overlay.arrow.headLeft.y} L ${overlay.arrow.tip.x} ${overlay.arrow.tip.y} L ${overlay.arrow.headRight.x} ${overlay.arrow.headRight.y}`}
                             fill="none"
-                            stroke="rgba(245, 220, 162, 0.84)"
+                            stroke={boardArrowHeadStroke}
                             strokeWidth={2.4}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -5311,7 +5347,7 @@ export function RoomClient({
                             cx={overlay.arrow.shaft.x1}
                             cy={overlay.arrow.shaft.y1}
                             r={1.45}
-                            fill="rgba(245, 220, 162, 0.72)"
+                            fill={boardArrowOriginFill}
                           />
                         </g>
                       );
@@ -5326,11 +5362,11 @@ export function RoomClient({
                       Math.sin(overlay.headAngle) * 2.2 +
                       Math.sin(overlay.headAngle + Math.PI / 2) * 1.2;
                     return (
-                      <g key={overlay.key} opacity={0.26}>
+                      <g key={overlay.key} opacity={boardSnakeGroupOpacity}>
                         <path
                           d={overlay.snake.path}
                           fill="none"
-                          stroke="rgba(74, 149, 203, 0.78)"
+                          stroke={boardSnakeStrokeOuter}
                           strokeWidth={5.4}
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -5338,7 +5374,7 @@ export function RoomClient({
                         <path
                           d={overlay.snake.path}
                           fill="none"
-                          stroke="rgba(146, 211, 250, 0.62)"
+                          stroke={boardSnakeStrokeInner}
                           strokeWidth={2}
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -5347,19 +5383,19 @@ export function RoomClient({
                           cx={overlay.snake.head.x}
                           cy={overlay.snake.head.y}
                           r={3.6}
-                          fill="rgba(152, 214, 250, 0.76)"
+                          fill={boardSnakeHeadFill}
                         />
                         <circle
                           cx={overlay.snake.tail.x}
                           cy={overlay.snake.tail.y}
                           r={2.2}
-                          fill="rgba(74, 149, 203, 0.58)"
+                          fill={boardSnakeTailFill}
                         />
                         <circle
                           cx={eyeX}
                           cy={eyeY}
                           r={0.8}
-                          fill="rgba(10, 22, 34, 0.9)"
+                          fill={boardSnakeEyeFill}
                         />
                       </g>
                     );
@@ -5432,6 +5468,22 @@ export function RoomClient({
               Fechar
             </button>
           </div>
+
+          {isTrialRoom && shouldShowSessionIntentionField && (
+            <span
+              className="pill"
+              style={{
+                borderColor: "rgba(241, 213, 154, 0.55)",
+                background: "rgba(241, 213, 154, 0.14)",
+                width: "fit-content",
+              }}
+            >
+              <strong>Teste:</strong>{" "}
+              {myPlayerState?.hasStarted
+                ? `${trialMovesRemaining}/${TRIAL_POST_START_MOVE_LIMIT} jogadas restantes`
+                : `limite de ${TRIAL_POST_START_MOVE_LIMIT} jogadas após sair da 68`}
+            </span>
+          )}
 
           {shouldShowSessionIntentionField && (
             <label style={{ display: "grid", gap: 4 }}>
@@ -5691,7 +5743,7 @@ export function RoomClient({
                             minWidth: 84,
                             height: 120,
                             borderColor: "rgba(217, 164, 65, 0.35)",
-                            background: "rgba(9, 15, 24, 0.7)",
+                            background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                           }}
                           onClick={() =>
                             openCardPreview({
@@ -5771,8 +5823,8 @@ export function RoomClient({
                                 width: 66,
                                 minWidth: 66,
                                 height: 92,
-                                borderColor: "rgba(217, 164, 65, 0.3)",
-                                background: "rgba(9, 15, 24, 0.7)",
+                                borderColor: "var(--maha-card-thumb-border, rgba(217, 164, 65, 0.3))",
+                                background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                               }}
                               onClick={() =>
                                 draw.card
@@ -6161,10 +6213,10 @@ export function RoomClient({
                   <span
                     className="small-muted"
                     style={{
-                      color: "#ff9f9f",
+                      color: "var(--maha-danger-text, #ff9f9f)",
                       fontWeight: 600,
-                      background: "rgba(255, 107, 107, 0.14)",
-                      border: "1px solid rgba(255, 107, 107, 0.35)",
+                      background: "var(--maha-danger-bg, rgba(255, 107, 107, 0.14))",
+                      border: "1px solid var(--maha-danger-border, rgba(255, 107, 107, 0.35))",
                       borderRadius: 8,
                       padding: "6px 10px",
                       width: "fit-content",
@@ -6603,8 +6655,8 @@ export function RoomClient({
                                         width: 66,
                                         minWidth: 66,
                                         height: 92,
-                                        borderColor: "rgba(217, 164, 65, 0.3)",
-                                        background: "rgba(9, 15, 24, 0.7)",
+                                        borderColor: "var(--maha-card-thumb-border, rgba(217, 164, 65, 0.3))",
+                                        background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                                       }}
                                       onClick={() =>
                                         openCardPreview({
@@ -6921,7 +6973,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7003,7 +7055,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.72)",
+            background: "var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72))",
             zIndex: 10010,
             display: "grid",
             placeItems: "center",
@@ -7054,7 +7106,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7080,7 +7132,7 @@ export function RoomClient({
                 alignItems: "flex-start",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
@@ -7107,7 +7159,7 @@ export function RoomClient({
                               : "rgba(217, 164, 65, 0.35)",
                             background: isActive
                               ? "rgba(217, 164, 65, 0.24)"
-                              : "rgba(9, 15, 24, 0.7)",
+                              : "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                           }}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -7151,7 +7203,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7243,7 +7295,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7269,7 +7321,7 @@ export function RoomClient({
                 alignItems: "center",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -7304,7 +7356,7 @@ export function RoomClient({
                     objectFit: "contain",
                     borderRadius: 12,
                     border: "1px solid rgba(217, 164, 65, 0.35)",
-                    background: "rgba(9, 15, 24, 0.7)",
+                    background: "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                   }}
                 />
               </div>
@@ -7341,7 +7393,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7367,7 +7419,7 @@ export function RoomClient({
                 alignItems: "center",
                 padding: "10px 12px",
                 borderBottom: "1px solid var(--border)",
-                background: "rgba(11, 18, 29, 0.92)",
+                background: "var(--maha-modal-header-bg, rgba(11, 18, 29, 0.92))",
               }}
             >
               <div style={{ display: "grid", gap: 4 }}>
@@ -7498,7 +7550,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7555,7 +7607,7 @@ export function RoomClient({
                         : "rgba(217, 164, 65, 0.35)",
                       background: active
                         ? "rgba(217, 164, 65, 0.24)"
-                        : "rgba(9, 15, 24, 0.7)",
+                        : "var(--maha-card-thumb-bg, rgba(9, 15, 24, 0.7))",
                     }}
                   >
                     {tab.label}
@@ -7751,7 +7803,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7868,7 +7920,7 @@ export function RoomClient({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 6, 10, 0.7)",
+            background: "var(--maha-overlay-bg, rgba(3, 6, 10, 0.7))",
             zIndex: 10000,
             display: "grid",
             placeItems: "center",
@@ -7927,7 +7979,7 @@ export function RoomClient({
             inset: 0,
             background: roomTutorialTargetRect
               ? "transparent"
-              : "rgba(3, 6, 10, 0.72)",
+              : "var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72))",
             zIndex: 11000,
           }}
         >
@@ -7942,7 +7994,7 @@ export function RoomClient({
                 borderRadius: 14,
                 border: "2px solid rgba(217, 164, 65, 0.92)",
                 boxShadow:
-                  "0 0 0 9999px rgba(3, 6, 10, 0.72), 0 0 0 5px rgba(217, 164, 65, 0.22)",
+                  "0 0 0 9999px var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72)), 0 0 0 5px rgba(217, 164, 65, 0.22)",
                 pointerEvents: "none",
                 zIndex: 11001,
               }}

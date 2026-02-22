@@ -43,6 +43,22 @@
     rgba(10, 16, 26, 0.94)
   );
   --maha-toast-bg: rgba(15, 22, 33, 0.95);
+  --maha-overlay-bg: rgba(3, 6, 10, 0.7);
+  --maha-overlay-bg-strong: rgba(3, 6, 10, 0.72);
+  --maha-modal-header-bg: rgba(11, 18, 29, 0.92);
+  --maha-card-thumb-bg: rgba(9, 15, 24, 0.7);
+  --maha-card-thumb-border: rgba(217, 164, 65, 0.3);
+  --maha-board-name-strong: rgba(223, 233, 247, 0.92);
+  --maha-board-name-muted: rgba(192, 205, 225, 0.95);
+  --maha-success-text: #9fe6cc;
+  --maha-success-bg: rgba(106, 211, 176, 0.18);
+  --maha-success-border: rgba(106, 211, 176, 0.4);
+  --maha-warning-text: #f1d59a;
+  --maha-warning-bg: rgba(241, 213, 154, 0.2);
+  --maha-warning-border: rgba(217, 164, 65, 0.45);
+  --maha-danger-text: #ff9f9f;
+  --maha-danger-bg: rgba(255, 107, 107, 0.14);
+  --maha-danger-border: rgba(255, 107, 107, 0.35);
   font-synthesis-weight: none;
 }
 
@@ -62,12 +78,44 @@
   --temple-shadow-lift: 0 24px 48px -28px rgba(34, 48, 78, 0.3);
   --temple-glow-candle: 0 0 1rem rgba(215, 157, 38, 0.18);
   --temple-noise-opacity: 0.025;
+  --bg: hsl(var(--temple-bg));
+  --surface: hsl(var(--temple-surface-1));
+  --surface-2: hsl(var(--temple-surface-2));
+  --ink: hsl(var(--temple-text-primary));
+  --ink-muted: hsl(var(--temple-text-secondary));
+  --gold: hsl(var(--temple-accent-gold));
+  --gold-soft: hsl(var(--temple-accent-gold) / 0.86);
+  --teal: hsl(var(--temple-accent-state));
+  --border: hsl(var(--temple-border-subtle));
+  --shadow: var(--temple-shadow-soft);
+  --ring: hsl(var(--temple-accent-gold) / 0.42);
+  --text: var(--ink);
+  --muted: var(--ink-muted);
+  --accent: var(--gold);
+  --accent-2: var(--teal);
+  --panel: var(--surface);
   --room-board-bg: radial-gradient(
     circle at 48% 32%,
     rgba(247, 220, 165, 0.42),
     rgba(239, 241, 247, 0.96)
   );
   --maha-toast-bg: rgba(249, 251, 255, 0.96);
+  --maha-overlay-bg: rgba(21, 33, 54, 0.38);
+  --maha-overlay-bg-strong: rgba(21, 33, 54, 0.45);
+  --maha-modal-header-bg: rgba(248, 251, 255, 0.96);
+  --maha-card-thumb-bg: rgba(255, 255, 255, 0.9);
+  --maha-card-thumb-border: rgba(194, 145, 42, 0.36);
+  --maha-board-name-strong: hsl(var(--temple-text-primary) / 0.96);
+  --maha-board-name-muted: hsl(var(--temple-text-secondary) / 0.94);
+  --maha-success-text: #1f6f55;
+  --maha-success-bg: rgba(56, 157, 123, 0.16);
+  --maha-success-border: rgba(46, 131, 102, 0.38);
+  --maha-warning-text: #6e4e14;
+  --maha-warning-bg: rgba(186, 136, 23, 0.16);
+  --maha-warning-border: rgba(168, 122, 20, 0.34);
+  --maha-danger-text: #8a2e2e;
+  --maha-danger-bg: rgba(191, 77, 77, 0.14);
+  --maha-danger-border: rgba(161, 61, 61, 0.32);
 }
 
 .mahalilah-ui {
@@ -109,6 +157,46 @@
 
 .mahalilah-ui[data-ui-theme="light"] .small-muted {
   color: hsl(var(--temple-text-secondary));
+}
+
+.mahalilah-ui[data-ui-theme="light"] .pill-new-room {
+  border-color: rgba(44, 132, 103, 0.42);
+  background: rgba(44, 132, 103, 0.16);
+  color: #1f5f49;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .status-pill {
+  background: rgba(186, 136, 23, 0.14);
+  border-color: rgba(167, 121, 21, 0.34);
+  color: #5f430f;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .status-pill.active {
+  background: rgba(56, 157, 123, 0.15);
+  color: #1f6f55;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .status-pill.closed {
+  background: rgba(186, 136, 23, 0.14);
+  color: #6e4e14;
+}
+
+.mahalilah-ui[data-ui-theme="light"] .status-pill.completed {
+  background: rgba(76, 127, 214, 0.16);
+  color: #254c8c;
+}
+
+.mahalilah-ui[data-ui-theme="light"] input,
+.mahalilah-ui[data-ui-theme="light"] select,
+.mahalilah-ui[data-ui-theme="light"] textarea {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(143, 164, 198, 0.46);
+  color: hsl(var(--temple-text-primary));
+}
+
+.mahalilah-ui[data-ui-theme="light"] input::placeholder,
+.mahalilah-ui[data-ui-theme="light"] textarea::placeholder {
+  color: hsl(var(--temple-text-secondary) / 0.82);
 }
 
 .mahalilah-ui[data-reading-mode="true"] {
