@@ -263,6 +263,7 @@ type AiContentModalState = {
 type RoomTutorialTarget =
   | "room-header"
   | "room-controls"
+  | "room-intervention-center"
   | "room-theme-toggle"
   | "room-reading-toggle"
   | "room-board"
@@ -751,12 +752,16 @@ function getRoomTutorialSteps({
 
   const firstStepsDescription =
     role === "THERAPIST"
-      ? "Primeiros passos: defina a intenção de jogo, oriente o turno e peça a primeira rolagem. Use o botão Ajuda (?) sempre que necessário. Em sessões longas, faça pausas breves para respiração e hidratação; para conforto visual, tema claro e modo leitura ajudam bastante."
-      : "Primeiros passos: defina sua intenção de jogo, aguarde sua vez e clique em Rolar dado quando o botão liberar. Use o botão Ajuda (?) sempre que necessário. Se cansar durante a sessão, pause, respire e tome água; para leitura mais confortável, experimente tema claro e modo leitura.";
+      ? "Primeiros passos: defina a intenção de jogo, oriente o turno e peça a primeira rolagem. Depois, use o painel para conduzir Carta, Registro terapêutico e ajuda da IA. Use o botão Ajuda (?) sempre que necessário. Em sessões longas, faça pausas breves para respiração e hidratação; para conforto visual, tema claro e modo leitura ajudam bastante."
+      : "Primeiros passos: defina sua intenção de jogo, aguarde sua vez e clique em Rolar dado quando o botão liberar. Depois, use o painel para tirar carta, fazer registro terapêutico e pedir ajuda para a IA. Use o botão Ajuda (?) sempre que necessário. Se cansar durante a sessão, pause, respire e tome água; para leitura mais confortável, experimente tema claro e modo leitura.";
   const controlDescription =
     role === "THERAPIST"
       ? 'Use "Rolar dado" na vez atual, "Avançar vez" para conduzir a rodada e "Encerrar sala" para fechamento. Ao concluir a jornada, você pode gerar relatório final direto pela sala.'
       : 'No seu turno use "Rolar dado". Fora do turno, acompanhe os indicadores e aguarde sua vez; o botão muda de estado automaticamente.';
+  const interventionsDescription =
+    role === "THERAPIST"
+      ? "Aqui ficam as intervenções do assistente terapêutico: você recebe destaques ativos, aprova itens sensíveis e acompanha prioridades clínicas em tempo real."
+      : "Aqui você acompanha as intervenções do assistente terapêutico geradas ao longo da sessão, com orientações práticas para o próximo passo.";
   const aiDescription =
     role === "THERAPIST"
       ? 'No ícone IA você gera ajuda contextual, acompanha histórico de ajudas, monitora "O Caminho até agora" por blocos e dispara relatório final por jogador ou da sala.'
@@ -780,6 +785,11 @@ function getRoomTutorialSteps({
       title: "Controles da partida",
       description: controlDescription,
       target: "room-controls",
+    },
+    {
+      title: "Assistente terapêutico",
+      description: interventionsDescription,
+      target: "room-intervention-center",
     },
     {
       title: "Tema claro e escuro",
@@ -3344,7 +3354,6 @@ export function RoomClient({
 
   useEffect(() => {
     if (!myParticipant || !roomOnboardingLoaded) return;
-    if (actionsBlockedByConsent) return;
     if (postConsentGuideOpen) return;
 
     const role = myParticipant.role === "THERAPIST" ? "THERAPIST" : "PLAYER";
@@ -3361,7 +3370,6 @@ export function RoomClient({
     setRoomTutorialStep(0);
     setShowRoomTutorial(true);
   }, [
-    actionsBlockedByConsent,
     myParticipant,
     postConsentGuideOpen,
     roomOnboardingLoaded,
@@ -5029,6 +5037,7 @@ export function RoomClient({
           className="room-intervention-center-trigger"
           data-pulse={interventionCenterPulse ? "true" : "false"}
           data-critical={interventionCenterCriticalCount > 0 ? "true" : "false"}
+          data-tour-room="room-intervention-center"
           onClick={() => {
             clearInterventionCenterTimers();
             setInterventionCenterPulse(false);
@@ -5198,18 +5207,30 @@ export function RoomClient({
               </span>
               <span className="small-muted">
                 <strong>2.</strong> Clique em <strong>Rolar dado</strong> quando
-                for sua vez.
+                for sua vez e acompanhe o movimento no tabuleiro.
               </span>
               <span className="small-muted">
-                <strong>3.</strong> Se precisar de orientação, use o botão{" "}
+                <strong>3.</strong> No painel <strong>Carta</strong>, tire carta
+                do baralho para aprofundar a leitura da jogada.
+              </span>
+              <span className="small-muted">
+                <strong>4.</strong> No painel <strong>Registro</strong>, faça o
+                registro terapêutico (emoção, insight, corpo e ação).
+              </span>
+              <span className="small-muted">
+                <strong>5.</strong> No painel <strong>IA</strong>, peça ajuda
+                contextual da casa atual ou pelo caminho.
+              </span>
+              <span className="small-muted">
+                <strong>6.</strong> Se precisar de orientação, use o botão{" "}
                 <strong>Ajuda (?)</strong>.
               </span>
               <span className="small-muted">
-                <strong>4.</strong> Em sessão longa, faça pausas curtas:{" "}
+                <strong>7.</strong> Em sessão longa, faça pausas curtas:{" "}
                 <strong>respire</strong> e <strong>tome água</strong>.
               </span>
               <span className="small-muted">
-                <strong>5.</strong> Para leitura mais confortável, experimente{" "}
+                <strong>8.</strong> Para leitura mais confortável, experimente{" "}
                 <strong>tema claro</strong> e <strong>modo leitura</strong>.
               </span>
             </div>
