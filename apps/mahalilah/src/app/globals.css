@@ -160,6 +160,12 @@
   color: hsl(var(--temple-text-secondary));
 }
 
+.mahalilah-ui[data-ui-theme="light"] .dashboard-room-meta-chip {
+  background: rgba(248, 251, 255, 0.95);
+  border-color: rgba(116, 136, 168, 0.4);
+  color: hsl(var(--temple-text-secondary));
+}
+
 .mahalilah-ui[data-ui-theme="light"] .pill-new-room {
   border-color: rgba(44, 132, 103, 0.42);
   background: rgba(44, 132, 103, 0.16);
@@ -202,31 +208,65 @@
 
 .mahalilah-ui[data-reading-mode="true"] {
   --temple-border-subtle: 216 21% 40%;
+  --maha-overlay-bg: rgba(3, 6, 10, 0.62);
 }
 
 .mahalilah-ui[data-reading-mode="true"] .small-muted {
-  line-height: 1.62;
+  font-size: 14px;
+  line-height: 1.72;
+  letter-spacing: 0.005em;
 }
 
 .mahalilah-ui[data-reading-mode="true"] .notice {
-  line-height: 1.64;
+  line-height: 1.72;
+  padding: 16px 18px;
+  border-color: rgba(150, 171, 207, 0.48);
+  background: rgba(18, 27, 41, 0.9);
   box-shadow:
-    0 0 0 1px rgba(255, 211, 130, 0.2) inset,
-    0 6px 20px rgba(0, 0, 0, 0.12);
+    0 0 0 1px rgba(150, 171, 207, 0.2) inset,
+    0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
 .mahalilah-ui[data-reading-mode="true"] .card {
-  box-shadow: 0 14px 28px -24px rgba(0, 0, 0, 0.58);
+  background: linear-gradient(
+    180deg,
+    rgba(22, 33, 48, 0.96),
+    rgba(18, 27, 42, 0.96)
+  );
+  border-color: rgba(150, 171, 207, 0.34);
+  box-shadow: 0 18px 34px -24px rgba(0, 0, 0, 0.56);
+}
+
+.mahalilah-ui[data-reading-mode="true"] .room-side-panel {
+  gap: 14px;
+}
+
+@media (min-width: 1024px) {
+  .mahalilah-ui[data-reading-mode="true"] .room-main-grid {
+    grid-template-columns: minmax(0, 0.86fr) minmax(360px, 440px);
+  }
 }
 
 .mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] {
   --temple-border-subtle: 220 22% 71%;
+  --maha-overlay-bg: rgba(21, 33, 54, 0.3);
 }
 
 .mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] .notice {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(92, 112, 143, 0.58);
   box-shadow:
-    0 0 0 1px rgba(102, 120, 148, 0.22) inset,
-    0 6px 18px rgba(34, 48, 78, 0.12);
+    0 0 0 1px rgba(92, 112, 143, 0.2) inset,
+    0 8px 20px rgba(34, 48, 78, 0.1);
+}
+
+.mahalilah-ui[data-ui-theme="light"][data-reading-mode="true"] .card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(247, 250, 255, 0.98)
+  );
+  border-color: rgba(116, 136, 168, 0.42);
 }
 
 * {
