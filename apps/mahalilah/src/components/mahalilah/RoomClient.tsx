@@ -8,6 +8,7 @@ import {
   BOARD_COLS,
   BOARD_ROWS,
   JUMPS,
+  getJumpTarget,
   getJumpType,
   getHouseByNumber,
   getHousePrompt,
@@ -1128,6 +1129,32 @@ function isCriticalIntervention(intervention: TimelineIntervention) {
   return intervention.severity === "CRITICAL";
 }
 
+function resolveJumpContext(jumpFrom: number, jumpTo: number) {
+  const directTarget = getJumpTarget(jumpFrom);
+  if (directTarget === jumpTo) {
+    return {
+      from: jumpFrom,
+      to: jumpTo,
+      isUp: jumpTo > jumpFrom,
+    };
+  }
+
+  const reversedTarget = getJumpTarget(jumpTo);
+  if (reversedTarget === jumpFrom) {
+    return {
+      from: jumpTo,
+      to: jumpFrom,
+      isUp: jumpFrom > jumpTo,
+    };
+  }
+
+  return {
+    from: jumpFrom,
+    to: jumpTo,
+    isUp: jumpTo > jumpFrom,
+  };
+}
+
 type InterventionUiAction =
   | "approve"
   | "dismiss"
@@ -1221,8 +1248,6 @@ export function RoomClient({
     useState<Record<string, boolean>>({});
   const [interventionCenterOpen, setInterventionCenterOpen] = useState(false);
   const [interventionCenterPulse, setInterventionCenterPulse] = useState(false);
-  const [criticalInterventionModalId, setCriticalInterventionModalId] =
-    useState<string | null>(null);
   const [timelineTargetParticipantId, setTimelineTargetParticipantId] =
     useState("");
   const [aiHistoryParticipantId, setAiHistoryParticipantId] = useState("");
@@ -1323,7 +1348,6 @@ export function RoomClient({
   const handledPinMoveIdRef = useRef<string | null>(null);
   const interventionCenterAutoHideTimeoutRef = useRef<number | null>(null);
   const interventionCenterPulseTimeoutRef = useRef<number | null>(null);
-  const seenCriticalInterventionIdsRef = useRef<Set<string>>(new Set());
   const roomShellRef = useRef<HTMLDivElement | null>(null);
   const roomHeaderCardRef = useRef<HTMLDivElement | null>(null);
   const boardGridRef = useRef<HTMLDivElement | null>(null);
@@ -2011,8 +2035,6 @@ export function RoomClient({
     setInterventionActionLoadingByKey({});
     setInterventionCenterOpen(false);
     setInterventionCenterPulse(false);
-    setCriticalInterventionModalId(null);
-    seenCriticalInterventionIdsRef.current = new Set();
     clearInterventionCenterTimers();
     clearDiceTimers();
     setRollInFlight(false);
@@ -2333,11 +2355,10 @@ export function RoomClient({
     state?.lastMove?.appliedJumpFrom !== undefined &&
     state?.lastMove?.appliedJumpTo !== null &&
     state?.lastMove?.appliedJumpTo !== undefined
-      ? {
-          from: state.lastMove.appliedJumpFrom,
-          to: state.lastMove.appliedJumpTo,
-          isUp: state.lastMove.appliedJumpTo > state.lastMove.appliedJumpFrom,
-        }
+      ? resolveJumpContext(
+          state.lastMove.appliedJumpFrom,
+          state.lastMove.appliedJumpTo,
+        )
       : null;
   const lastMoveJumpFromInfo = lastMoveJump
     ? getHouseDisplayInfo(lastMoveJump.from)
@@ -4574,35 +4595,6 @@ export function RoomClient({
   }, [state?.room.id, timelineLoading, timelineLoaded, loadTimelineData]);
 
   useEffect(() => {
-    if (criticalInterventionModalId) return;
-    const unseenCriticalIntervention = criticalInterventions.find(
-      (intervention) => !seenCriticalInterventionIdsRef.current.has(intervention.id),
-    );
-    if (!unseenCriticalIntervention) return;
-    seenCriticalInterventionIdsRef.current.add(unseenCriticalIntervention.id);
-    setCriticalInterventionModalId(unseenCriticalIntervention.id);
-    triggerInterventionCenterAttention();
-  }, [
-    criticalInterventions,
-    triggerInterventionCenterAttention,
-    criticalInterventionModalId,
-  ]);
-
-  useEffect(() => {
-    if (!criticalInterventionModalId) return;
-    const intervention = timelineInterventions.find(
-      (item) => item.id === criticalInterventionModalId,
-    );
-    if (
-      !intervention ||
-      !isInterventionActive(intervention) ||
-      !isCriticalIntervention(intervention)
-    ) {
-      setCriticalInterventionModalId(null);
-    }
-  }, [criticalInterventionModalId, timelineInterventions]);
-
-  useEffect(() => {
     if (!timelineLoaded) return;
     if (!state?.lastMove?.id && !state?.room.aiReportsCount) return;
     void loadTimelineData();
@@ -4751,11 +4743,6 @@ export function RoomClient({
     (activeInterventionCenterItems.length > 0
       ? activeInterventionCenterItems.length
       : interventionCenterItems.length) > interventionCenterVisibleItems.length;
-  const criticalInterventionModal = criticalInterventionModalId
-    ? timelineInterventions.find(
-        (intervention) => intervention.id === criticalInterventionModalId,
-      ) || null
-    : null;
 
   const openTimelinePanel = (participantId?: string) => {
     if (participantId) {
@@ -4863,12 +4850,9 @@ export function RoomClient({
             <strong>Microação:</strong> {intervention.microAction}
           </span>
         )}
-        <span className="small-muted">
-          Trigger: {intervention.triggerId}
-          {typeof intervention.turnNumber === "number"
-            ? ` • Jogada #${intervention.turnNumber}`
-            : ""}
-        </span>
+        {typeof intervention.turnNumber === "number" && (
+          <span className="small-muted">Jogada #{intervention.turnNumber}</span>
+        )}
         <span className="small-muted">
           {new Date(intervention.createdAt).toLocaleString("pt-BR")}
         </span>
@@ -7329,12 +7313,17 @@ export function RoomClient({
                             const hasJump =
                               move.appliedJumpFrom !== null &&
                               move.appliedJumpTo !== null;
+                            const jumpContext = hasJump
+                              ? resolveJumpContext(
+                                  move.appliedJumpFrom!,
+                                  move.appliedJumpTo!,
+                                )
+                              : null;
                             const finalHouse =
-                              (hasJump ? move.appliedJumpTo : move.toPos) ||
-                              move.toPos;
+                              (jumpContext ? jumpContext.to : move.toPos) || move.toPos;
                             const movementText = !hasJump
                               ? `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.toPos}`
-                              : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${move.appliedJumpFrom} • atalho (${move.appliedJumpTo! > move.appliedJumpFrom! ? "subida" : "descida"}): ${move.appliedJumpTo}`;
+                              : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • ${move.fromPos} → ${jumpContext!.from} • atalho (${jumpContext!.isUp ? "subida" : "descida"}): ${jumpContext!.to}`;
 
                             return (
                               <button
@@ -7354,14 +7343,12 @@ export function RoomClient({
                                     title: `Significado da casa ${finalHouse}`,
                                     subtitle: !hasJump
                                       ? `Jogada #${move.turnNumber} • Dado ${move.diceValue}`
-                                      : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • Atalho ${move.appliedJumpFrom} ${move.appliedJumpTo! > move.appliedJumpFrom! ? "↗" : "↘"} ${move.appliedJumpTo}`,
+                                      : `Jogada #${move.turnNumber} • Dado ${move.diceValue} • Atalho ${jumpContext!.from} ${jumpContext!.isUp ? "↗" : "↘"} ${jumpContext!.to}`,
                                     jumpContext: hasJump
                                       ? {
-                                          from: move.appliedJumpFrom!,
-                                          to: move.appliedJumpTo!,
-                                          isUp:
-                                            move.appliedJumpTo! >
-                                            move.appliedJumpFrom!,
+                                          from: jumpContext!.from,
+                                          to: jumpContext!.to,
+                                          isUp: jumpContext!.isUp,
                                         }
                                       : undefined,
                                   })
@@ -8726,70 +8713,6 @@ export function RoomClient({
               <a href="/planos" className="btn-primary">
                 Assinar plano
               </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {criticalInterventionModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "var(--maha-overlay-bg-strong, rgba(3, 6, 10, 0.72))",
-            display: "grid",
-            placeItems: "center",
-            zIndex: 10950,
-            padding: 12,
-          }}
-          onClick={() => setCriticalInterventionModalId(null)}
-        >
-          <div
-            className="card"
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              width: "min(680px, 96vw)",
-              maxHeight: "84vh",
-              overflow: "auto",
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <strong>Intervenção crítica do assistente</strong>
-            <span className="small-muted">
-              Esse aviso exige atenção imediata antes da próxima jogada.
-            </span>
-            {renderInterventionCard(criticalInterventionModal, {
-              showParticipant: shouldShowInterventionParticipantLabel,
-              showOpenTimelineButton: true,
-            })}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                className="btn-secondary"
-                onClick={() => setCriticalInterventionModalId(null)}
-              >
-                Fechar
-              </button>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  setCriticalInterventionModalId(null);
-                  clearInterventionCenterTimers();
-                  setInterventionCenterPulse(false);
-                  setInterventionCenterOpen(true);
-                }}
-              >
-                Abrir central de intervenções
-              </button>
             </div>
           </div>
         </div>
