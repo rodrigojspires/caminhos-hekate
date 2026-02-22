@@ -4221,23 +4221,34 @@ export function RoomClient({
     if (!socket) return;
 
     const handleInterventionGenerated = (payload: any) => {
-      const generatedCount = Array.isArray(payload?.interventions)
-        ? payload.interventions.length
-        : 0;
+      const generatedInterventions: Array<{
+        participantId?: string;
+        status?: string;
+      }> = Array.isArray(payload?.interventions)
+        ? payload.interventions
+        : [];
+      const shouldTreatAsTherapistViewer = myParticipant?.role === "THERAPIST";
+      const relevantInterventions = shouldTreatAsTherapistViewer
+        ? generatedInterventions
+        : generatedInterventions.filter(
+            (item: { participantId?: string }) =>
+              item?.participantId === viewerDataParticipantId,
+          );
+      const generatedCount = relevantInterventions.length;
+
       if (generatedCount > 0) {
         triggerInterventionCenterAttention();
-        const pendingApprovals =
-          typeof payload?.pendingApprovals === "number"
-            ? payload.pendingApprovals
-            : 0;
+        const pendingApprovals = relevantInterventions.filter(
+          (item: { status?: string }) => item?.status === "PENDING_APPROVAL",
+        ).length;
         pushToast(
           pendingApprovals > 0
             ? `${generatedCount} intervenção(ões) gerada(s), ${pendingApprovals} aguardando aprovação.`
             : `${generatedCount} intervenção(ões) gerada(s).`,
           pendingApprovals > 0 ? "warning" : "info",
         );
+        void loadTimelineData();
       }
-      void loadTimelineData();
     };
 
     const handleInterventionUpdated = () => {
@@ -4251,7 +4262,14 @@ export function RoomClient({
       socket.off("intervention:generated", handleInterventionGenerated);
       socket.off("intervention:updated", handleInterventionUpdated);
     };
-  }, [socket, loadTimelineData, pushToast, triggerInterventionCenterAttention]);
+  }, [
+    socket,
+    myParticipant?.role,
+    viewerDataParticipantId,
+    loadTimelineData,
+    pushToast,
+    triggerInterventionCenterAttention,
+  ]);
 
   const openTherapistSummaryModal = useCallback(
     (participantId: string) => {
