@@ -4148,10 +4148,12 @@ io.on("connection", (socket: AuthedSocket) => {
         }
         const roomState = await buildRoomState(room.id);
         if (!roomState) throw new Error("Sala não encontrada");
+        const canTherapistOpenClosedRoom = participant?.role === "THERAPIST";
         if (
           roomState.room.status !== "ACTIVE" &&
           !isAdminUser &&
-          !hasAdminOpenAccess
+          !hasAdminOpenAccess &&
+          !canTherapistOpenClosedRoom
         ) {
           throw buildSocketError(
             "Sala já foi encerrada e não pode mais ser aberta.",
