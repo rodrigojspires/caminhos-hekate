@@ -175,6 +175,23 @@ type InterventionThresholds = {
   intensityWindowEntries?: number;
   fatigueMoveCount?: number;
   therapistSilenceMoves?: number;
+  survivalDeepMaxHouse?: number;
+  survivalBroadMaxHouse?: number;
+  survivalWindowMoves?: number;
+  survivalDeepCount?: number;
+  survivalBroadCount?: number;
+  survivalConsecutiveMaxHouse?: number;
+  survivalConsecutiveCount?: number;
+  survivalIgnoreInitialMoves?: number;
+  survivalPersistenceWindowMoves?: number;
+  survivalPersistenceMaxHouse?: number;
+  survivalPersistenceCount?: number;
+  rapidRollWindowMoves?: number;
+  rapidRollMaxAvgSeconds?: number;
+  fastAscentWindowMoves?: number;
+  fastAscentMinCount?: number;
+  fastAscentMinDelta?: number;
+  checkpointEveryMoves?: number;
 };
 
 type InterventionPromptRecord = {
@@ -521,6 +538,32 @@ function normalizeInterventionThresholds(raw: unknown): InterventionThresholds {
     intensityWindowEntries: asNonNegativeInt(obj.intensityWindowEntries, 0),
     fatigueMoveCount: asNonNegativeInt(obj.fatigueMoveCount, 0),
     therapistSilenceMoves: asNonNegativeInt(obj.therapistSilenceMoves, 0),
+    survivalDeepMaxHouse: asNonNegativeInt(obj.survivalDeepMaxHouse, 0),
+    survivalBroadMaxHouse: asNonNegativeInt(obj.survivalBroadMaxHouse, 0),
+    survivalWindowMoves: asNonNegativeInt(obj.survivalWindowMoves, 0),
+    survivalDeepCount: asNonNegativeInt(obj.survivalDeepCount, 0),
+    survivalBroadCount: asNonNegativeInt(obj.survivalBroadCount, 0),
+    survivalConsecutiveMaxHouse: asNonNegativeInt(
+      obj.survivalConsecutiveMaxHouse,
+      0,
+    ),
+    survivalConsecutiveCount: asNonNegativeInt(obj.survivalConsecutiveCount, 0),
+    survivalIgnoreInitialMoves: asNonNegativeInt(obj.survivalIgnoreInitialMoves, 0),
+    survivalPersistenceWindowMoves: asNonNegativeInt(
+      obj.survivalPersistenceWindowMoves,
+      0,
+    ),
+    survivalPersistenceMaxHouse: asNonNegativeInt(
+      obj.survivalPersistenceMaxHouse,
+      0,
+    ),
+    survivalPersistenceCount: asNonNegativeInt(obj.survivalPersistenceCount, 0),
+    rapidRollWindowMoves: asNonNegativeInt(obj.rapidRollWindowMoves, 0),
+    rapidRollMaxAvgSeconds: asNonNegativeInt(obj.rapidRollMaxAvgSeconds, 0),
+    fastAscentWindowMoves: asNonNegativeInt(obj.fastAscentWindowMoves, 0),
+    fastAscentMinCount: asNonNegativeInt(obj.fastAscentMinCount, 0),
+    fastAscentMinDelta: asNonNegativeInt(obj.fastAscentMinDelta, 0),
+    checkpointEveryMoves: asNonNegativeInt(obj.checkpointEveryMoves, 0),
   };
 }
 
@@ -1881,6 +1924,68 @@ async function generateInterventionAiContent(params: {
       typeof triggerData.therapistSilenceMoves === "number"
         ? triggerData.therapistSilenceMoves
         : "",
+    currentHouse:
+      typeof triggerData.currentHouse === "number" ? triggerData.currentHouse : "",
+    survivalWindowMoves:
+      typeof triggerData.survivalWindowMoves === "number"
+        ? triggerData.survivalWindowMoves
+        : "",
+    survivalDeepCountDetected:
+      typeof triggerData.survivalDeepCountDetected === "number"
+        ? triggerData.survivalDeepCountDetected
+        : "",
+    survivalBroadCountDetected:
+      typeof triggerData.survivalBroadCountDetected === "number"
+        ? triggerData.survivalBroadCountDetected
+        : "",
+    survivalConsecutiveCountDetected:
+      typeof triggerData.survivalConsecutiveCountDetected === "number"
+        ? triggerData.survivalConsecutiveCountDetected
+        : "",
+    survivalPersistenceWindowMoves:
+      typeof triggerData.survivalPersistenceWindowMoves === "number"
+        ? triggerData.survivalPersistenceWindowMoves
+        : "",
+    survivalPersistenceCountDetected:
+      typeof triggerData.survivalPersistenceCountDetected === "number"
+        ? triggerData.survivalPersistenceCountDetected
+        : "",
+    rapidRollWindowMoves:
+      typeof triggerData.rapidRollWindowMoves === "number"
+        ? triggerData.rapidRollWindowMoves
+        : "",
+    rapidRollMaxAvgSeconds:
+      typeof triggerData.rapidRollMaxAvgSeconds === "number"
+        ? triggerData.rapidRollMaxAvgSeconds
+        : "",
+    avgRollSeconds:
+      typeof triggerData.avgRollSeconds === "number"
+        ? triggerData.avgRollSeconds
+        : "",
+    fastAscentWindowMoves:
+      typeof triggerData.fastAscentWindowMoves === "number"
+        ? triggerData.fastAscentWindowMoves
+        : "",
+    fastAscentMinCount:
+      typeof triggerData.fastAscentMinCount === "number"
+        ? triggerData.fastAscentMinCount
+        : "",
+    fastAscentMinDelta:
+      typeof triggerData.fastAscentMinDelta === "number"
+        ? triggerData.fastAscentMinDelta
+        : "",
+    fastAscentCount:
+      typeof triggerData.fastAscentCount === "number"
+        ? triggerData.fastAscentCount
+        : "",
+    checkpointEveryMoves:
+      typeof triggerData.checkpointEveryMoves === "number"
+        ? triggerData.checkpointEveryMoves
+        : "",
+    totalPostStartMoves:
+      typeof triggerData.totalPostStartMoves === "number"
+        ? triggerData.totalPostStartMoves
+        : "",
     turnNumber: params.candidate.turnNumber,
   });
 
@@ -2181,6 +2286,7 @@ async function evaluateInterventionsAfterMove(params: {
     allMoves,
     playerState,
     participantTherapyEntries,
+    participantSurvivalInterventions,
   ] = await Promise.all([
     prisma.mahaLilahRoom.findUnique({
       where: { id: params.roomId },
@@ -2240,9 +2346,23 @@ async function evaluateInterventionsAfterMove(params: {
         createdAt: true,
       },
     }),
+    prisma.mahaLilahIntervention.findMany({
+      where: {
+        roomId: params.roomId,
+        participantId: params.participantId,
+        triggerId: {
+          in: ["survival_mode_alert", "survival_mode_persistence"],
+        },
+      },
+      select: {
+        triggerId: true,
+      },
+    }),
   ]);
 
-  if (!room || room.status !== "ACTIVE") return [];
+  if (!room || (room.status !== "ACTIVE" && room.status !== "COMPLETED")) {
+    return [];
+  }
   const configsByTrigger = await loadInterventionConfigsByTriggerIdForRoom({
     roomId: room.id,
     planType: room.planType,
@@ -2266,6 +2386,13 @@ async function evaluateInterventionsAfterMove(params: {
   if (!currentMove) return [];
 
   const postStartMoves = allMoves.filter(isPostStartMove);
+  const postStartMoveCount = postStartMoves.length;
+  const resolveMoveHouseNumber = (move: {
+    toPos: number;
+    appliedJumpFrom: number | null;
+    appliedJumpTo: number | null;
+  }) => move.appliedJumpTo ?? move.appliedJumpFrom ?? move.toPos;
+  const currentHouseNumber = resolveMoveHouseNumber(currentMove);
   const candidates: InterventionCandidate[] = [];
 
   const registerCandidate = (
@@ -2398,6 +2525,106 @@ async function evaluateInterventionsAfterMove(params: {
     }
   }
 
+  const rapidRollConfig = pickEnabledConfig("roll_rush_pattern");
+  if (rapidRollConfig?.enabled) {
+    const rapidRollWindowMoves = Math.max(
+      3,
+      rapidRollConfig.thresholds.rapidRollWindowMoves || 5,
+    );
+    const rapidRollMaxAvgSeconds = Math.max(
+      1,
+      rapidRollConfig.thresholds.rapidRollMaxAvgSeconds || 2,
+    );
+    const rapidWindow = postStartMoves.slice(-rapidRollWindowMoves);
+    if (rapidWindow.length >= 3) {
+      const intervalsSeconds: number[] = [];
+      for (let index = 1; index < rapidWindow.length; index += 1) {
+        const previous = new Date(rapidWindow[index - 1].createdAt).getTime();
+        const current = new Date(rapidWindow[index].createdAt).getTime();
+        const diffSeconds = Math.max(0, (current - previous) / 1000);
+        intervalsSeconds.push(diffSeconds);
+      }
+
+      if (intervalsSeconds.length > 0) {
+        const avgRollSeconds =
+          intervalsSeconds.reduce((sum, item) => sum + item, 0) /
+          intervalsSeconds.length;
+        if (avgRollSeconds <= rapidRollMaxAvgSeconds) {
+          registerCandidate({
+            triggerId: rapidRollConfig.triggerId,
+            triggerLabel: rapidRollConfig.title,
+            severity: rapidRollConfig.severity,
+            turnNumber: currentMove.turnNumber,
+            moveId: currentMove.id,
+            triggerData: {
+              rapidRollWindowMoves: rapidWindow.length,
+              rapidRollMaxAvgSeconds,
+              avgRollSeconds: Number(avgRollSeconds.toFixed(1)),
+            },
+            fallbackTitle: "Ritmo acelerado de rolagem",
+            fallbackMessage: `As últimas ${rapidWindow.length} jogadas ocorreram em média de ${avgRollSeconds.toFixed(1)}s entre rolagens.`,
+            fallbackReflectionQuestion:
+              "O que muda se você fizer uma pausa curta antes da próxima rolagem?",
+            fallbackMicroAction:
+              "Respire por 3 ciclos lentos, nomeie sua intenção e só então role novamente.",
+          });
+        }
+      }
+    }
+  }
+
+  const fastAscentConfig = pickEnabledConfig("fast_ascent_alert");
+  if (fastAscentConfig?.enabled) {
+    const fastAscentWindowMoves = Math.max(
+      2,
+      fastAscentConfig.thresholds.fastAscentWindowMoves || 6,
+    );
+    const fastAscentMinCount = Math.max(
+      1,
+      fastAscentConfig.thresholds.fastAscentMinCount || 2,
+    );
+    const fastAscentMinDelta = Math.max(
+      1,
+      fastAscentConfig.thresholds.fastAscentMinDelta || 8,
+    );
+    const ascentWindow = postStartMoves.slice(-fastAscentWindowMoves);
+    const ascentMoves = ascentWindow.filter((move) => {
+      if (move.appliedJumpFrom == null || move.appliedJumpTo == null) return false;
+      const delta = move.appliedJumpTo - move.appliedJumpFrom;
+      return delta >= fastAscentMinDelta;
+    });
+    const currentMoveAscentDelta =
+      currentMove.appliedJumpFrom != null && currentMove.appliedJumpTo != null
+        ? currentMove.appliedJumpTo - currentMove.appliedJumpFrom
+        : 0;
+
+    if (
+      ascentMoves.length >= fastAscentMinCount &&
+      currentMoveAscentDelta >= fastAscentMinDelta
+    ) {
+      registerCandidate({
+        triggerId: fastAscentConfig.triggerId,
+        triggerLabel: fastAscentConfig.title,
+        severity: fastAscentConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          fastAscentCount: ascentMoves.length,
+          fastAscentWindowMoves: ascentWindow.length,
+          fastAscentMinCount,
+          fastAscentMinDelta,
+          currentAscentDelta: currentMoveAscentDelta,
+        },
+        fallbackTitle: "Subida acelerada por atalhos",
+        fallbackMessage: `Você teve ${ascentMoves.length} subidas relevantes em ${ascentWindow.length} jogadas. A evolução é positiva, e pede integração consciente para sustentar o ganho.`,
+        fallbackReflectionQuestion:
+          "O que precisa ser interiorizado agora para evitar uma queda por aceleração?",
+        fallbackMicroAction:
+          "Faça uma pausa de aterramento e registre um aprendizado concreto desta subida.",
+      });
+    }
+  }
+
   const preStartConfig = pickEnabledConfig("start_lock", "PRE_START_STUCK_PATTERN");
   if (preStartConfig?.enabled && playerState && !playerState.hasStarted) {
     const threshold = Math.max(2, preStartConfig.thresholds.preStartRollCount || 0);
@@ -2456,6 +2683,155 @@ async function evaluateInterventionsAfterMove(params: {
             "Que tema emocional recorrente está pedindo acolhimento e integração agora?",
           fallbackMicroAction:
             "Pausa breve: nomeie o tema dominante em uma frase antes de seguir.",
+        });
+      }
+    }
+  }
+
+  const survivalAlertConfig = pickEnabledConfig("survival_mode_alert");
+  if (survivalAlertConfig?.enabled) {
+    const survivalIgnoreInitialMoves = Math.max(
+      0,
+      survivalAlertConfig.thresholds.survivalIgnoreInitialMoves || 2,
+    );
+    const survivalDeepMaxHouse = Math.max(
+      1,
+      survivalAlertConfig.thresholds.survivalDeepMaxHouse || 9,
+    );
+    const survivalBroadMaxHouse = Math.max(
+      survivalDeepMaxHouse,
+      survivalAlertConfig.thresholds.survivalBroadMaxHouse || 18,
+    );
+    const survivalWindowMoves = Math.max(
+      1,
+      survivalAlertConfig.thresholds.survivalWindowMoves || 10,
+    );
+    const survivalDeepCountThreshold = Math.max(
+      1,
+      survivalAlertConfig.thresholds.survivalDeepCount || 4,
+    );
+    const survivalBroadCountThreshold = Math.max(
+      survivalDeepCountThreshold,
+      survivalAlertConfig.thresholds.survivalBroadCount || 7,
+    );
+    const survivalConsecutiveMaxHouse = Math.max(
+      1,
+      survivalAlertConfig.thresholds.survivalConsecutiveMaxHouse ||
+        survivalDeepMaxHouse,
+    );
+    const survivalConsecutiveCountThreshold = Math.max(
+      1,
+      survivalAlertConfig.thresholds.survivalConsecutiveCount || 4,
+    );
+    const eligibleMoves = postStartMoves.slice(survivalIgnoreInitialMoves);
+    const recentSurvivalMoves = eligibleMoves.slice(-survivalWindowMoves);
+    const recentSurvivalHouses = recentSurvivalMoves.map(resolveMoveHouseNumber);
+    const survivalDeepCountDetected = recentSurvivalHouses.filter(
+      (house) => house <= survivalDeepMaxHouse,
+    ).length;
+    const survivalBroadCountDetected = recentSurvivalHouses.filter(
+      (house) => house <= survivalBroadMaxHouse,
+    ).length;
+    let survivalConsecutiveCountDetected = 0;
+    for (let index = recentSurvivalHouses.length - 1; index >= 0; index -= 1) {
+      if (recentSurvivalHouses[index] <= survivalConsecutiveMaxHouse) {
+        survivalConsecutiveCountDetected += 1;
+      } else {
+        break;
+      }
+    }
+
+    const shouldTriggerSurvivalAlert =
+      currentHouseNumber <= survivalBroadMaxHouse &&
+      (survivalDeepCountDetected >= survivalDeepCountThreshold ||
+        survivalBroadCountDetected >= survivalBroadCountThreshold ||
+        survivalConsecutiveCountDetected >= survivalConsecutiveCountThreshold);
+
+    if (shouldTriggerSurvivalAlert) {
+      registerCandidate({
+        triggerId: survivalAlertConfig.triggerId,
+        triggerLabel: survivalAlertConfig.title,
+        severity: survivalAlertConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          currentHouse: currentHouseNumber,
+          survivalWindowMoves: recentSurvivalHouses.length,
+          survivalDeepMaxHouse,
+          survivalBroadMaxHouse,
+          survivalDeepCountDetected,
+          survivalDeepCountThreshold,
+          survivalBroadCountDetected,
+          survivalBroadCountThreshold,
+          survivalConsecutiveMaxHouse,
+          survivalConsecutiveCountDetected,
+          survivalConsecutiveCountThreshold,
+          recentSurvivalHouses,
+        },
+        fallbackTitle: "Sinal de modo sobrevivência",
+        fallbackMessage: `Nas últimas ${recentSurvivalHouses.length} jogadas, houve concentração nas casas iniciais (até ${survivalBroadMaxHouse}).`,
+        fallbackReflectionQuestion:
+          "O que está mantendo sua energia em proteção e evitando expansão neste momento?",
+        fallbackMicroAction:
+          "Escolha uma ação simples de autorregulação e registre uma intenção de avanço para as próximas jogadas.",
+      });
+    }
+  }
+
+  const survivalPersistenceConfig = pickEnabledConfig("survival_mode_persistence");
+  if (survivalPersistenceConfig?.enabled) {
+    const previousAlertCount = participantSurvivalInterventions.filter(
+      (item) => item.triggerId === "survival_mode_alert",
+    ).length;
+    if (previousAlertCount > 0) {
+      const survivalIgnoreInitialMoves = Math.max(
+        0,
+        survivalPersistenceConfig.thresholds.survivalIgnoreInitialMoves || 2,
+      );
+      const survivalPersistenceWindowMoves = Math.max(
+        1,
+        survivalPersistenceConfig.thresholds.survivalPersistenceWindowMoves || 14,
+      );
+      const survivalPersistenceMaxHouse = Math.max(
+        1,
+        survivalPersistenceConfig.thresholds.survivalPersistenceMaxHouse || 18,
+      );
+      const survivalPersistenceCountThreshold = Math.max(
+        1,
+        survivalPersistenceConfig.thresholds.survivalPersistenceCount || 10,
+      );
+      const eligibleMoves = postStartMoves.slice(survivalIgnoreInitialMoves);
+      const recentSurvivalMoves = eligibleMoves.slice(-survivalPersistenceWindowMoves);
+      const recentSurvivalHouses = recentSurvivalMoves.map(resolveMoveHouseNumber);
+      const survivalPersistenceCountDetected = recentSurvivalHouses.filter(
+        (house) => house <= survivalPersistenceMaxHouse,
+      ).length;
+
+      if (
+        currentHouseNumber <= survivalPersistenceMaxHouse &&
+        survivalPersistenceCountDetected >= survivalPersistenceCountThreshold
+      ) {
+        registerCandidate({
+          triggerId: survivalPersistenceConfig.triggerId,
+          triggerLabel: survivalPersistenceConfig.title,
+          severity: survivalPersistenceConfig.severity,
+          turnNumber: currentMove.turnNumber,
+          moveId: currentMove.id,
+          triggerData: {
+            currentHouse: currentHouseNumber,
+            previousAlertCount,
+            survivalPersistenceWindowMoves: recentSurvivalHouses.length,
+            survivalPersistenceMaxHouse,
+            survivalPersistenceCountDetected,
+            survivalPersistenceCountThreshold,
+            recentSurvivalHouses,
+          },
+          fallbackTitle: "Persistência no modo sobrevivência",
+          fallbackMessage: `Mesmo após alerta prévio, o padrão de permanência nas casas até ${survivalPersistenceMaxHouse} continua forte.`,
+          fallbackReflectionQuestion:
+            "Qual suporte terapêutico é necessário agora para sair do ciclo de sobrevivência e ampliar recursos internos?",
+          fallbackMicroAction:
+            "Faça uma intervenção breve orientada a segurança e registre o próximo passo concreto antes da nova rolagem.",
         });
       }
     }
@@ -2560,6 +2936,92 @@ async function evaluateInterventionsAfterMove(params: {
     }
   }
 
+  const checkpointConfig = pickEnabledConfig("path_checkpoint_reflection");
+  if (checkpointConfig?.enabled && postStartMoveCount > 0) {
+    const checkpointEveryMoves = Math.max(
+      1,
+      checkpointConfig.thresholds.checkpointEveryMoves ||
+        Number(limitConfig.progressSummaryEveryMoves || 0) ||
+        10,
+    );
+    if (postStartMoveCount % checkpointEveryMoves === 0) {
+      const checkpointWindow = postStartMoves.slice(-checkpointEveryMoves);
+      const checkpointHouses = checkpointWindow.map(resolveMoveHouseNumber);
+      const housesFrequency = checkpointHouses.reduce<Record<number, number>>(
+        (acc, houseNumber) => {
+          acc[houseNumber] = (acc[houseNumber] || 0) + 1;
+          return acc;
+        },
+        {},
+      );
+      const recurrentHousesText = Object.entries(housesFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([house, count]) => `Casa ${house} (${count}x)`)
+        .join(", ");
+      const checkpointAscentCount = checkpointWindow.filter(
+        (move) =>
+          move.appliedJumpFrom != null &&
+          move.appliedJumpTo != null &&
+          move.appliedJumpTo > move.appliedJumpFrom,
+      ).length;
+      const checkpointDescentCount = checkpointWindow.filter(
+        (move) =>
+          move.appliedJumpFrom != null &&
+          move.appliedJumpTo != null &&
+          move.appliedJumpTo < move.appliedJumpFrom,
+      ).length;
+
+      registerCandidate({
+        triggerId: checkpointConfig.triggerId,
+        triggerLabel: checkpointConfig.title,
+        severity: checkpointConfig.severity,
+        turnNumber: currentMove.turnNumber,
+        moveId: currentMove.id,
+        triggerData: {
+          checkpointEveryMoves,
+          totalPostStartMoves: postStartMoveCount,
+          checkpointAscentCount,
+          checkpointDescentCount,
+          recurrentHouses: recurrentHousesText,
+        },
+        fallbackTitle: "Ponto de integração do caminho",
+        fallbackMessage: `Você concluiu ${postStartMoveCount} jogadas pós-início. No último ciclo de ${checkpointEveryMoves}, casas recorrentes: ${recurrentHousesText || "sem repetição relevante"}.`,
+        fallbackReflectionQuestion:
+          "Qual aprendizado deste ciclo precisa ser consolidado antes de seguir?",
+        fallbackMicroAction:
+          "Feche os olhos por 3 respirações profundas e medite por 1 minuto no próximo passo consciente.",
+      });
+    }
+  }
+
+  const finalCounselConfig = pickEnabledConfig("final_house_counsel");
+  if (
+    finalCounselConfig?.enabled &&
+    currentHouseNumber === START_INDEX + 1 &&
+    postStartMoveCount > 0
+  ) {
+    registerCandidate({
+      triggerId: finalCounselConfig.triggerId,
+      triggerLabel: finalCounselConfig.title,
+      severity: finalCounselConfig.severity,
+      turnNumber: currentMove.turnNumber,
+      moveId: currentMove.id,
+      triggerData: {
+        currentHouse: currentHouseNumber,
+        totalPostStartMoves: postStartMoveCount,
+        completedAt: currentMove.createdAt.toISOString(),
+      },
+      fallbackTitle: "Conselho final da jornada",
+      fallbackMessage:
+        "Você chegou ao fechamento do ciclo. Integre os aprendizados principais antes de iniciar um novo movimento.",
+      fallbackReflectionQuestion:
+        "Qual compromisso interno você assume para sustentar esse aprendizado na vida prática?",
+      fallbackMicroAction:
+        "Registre três insights centrais da jornada e uma ação concreta para os próximos 7 dias.",
+    });
+  }
+
   if (candidates.length === 0) return [];
 
   const uniqueParticipantIds = Array.from(
@@ -2591,10 +3053,23 @@ async function evaluateInterventionsAfterMove(params: {
     ATTENTION: 2,
     INFO: 1,
   };
+  const triggerPriority: Record<string, number> = {
+    final_house_counsel: 100,
+    survival_mode_persistence: 80,
+    high_intensity_recurrence: 70,
+    shadow_streak: 60,
+    double_snake: 50,
+    path_checkpoint_reflection: -10,
+  };
   candidates.sort((a, b) => {
     const aPriority = severityPriority[a.severity] || 0;
     const bPriority = severityPriority[b.severity] || 0;
     if (aPriority !== bPriority) return bPriority - aPriority;
+    const aTriggerPriority = triggerPriority[a.triggerId] || 0;
+    const bTriggerPriority = triggerPriority[b.triggerId] || 0;
+    if (aTriggerPriority !== bTriggerPriority) {
+      return bTriggerPriority - aTriggerPriority;
+    }
     const aTurn = typeof a.turnNumber === "number" ? a.turnNumber : -1;
     const bTurn = typeof b.turnNumber === "number" ? b.turnNumber : -1;
     return bTurn - aTurn;

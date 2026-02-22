@@ -46,6 +46,23 @@ type InterventionThresholds = {
   intensityWindowEntries?: number | null;
   fatigueMoveCount?: number | null;
   therapistSilenceMoves?: number | null;
+  survivalDeepMaxHouse?: number | null;
+  survivalBroadMaxHouse?: number | null;
+  survivalWindowMoves?: number | null;
+  survivalDeepCount?: number | null;
+  survivalBroadCount?: number | null;
+  survivalConsecutiveMaxHouse?: number | null;
+  survivalConsecutiveCount?: number | null;
+  survivalIgnoreInitialMoves?: number | null;
+  survivalPersistenceWindowMoves?: number | null;
+  survivalPersistenceMaxHouse?: number | null;
+  survivalPersistenceCount?: number | null;
+  rapidRollWindowMoves?: number | null;
+  rapidRollMaxAvgSeconds?: number | null;
+  fastAscentWindowMoves?: number | null;
+  fastAscentMinCount?: number | null;
+  fastAscentMinDelta?: number | null;
+  checkpointEveryMoves?: number | null;
 };
 
 type InterventionConfig = {
@@ -89,6 +106,35 @@ const THRESHOLD_FIELDS: Array<{
   { key: "intensityWindowEntries", label: "Janela de registros (intensidade)" },
   { key: "fatigueMoveCount", label: "Fadiga (jogadas)" },
   { key: "therapistSilenceMoves", label: "Silêncio terapeuta (jogadas)" },
+  { key: "survivalDeepMaxHouse", label: "Sobrevivência: faixa profunda até casa" },
+  { key: "survivalBroadMaxHouse", label: "Sobrevivência: faixa ampliada até casa" },
+  { key: "survivalWindowMoves", label: "Sobrevivência: janela (jogadas)" },
+  { key: "survivalDeepCount", label: "Sobrevivência: repetições faixa profunda" },
+  { key: "survivalBroadCount", label: "Sobrevivência: repetições faixa ampliada" },
+  {
+    key: "survivalConsecutiveMaxHouse",
+    label: "Sobrevivência: consecutivas até casa",
+  },
+  { key: "survivalConsecutiveCount", label: "Sobrevivência: qtd consecutiva" },
+  { key: "survivalIgnoreInitialMoves", label: "Sobrevivência: ignorar jogadas iniciais" },
+  {
+    key: "survivalPersistenceWindowMoves",
+    label: "Persistência: janela (jogadas)",
+  },
+  {
+    key: "survivalPersistenceMaxHouse",
+    label: "Persistência: faixa até casa",
+  },
+  {
+    key: "survivalPersistenceCount",
+    label: "Persistência: repetições na faixa",
+  },
+  { key: "rapidRollWindowMoves", label: "Rolagem rápida: janela (jogadas)" },
+  { key: "rapidRollMaxAvgSeconds", label: "Rolagem rápida: média máx (seg)" },
+  { key: "fastAscentWindowMoves", label: "Subida rápida: janela (jogadas)" },
+  { key: "fastAscentMinCount", label: "Subida rápida: qtd mínima" },
+  { key: "fastAscentMinDelta", label: "Subida rápida: delta mínimo" },
+  { key: "checkpointEveryMoves", label: "Checkpoint: a cada X jogadas" },
 ];
 
 function buildNextTriggerId(configs: InterventionConfig[]) {
@@ -260,6 +306,29 @@ export default function AdminMahaLilahInterventionsPage() {
           intensityWindowEntries: toNullableInt(config.thresholds.intensityWindowEntries),
           fatigueMoveCount: toNullableInt(config.thresholds.fatigueMoveCount),
           therapistSilenceMoves: toNullableInt(config.thresholds.therapistSilenceMoves),
+          survivalDeepMaxHouse: toNullableInt(config.thresholds.survivalDeepMaxHouse),
+          survivalBroadMaxHouse: toNullableInt(config.thresholds.survivalBroadMaxHouse),
+          survivalWindowMoves: toNullableInt(config.thresholds.survivalWindowMoves),
+          survivalDeepCount: toNullableInt(config.thresholds.survivalDeepCount),
+          survivalBroadCount: toNullableInt(config.thresholds.survivalBroadCount),
+          survivalConsecutiveMaxHouse: toNullableInt(
+            config.thresholds.survivalConsecutiveMaxHouse,
+          ),
+          survivalConsecutiveCount: toNullableInt(config.thresholds.survivalConsecutiveCount),
+          survivalIgnoreInitialMoves: toNullableInt(config.thresholds.survivalIgnoreInitialMoves),
+          survivalPersistenceWindowMoves: toNullableInt(
+            config.thresholds.survivalPersistenceWindowMoves,
+          ),
+          survivalPersistenceMaxHouse: toNullableInt(
+            config.thresholds.survivalPersistenceMaxHouse,
+          ),
+          survivalPersistenceCount: toNullableInt(config.thresholds.survivalPersistenceCount),
+          rapidRollWindowMoves: toNullableInt(config.thresholds.rapidRollWindowMoves),
+          rapidRollMaxAvgSeconds: toNullableInt(config.thresholds.rapidRollMaxAvgSeconds),
+          fastAscentWindowMoves: toNullableInt(config.thresholds.fastAscentWindowMoves),
+          fastAscentMinCount: toNullableInt(config.thresholds.fastAscentMinCount),
+          fastAscentMinDelta: toNullableInt(config.thresholds.fastAscentMinDelta),
+          checkpointEveryMoves: toNullableInt(config.thresholds.checkpointEveryMoves),
         },
         metadata: config.metadata || {},
         prompts: config.prompts.map((prompt) => ({

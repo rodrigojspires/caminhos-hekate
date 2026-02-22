@@ -27,6 +27,18 @@ export function Navbar() {
   const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileMenuTop, setMobileMenuTop] = useState(0)
+  const lockedScrollYRef = useRef(0)
+  const bodyStyleBeforeLockRef = useRef<{
+    overflow: string
+    position: string
+    top: string
+    left: string
+    right: string
+    width: string
+  } | null>(null)
+  const htmlOverflowBeforeLockRef = useRef<string | null>(null)
+  const headerRef = useRef<HTMLElement | null>(null)
   const profileRef = useRef<HTMLDivElement | null>(null)
   const profileMenuItemClass =
     'flex w-full items-center rounded-xl px-3 py-2 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink'
@@ -79,15 +91,63 @@ export function Navbar() {
 
   useEffect(() => {
     if (!mobileMenuOpen) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+
+    const updateMenuTop = () => {
+      const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0
+      setMobileMenuTop(Math.max(0, Math.round(headerHeight)))
+    }
+
+    updateMenuTop()
+    window.addEventListener('resize', updateMenuTop)
+
+    const body = document.body
+    const html = document.documentElement
+
+    bodyStyleBeforeLockRef.current = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width
+    }
+    htmlOverflowBeforeLockRef.current = html.style.overflow
+
+    lockedScrollYRef.current = window.scrollY
+    body.style.overflow = 'hidden'
+    body.style.position = 'fixed'
+    body.style.top = `-${lockedScrollYRef.current}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    html.style.overflow = 'hidden'
+
     return () => {
-      document.body.style.overflow = previousOverflow
+      window.removeEventListener('resize', updateMenuTop)
+
+      const prevBodyStyle = bodyStyleBeforeLockRef.current
+      if (prevBodyStyle) {
+        body.style.overflow = prevBodyStyle.overflow
+        body.style.position = prevBodyStyle.position
+        body.style.top = prevBodyStyle.top
+        body.style.left = prevBodyStyle.left
+        body.style.right = prevBodyStyle.right
+        body.style.width = prevBodyStyle.width
+      }
+
+      if (htmlOverflowBeforeLockRef.current !== null) {
+        html.style.overflow = htmlOverflowBeforeLockRef.current
+      }
+
+      window.scrollTo(0, lockedScrollYRef.current)
     }
   }, [mobileMenuOpen])
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-[linear-gradient(180deg,rgba(10,15,24,0.95),rgba(10,15,24,0.84))] backdrop-blur">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-30 border-b border-border/70 bg-[linear-gradient(180deg,rgba(10,15,24,0.95),rgba(10,15,24,0.84))] backdrop-blur"
+    >
       <div className="hidden border-b border-border/50 px-4 py-2 text-center sm:block">
         <p className="text-xs text-gold-soft">
           Jogue ao vivo em um tabuleiro de autoconhecimento — com assistência de IA.
@@ -221,7 +281,13 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div
           id="mobile-nav"
-          className="border-t border-border/60 bg-[#0b0e13]/95 px-4 pb-5 pt-4 sm:px-6 lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-border/60 bg-[#0b0e13]/95 px-4 pb-5 pt-4 sm:px-6 lg:hidden"
+          style={{
+            top: `${mobileMenuTop}px`,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           <nav aria-label="Navegação principal mobile" className="grid gap-1">
             {navLinks.map((link) => {

@@ -3577,6 +3577,10 @@ export function RoomClient({
   );
 
   const handleRoll = () => {
+    clearInterventionCenterTimers();
+    setInterventionCenterOpen(false);
+    setInterventionCenterPulse(false);
+
     if (!socket || !socket.connected || rollInFlight) {
       if (!rollInFlight) {
         pushToast(
